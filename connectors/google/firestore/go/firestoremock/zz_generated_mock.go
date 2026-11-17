@@ -17,8 +17,15 @@ import (
 
 // Mock is a scripted google-firestore connection. Script each operation through its accessor.
 type Mock struct {
-	connection    firestore.Connection
-	listDocuments *connectormock.Query[firestore.ListDocumentsInput, firestore.DocumentsPage]
+	connection          firestore.Connection
+	listDocumentDetails *connectormock.Query[firestore.ListDocumentsInput, firestore.DocumentDetailsPage]
+	getDocument         *connectormock.Query[firestore.GetDocumentInput, firestore.FirestoreDocument]
+	createDocument      *connectormock.Mutation[firestore.WriteDocumentInput, firestore.FirestoreDocument]
+	putDocument         *connectormock.Mutation[firestore.WriteDocumentInput, firestore.FirestoreDocument]
+	deleteDocument      *connectormock.Mutation[firestore.GetDocumentInput, firestore.FirestoreDocument]
+	runDocumentQuery    *connectormock.Query[firestore.RunDocumentQueryInput, firestore.QueriedDocuments]
+	listRootCollections *connectormock.Query[firestore.ListRootCollectionsInput, firestore.CollectionsPage]
+	listDocuments       *connectormock.Query[firestore.ListDocumentsInput, firestore.DocumentsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +33,22 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listDocuments: connectormock.NewQuery[firestore.ListDocumentsInput, firestore.DocumentsPage](t, firestore.ListDocumentsDefinition),
+		listDocumentDetails: connectormock.NewQuery[firestore.ListDocumentsInput, firestore.DocumentDetailsPage](t, firestore.ListDocumentDetailsDefinition),
+		getDocument:         connectormock.NewQuery[firestore.GetDocumentInput, firestore.FirestoreDocument](t, firestore.GetDocumentDefinition),
+		createDocument:      connectormock.NewMutation[firestore.WriteDocumentInput, firestore.FirestoreDocument](t, firestore.CreateDocumentDefinition),
+		putDocument:         connectormock.NewMutation[firestore.WriteDocumentInput, firestore.FirestoreDocument](t, firestore.PutDocumentDefinition),
+		deleteDocument:      connectormock.NewMutation[firestore.GetDocumentInput, firestore.FirestoreDocument](t, firestore.DeleteDocumentDefinition),
+		runDocumentQuery:    connectormock.NewQuery[firestore.RunDocumentQueryInput, firestore.QueriedDocuments](t, firestore.RunDocumentQueryDefinition),
+		listRootCollections: connectormock.NewQuery[firestore.ListRootCollectionsInput, firestore.CollectionsPage](t, firestore.ListRootCollectionsDefinition),
+		listDocuments:       connectormock.NewQuery[firestore.ListDocumentsInput, firestore.DocumentsPage](t, firestore.ListDocumentsDefinition),
 	}
+	mock.listDocumentDetails.Default(ListDocumentDetailsDefault())
+	mock.getDocument.Default(GetDocumentDefault())
+	mock.createDocument.Default(CreateDocumentDefault())
+	mock.putDocument.Default(PutDocumentDefault())
+	mock.deleteDocument.Default(DeleteDocumentDefault())
+	mock.runDocumentQuery.Default(RunDocumentQueryDefault())
+	mock.listRootCollections.Default(ListRootCollectionsDefault())
 	mock.listDocuments.Default(ListDocumentsDefault())
 	connection, err := firestore.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "google-firestore", Name: connectionName})
 	if err != nil {
@@ -40,6 +61,41 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() firestore.Connection { return mock.connection }
 
+// ListDocumentDetails returns the listDocumentDetails script.
+func (mock *Mock) ListDocumentDetails() *connectormock.Query[firestore.ListDocumentsInput, firestore.DocumentDetailsPage] {
+	return mock.listDocumentDetails
+}
+
+// GetDocument returns the getDocument script.
+func (mock *Mock) GetDocument() *connectormock.Query[firestore.GetDocumentInput, firestore.FirestoreDocument] {
+	return mock.getDocument
+}
+
+// CreateDocument returns the createDocument script.
+func (mock *Mock) CreateDocument() *connectormock.Mutation[firestore.WriteDocumentInput, firestore.FirestoreDocument] {
+	return mock.createDocument
+}
+
+// PutDocument returns the putDocument script.
+func (mock *Mock) PutDocument() *connectormock.Mutation[firestore.WriteDocumentInput, firestore.FirestoreDocument] {
+	return mock.putDocument
+}
+
+// DeleteDocument returns the deleteDocument script.
+func (mock *Mock) DeleteDocument() *connectormock.Mutation[firestore.GetDocumentInput, firestore.FirestoreDocument] {
+	return mock.deleteDocument
+}
+
+// RunDocumentQuery returns the runDocumentQuery script.
+func (mock *Mock) RunDocumentQuery() *connectormock.Query[firestore.RunDocumentQueryInput, firestore.QueriedDocuments] {
+	return mock.runDocumentQuery
+}
+
+// ListRootCollections returns the listRootCollections script.
+func (mock *Mock) ListRootCollections() *connectormock.Query[firestore.ListRootCollectionsInput, firestore.CollectionsPage] {
+	return mock.listRootCollections
+}
+
 // ListDocuments returns the listDocuments script.
 func (mock *Mock) ListDocuments() *connectormock.Query[firestore.ListDocumentsInput, firestore.DocumentsPage] {
 	return mock.listDocuments
@@ -47,8 +103,286 @@ func (mock *Mock) ListDocuments() *connectormock.Query[firestore.ListDocumentsIn
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListDocumentDetails() sdkgo.Query[firestore.ListDocumentsInput, firestore.DocumentDetailsPage] {
+	return operations.mock.listDocumentDetails
+}
+func (operations mockOperations) GetDocument() sdkgo.Query[firestore.GetDocumentInput, firestore.FirestoreDocument] {
+	return operations.mock.getDocument
+}
+func (operations mockOperations) CreateDocument() sdkgo.Mutation[firestore.WriteDocumentInput, firestore.FirestoreDocument] {
+	return operations.mock.createDocument
+}
+func (operations mockOperations) PutDocument() sdkgo.Mutation[firestore.WriteDocumentInput, firestore.FirestoreDocument] {
+	return operations.mock.putDocument
+}
+func (operations mockOperations) DeleteDocument() sdkgo.Mutation[firestore.GetDocumentInput, firestore.FirestoreDocument] {
+	return operations.mock.deleteDocument
+}
+func (operations mockOperations) RunDocumentQuery() sdkgo.Query[firestore.RunDocumentQueryInput, firestore.QueriedDocuments] {
+	return operations.mock.runDocumentQuery
+}
+func (operations mockOperations) ListRootCollections() sdkgo.Query[firestore.ListRootCollectionsInput, firestore.CollectionsPage] {
+	return operations.mock.listRootCollections
+}
 func (operations mockOperations) ListDocuments() sdkgo.Query[firestore.ListDocumentsInput, firestore.DocumentsPage] {
 	return operations.mock.listDocuments
+}
+
+// ListDocumentDetailsListed selects the listed branch: Firestore returned a document content page.
+func ListDocumentDetailsListed(value firestore.DocumentDetailsPage, failure *sdkgo.Failure) connectormock.Case[firestore.DocumentDetailsPage] {
+	return connectormock.Branch(firestore.ListDocumentDetailsBranchListed, value, failure)
+}
+
+// ListDocumentDetailsProviderRejected selects the providerRejected branch: Firestore rejected the listing.
+func ListDocumentDetailsProviderRejected(value firestore.DocumentDetailsPage, failure *sdkgo.Failure) connectormock.Case[firestore.DocumentDetailsPage] {
+	return connectormock.Branch(firestore.ListDocumentDetailsBranchProviderRejected, value, failure)
+}
+
+// ListDocumentDetailsInvalidResponse selects the invalidResponse branch: Firestore returned invalid JSON.
+func ListDocumentDetailsInvalidResponse(value firestore.DocumentDetailsPage, failure *sdkgo.Failure) connectormock.Case[firestore.DocumentDetailsPage] {
+	return connectormock.Branch(firestore.ListDocumentDetailsBranchInvalidResponse, value, failure)
+}
+
+// ListDocumentDetailsDefect selects the defect branch: The page input or connection is invalid.
+func ListDocumentDetailsDefect(value firestore.DocumentDetailsPage, failure *sdkgo.Failure) connectormock.Case[firestore.DocumentDetailsPage] {
+	return connectormock.Branch(firestore.ListDocumentDetailsBranchDefect, value, failure)
+}
+
+// ListDocumentDetailsRetry asks Dex to retry the listDocumentDetails Step, after the delay when it is positive.
+func ListDocumentDetailsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[firestore.DocumentDetailsPage] {
+	return connectormock.Retry[firestore.DocumentDetailsPage](failure, after)
+}
+
+// ListDocumentDetailsListedDefault is the manifest mock listedDefault: Example document content is visible.
+func ListDocumentDetailsListedDefault() connectormock.Case[firestore.DocumentDetailsPage] {
+	value := connectormock.MustDecodeOutput[firestore.DocumentDetailsPage](`{"documents":[{"name":"projects/sample-project/databases/(default)/documents/events/sample-event","fieldsJson":"{\"title\":{\"stringValue\":\"Hello\"}}"}],"nextPageToken":""}`)
+	return connectormock.Branch(firestore.ListDocumentDetailsBranchListed, value, nil)
+}
+
+// ListDocumentDetailsDefault is the manifest default, listedDefault, which New installs.
+func ListDocumentDetailsDefault() connectormock.Case[firestore.DocumentDetailsPage] {
+	return ListDocumentDetailsListedDefault()
+}
+
+// GetDocumentFound selects the found branch: Firestore returned the document.
+func GetDocumentFound(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.GetDocumentBranchFound, value, failure)
+}
+
+// GetDocumentNotFound selects the notFound branch: The document does not exist.
+func GetDocumentNotFound(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.GetDocumentBranchNotFound, value, failure)
+}
+
+// GetDocumentProviderRejected selects the providerRejected branch: Firestore rejected the read.
+func GetDocumentProviderRejected(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.GetDocumentBranchProviderRejected, value, failure)
+}
+
+// GetDocumentInvalidResponse selects the invalidResponse branch: Firestore returned invalid JSON.
+func GetDocumentInvalidResponse(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.GetDocumentBranchInvalidResponse, value, failure)
+}
+
+// GetDocumentDefect selects the defect branch: The document identity or connection is invalid.
+func GetDocumentDefect(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.GetDocumentBranchDefect, value, failure)
+}
+
+// GetDocumentRetry asks Dex to retry the getDocument Step, after the delay when it is positive.
+func GetDocumentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Retry[firestore.FirestoreDocument](failure, after)
+}
+
+// GetDocumentFoundDefault is the manifest mock foundDefault: Example document was found.
+func GetDocumentFoundDefault() connectormock.Case[firestore.FirestoreDocument] {
+	value := connectormock.MustDecodeOutput[firestore.FirestoreDocument](`{"name":"projects/sample-project/databases/(default)/documents/events/sample-event","fieldsJson":"{\"title\":{\"stringValue\":\"Hello\"}}"}`)
+	return connectormock.Branch(firestore.GetDocumentBranchFound, value, nil)
+}
+
+// GetDocumentDefault is the manifest default, foundDefault, which New installs.
+func GetDocumentDefault() connectormock.Case[firestore.FirestoreDocument] {
+	return GetDocumentFoundDefault()
+}
+
+// CreateDocumentCreated selects the created branch: Firestore created the document.
+func CreateDocumentCreated(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.CreateDocumentBranchCreated, value, failure)
+}
+
+// CreateDocumentAlreadyExists selects the alreadyExists branch: The document ID is already in use.
+func CreateDocumentAlreadyExists(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.CreateDocumentBranchAlreadyExists, value, failure)
+}
+
+// CreateDocumentProviderRejected selects the providerRejected branch: Firestore rejected the create.
+func CreateDocumentProviderRejected(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.CreateDocumentBranchProviderRejected, value, failure)
+}
+
+// CreateDocumentUncertain returns an uncertain createDocument outcome.
+func CreateDocumentUncertain(value firestore.FirestoreDocument, failure sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateDocumentDefect selects the defect branch: The document input or connection is invalid.
+func CreateDocumentDefect(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.CreateDocumentBranchDefect, value, failure)
+}
+
+// CreateDocumentRetry asks Dex to retry the createDocument Step, after the delay when it is positive.
+func CreateDocumentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Retry[firestore.FirestoreDocument](failure, after)
+}
+
+// CreateDocumentCreatedDefault is the manifest mock createdDefault: Example document was created.
+func CreateDocumentCreatedDefault() connectormock.Case[firestore.FirestoreDocument] {
+	value := connectormock.MustDecodeOutput[firestore.FirestoreDocument](`{"name":"projects/sample-project/databases/(default)/documents/events/sample-event","fieldsJson":"{\"title\":{\"stringValue\":\"Hello\"}}"}`)
+	return connectormock.Branch(firestore.CreateDocumentBranchCreated, value, nil)
+}
+
+// CreateDocumentDefault is the manifest default, createdDefault, which New installs.
+func CreateDocumentDefault() connectormock.Case[firestore.FirestoreDocument] {
+	return CreateDocumentCreatedDefault()
+}
+
+// PutDocumentWritten selects the written branch: Firestore replaced or created the document.
+func PutDocumentWritten(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.PutDocumentBranchWritten, value, failure)
+}
+
+// PutDocumentProviderRejected selects the providerRejected branch: Firestore rejected the write.
+func PutDocumentProviderRejected(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.PutDocumentBranchProviderRejected, value, failure)
+}
+
+// PutDocumentInvalidResponse selects the invalidResponse branch: Firestore returned invalid JSON.
+func PutDocumentInvalidResponse(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.PutDocumentBranchInvalidResponse, value, failure)
+}
+
+// PutDocumentDefect selects the defect branch: The document input or connection is invalid.
+func PutDocumentDefect(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.PutDocumentBranchDefect, value, failure)
+}
+
+// PutDocumentRetry asks Dex to retry the putDocument Step, after the delay when it is positive.
+func PutDocumentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Retry[firestore.FirestoreDocument](failure, after)
+}
+
+// PutDocumentWrittenDefault is the manifest mock writtenDefault: Example document was written.
+func PutDocumentWrittenDefault() connectormock.Case[firestore.FirestoreDocument] {
+	value := connectormock.MustDecodeOutput[firestore.FirestoreDocument](`{"name":"projects/sample-project/databases/(default)/documents/events/sample-event","fieldsJson":"{\"title\":{\"stringValue\":\"Hello\"}}"}`)
+	return connectormock.Branch(firestore.PutDocumentBranchWritten, value, nil)
+}
+
+// PutDocumentDefault is the manifest default, writtenDefault, which New installs.
+func PutDocumentDefault() connectormock.Case[firestore.FirestoreDocument] {
+	return PutDocumentWrittenDefault()
+}
+
+// DeleteDocumentDeleted selects the deleted branch: The document is absent.
+func DeleteDocumentDeleted(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.DeleteDocumentBranchDeleted, value, failure)
+}
+
+// DeleteDocumentProviderRejected selects the providerRejected branch: Firestore rejected the deletion.
+func DeleteDocumentProviderRejected(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.DeleteDocumentBranchProviderRejected, value, failure)
+}
+
+// DeleteDocumentDefect selects the defect branch: The document identity or connection is invalid.
+func DeleteDocumentDefect(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Branch(firestore.DeleteDocumentBranchDefect, value, failure)
+}
+
+// DeleteDocumentRetry asks Dex to retry the deleteDocument Step, after the delay when it is positive.
+func DeleteDocumentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[firestore.FirestoreDocument] {
+	return connectormock.Retry[firestore.FirestoreDocument](failure, after)
+}
+
+// DeleteDocumentDeletedDefault is the manifest mock deletedDefault: Example document is absent.
+func DeleteDocumentDeletedDefault() connectormock.Case[firestore.FirestoreDocument] {
+	value := connectormock.MustDecodeOutput[firestore.FirestoreDocument](`{"name":"projects/sample-project/databases/(default)/documents/events/sample-event"}`)
+	return connectormock.Branch(firestore.DeleteDocumentBranchDeleted, value, nil)
+}
+
+// DeleteDocumentDefault is the manifest default, deletedDefault, which New installs.
+func DeleteDocumentDefault() connectormock.Case[firestore.FirestoreDocument] {
+	return DeleteDocumentDeletedDefault()
+}
+
+// RunDocumentQueryQueried selects the queried branch: Firestore returned query results.
+func RunDocumentQueryQueried(value firestore.QueriedDocuments, failure *sdkgo.Failure) connectormock.Case[firestore.QueriedDocuments] {
+	return connectormock.Branch(firestore.RunDocumentQueryBranchQueried, value, failure)
+}
+
+// RunDocumentQueryProviderRejected selects the providerRejected branch: Firestore rejected the query.
+func RunDocumentQueryProviderRejected(value firestore.QueriedDocuments, failure *sdkgo.Failure) connectormock.Case[firestore.QueriedDocuments] {
+	return connectormock.Branch(firestore.RunDocumentQueryBranchProviderRejected, value, failure)
+}
+
+// RunDocumentQueryInvalidResponse selects the invalidResponse branch: Firestore returned invalid JSON.
+func RunDocumentQueryInvalidResponse(value firestore.QueriedDocuments, failure *sdkgo.Failure) connectormock.Case[firestore.QueriedDocuments] {
+	return connectormock.Branch(firestore.RunDocumentQueryBranchInvalidResponse, value, failure)
+}
+
+// RunDocumentQueryDefect selects the defect branch: The query input or connection is invalid.
+func RunDocumentQueryDefect(value firestore.QueriedDocuments, failure *sdkgo.Failure) connectormock.Case[firestore.QueriedDocuments] {
+	return connectormock.Branch(firestore.RunDocumentQueryBranchDefect, value, failure)
+}
+
+// RunDocumentQueryRetry asks Dex to retry the runDocumentQuery Step, after the delay when it is positive.
+func RunDocumentQueryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[firestore.QueriedDocuments] {
+	return connectormock.Retry[firestore.QueriedDocuments](failure, after)
+}
+
+// RunDocumentQueryQueriedDefault is the manifest mock queriedDefault: Example query returned one document.
+func RunDocumentQueryQueriedDefault() connectormock.Case[firestore.QueriedDocuments] {
+	value := connectormock.MustDecodeOutput[firestore.QueriedDocuments](`{"documents":[{"name":"projects/sample-project/databases/(default)/documents/events/sample-event","fieldsJson":"{\"title\":{\"stringValue\":\"Hello\"}}"}]}`)
+	return connectormock.Branch(firestore.RunDocumentQueryBranchQueried, value, nil)
+}
+
+// RunDocumentQueryDefault is the manifest default, queriedDefault, which New installs.
+func RunDocumentQueryDefault() connectormock.Case[firestore.QueriedDocuments] {
+	return RunDocumentQueryQueriedDefault()
+}
+
+// ListRootCollectionsListed selects the listed branch: Firestore returned collection IDs.
+func ListRootCollectionsListed(value firestore.CollectionsPage, failure *sdkgo.Failure) connectormock.Case[firestore.CollectionsPage] {
+	return connectormock.Branch(firestore.ListRootCollectionsBranchListed, value, failure)
+}
+
+// ListRootCollectionsProviderRejected selects the providerRejected branch: Firestore rejected the listing.
+func ListRootCollectionsProviderRejected(value firestore.CollectionsPage, failure *sdkgo.Failure) connectormock.Case[firestore.CollectionsPage] {
+	return connectormock.Branch(firestore.ListRootCollectionsBranchProviderRejected, value, failure)
+}
+
+// ListRootCollectionsInvalidResponse selects the invalidResponse branch: Firestore returned invalid JSON.
+func ListRootCollectionsInvalidResponse(value firestore.CollectionsPage, failure *sdkgo.Failure) connectormock.Case[firestore.CollectionsPage] {
+	return connectormock.Branch(firestore.ListRootCollectionsBranchInvalidResponse, value, failure)
+}
+
+// ListRootCollectionsDefect selects the defect branch: The project input or connection is invalid.
+func ListRootCollectionsDefect(value firestore.CollectionsPage, failure *sdkgo.Failure) connectormock.Case[firestore.CollectionsPage] {
+	return connectormock.Branch(firestore.ListRootCollectionsBranchDefect, value, failure)
+}
+
+// ListRootCollectionsRetry asks Dex to retry the listRootCollections Step, after the delay when it is positive.
+func ListRootCollectionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[firestore.CollectionsPage] {
+	return connectormock.Retry[firestore.CollectionsPage](failure, after)
+}
+
+// ListRootCollectionsListedDefault is the manifest mock listedDefault: Example root collection exists.
+func ListRootCollectionsListedDefault() connectormock.Case[firestore.CollectionsPage] {
+	value := connectormock.MustDecodeOutput[firestore.CollectionsPage](`{"collectionIds":["events"],"nextPageToken":""}`)
+	return connectormock.Branch(firestore.ListRootCollectionsBranchListed, value, nil)
+}
+
+// ListRootCollectionsDefault is the manifest default, listedDefault, which New installs.
+func ListRootCollectionsDefault() connectormock.Case[firestore.CollectionsPage] {
+	return ListRootCollectionsListedDefault()
 }
 
 // ListDocumentsListed selects the listed branch: Firestore returned the selected document page.

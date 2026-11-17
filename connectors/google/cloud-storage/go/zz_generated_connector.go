@@ -44,13 +44,35 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListBuckets() sdkgo.Query[ListBucketsInput, BucketsPage]
+	GetBucket() sdkgo.Query[GetBucketInput, Bucket]
+	CreateBucket() sdkgo.Mutation[CreateBucketInput, Bucket]
+	UpdateBucketLabels() sdkgo.Mutation[UpdateBucketLabelsInput, Bucket]
+	DeleteBucket() sdkgo.Mutation[DeleteBucketInput, DeletedBucket]
 	ListObjects() sdkgo.Query[ListObjectsInput, ObjectsPage]
 	DownloadObject() sdkgo.Query[DownloadObjectInput, DownloadedObject]
 	UploadObject() sdkgo.Mutation[UploadObjectInput, Object]
+	UpdateObjectMetadata() sdkgo.Mutation[UpdateObjectMetadataInput, Object]
+	DeleteObject() sdkgo.Mutation[DeleteObjectInput, DeletedObject]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListBuckets() sdkgo.Query[ListBucketsInput, BucketsPage] {
+	return operations.client.ListBuckets()
+}
+func (operations clientOperations) GetBucket() sdkgo.Query[GetBucketInput, Bucket] {
+	return operations.client.GetBucket()
+}
+func (operations clientOperations) CreateBucket() sdkgo.Mutation[CreateBucketInput, Bucket] {
+	return operations.client.CreateBucket()
+}
+func (operations clientOperations) UpdateBucketLabels() sdkgo.Mutation[UpdateBucketLabelsInput, Bucket] {
+	return operations.client.UpdateBucketLabels()
+}
+func (operations clientOperations) DeleteBucket() sdkgo.Mutation[DeleteBucketInput, DeletedBucket] {
+	return operations.client.DeleteBucket()
+}
 func (operations clientOperations) ListObjects() sdkgo.Query[ListObjectsInput, ObjectsPage] {
 	return operations.client.ListObjects()
 }
@@ -59,6 +81,12 @@ func (operations clientOperations) DownloadObject() sdkgo.Query[DownloadObjectIn
 }
 func (operations clientOperations) UploadObject() sdkgo.Mutation[UploadObjectInput, Object] {
 	return operations.client.UploadObject()
+}
+func (operations clientOperations) UpdateObjectMetadata() sdkgo.Mutation[UpdateObjectMetadataInput, Object] {
+	return operations.client.UpdateObjectMetadata()
+}
+func (operations clientOperations) DeleteObject() sdkgo.Mutation[DeleteObjectInput, DeletedObject] {
+	return operations.client.DeleteObject()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -268,6 +296,374 @@ func (credentials Credentials) validateSharedCredential() error {
 	return nil
 }
 
+const ListBucketsBranchListed sdkgo.BranchID = "listed"
+const ListBucketsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListBucketsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListBucketsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListBucketsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listBuckets"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListBucketsBranchListed, Description: "Google returned a bucket page."},
+		{ID: ListBucketsBranchProviderRejected, Description: "Google definitively rejected the request.", Optional: true},
+		{ID: ListBucketsBranchInvalidResponse, Description: "Google returned malformed bucket JSON.", Optional: true},
+		{ID: ListBucketsBranchDefect, Description: "Local bucket input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListBucketsResult = sdkgo.QueryResult[BucketsPage]
+
+type ListBucketsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=google-cloud-storage"`
+	operationID                    struct{}                                       `connector:"operationId=listBuckets"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListBucketsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListBucketsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListBucketsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListBucketsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListBucketsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[BucketsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListBucketsStep[IN any](config ListBucketsStepConfig[IN]) sdkgo.QueryStep[IN, ListBucketsInput, BucketsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-cloud-storage connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListBucketsInput, BucketsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListBuckets(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListBucketsResult] {
+			branches := make([]sdkgo.BranchTarget[ListBucketsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListBucketsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListBucketsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListBucketsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListBucketsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetBucketBranchFound sdkgo.BranchID = "found"
+const GetBucketBranchNotFound sdkgo.BranchID = "notFound"
+const GetBucketBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetBucketBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetBucketBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetBucketDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getBucket"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetBucketBranchFound, Description: "Google returned the bucket."},
+		{ID: GetBucketBranchNotFound, Description: "The bucket does not exist.", Optional: true},
+		{ID: GetBucketBranchProviderRejected, Description: "Google definitively rejected the request.", Optional: true},
+		{ID: GetBucketBranchInvalidResponse, Description: "Google returned malformed bucket JSON.", Optional: true},
+		{ID: GetBucketBranchDefect, Description: "Local bucket input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetBucketResult = sdkgo.QueryResult[Bucket]
+
+type GetBucketStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                  `connector:"connectorId=google-cloud-storage"`
+	operationID                    struct{}                                  `connector:"operationId=getBucket"`
+	StepType                       string                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                     `connector:"annotations"`
+	Connection                     Connection                                `connector:"connection"`
+	ConnectionName                 string                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetBucketInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetBucketResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetBucketResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetBucketResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetBucketResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetBucketResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Bucket]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                          `connector:"stepOptionsOverride"`
+}
+
+func NewGetBucketStep[IN any](config GetBucketStepConfig[IN]) sdkgo.QueryStep[IN, GetBucketInput, Bucket] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-cloud-storage connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetBucketInput, Bucket]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetBucket(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetBucketResult] {
+			branches := make([]sdkgo.BranchTarget[GetBucketResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetBucketBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetBucketBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetBucketBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetBucketBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetBucketBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateBucketBranchCreated sdkgo.BranchID = "created"
+const CreateBucketBranchNameTaken sdkgo.BranchID = "nameTaken"
+const CreateBucketBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateBucketBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateBucketBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateBucketDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createBucket"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateBucketBranchCreated, Description: "The requested bucket exists."},
+		{ID: CreateBucketBranchNameTaken, Description: "Another bucket owns the requested name.", Optional: true},
+		{ID: CreateBucketBranchProviderRejected, Description: "Google definitively rejected the creation.", Optional: true},
+		{ID: CreateBucketBranchUncertain, Description: "Google may have created the bucket but its ownership could not be confirmed.", Optional: true},
+		{ID: CreateBucketBranchDefect, Description: "Local bucket input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateBucketResult = sdkgo.MutationResult[Bucket]
+
+type CreateBucketStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                     `connector:"connectorId=google-cloud-storage"`
+	operationID                       struct{}                                     `connector:"operationId=createBucket"`
+	StepType                          string                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                        Connection                                   `connector:"connection"`
+	ConnectionName                    string                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateBucketInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateBucketResult]             `connector:"branch=created"`
+	NameTaken                         sdkgo.Target[CreateBucketResult]             `connector:"branch=nameTaken,optional"`
+	ProviderRejected                  sdkgo.Target[CreateBucketResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateBucketResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateBucketResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Bucket]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                             `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateBucketStep[IN any](config CreateBucketStepConfig[IN]) sdkgo.MutationStep[IN, CreateBucketInput, Bucket] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-cloud-storage connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateBucketInput, Bucket]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateBucket(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateBucketResult] {
+			branches := make([]sdkgo.BranchTarget[CreateBucketResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateBucketBranchCreated))
+			}
+			if config.NameTaken.HasStep() {
+				branches = append(branches, config.NameTaken.BranchTarget(CreateBucketBranchNameTaken))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateBucketBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateBucketBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateBucketBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateBucketLabelsBranchUpdated sdkgo.BranchID = "updated"
+const UpdateBucketLabelsBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateBucketLabelsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateBucketLabelsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateBucketLabelsDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateBucketLabels"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateBucketLabelsBranchUpdated, Description: "Google updated the requested labels."},
+		{ID: UpdateBucketLabelsBranchNotFound, Description: "The bucket does not exist.", Optional: true},
+		{ID: UpdateBucketLabelsBranchProviderRejected, Description: "Google definitively rejected the update.", Optional: true},
+		{ID: UpdateBucketLabelsBranchDefect, Description: "Local bucket input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateBucketLabelsResult = sdkgo.MutationResult[Bucket]
+
+type UpdateBucketLabelsStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                     `connector:"connectorId=google-cloud-storage"`
+	operationID                       struct{}                                     `connector:"operationId=updateBucketLabels"`
+	StepType                          string                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                        Connection                                   `connector:"connection"`
+	ConnectionName                    string                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateBucketLabelsInput             `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateBucketLabelsResult]       `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateBucketLabelsResult]       `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateBucketLabelsResult]       `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateBucketLabelsResult]       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Bucket]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateBucketLabelsStep[IN any](config UpdateBucketLabelsStepConfig[IN]) sdkgo.MutationStep[IN, UpdateBucketLabelsInput, Bucket] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-cloud-storage connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateBucketLabelsInput, Bucket]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateBucketLabels(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateBucketLabelsResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateBucketLabelsResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateBucketLabelsBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateBucketLabelsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateBucketLabelsBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateBucketLabelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteBucketBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteBucketBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteBucketBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteBucketDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteBucket"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteBucketBranchDeleted, Description: "The bucket is absent."},
+		{ID: DeleteBucketBranchProviderRejected, Description: "Google definitively rejected the deletion.", Optional: true},
+		{ID: DeleteBucketBranchDefect, Description: "Local bucket input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteBucketResult = sdkgo.MutationResult[DeletedBucket]
+
+type DeleteBucketStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=google-cloud-storage"`
+	operationID                       struct{}                                            `connector:"operationId=deleteBucket"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteBucketInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteBucketResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteBucketResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteBucketResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedBucket]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteBucketStep[IN any](config DeleteBucketStepConfig[IN]) sdkgo.MutationStep[IN, DeleteBucketInput, DeletedBucket] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-cloud-storage connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteBucketInput, DeletedBucket]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteBucket(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteBucketResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteBucketResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteBucketBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteBucketBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteBucketBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const ListObjectsBranchListed sdkgo.BranchID = "listed"
 const ListObjectsBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const ListObjectsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
@@ -434,6 +830,8 @@ var UploadObjectDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type UploadObjectResult = sdkgo.MutationResult[Object]
@@ -453,6 +851,8 @@ type UploadObjectStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UploadObjectResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Object]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                             `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUploadObjectStep[IN any](config UploadObjectStepConfig[IN]) sdkgo.MutationStep[IN, UploadObjectInput, Object] {
@@ -479,6 +879,145 @@ func NewUploadObjectStep[IN any](config UploadObjectStepConfig[IN]) sdkgo.Mutati
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(UploadObjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateObjectMetadataBranchUpdated sdkgo.BranchID = "updated"
+const UpdateObjectMetadataBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateObjectMetadataBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateObjectMetadataBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateObjectMetadataDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateObjectMetadata"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateObjectMetadataBranchUpdated, Description: "Google updated the object metadata."},
+		{ID: UpdateObjectMetadataBranchNotFound, Description: "The object does not exist.", Optional: true},
+		{ID: UpdateObjectMetadataBranchProviderRejected, Description: "Google definitively rejected the update.", Optional: true},
+		{ID: UpdateObjectMetadataBranchDefect, Description: "Local object input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateObjectMetadataResult = sdkgo.MutationResult[Object]
+
+type UpdateObjectMetadataStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                     `connector:"connectorId=google-cloud-storage"`
+	operationID                       struct{}                                     `connector:"operationId=updateObjectMetadata"`
+	StepType                          string                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                        Connection                                   `connector:"connection"`
+	ConnectionName                    string                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateObjectMetadataInput           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateObjectMetadataResult]     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateObjectMetadataResult]     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateObjectMetadataResult]     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateObjectMetadataResult]     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Object]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateObjectMetadataStep[IN any](config UpdateObjectMetadataStepConfig[IN]) sdkgo.MutationStep[IN, UpdateObjectMetadataInput, Object] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-cloud-storage connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateObjectMetadataInput, Object]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateObjectMetadata(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateObjectMetadataResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateObjectMetadataResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateObjectMetadataBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateObjectMetadataBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateObjectMetadataBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateObjectMetadataBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteObjectBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteObjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteObjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteObjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteObject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteObjectBranchDeleted, Description: "The object is absent."},
+		{ID: DeleteObjectBranchProviderRejected, Description: "Google definitively rejected the deletion.", Optional: true},
+		{ID: DeleteObjectBranchDefect, Description: "Local object input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteObjectResult = sdkgo.MutationResult[DeletedObject]
+
+type DeleteObjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=google-cloud-storage"`
+	operationID                       struct{}                                            `connector:"operationId=deleteObject"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteObjectInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteObjectResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteObjectResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteObjectResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedObject]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteObjectStep[IN any](config DeleteObjectStepConfig[IN]) sdkgo.MutationStep[IN, DeleteObjectInput, DeletedObject] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-cloud-storage connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteObjectInput, DeletedObject]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteObject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteObjectResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteObjectResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteObjectBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteObjectBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteObjectBranchDefect))
 			}
 			return branches
 		}(),

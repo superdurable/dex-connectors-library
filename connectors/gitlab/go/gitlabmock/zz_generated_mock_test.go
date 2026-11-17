@@ -16,6 +16,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createIssue/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gitlab.Issue](`{"id":123,"iid":7,"title":"Review release notes","labels":[],"web_url":"https://gitlab.com/meridian/web/-/issues/7"}`)
+			return err
+		}},
+		{name: "createIssueComment/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gitlab.IssueComment](`{"id":45,"body":"Reviewed"}`)
+			return err
+		}},
+		{name: "getIssue/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gitlab.Issue](`{"id":123,"iid":7,"title":"Review release notes","labels":[],"web_url":"https://gitlab.com/meridian/web/-/issues/7"}`)
+			return err
+		}},
+		{name: "editIssue/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gitlab.Issue](`{"id":123,"iid":7,"title":"Revised release notes","labels":[],"web_url":"https://gitlab.com/meridian/web/-/issues/7"}`)
+			return err
+		}},
+		{name: "lockIssue/lockedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gitlab.Issue](`{"id":123,"iid":7,"title":"Review release notes","labels":[],"web_url":"https://gitlab.com/meridian/web/-/issues/7"}`)
+			return err
+		}},
+		{name: "deleteIssue/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gitlab.DeleteIssueOutput](`{"projectId":"meridian/web","issueIid":7}`)
+			return err
+		}},
 		{name: "getProject/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[gitlab.Project](`{"id":42,"name":"Meridian Web","path_with_namespace":"meridian/web","web_url":"https://gitlab.com/meridian/web"}`)
 			return err
@@ -28,6 +52,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[gitlab.Issue](`{"id":123,"iid":7,"title":"Review release notes","labels":["review","ready"],"web_url":"https://gitlab.com/meridian/web/-/issues/7"}`)
 			return err
 		}},
+		{name: "createRelease/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gitlab.Release](`{"tag_name":"v1.2.0","name":"Release 1.2","description":"Notes"}`)
+			return err
+		}},
+		{name: "getRelease/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gitlab.Release](`{"tag_name":"v1.2.0","name":"Release 1.2","description":"Notes"}`)
+			return err
+		}},
+		{name: "listReleases/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gitlab.ReleasesPage](`{"releases":[{"tag_name":"v1.2.0","name":"Release 1.2","description":"Notes"}]}`)
+			return err
+		}},
+		{name: "updateRelease/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gitlab.Release](`{"tag_name":"v1.2.0","name":"Release 1.2 revised","description":"Notes"}`)
+			return err
+		}},
+		{name: "deleteRelease/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gitlab.DeleteReleaseOutput](`{"projectId":"meridian/web","tagName":"v1.2.0"}`)
+			return err
+		}},
+		{name: "listRepositoryTree/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gitlab.RepositoryTreePage](`{"entries":[{"id":"abc123","name":"main.go","path":"cmd/main.go","type":"blob"}]}`)
+			return err
+		}},
+		{name: "listUserProjects/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gitlab.UserProjectsPage](`{"projects":[{"id":123,"name":"web","path_with_namespace":"meridian/web","web_url":"https://gitlab.com/meridian/web"}]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -38,6 +90,24 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateIssue().Definition().Operation.OperationID != "createIssue" {
+		t.Errorf("createIssue mock has another definition")
+	}
+	if mock.CreateIssueComment().Definition().Operation.OperationID != "createIssueComment" {
+		t.Errorf("createIssueComment mock has another definition")
+	}
+	if mock.GetIssue().Definition().Operation.OperationID != "getIssue" {
+		t.Errorf("getIssue mock has another definition")
+	}
+	if mock.EditIssue().Definition().Operation.OperationID != "editIssue" {
+		t.Errorf("editIssue mock has another definition")
+	}
+	if mock.LockIssue().Definition().Operation.OperationID != "lockIssue" {
+		t.Errorf("lockIssue mock has another definition")
+	}
+	if mock.DeleteIssue().Definition().Operation.OperationID != "deleteIssue" {
+		t.Errorf("deleteIssue mock has another definition")
+	}
 	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
 		t.Errorf("getProject mock has another definition")
 	}
@@ -46,5 +116,26 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.UpdateIssueLabels().Definition().Operation.OperationID != "updateIssueLabels" {
 		t.Errorf("updateIssueLabels mock has another definition")
+	}
+	if mock.CreateRelease().Definition().Operation.OperationID != "createRelease" {
+		t.Errorf("createRelease mock has another definition")
+	}
+	if mock.GetRelease().Definition().Operation.OperationID != "getRelease" {
+		t.Errorf("getRelease mock has another definition")
+	}
+	if mock.ListReleases().Definition().Operation.OperationID != "listReleases" {
+		t.Errorf("listReleases mock has another definition")
+	}
+	if mock.UpdateRelease().Definition().Operation.OperationID != "updateRelease" {
+		t.Errorf("updateRelease mock has another definition")
+	}
+	if mock.DeleteRelease().Definition().Operation.OperationID != "deleteRelease" {
+		t.Errorf("deleteRelease mock has another definition")
+	}
+	if mock.ListRepositoryTree().Definition().Operation.OperationID != "listRepositoryTree" {
+		t.Errorf("listRepositoryTree mock has another definition")
+	}
+	if mock.ListUserProjects().Definition().Operation.OperationID != "listUserProjects" {
+		t.Errorf("listUserProjects mock has another definition")
 	}
 }

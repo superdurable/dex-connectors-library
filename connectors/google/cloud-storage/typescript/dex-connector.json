@@ -1,6 +1,6 @@
 {
   "connectorId": "google-cloud-storage",
-  "releaseTag": "connectors/google/cloud-storage/go/v0.2.0",
+  "releaseTag": "connectors/google/cloud-storage/go/v0.3.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-cloud-storage",

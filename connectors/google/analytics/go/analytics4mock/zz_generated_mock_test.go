@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "runRealtimeReport/reportedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[analytics4.ReportPage](`{"rows":[{"dimensions":["US"],"metrics":["5"]}],"rowCount":1}`)
+			return err
+		}},
+		{name: "listProperties/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[analytics4.PropertiesPage](`{"properties":[{"name":"properties/123456789","displayName":"Example Analytics","timeZone":"America/Los_Angeles","currencyCode":"USD"}]}`)
+			return err
+		}},
+		{name: "listDataStreams/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[analytics4.DataStreamsPage](`{"dataStreams":[{"name":"properties/123456789/dataStreams/42","displayName":"Example Web","type":"WEB_DATA_STREAM"}]}`)
+			return err
+		}},
 		{name: "runReport/reportedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[analytics4.ReportPage](`{"rows":[{"dimensions":["United States"],"metrics":["4820"]}],"rowCount":1}`)
 			return err
@@ -38,6 +50,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.RunRealtimeReport().Definition().Operation.OperationID != "runRealtimeReport" {
+		t.Errorf("runRealtimeReport mock has another definition")
+	}
+	if mock.ListProperties().Definition().Operation.OperationID != "listProperties" {
+		t.Errorf("listProperties mock has another definition")
+	}
+	if mock.ListDataStreams().Definition().Operation.OperationID != "listDataStreams" {
+		t.Errorf("listDataStreams mock has another definition")
+	}
 	if mock.RunReport().Definition().Operation.OperationID != "runReport" {
 		t.Errorf("runReport mock has another definition")
 	}

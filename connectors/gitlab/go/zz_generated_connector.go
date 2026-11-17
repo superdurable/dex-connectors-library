@@ -40,13 +40,44 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateIssue() sdkgo.Mutation[CreateIssueInput, Issue]
+	CreateIssueComment() sdkgo.Mutation[CreateIssueCommentInput, IssueComment]
+	GetIssue() sdkgo.Query[GetIssueInput, Issue]
+	EditIssue() sdkgo.Mutation[EditIssueInput, Issue]
+	LockIssue() sdkgo.Mutation[GetIssueInput, Issue]
+	DeleteIssue() sdkgo.Mutation[GetIssueInput, DeleteIssueOutput]
 	GetProject() sdkgo.Query[GetProjectInput, Project]
 	ListIssues() sdkgo.Query[ListIssuesInput, IssuesPage]
 	UpdateIssueLabels() sdkgo.Mutation[UpdateIssueLabelsInput, Issue]
+	CreateRelease() sdkgo.Mutation[CreateReleaseInput, Release]
+	GetRelease() sdkgo.Query[GetReleaseInput, Release]
+	ListReleases() sdkgo.Query[ListReleasesInput, ReleasesPage]
+	UpdateRelease() sdkgo.Mutation[UpdateReleaseInput, Release]
+	DeleteRelease() sdkgo.Mutation[GetReleaseInput, DeleteReleaseOutput]
+	ListRepositoryTree() sdkgo.Query[ListRepositoryTreeInput, RepositoryTreePage]
+	ListUserProjects() sdkgo.Query[ListUserProjectsInput, UserProjectsPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateIssue() sdkgo.Mutation[CreateIssueInput, Issue] {
+	return operations.client.CreateIssue()
+}
+func (operations clientOperations) CreateIssueComment() sdkgo.Mutation[CreateIssueCommentInput, IssueComment] {
+	return operations.client.CreateIssueComment()
+}
+func (operations clientOperations) GetIssue() sdkgo.Query[GetIssueInput, Issue] {
+	return operations.client.GetIssue()
+}
+func (operations clientOperations) EditIssue() sdkgo.Mutation[EditIssueInput, Issue] {
+	return operations.client.EditIssue()
+}
+func (operations clientOperations) LockIssue() sdkgo.Mutation[GetIssueInput, Issue] {
+	return operations.client.LockIssue()
+}
+func (operations clientOperations) DeleteIssue() sdkgo.Mutation[GetIssueInput, DeleteIssueOutput] {
+	return operations.client.DeleteIssue()
+}
 func (operations clientOperations) GetProject() sdkgo.Query[GetProjectInput, Project] {
 	return operations.client.GetProject()
 }
@@ -55,6 +86,27 @@ func (operations clientOperations) ListIssues() sdkgo.Query[ListIssuesInput, Iss
 }
 func (operations clientOperations) UpdateIssueLabels() sdkgo.Mutation[UpdateIssueLabelsInput, Issue] {
 	return operations.client.UpdateIssueLabels()
+}
+func (operations clientOperations) CreateRelease() sdkgo.Mutation[CreateReleaseInput, Release] {
+	return operations.client.CreateRelease()
+}
+func (operations clientOperations) GetRelease() sdkgo.Query[GetReleaseInput, Release] {
+	return operations.client.GetRelease()
+}
+func (operations clientOperations) ListReleases() sdkgo.Query[ListReleasesInput, ReleasesPage] {
+	return operations.client.ListReleases()
+}
+func (operations clientOperations) UpdateRelease() sdkgo.Mutation[UpdateReleaseInput, Release] {
+	return operations.client.UpdateRelease()
+}
+func (operations clientOperations) DeleteRelease() sdkgo.Mutation[GetReleaseInput, DeleteReleaseOutput] {
+	return operations.client.DeleteRelease()
+}
+func (operations clientOperations) ListRepositoryTree() sdkgo.Query[ListRepositoryTreeInput, RepositoryTreePage] {
+	return operations.client.ListRepositoryTree()
+}
+func (operations clientOperations) ListUserProjects() sdkgo.Query[ListUserProjectsInput, UserProjectsPage] {
+	return operations.client.ListUserProjects()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -192,6 +244,463 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const CreateIssueBranchCreated sdkgo.BranchID = "created"
+const CreateIssueBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateIssueBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateIssueBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateIssueDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createIssue"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateIssueBranchCreated, Description: "GitLab created the issue."},
+		{ID: CreateIssueBranchProviderRejected, Description: "GitLab definitively rejected the issue.", Optional: true},
+		{ID: CreateIssueBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateIssueBranchUncertain, Description: "An earlier issue creation may have succeeded.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateIssueResult = sdkgo.MutationResult[Issue]
+
+type CreateIssueStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                    `connector:"connectorId=gitlab"`
+	operationID                       struct{}                                    `connector:"operationId=createIssue"`
+	StepType                          string                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                        Connection                                  `connector:"connection"`
+	ConnectionName                    string                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateIssueInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateIssueResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateIssueResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateIssueResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateIssueResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Issue]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateIssueStep[IN any](config CreateIssueStepConfig[IN]) sdkgo.MutationStep[IN, CreateIssueInput, Issue] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gitlab connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateIssueInput, Issue]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateIssue(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateIssueResult] {
+			branches := make([]sdkgo.BranchTarget[CreateIssueResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateIssueBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateIssueBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateIssueBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateIssueBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const CreateIssueCommentBranchCreated sdkgo.BranchID = "created"
+const CreateIssueCommentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateIssueCommentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateIssueCommentBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateIssueCommentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createIssueComment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateIssueCommentBranchCreated, Description: "GitLab created the comment."},
+		{ID: CreateIssueCommentBranchProviderRejected, Description: "GitLab definitively rejected the comment.", Optional: true},
+		{ID: CreateIssueCommentBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateIssueCommentBranchUncertain, Description: "An earlier comment creation may have succeeded.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateIssueCommentResult = sdkgo.MutationResult[IssueComment]
+
+type CreateIssueCommentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=gitlab"`
+	operationID                       struct{}                                           `connector:"operationId=createIssueComment"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateIssueCommentInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateIssueCommentResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateIssueCommentResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateIssueCommentResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateIssueCommentResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[IssueComment]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateIssueCommentStep[IN any](config CreateIssueCommentStepConfig[IN]) sdkgo.MutationStep[IN, CreateIssueCommentInput, IssueComment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gitlab connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateIssueCommentInput, IssueComment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateIssueComment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateIssueCommentResult] {
+			branches := make([]sdkgo.BranchTarget[CreateIssueCommentResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateIssueCommentBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateIssueCommentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateIssueCommentBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateIssueCommentBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetIssueBranchFound sdkgo.BranchID = "found"
+const GetIssueBranchNotFound sdkgo.BranchID = "notFound"
+const GetIssueBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetIssueBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetIssueBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetIssueDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getIssue"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetIssueBranchFound, Description: "GitLab returned the issue."},
+		{ID: GetIssueBranchNotFound, Description: "The issue does not exist or is inaccessible.", Optional: true},
+		{ID: GetIssueBranchProviderRejected, Description: "GitLab definitively rejected the read.", Optional: true},
+		{ID: GetIssueBranchInvalidResponse, Description: "GitLab returned malformed or oversized JSON.", Optional: true},
+		{ID: GetIssueBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetIssueResult = sdkgo.QueryResult[Issue]
+
+type GetIssueStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                 `connector:"connectorId=gitlab"`
+	operationID                    struct{}                                 `connector:"operationId=getIssue"`
+	StepType                       string                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                    `connector:"annotations"`
+	Connection                     Connection                               `connector:"connection"`
+	ConnectionName                 string                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetIssueInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetIssueResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetIssueResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetIssueResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetIssueResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetIssueResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Issue]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                         `connector:"stepOptionsOverride"`
+}
+
+func NewGetIssueStep[IN any](config GetIssueStepConfig[IN]) sdkgo.QueryStep[IN, GetIssueInput, Issue] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gitlab connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetIssueInput, Issue]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetIssue(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetIssueResult] {
+			branches := make([]sdkgo.BranchTarget[GetIssueResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetIssueBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetIssueBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetIssueBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetIssueBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetIssueBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const EditIssueBranchUpdated sdkgo.BranchID = "updated"
+const EditIssueBranchNotFound sdkgo.BranchID = "notFound"
+const EditIssueBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const EditIssueBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const EditIssueBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var EditIssueDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "editIssue"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: EditIssueBranchUpdated, Description: "GitLab updated the issue."},
+		{ID: EditIssueBranchNotFound, Description: "The issue does not exist or is inaccessible.", Optional: true},
+		{ID: EditIssueBranchProviderRejected, Description: "GitLab definitively rejected the edit.", Optional: true},
+		{ID: EditIssueBranchInvalidResponse, Description: "GitLab returned malformed or oversized JSON.", Optional: true},
+		{ID: EditIssueBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type EditIssueResult = sdkgo.MutationResult[Issue]
+
+type EditIssueStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                    `connector:"connectorId=gitlab"`
+	operationID                       struct{}                                    `connector:"operationId=editIssue"`
+	StepType                          string                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                        Connection                                  `connector:"connection"`
+	ConnectionName                    string                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) EditIssueInput                     `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[EditIssueResult]               `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[EditIssueResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[EditIssueResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[EditIssueResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[EditIssueResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Issue]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewEditIssueStep[IN any](config EditIssueStepConfig[IN]) sdkgo.MutationStep[IN, EditIssueInput, Issue] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gitlab connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, EditIssueInput, Issue]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.EditIssue(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[EditIssueResult] {
+			branches := make([]sdkgo.BranchTarget[EditIssueResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(EditIssueBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(EditIssueBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(EditIssueBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(EditIssueBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(EditIssueBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const LockIssueBranchLocked sdkgo.BranchID = "locked"
+const LockIssueBranchNotFound sdkgo.BranchID = "notFound"
+const LockIssueBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const LockIssueBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const LockIssueBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var LockIssueDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "lockIssue"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: LockIssueBranchLocked, Description: "GitLab locked the issue."},
+		{ID: LockIssueBranchNotFound, Description: "The issue does not exist or is inaccessible.", Optional: true},
+		{ID: LockIssueBranchProviderRejected, Description: "GitLab definitively rejected the lock.", Optional: true},
+		{ID: LockIssueBranchInvalidResponse, Description: "GitLab returned malformed or oversized JSON.", Optional: true},
+		{ID: LockIssueBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type LockIssueResult = sdkgo.MutationResult[Issue]
+
+type LockIssueStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                    `connector:"connectorId=gitlab"`
+	operationID                       struct{}                                    `connector:"operationId=lockIssue"`
+	StepType                          string                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                        Connection                                  `connector:"connection"`
+	ConnectionName                    string                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetIssueInput                      `connector:"mapToOperationInput"`
+	Locked                            sdkgo.Target[LockIssueResult]               `connector:"branch=locked"`
+	NotFound                          sdkgo.Target[LockIssueResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[LockIssueResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[LockIssueResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[LockIssueResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Issue]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewLockIssueStep[IN any](config LockIssueStepConfig[IN]) sdkgo.MutationStep[IN, GetIssueInput, Issue] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gitlab connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetIssueInput, Issue]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.LockIssue(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[LockIssueResult] {
+			branches := make([]sdkgo.BranchTarget[LockIssueResult], 0, 5)
+			if config.Locked.HasStep() {
+				branches = append(branches, config.Locked.BranchTarget(LockIssueBranchLocked))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(LockIssueBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(LockIssueBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(LockIssueBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(LockIssueBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteIssueBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteIssueBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteIssueBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteIssueBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteIssueDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteIssue"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteIssueBranchDeleted, Description: "GitLab deleted the issue."},
+		{ID: DeleteIssueBranchNotFound, Description: "The issue does not exist or is inaccessible.", Optional: true},
+		{ID: DeleteIssueBranchProviderRejected, Description: "GitLab definitively rejected the deletion.", Optional: true},
+		{ID: DeleteIssueBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteIssueResult = sdkgo.MutationResult[DeleteIssueOutput]
+
+type DeleteIssueStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=gitlab"`
+	operationID                       struct{}                                                `connector:"operationId=deleteIssue"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetIssueInput                                  `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteIssueResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteIssueResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteIssueResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteIssueResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteIssueOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteIssueStep[IN any](config DeleteIssueStepConfig[IN]) sdkgo.MutationStep[IN, GetIssueInput, DeleteIssueOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gitlab connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetIssueInput, DeleteIssueOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteIssue(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteIssueResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteIssueResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteIssueBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteIssueBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteIssueBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteIssueBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetProjectBranchFound sdkgo.BranchID = "found"
@@ -368,6 +877,8 @@ var UpdateIssueLabelsDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type UpdateIssueLabelsResult = sdkgo.MutationResult[Issue]
@@ -388,6 +899,8 @@ type UpdateIssueLabelsStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateIssueLabelsResult]       `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Issue]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateIssueLabelsStep[IN any](config UpdateIssueLabelsStepConfig[IN]) sdkgo.MutationStep[IN, UpdateIssueLabelsInput, Issue] {
@@ -417,6 +930,547 @@ func NewUpdateIssueLabelsStep[IN any](config UpdateIssueLabelsStepConfig[IN]) sd
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(UpdateIssueLabelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const CreateReleaseBranchCreated sdkgo.BranchID = "created"
+const CreateReleaseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateReleaseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateReleaseBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateReleaseDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createRelease"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateReleaseBranchCreated, Description: "GitLab created the release."},
+		{ID: CreateReleaseBranchProviderRejected, Description: "GitLab definitively rejected the release.", Optional: true},
+		{ID: CreateReleaseBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateReleaseBranchUncertain, Description: "A previous release create may have succeeded.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateReleaseResult = sdkgo.MutationResult[Release]
+
+type CreateReleaseStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=gitlab"`
+	operationID                       struct{}                                      `connector:"operationId=createRelease"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateReleaseInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateReleaseResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateReleaseResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateReleaseResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateReleaseResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Release]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateReleaseStep[IN any](config CreateReleaseStepConfig[IN]) sdkgo.MutationStep[IN, CreateReleaseInput, Release] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gitlab connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateReleaseInput, Release]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateRelease(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateReleaseResult] {
+			branches := make([]sdkgo.BranchTarget[CreateReleaseResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateReleaseBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateReleaseBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateReleaseBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateReleaseBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetReleaseBranchFound sdkgo.BranchID = "found"
+const GetReleaseBranchNotFound sdkgo.BranchID = "notFound"
+const GetReleaseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetReleaseBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetReleaseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetReleaseDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getRelease"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetReleaseBranchFound, Description: "GitLab returned the release."},
+		{ID: GetReleaseBranchNotFound, Description: "No release with this tag is visible.", Optional: true},
+		{ID: GetReleaseBranchProviderRejected, Description: "GitLab definitively rejected the read.", Optional: true},
+		{ID: GetReleaseBranchInvalidResponse, Description: "GitLab returned malformed or oversized JSON.", Optional: true},
+		{ID: GetReleaseBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetReleaseResult = sdkgo.QueryResult[Release]
+
+type GetReleaseStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=gitlab"`
+	operationID                    struct{}                                   `connector:"operationId=getRelease"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetReleaseInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetReleaseResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetReleaseResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetReleaseResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetReleaseResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetReleaseResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Release]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetReleaseStep[IN any](config GetReleaseStepConfig[IN]) sdkgo.QueryStep[IN, GetReleaseInput, Release] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gitlab connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetReleaseInput, Release]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetRelease(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetReleaseResult] {
+			branches := make([]sdkgo.BranchTarget[GetReleaseResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetReleaseBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetReleaseBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetReleaseBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetReleaseBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetReleaseBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListReleasesBranchListed sdkgo.BranchID = "listed"
+const ListReleasesBranchNotFound sdkgo.BranchID = "notFound"
+const ListReleasesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListReleasesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListReleasesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListReleasesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listReleases"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListReleasesBranchListed, Description: "GitLab returned a release page."},
+		{ID: ListReleasesBranchNotFound, Description: "The project is inaccessible.", Optional: true},
+		{ID: ListReleasesBranchProviderRejected, Description: "GitLab definitively rejected the read.", Optional: true},
+		{ID: ListReleasesBranchInvalidResponse, Description: "GitLab returned malformed or oversized JSON.", Optional: true},
+		{ID: ListReleasesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListReleasesResult = sdkgo.QueryResult[ReleasesPage]
+
+type ListReleasesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=gitlab"`
+	operationID                    struct{}                                        `connector:"operationId=listReleases"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListReleasesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListReleasesResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListReleasesResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListReleasesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListReleasesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListReleasesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ReleasesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListReleasesStep[IN any](config ListReleasesStepConfig[IN]) sdkgo.QueryStep[IN, ListReleasesInput, ReleasesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gitlab connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListReleasesInput, ReleasesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListReleases(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListReleasesResult] {
+			branches := make([]sdkgo.BranchTarget[ListReleasesResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListReleasesBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListReleasesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListReleasesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListReleasesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListReleasesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateReleaseBranchUpdated sdkgo.BranchID = "updated"
+const UpdateReleaseBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateReleaseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateReleaseBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateReleaseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateReleaseDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateRelease"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateReleaseBranchUpdated, Description: "GitLab updated the release."},
+		{ID: UpdateReleaseBranchNotFound, Description: "No release with this tag is visible.", Optional: true},
+		{ID: UpdateReleaseBranchProviderRejected, Description: "GitLab definitively rejected the update.", Optional: true},
+		{ID: UpdateReleaseBranchInvalidResponse, Description: "GitLab returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateReleaseBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateReleaseResult = sdkgo.MutationResult[Release]
+
+type UpdateReleaseStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=gitlab"`
+	operationID                       struct{}                                      `connector:"operationId=updateRelease"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateReleaseInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateReleaseResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateReleaseResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateReleaseResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateReleaseResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateReleaseResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Release]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateReleaseStep[IN any](config UpdateReleaseStepConfig[IN]) sdkgo.MutationStep[IN, UpdateReleaseInput, Release] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gitlab connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateReleaseInput, Release]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateRelease(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateReleaseResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateReleaseResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateReleaseBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateReleaseBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateReleaseBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateReleaseBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateReleaseBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteReleaseBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteReleaseBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteReleaseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteReleaseBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteReleaseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteReleaseDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteRelease"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteReleaseBranchDeleted, Description: "GitLab deleted the release."},
+		{ID: DeleteReleaseBranchNotFound, Description: "No release with this tag is visible.", Optional: true},
+		{ID: DeleteReleaseBranchProviderRejected, Description: "GitLab definitively rejected the deletion.", Optional: true},
+		{ID: DeleteReleaseBranchInvalidResponse, Description: "GitLab returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteReleaseBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteReleaseResult = sdkgo.MutationResult[DeleteReleaseOutput]
+
+type DeleteReleaseStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=gitlab"`
+	operationID                       struct{}                                                  `connector:"operationId=deleteRelease"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetReleaseInput                                  `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteReleaseResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteReleaseResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteReleaseResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteReleaseResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteReleaseResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteReleaseOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteReleaseStep[IN any](config DeleteReleaseStepConfig[IN]) sdkgo.MutationStep[IN, GetReleaseInput, DeleteReleaseOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gitlab connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetReleaseInput, DeleteReleaseOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteRelease(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteReleaseResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteReleaseResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteReleaseBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteReleaseBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteReleaseBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteReleaseBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteReleaseBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListRepositoryTreeBranchListed sdkgo.BranchID = "listed"
+const ListRepositoryTreeBranchNotFound sdkgo.BranchID = "notFound"
+const ListRepositoryTreeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListRepositoryTreeBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListRepositoryTreeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListRepositoryTreeDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listRepositoryTree"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListRepositoryTreeBranchListed, Description: "GitLab returned repository entries."},
+		{ID: ListRepositoryTreeBranchNotFound, Description: "The project or path is inaccessible.", Optional: true},
+		{ID: ListRepositoryTreeBranchProviderRejected, Description: "GitLab definitively rejected the read.", Optional: true},
+		{ID: ListRepositoryTreeBranchInvalidResponse, Description: "GitLab returned malformed or oversized JSON.", Optional: true},
+		{ID: ListRepositoryTreeBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListRepositoryTreeResult = sdkgo.QueryResult[RepositoryTreePage]
+
+type ListRepositoryTreeStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=gitlab"`
+	operationID                    struct{}                                              `connector:"operationId=listRepositoryTree"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListRepositoryTreeInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListRepositoryTreeResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListRepositoryTreeResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListRepositoryTreeResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListRepositoryTreeResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListRepositoryTreeResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[RepositoryTreePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewListRepositoryTreeStep[IN any](config ListRepositoryTreeStepConfig[IN]) sdkgo.QueryStep[IN, ListRepositoryTreeInput, RepositoryTreePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gitlab connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListRepositoryTreeInput, RepositoryTreePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListRepositoryTree(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListRepositoryTreeResult] {
+			branches := make([]sdkgo.BranchTarget[ListRepositoryTreeResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListRepositoryTreeBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListRepositoryTreeBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListRepositoryTreeBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListRepositoryTreeBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListRepositoryTreeBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListUserProjectsBranchListed sdkgo.BranchID = "listed"
+const ListUserProjectsBranchNotFound sdkgo.BranchID = "notFound"
+const ListUserProjectsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListUserProjectsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListUserProjectsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListUserProjectsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listUserProjects"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListUserProjectsBranchListed, Description: "GitLab returned user projects."},
+		{ID: ListUserProjectsBranchNotFound, Description: "The user is inaccessible.", Optional: true},
+		{ID: ListUserProjectsBranchProviderRejected, Description: "GitLab definitively rejected the read.", Optional: true},
+		{ID: ListUserProjectsBranchInvalidResponse, Description: "GitLab returned malformed or oversized JSON.", Optional: true},
+		{ID: ListUserProjectsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListUserProjectsResult = sdkgo.QueryResult[UserProjectsPage]
+
+type ListUserProjectsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=gitlab"`
+	operationID                    struct{}                                            `connector:"operationId=listUserProjects"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListUserProjectsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListUserProjectsResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListUserProjectsResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListUserProjectsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListUserProjectsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListUserProjectsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[UserProjectsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewListUserProjectsStep[IN any](config ListUserProjectsStepConfig[IN]) sdkgo.QueryStep[IN, ListUserProjectsInput, UserProjectsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gitlab connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListUserProjectsInput, UserProjectsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListUserProjects(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListUserProjectsResult] {
+			branches := make([]sdkgo.BranchTarget[ListUserProjectsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListUserProjectsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListUserProjectsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListUserProjectsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListUserProjectsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListUserProjectsBranchDefect))
 			}
 			return branches
 		}(),

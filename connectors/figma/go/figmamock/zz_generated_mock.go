@@ -20,6 +20,7 @@ type Mock struct {
 	connection      figma.Connection
 	getFile         *connectormock.Query[figma.GetFileInput, figma.File]
 	getFileComments *connectormock.Query[figma.GetFileCommentsInput, figma.FileComments]
+	getFileNodes    *connectormock.Query[figma.GetFileNodesInput, figma.FileNodes]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,9 +30,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock := &Mock{
 		getFile:         connectormock.NewQuery[figma.GetFileInput, figma.File](t, figma.GetFileDefinition),
 		getFileComments: connectormock.NewQuery[figma.GetFileCommentsInput, figma.FileComments](t, figma.GetFileCommentsDefinition),
+		getFileNodes:    connectormock.NewQuery[figma.GetFileNodesInput, figma.FileNodes](t, figma.GetFileNodesDefinition),
 	}
 	mock.getFile.Default(GetFileDefault())
 	mock.getFileComments.Default(GetFileCommentsDefault())
+	mock.getFileNodes.Default(GetFileNodesDefault())
 	connection, err := figma.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "figma", Name: connectionName})
 	if err != nil {
 		t.Fatalf("figma mock connection: %v", err)
@@ -51,6 +54,11 @@ func (mock *Mock) GetFileComments() *connectormock.Query[figma.GetFileCommentsIn
 	return mock.getFileComments
 }
 
+// GetFileNodes returns the getFileNodes script.
+func (mock *Mock) GetFileNodes() *connectormock.Query[figma.GetFileNodesInput, figma.FileNodes] {
+	return mock.getFileNodes
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetFile() sdkgo.Query[figma.GetFileInput, figma.File] {
@@ -58,6 +66,9 @@ func (operations mockOperations) GetFile() sdkgo.Query[figma.GetFileInput, figma
 }
 func (operations mockOperations) GetFileComments() sdkgo.Query[figma.GetFileCommentsInput, figma.FileComments] {
 	return operations.mock.getFileComments
+}
+func (operations mockOperations) GetFileNodes() sdkgo.Query[figma.GetFileNodesInput, figma.FileNodes] {
+	return operations.mock.getFileNodes
 }
 
 // GetFileFound selects the found branch: Figma returned the requested data.
@@ -151,3 +162,42 @@ func GetFileCommentsInvalidKey() connectormock.Case[figma.FileComments] {
 func GetFileCommentsDefault() connectormock.Case[figma.FileComments] {
 	return GetFileCommentsDefaultAnswer()
 }
+
+// GetFileNodesFound selects the found branch: Figma returned the selected nodes.
+func GetFileNodesFound(value figma.FileNodes, failure *sdkgo.Failure) connectormock.Case[figma.FileNodes] {
+	return connectormock.Branch(figma.GetFileNodesBranchFound, value, failure)
+}
+
+// GetFileNodesNotFound selects the notFound branch: Figma did not find the file.
+func GetFileNodesNotFound(value figma.FileNodes, failure *sdkgo.Failure) connectormock.Case[figma.FileNodes] {
+	return connectormock.Branch(figma.GetFileNodesBranchNotFound, value, failure)
+}
+
+// GetFileNodesProviderRejected selects the providerRejected branch: Figma conclusively rejected the read.
+func GetFileNodesProviderRejected(value figma.FileNodes, failure *sdkgo.Failure) connectormock.Case[figma.FileNodes] {
+	return connectormock.Branch(figma.GetFileNodesBranchProviderRejected, value, failure)
+}
+
+// GetFileNodesInvalidResponse selects the invalidResponse branch: Figma returned malformed or oversized JSON.
+func GetFileNodesInvalidResponse(value figma.FileNodes, failure *sdkgo.Failure) connectormock.Case[figma.FileNodes] {
+	return connectormock.Branch(figma.GetFileNodesBranchInvalidResponse, value, failure)
+}
+
+// GetFileNodesDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetFileNodesDefect(value figma.FileNodes, failure *sdkgo.Failure) connectormock.Case[figma.FileNodes] {
+	return connectormock.Branch(figma.GetFileNodesBranchDefect, value, failure)
+}
+
+// GetFileNodesRetry asks Dex to retry the getFileNodes Step, after the delay when it is positive.
+func GetFileNodesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[figma.FileNodes] {
+	return connectormock.Retry[figma.FileNodes](failure, after)
+}
+
+// GetFileNodesFoundDefault is the manifest mock foundDefault: Example page node.
+func GetFileNodesFoundDefault() connectormock.Case[figma.FileNodes] {
+	value := connectormock.MustDecodeOutput[figma.FileNodes](`{"name":"Meridian Design","lastModified":"2026-10-28T12:00:00Z","nodes":{"0:1":{"document":{"id":"0:1","type":"CANVAS","name":"Home"}}}}`)
+	return connectormock.Branch(figma.GetFileNodesBranchFound, value, nil)
+}
+
+// GetFileNodesDefault is the manifest default, foundDefault, which New installs.
+func GetFileNodesDefault() connectormock.Case[figma.FileNodes] { return GetFileNodesFoundDefault() }

@@ -131,10 +131,18 @@ type personWire struct {
 	ResourceName string `json:"resourceName"`
 	Names        []struct {
 		DisplayName string `json:"displayName"`
+		GivenName   string `json:"givenName"`
+		FamilyName  string `json:"familyName"`
 	} `json:"names"`
 	EmailAddresses []struct {
 		Value string `json:"value"`
 	} `json:"emailAddresses"`
+	Metadata struct {
+		Sources []struct {
+			Type string `json:"type"`
+			Etag string `json:"etag"`
+		} `json:"sources"`
+	} `json:"metadata"`
 }
 
 func (person personWire) project() (Contact, bool) {

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-firestore
   displayName: Cloud Firestore
-  description: Discover Firestore documents in one Google Cloud project.
+  description: Read, query, create, replace, and delete Firestore documents and list root collections.
   company: Google
   categories: [databases-storage]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: google-firestore
   languages:
@@ -71,6 +71,8 @@ spec:
         - In Google Auth Platform > Branding and Audience, configure consent and add test users if an External app remains in Testing. Under Data Access add the displayed datastore scope for document discovery.
         - Under Clients > Create client > Web application, register the exact redirect URI displayed by Dex Web. Copy the Client ID and one-time Client Secret into Dex Web, then authorize with offline access.
         - Supply the project ID and collection ID from Firestore > Databases > (default) > Documents to listDocuments. It returns full document names and nextPageToken; pass the latter for the next page.
+        - For document writes, use the same project, collection, and document IDs. Enter Firestore REST Value JSON for fields, such as {"title":{"stringValue":"Hello"}}; never enter secrets. createDocument requires an unused document ID; putDocument replaces or creates that ID.
+        - getDocument reads one document. runDocumentQuery accepts a Firestore structuredQuery JSON object from the Firestore REST reference. listRootCollections returns collection IDs under the default database.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Keep access and refresh tokens inside Dex.
     oauth2:
       authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
@@ -90,6 +92,119 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: listDocumentDetails
+      goName: ListDocumentDetails
+      inputType: ListDocumentsInput
+      outputType: DocumentDetailsPage
+      kind: query
+      description: List one page of documents with their Firestore field values.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Firestore returned a document content page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Firestore rejected the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Firestore returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: The page input or connection is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example document content is visible., output: {documents: [{name: 'projects/sample-project/databases/(default)/documents/events/sample-event', fieldsJson: '{"title":{"stringValue":"Hello"}}'}], nextPageToken: ''}}
+    - name: getDocument
+      goName: GetDocument
+      inputType: GetDocumentInput
+      outputType: FirestoreDocument
+      kind: query
+      description: Read one document in the default Firestore database.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Firestore returned the document.}
+        - {id: notFound, goName: NotFound, description: The document does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Firestore rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Firestore returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: The document identity or connection is invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example document was found., output: {name: 'projects/sample-project/databases/(default)/documents/events/sample-event', fieldsJson: '{"title":{"stringValue":"Hello"}}'}}
+    - name: createDocument
+      goName: CreateDocument
+      inputType: WriteDocumentInput
+      outputType: FirestoreDocument
+      kind: mutation
+      description: Create a document with a chosen unused ID in the default database.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Firestore created the document.}
+        - {id: alreadyExists, goName: AlreadyExists, description: The document ID is already in use., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Firestore rejected the create., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A prior create could not be confirmed after the send cap., optional: true}
+        - {id: defect, goName: Defect, description: The document input or connection is invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example document was created., output: {name: 'projects/sample-project/databases/(default)/documents/events/sample-event', fieldsJson: '{"title":{"stringValue":"Hello"}}'}}
+    - name: putDocument
+      goName: PutDocument
+      inputType: WriteDocumentInput
+      outputType: FirestoreDocument
+      kind: mutation
+      description: Replace or create a document at a chosen ID with absolute field values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: written, goName: Written, description: Firestore replaced or created the document.}
+        - {id: providerRejected, goName: ProviderRejected, description: Firestore rejected the write., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Firestore returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: The document input or connection is invalid., optional: true}
+      mocks:
+        - {name: writtenDefault, branch: written, default: true, description: Example document was written., output: {name: 'projects/sample-project/databases/(default)/documents/events/sample-event', fieldsJson: '{"title":{"stringValue":"Hello"}}'}}
+    - name: deleteDocument
+      goName: DeleteDocument
+      inputType: GetDocumentInput
+      outputType: FirestoreDocument
+      kind: mutation
+      description: Delete a document at a chosen ID, treating absence as complete.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The document is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Firestore rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: The document identity or connection is invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Example document is absent., output: {name: 'projects/sample-project/databases/(default)/documents/events/sample-event'}}
+    - name: runDocumentQuery
+      goName: RunDocumentQuery
+      inputType: RunDocumentQueryInput
+      outputType: QueriedDocuments
+      kind: query
+      description: Run a bounded structured query in the default database.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: queried, goName: Queried, description: Firestore returned query results.}
+        - {id: providerRejected, goName: ProviderRejected, description: Firestore rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Firestore returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: The query input or connection is invalid., optional: true}
+      mocks:
+        - {name: queriedDefault, branch: queried, default: true, description: Example query returned one document., output: {documents: [{name: 'projects/sample-project/databases/(default)/documents/events/sample-event', fieldsJson: '{"title":{"stringValue":"Hello"}}'}]}}
+    - name: listRootCollections
+      goName: ListRootCollections
+      inputType: ListRootCollectionsInput
+      outputType: CollectionsPage
+      kind: query
+      description: List one page of root collection IDs in the default database.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Firestore returned collection IDs.}
+        - {id: providerRejected, goName: ProviderRejected, description: Firestore rejected the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Firestore returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: The project input or connection is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example root collection exists., output: {collectionIds: [events], nextPageToken: ''}}
     - name: listDocuments
       goName: ListDocuments
       inputType: ListDocumentsInput

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: freshbooks
   displayName: FreshBooks
-  description: Read one invoice from a FreshBooks accounting account.
+  description: Read and list invoices from a FreshBooks accounting account.
   company: FreshBooks
   categories: [finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: freshbooks
   languages:
@@ -118,3 +118,20 @@ spec:
           default: true
           description: One sample invoice is returned.
           output: {accountId: KAG77, invoiceId: 2201278, invoiceNumber: '0000003', amount: '800.00', currencyCode: USD, paymentStatus: unpaid}
+    - name: listInvoices
+      goName: ListInvoices
+      inputType: ListInvoicesInput
+      outputType: InvoicePage
+      kind: query
+      description: List one bounded page of invoices for an accounting account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: FreshBooks returned the requested invoice page.}
+        - {id: missing, goName: Missing, description: FreshBooks did not find the account., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: FreshBooks conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: FreshBooks returned malformed or oversized invoice JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The account ID, page, or OAuth credentials are invalid.", optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example invoice page without client contact details., output: {accountId: KAG77, page: 1, pageCount: 1, total: 1, invoices: [{accountId: KAG77, invoiceId: 2201278, invoiceNumber: '0000003', amount: '800.00', currencyCode: USD, paymentStatus: unpaid}]}}

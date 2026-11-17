@@ -582,6 +582,1112 @@
       },
       "name": "getContact-transportFailure",
       "operation": "getContact"
+    },
+    {
+      "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "campaign": {
+              "campaignId": "abc123"
+            },
+            "email": "ada@example.com",
+            "name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "campaignId": "abc123",
+          "email": "ada@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "input": {
+        "campaignId": "abc123",
+        "email": "ada@example.com",
+        "name": "Ada"
+      },
+      "name": "createContact-accepted",
+      "operation": "createContact"
+    },
+    {
+      "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "campaign": {
+              "campaignId": "abc123"
+            },
+            "email": "ada@example.com",
+            "name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "campaignId": "",
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "input": {
+        "campaignId": "abc123",
+        "email": "ada@example.com",
+        "name": "Ada"
+      },
+      "name": "createContact-providerRejected",
+      "operation": "createContact"
+    },
+    {
+      "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaignId": "",
+          "email": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "input": {
+        "campaignId": "abc123",
+        "email": "invalid",
+        "name": "Ada"
+      },
+      "name": "createContact-defect",
+      "operation": "createContact"
+    },
+    {
+      "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "campaign": {
+              "campaignId": "abc123"
+            },
+            "email": "ada@example.com",
+            "name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "input": {
+        "campaignId": "abc123",
+        "email": "ada@example.com",
+        "name": "Ada"
+      },
+      "name": "createContact-rateLimit",
+      "operation": "createContact"
+    },
+    {
+      "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "campaign": {
+              "campaignId": "abc123"
+            },
+            "email": "ada@example.com",
+            "name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "input": {
+        "campaignId": "abc123",
+        "email": "ada@example.com",
+        "name": "Ada"
+      },
+      "name": "createContact-serviceUnavailable",
+      "operation": "createContact"
+    },
+    {
+      "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "campaign": {
+              "campaignId": "abc123"
+            },
+            "email": "ada@example.com",
+            "name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "input": {
+        "campaignId": "abc123",
+        "email": "ada@example.com",
+        "name": "Ada"
+      },
+      "name": "createContact-serverError",
+      "operation": "createContact"
+    },
+    {
+      "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "campaign": {
+              "campaignId": "abc123"
+            },
+            "email": "ada@example.com",
+            "name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "input": {
+        "campaignId": "abc123",
+        "email": "ada@example.com",
+        "name": "Ada"
+      },
+      "name": "createContact-transportFailure",
+      "operation": "createContact"
+    },
+    {
+      "attempts": 3,
+      "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "campaign": {
+              "campaignId": "abc123"
+            },
+            "email": "ada@example.com",
+            "name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "query[campaignId]": [
+              "abc123"
+            ],
+            "query[email]": [
+              "ada@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "campaign": {
+              "campaignId": "abc123"
+            },
+            "email": "ada@example.com",
+            "name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "query[campaignId]": [
+              "abc123"
+            ],
+            "query[email]": [
+              "ada@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "campaign": {
+              "campaignId": "abc123"
+            },
+            "email": "ada@example.com",
+            "name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "campaignId": "abc123",
+          "email": "ada@example.com"
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "input": {
+        "campaignId": "abc123",
+        "email": "ada@example.com",
+        "name": "Ada"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createContact-uncertainAfterCap",
+      "operation": "createContact"
+    },
+    {
+      "callId": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "exchanges": [
+        {
+          "body": "{\"contactId\":\"abc123\",\"email\":\"ada@example.com\",\"name\":\"Ada Byron\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts/abc123",
+          "requestBody": {
+            "email": "ada@example.com",
+            "name": "Ada Byron"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "contactId": "abc123",
+          "email": "ada@example.com",
+          "name": "Ada Byron"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "input": {
+        "contactId": "abc123",
+        "email": "ada@example.com",
+        "name": "Ada Byron"
+      },
+      "name": "updateContact-updated",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts/abc123",
+          "requestBody": {
+            "name": "Ada Byron"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contactId": "",
+          "email": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "input": {
+        "contactId": "abc123",
+        "name": "Ada Byron"
+      },
+      "name": "updateContact-notFound",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts/abc123",
+          "requestBody": {
+            "name": "Ada Byron"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contactId": "",
+          "email": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "input": {
+        "contactId": "abc123",
+        "name": "Ada Byron"
+      },
+      "name": "updateContact-providerRejected",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts/abc123",
+          "requestBody": {
+            "name": "Ada Byron"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactId": "",
+          "email": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "input": {
+        "contactId": "abc123",
+        "name": "Ada Byron"
+      },
+      "name": "updateContact-invalidResponse",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": "",
+          "email": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "input": {
+        "contactId": "bad/id",
+        "name": "Ada Byron"
+      },
+      "name": "updateContact-defect",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts/abc123",
+          "requestBody": {
+            "name": "Ada Byron"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "input": {
+        "contactId": "abc123",
+        "name": "Ada Byron"
+      },
+      "name": "updateContact-rateLimit",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts/abc123",
+          "requestBody": {
+            "name": "Ada Byron"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "input": {
+        "contactId": "abc123",
+        "name": "Ada Byron"
+      },
+      "name": "updateContact-serviceUnavailable",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts/abc123",
+          "requestBody": {
+            "name": "Ada Byron"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "773b3dba-145b-5099-8538-6a5fa13150a1",
+      "input": {
+        "contactId": "abc123",
+        "name": "Ada Byron"
+      },
+      "name": "updateContact-transportFailure",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "de57cec3-e5c9-57d2-835f-3416be8433fb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/abc123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "contactId": "abc123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "de57cec3-e5c9-57d2-835f-3416be8433fb",
+      "input": {
+        "contactId": "abc123"
+      },
+      "name": "deleteContact-deleted",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "de57cec3-e5c9-57d2-835f-3416be8433fb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/abc123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "de57cec3-e5c9-57d2-835f-3416be8433fb",
+      "input": {
+        "contactId": "abc123"
+      },
+      "name": "deleteContact-notFound",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "de57cec3-e5c9-57d2-835f-3416be8433fb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/abc123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "de57cec3-e5c9-57d2-835f-3416be8433fb",
+      "input": {
+        "contactId": "abc123"
+      },
+      "name": "deleteContact-providerRejected",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "de57cec3-e5c9-57d2-835f-3416be8433fb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "de57cec3-e5c9-57d2-835f-3416be8433fb",
+      "input": {
+        "contactId": "bad/id"
+      },
+      "name": "deleteContact-defect",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "de57cec3-e5c9-57d2-835f-3416be8433fb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/abc123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "de57cec3-e5c9-57d2-835f-3416be8433fb",
+      "input": {
+        "contactId": "abc123"
+      },
+      "name": "deleteContact-rateLimit",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "de57cec3-e5c9-57d2-835f-3416be8433fb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/abc123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "de57cec3-e5c9-57d2-835f-3416be8433fb",
+      "input": {
+        "contactId": "abc123"
+      },
+      "name": "deleteContact-serviceUnavailable",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "de57cec3-e5c9-57d2-835f-3416be8433fb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/abc123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "de57cec3-e5c9-57d2-835f-3416be8433fb",
+      "input": {
+        "contactId": "abc123"
+      },
+      "name": "deleteContact-transportFailure",
+      "operation": "deleteContact"
     }
   ],
   "schemaVersion": 1

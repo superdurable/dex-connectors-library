@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package ads exposes typed Ads customer Queries to Dex Flows.
+// Package ads exposes typed Google Ads customer and campaign Steps to Dex Flows.
 package ads
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 // Option configures an HTTP dependency without serializing it into a connection.
@@ -70,6 +72,18 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.request(call, call.Context, http.MethodGet, path, nil, "", false)
+}
+
+func (client *Client) post(call sdkgo.Call, path string, body []byte, managerCustomerID string) providerResponse {
+	return client.request(call, call.Context, http.MethodPost, path, body, managerCustomerID, false)
+}
+
+func (client *Client) postInContext(call sdkgo.Call, context context.Context, path string, body []byte, managerCustomerID string) providerResponse {
+	return client.request(call, context, http.MethodPost, path, body, managerCustomerID, true)
+}
+
+func (client *Client) request(call sdkgo.Call, context context.Context, method, path string, body []byte, managerCustomerID string, limited bool) providerResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if sdkgo.IsReauthorizationRequired(err) {
 		return providerResponse{err: errCredential}
@@ -84,21 +98,30 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(accessToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(context, method, client.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Authorization", "Bearer "+accessToken)
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	if managerCustomerID != "" {
+		request.Header.Set("login-customer-id", managerCustomerID)
+	}
+	if limited && singledispatch.PrepareHTTPWrite(request) != nil {
+		return providerResponse{err: errRequest}
+	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	if bytes.Contains(body, []byte(accessToken)) {
+	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	if bytes.Contains(responseBody, []byte(accessToken)) {
 		return providerResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
 	}
-	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+	return providerResponse{body: responseBody, status: response.StatusCode, retryAfter: retryAfter, err: err}
 }

@@ -56,6 +56,16 @@ type GetAttendeeInput struct {
 	AttendeeID string `json:"attendeeId"`
 }
 
+// GetEventInput selects one Eventbrite event by numeric ID.
+type GetEventInput struct {
+	EventID string `json:"eventId"`
+}
+
+// PublishEventInput selects the draft event to publish.
+type PublishEventInput struct {
+	EventID string `json:"eventId"`
+}
+
 // AttendeeMetadata excludes the attendee profile, answers, barcode, and email.
 type AttendeeMetadata struct {
 	ID        string `json:"id"`
@@ -73,6 +83,12 @@ type ListEventsOperation struct{ client *Client }
 // GetAttendeeOperation retrieves one attendee's metadata.
 type GetAttendeeOperation struct{ client *Client }
 
+// GetEventOperation retrieves one event's metadata.
+type GetEventOperation struct{ client *Client }
+
+// PublishEventOperation publishes a draft event.
+type PublishEventOperation struct{ client *Client }
+
 // ListOrganizations binds the query to this client.
 func (client *Client) ListOrganizations() ListOrganizationsOperation {
 	return ListOrganizationsOperation{client}
@@ -84,6 +100,12 @@ func (client *Client) ListEvents() ListEventsOperation { return ListEventsOperat
 // GetAttendee binds the query to this client.
 func (client *Client) GetAttendee() GetAttendeeOperation { return GetAttendeeOperation{client} }
 
+// GetEvent binds the event query to this client.
+func (client *Client) GetEvent() GetEventOperation { return GetEventOperation{client} }
+
+// PublishEvent binds the event mutation to this client.
+func (client *Client) PublishEvent() PublishEventOperation { return PublishEventOperation{client} }
+
 // Definition returns the manifest-generated operation contract.
 func (ListOrganizationsOperation) Definition() sdkgo.QueryDefinition {
 	return ListOrganizationsDefinition
@@ -94,6 +116,17 @@ func (ListEventsOperation) Definition() sdkgo.QueryDefinition { return ListEvent
 
 // Definition returns the manifest-generated operation contract.
 func (GetAttendeeOperation) Definition() sdkgo.QueryDefinition { return GetAttendeeDefinition }
+
+// Definition returns the manifest-generated operation contract.
+func (GetEventOperation) Definition() sdkgo.QueryDefinition { return GetEventDefinition }
+
+// Definition returns the manifest-generated operation contract.
+func (PublishEventOperation) Definition() sdkgo.MutationDefinition { return PublishEventDefinition }
+
+// IdempotencyKey associates repeated publish attempts with the same Dex call.
+func (PublishEventOperation) IdempotencyKey(callID sdkgo.CallID, _ PublishEventInput) sdkgo.IdempotencyKey {
+	return sdkgo.IdempotencyKey(callID)
+}
 
 var numericID = regexp.MustCompile(`^[0-9]{1,24}$`)
 
@@ -126,6 +159,15 @@ func (operation GetAttendeeOperation) Invoke(call sdkgo.Call, input GetAttendeeI
 	}
 	path := "/events/" + input.EventID + "/attendees/" + input.AttendeeID + "/"
 	return invokeQuery(call, operation.client, "getAttendee", path, branches, decodeAttendee)
+}
+
+// Invoke reads one event without attendee or order data.
+func (operation GetEventOperation) Invoke(call sdkgo.Call, input GetEventInput) sdkgo.QueryAttempt[EventMetadata] {
+	branches := queryBranches{found: GetEventBranchFound, notFound: GetEventBranchNotFound, rejected: GetEventBranchProviderRejected, invalid: GetEventBranchInvalidResponse, defect: GetEventBranchDefect}
+	if !numericID.MatchString(input.EventID) {
+		return queryBranch("getEvent", branches.defect, EventMetadata{}, sdkgo.FailureValidation, "event ID is invalid")
+	}
+	return invokeQuery(call, operation.client, "getEvent", "/events/"+input.EventID+"/", branches, decodeEvent)
 }
 
 func pageNumber(page int) (int, bool) {
@@ -184,6 +226,23 @@ func decodeEvents(body []byte) (EventsPage, error) {
 		page.Events = append(page.Events, EventMetadata{ID: event.ID, Name: event.Name.Text, Status: event.Status})
 	}
 	return page, nil
+}
+
+func decodeEvent(body []byte) (EventMetadata, error) {
+	var wire struct {
+		ID   string `json:"id"`
+		Name struct {
+			Text string `json:"text"`
+		} `json:"name"`
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(body, &wire); err != nil {
+		return EventMetadata{}, err
+	}
+	if !numericID.MatchString(wire.ID) || wire.Status == "" {
+		return EventMetadata{}, fmt.Errorf("event identity or status missing")
+	}
+	return EventMetadata{ID: wire.ID, Name: wire.Name.Text, Status: wire.Status}, nil
 }
 
 func decodeAttendee(body []byte) (AttendeeMetadata, error) {

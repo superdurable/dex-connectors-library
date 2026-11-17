@@ -957,6 +957,5100 @@
       },
       "name": "updateIssueLabels-transport",
       "operation": "updateIssueLabels"
+    },
+    {
+      "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+      "exchanges": [
+        {
+          "body": "{\"id\":123,\"iid\":7,\"title\":\"Review release notes\",\"labels\":[\"review\"],\"web_url\":\"https://gitlab.com/meridian/web/-/issues/7\"}",
+          "form": {
+            "description": [
+              "Check changes"
+            ],
+            "title": [
+              "Review release notes"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+          "providerId": "7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 123,
+          "iid": 7,
+          "labels": [
+            "review"
+          ],
+          "title": "Review release notes",
+          "web_url": "https://gitlab.com/meridian/web/-/issues/7"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+      "input": {
+        "description": "Check changes",
+        "projectId": "meridian/web",
+        "title": "Review release notes"
+      },
+      "name": "createIssue-success",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "description": [
+              "Check changes"
+            ],
+            "title": [
+              "Review release notes"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+      "input": {
+        "description": "Check changes",
+        "projectId": "meridian/web",
+        "title": "Review release notes"
+      },
+      "name": "createIssue-providerRejected",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+      "input": {
+        "description": "Check changes",
+        "projectId": "meridian/web",
+        "title": ""
+      },
+      "name": "createIssue-defect",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "description": [
+              "Check changes"
+            ],
+            "title": [
+              "Review release notes"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+      "input": {
+        "description": "Check changes",
+        "projectId": "meridian/web",
+        "title": "Review release notes"
+      },
+      "name": "createIssue-rateLimit",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "description": [
+              "Check changes"
+            ],
+            "title": [
+              "Review release notes"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+      "input": {
+        "description": "Check changes",
+        "projectId": "meridian/web",
+        "title": "Review release notes"
+      },
+      "name": "createIssue-serviceUnavailable",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+      "exchanges": [
+        {
+          "form": {
+            "description": [
+              "Check changes"
+            ],
+            "title": [
+              "Review release notes"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+      "input": {
+        "description": "Check changes",
+        "projectId": "meridian/web",
+        "title": "Review release notes"
+      },
+      "name": "createIssue-transportFailure",
+      "operation": "createIssue"
+    },
+    {
+      "attempts": 3,
+      "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "description": [
+              "Check changes"
+            ],
+            "title": [
+              "Review release notes"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "form": {
+            "description": [
+              "Check changes"
+            ],
+            "title": [
+              "Review release notes"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "form": {
+            "description": [
+              "Check changes"
+            ],
+            "title": [
+              "Review release notes"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+      "input": {
+        "description": "Check changes",
+        "projectId": "meridian/web",
+        "title": "Review release notes"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "4fbb55ef-a17e-5c2f-93a0-b1eeb8e98f69",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createIssue-uncertainAfterCap",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+      "exchanges": [
+        {
+          "body": "{\"id\":45,\"body\":\"Reviewed\"}",
+          "form": {
+            "body": [
+              "Reviewed"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues/7/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+          "providerId": "45",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "body": "Reviewed",
+          "id": 45
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+      "input": {
+        "body": "Reviewed",
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "createIssueComment-success",
+      "operation": "createIssueComment"
+    },
+    {
+      "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "body": [
+              "Reviewed"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues/7/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "body": "",
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+      "input": {
+        "body": "Reviewed",
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "createIssueComment-providerRejected",
+      "operation": "createIssueComment"
+    },
+    {
+      "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "body": "",
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+      "input": {
+        "body": "",
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "createIssueComment-defect",
+      "operation": "createIssueComment"
+    },
+    {
+      "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "body": [
+              "Reviewed"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues/7/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+      "input": {
+        "body": "Reviewed",
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "createIssueComment-rateLimit",
+      "operation": "createIssueComment"
+    },
+    {
+      "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "body": [
+              "Reviewed"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues/7/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+      "input": {
+        "body": "Reviewed",
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "createIssueComment-serviceUnavailable",
+      "operation": "createIssueComment"
+    },
+    {
+      "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+      "exchanges": [
+        {
+          "form": {
+            "body": [
+              "Reviewed"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues/7/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+      "input": {
+        "body": "Reviewed",
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "createIssueComment-transportFailure",
+      "operation": "createIssueComment"
+    },
+    {
+      "attempts": 3,
+      "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "body": [
+              "Reviewed"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues/7/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "form": {
+            "body": [
+              "Reviewed"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues/7/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "form": {
+            "body": [
+              "Reviewed"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/issues/7/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "body": "",
+          "id": 0
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+      "input": {
+        "body": "Reviewed",
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "b899ec69-f681-5ab4-892a-4e6a48fc9e19",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createIssueComment-uncertainAfterCap",
+      "operation": "createIssueComment"
+    },
+    {
+      "callId": "6e0d9b2a-785b-4bc3-967a-ecbc2fc5c944",
+      "exchanges": [
+        {
+          "body": "{\"id\":123,\"iid\":7,\"title\":\"Review release notes\",\"labels\":[\"review\"],\"web_url\":\"https://gitlab.com/meridian/web/-/issues/7\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": 123,
+          "iid": 7,
+          "labels": [
+            "review"
+          ],
+          "title": "Review release notes",
+          "web_url": "https://gitlab.com/meridian/web/-/issues/7"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "getIssue-success",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "6e0d9b2a-785b-4bc3-967a-ecbc2fc5c944",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "getIssue-notFound",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "6e0d9b2a-785b-4bc3-967a-ecbc2fc5c944",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "getIssue-providerRejected",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "6e0d9b2a-785b-4bc3-967a-ecbc2fc5c944",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "getIssue-invalidResponse",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "6e0d9b2a-785b-4bc3-967a-ecbc2fc5c944",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueIid": 7,
+        "projectId": ""
+      },
+      "name": "getIssue-defect",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "6e0d9b2a-785b-4bc3-967a-ecbc2fc5c944",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "getIssue-rateLimit",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "6e0d9b2a-785b-4bc3-967a-ecbc2fc5c944",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "getIssue-serviceUnavailable",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "6e0d9b2a-785b-4bc3-967a-ecbc2fc5c944",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "getIssue-transportFailure",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "exchanges": [
+        {
+          "body": "{\"id\":123,\"iid\":7,\"title\":\"Revised release notes\",\"labels\":[\"review\"],\"web_url\":\"https://gitlab.com/meridian/web/-/issues/7\"}",
+          "form": {
+            "description": [
+              "Updated text"
+            ],
+            "state_event": [
+              "close"
+            ],
+            "title": [
+              "Revised release notes"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 123,
+          "iid": 7,
+          "labels": [
+            "review"
+          ],
+          "title": "Revised release notes",
+          "web_url": "https://gitlab.com/meridian/web/-/issues/7"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "input": {
+        "description": "Updated text",
+        "issueIid": 7,
+        "projectId": "meridian/web",
+        "stateEvent": "close",
+        "title": "Revised release notes"
+      },
+      "name": "editIssue-success",
+      "operation": "editIssue"
+    },
+    {
+      "callId": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "description": [
+              "Updated text"
+            ],
+            "state_event": [
+              "close"
+            ],
+            "title": [
+              "Revised release notes"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "input": {
+        "description": "Updated text",
+        "issueIid": 7,
+        "projectId": "meridian/web",
+        "stateEvent": "close",
+        "title": "Revised release notes"
+      },
+      "name": "editIssue-notFound",
+      "operation": "editIssue"
+    },
+    {
+      "callId": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "description": [
+              "Updated text"
+            ],
+            "state_event": [
+              "close"
+            ],
+            "title": [
+              "Revised release notes"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "input": {
+        "description": "Updated text",
+        "issueIid": 7,
+        "projectId": "meridian/web",
+        "stateEvent": "close",
+        "title": "Revised release notes"
+      },
+      "name": "editIssue-providerRejected",
+      "operation": "editIssue"
+    },
+    {
+      "callId": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "form": {
+            "description": [
+              "Updated text"
+            ],
+            "state_event": [
+              "close"
+            ],
+            "title": [
+              "Revised release notes"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "input": {
+        "description": "Updated text",
+        "issueIid": 7,
+        "projectId": "meridian/web",
+        "stateEvent": "close",
+        "title": "Revised release notes"
+      },
+      "name": "editIssue-invalidResponse",
+      "operation": "editIssue"
+    },
+    {
+      "callId": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "input": {
+        "description": "Updated text",
+        "issueIid": 7,
+        "projectId": "",
+        "stateEvent": "close",
+        "title": "Revised release notes"
+      },
+      "name": "editIssue-defect",
+      "operation": "editIssue"
+    },
+    {
+      "callId": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "description": [
+              "Updated text"
+            ],
+            "state_event": [
+              "close"
+            ],
+            "title": [
+              "Revised release notes"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "input": {
+        "description": "Updated text",
+        "issueIid": 7,
+        "projectId": "meridian/web",
+        "stateEvent": "close",
+        "title": "Revised release notes"
+      },
+      "name": "editIssue-rateLimit",
+      "operation": "editIssue"
+    },
+    {
+      "callId": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "description": [
+              "Updated text"
+            ],
+            "state_event": [
+              "close"
+            ],
+            "title": [
+              "Revised release notes"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "input": {
+        "description": "Updated text",
+        "issueIid": 7,
+        "projectId": "meridian/web",
+        "stateEvent": "close",
+        "title": "Revised release notes"
+      },
+      "name": "editIssue-serviceUnavailable",
+      "operation": "editIssue"
+    },
+    {
+      "callId": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "exchanges": [
+        {
+          "form": {
+            "description": [
+              "Updated text"
+            ],
+            "state_event": [
+              "close"
+            ],
+            "title": [
+              "Revised release notes"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91c5ef38-bc37-5aef-8649-21c3384c355a",
+      "input": {
+        "description": "Updated text",
+        "issueIid": 7,
+        "projectId": "meridian/web",
+        "stateEvent": "close",
+        "title": "Revised release notes"
+      },
+      "name": "editIssue-transportFailure",
+      "operation": "editIssue"
+    },
+    {
+      "callId": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "exchanges": [
+        {
+          "body": "{\"id\":123,\"iid\":7,\"title\":\"Review release notes\",\"labels\":[\"review\"],\"web_url\":\"https://gitlab.com/meridian/web/-/issues/7\"}",
+          "form": {
+            "discussion_locked": [
+              "true"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "locked",
+        "failureKind": "",
+        "output": {
+          "id": 123,
+          "iid": 7,
+          "labels": [
+            "review"
+          ],
+          "title": "Review release notes",
+          "web_url": "https://gitlab.com/meridian/web/-/issues/7"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "lockIssue-success",
+      "operation": "lockIssue"
+    },
+    {
+      "callId": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "discussion_locked": [
+              "true"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "lockIssue-notFound",
+      "operation": "lockIssue"
+    },
+    {
+      "callId": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "discussion_locked": [
+              "true"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "lockIssue-providerRejected",
+      "operation": "lockIssue"
+    },
+    {
+      "callId": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "form": {
+            "discussion_locked": [
+              "true"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "lockIssue-invalidResponse",
+      "operation": "lockIssue"
+    },
+    {
+      "callId": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "input": {
+        "issueIid": 7,
+        "projectId": ""
+      },
+      "name": "lockIssue-defect",
+      "operation": "lockIssue"
+    },
+    {
+      "callId": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "discussion_locked": [
+              "true"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "lockIssue-rateLimit",
+      "operation": "lockIssue"
+    },
+    {
+      "callId": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "discussion_locked": [
+              "true"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "lockIssue-serviceUnavailable",
+      "operation": "lockIssue"
+    },
+    {
+      "callId": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "exchanges": [
+        {
+          "form": {
+            "discussion_locked": [
+              "true"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc648e51-5f13-5531-938d-d2ae54f393bd",
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "lockIssue-transportFailure",
+      "operation": "lockIssue"
+    },
+    {
+      "callId": "393f9663-f686-59bc-afbd-cf35de68e85b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "issueIid": 7,
+          "projectId": "meridian/web"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "393f9663-f686-59bc-afbd-cf35de68e85b",
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "deleteIssue-success",
+      "operation": "deleteIssue"
+    },
+    {
+      "callId": "393f9663-f686-59bc-afbd-cf35de68e85b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "issueIid": 0,
+          "projectId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "393f9663-f686-59bc-afbd-cf35de68e85b",
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "deleteIssue-notFound",
+      "operation": "deleteIssue"
+    },
+    {
+      "callId": "393f9663-f686-59bc-afbd-cf35de68e85b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "issueIid": 0,
+          "projectId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "393f9663-f686-59bc-afbd-cf35de68e85b",
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "deleteIssue-providerRejected",
+      "operation": "deleteIssue"
+    },
+    {
+      "callId": "393f9663-f686-59bc-afbd-cf35de68e85b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "issueIid": 0,
+          "projectId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "393f9663-f686-59bc-afbd-cf35de68e85b",
+      "input": {
+        "issueIid": 7,
+        "projectId": ""
+      },
+      "name": "deleteIssue-defect",
+      "operation": "deleteIssue"
+    },
+    {
+      "callId": "393f9663-f686-59bc-afbd-cf35de68e85b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "393f9663-f686-59bc-afbd-cf35de68e85b",
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "deleteIssue-rateLimit",
+      "operation": "deleteIssue"
+    },
+    {
+      "callId": "393f9663-f686-59bc-afbd-cf35de68e85b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "393f9663-f686-59bc-afbd-cf35de68e85b",
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "deleteIssue-serviceUnavailable",
+      "operation": "deleteIssue"
+    },
+    {
+      "callId": "393f9663-f686-59bc-afbd-cf35de68e85b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/meridian/web/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "393f9663-f686-59bc-afbd-cf35de68e85b",
+      "input": {
+        "issueIid": 7,
+        "projectId": "meridian/web"
+      },
+      "name": "deleteIssue-transportFailure",
+      "operation": "deleteIssue"
+    },
+    {
+      "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "exchanges": [
+        {
+          "body": "{\"tag_name\":\"v1.2.0\",\"name\":\"Release 1.2\",\"description\":\"Notes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/releases",
+          "requestBody": {
+            "description": "Notes",
+            "name": "Release 1.2",
+            "ref": "main",
+            "tag_name": "v1.2.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+          "providerId": "v1.2.0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "description": "Notes",
+          "name": "Release 1.2",
+          "tag_name": "v1.2.0"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "input": {
+        "description": "Notes",
+        "name": "Release 1.2",
+        "projectId": "meridian/web",
+        "ref": "main",
+        "tagName": "v1.2.0"
+      },
+      "name": "createRelease-created",
+      "operation": "createRelease"
+    },
+    {
+      "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/releases",
+          "requestBody": {
+            "description": "Notes",
+            "name": "Release 1.2",
+            "ref": "main",
+            "tag_name": "v1.2.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "description": "",
+          "name": "",
+          "tag_name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "input": {
+        "description": "Notes",
+        "name": "Release 1.2",
+        "projectId": "meridian/web",
+        "ref": "main",
+        "tagName": "v1.2.0"
+      },
+      "name": "createRelease-providerRejected",
+      "operation": "createRelease"
+    },
+    {
+      "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "description": "",
+          "name": "",
+          "tag_name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "input": {
+        "description": "Notes",
+        "name": "Release 1.2",
+        "projectId": "",
+        "ref": "main",
+        "tagName": "v1.2.0"
+      },
+      "name": "createRelease-defect",
+      "operation": "createRelease"
+    },
+    {
+      "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/releases",
+          "requestBody": {
+            "description": "Notes",
+            "name": "Release 1.2",
+            "ref": "main",
+            "tag_name": "v1.2.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "input": {
+        "description": "Notes",
+        "name": "Release 1.2",
+        "projectId": "meridian/web",
+        "ref": "main",
+        "tagName": "v1.2.0"
+      },
+      "name": "createRelease-rateLimit",
+      "operation": "createRelease"
+    },
+    {
+      "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/releases",
+          "requestBody": {
+            "description": "Notes",
+            "name": "Release 1.2",
+            "ref": "main",
+            "tag_name": "v1.2.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "input": {
+        "description": "Notes",
+        "name": "Release 1.2",
+        "projectId": "meridian/web",
+        "ref": "main",
+        "tagName": "v1.2.0"
+      },
+      "name": "createRelease-serviceUnavailable",
+      "operation": "createRelease"
+    },
+    {
+      "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/releases",
+          "requestBody": {
+            "description": "Notes",
+            "name": "Release 1.2",
+            "ref": "main",
+            "tag_name": "v1.2.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "input": {
+        "description": "Notes",
+        "name": "Release 1.2",
+        "projectId": "meridian/web",
+        "ref": "main",
+        "tagName": "v1.2.0"
+      },
+      "name": "createRelease-serverError",
+      "operation": "createRelease"
+    },
+    {
+      "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/releases",
+          "requestBody": {
+            "description": "Notes",
+            "name": "Release 1.2",
+            "ref": "main",
+            "tag_name": "v1.2.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "input": {
+        "description": "Notes",
+        "name": "Release 1.2",
+        "projectId": "meridian/web",
+        "ref": "main",
+        "tagName": "v1.2.0"
+      },
+      "name": "createRelease-transportFailure",
+      "operation": "createRelease"
+    },
+    {
+      "callId": "bc2567e5-836a-4831-acc2-63b945e42570",
+      "exchanges": [
+        {
+          "body": "{\"tag_name\":\"v1.2.0\",\"name\":\"Release 1.2\",\"description\":\"Notes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "description": "Notes",
+          "name": "Release 1.2",
+          "tag_name": "v1.2.0"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "getRelease-found",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "bc2567e5-836a-4831-acc2-63b945e42570",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "description": "",
+          "name": "",
+          "tag_name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "getRelease-notFound",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "bc2567e5-836a-4831-acc2-63b945e42570",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "description": "",
+          "name": "",
+          "tag_name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "getRelease-providerRejected",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "bc2567e5-836a-4831-acc2-63b945e42570",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "description": "",
+          "name": "",
+          "tag_name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "getRelease-invalidResponse",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "bc2567e5-836a-4831-acc2-63b945e42570",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "description": "",
+          "name": "",
+          "tag_name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "",
+        "tagName": "v1.2.0"
+      },
+      "name": "getRelease-defect",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "bc2567e5-836a-4831-acc2-63b945e42570",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "getRelease-rateLimit",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "bc2567e5-836a-4831-acc2-63b945e42570",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "getRelease-serviceUnavailable",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "bc2567e5-836a-4831-acc2-63b945e42570",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "getRelease-serverError",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "bc2567e5-836a-4831-acc2-63b945e42570",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "getRelease-transportFailure",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "9fb5597e-0f04-4bef-a01e-eabde1d342e1",
+      "exchanges": [
+        {
+          "body": "[{\"tag_name\":\"v1.2.0\",\"name\":\"Release 1.2\",\"description\":\"Notes\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "releases": [
+            {
+              "description": "Notes",
+              "name": "Release 1.2",
+              "tag_name": "v1.2.0"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "projectId": "meridian/web"
+      },
+      "name": "listReleases-listed",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "9fb5597e-0f04-4bef-a01e-eabde1d342e1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "releases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "projectId": "meridian/web"
+      },
+      "name": "listReleases-notFound",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "9fb5597e-0f04-4bef-a01e-eabde1d342e1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "releases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "projectId": "meridian/web"
+      },
+      "name": "listReleases-providerRejected",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "9fb5597e-0f04-4bef-a01e-eabde1d342e1",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "releases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "projectId": "meridian/web"
+      },
+      "name": "listReleases-invalidResponse",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "9fb5597e-0f04-4bef-a01e-eabde1d342e1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "releases": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "projectId": ""
+      },
+      "name": "listReleases-defect",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "9fb5597e-0f04-4bef-a01e-eabde1d342e1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "projectId": "meridian/web"
+      },
+      "name": "listReleases-rateLimit",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "9fb5597e-0f04-4bef-a01e-eabde1d342e1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "projectId": "meridian/web"
+      },
+      "name": "listReleases-serviceUnavailable",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "9fb5597e-0f04-4bef-a01e-eabde1d342e1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "projectId": "meridian/web"
+      },
+      "name": "listReleases-serverError",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "9fb5597e-0f04-4bef-a01e-eabde1d342e1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "projectId": "meridian/web"
+      },
+      "name": "listReleases-transportFailure",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "exchanges": [
+        {
+          "body": "{\"tag_name\":\"v1.2.0\",\"name\":\"Release 1.2 revised\",\"description\":\"New notes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestBody": {
+            "description": "New notes",
+            "name": "Release 1.2 revised"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "description": "New notes",
+          "name": "Release 1.2 revised",
+          "tag_name": "v1.2.0"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "input": {
+        "description": "New notes",
+        "name": "Release 1.2 revised",
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "updateRelease-updated",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestBody": {
+            "description": "New notes",
+            "name": "Release 1.2 revised"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "description": "",
+          "name": "",
+          "tag_name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "input": {
+        "description": "New notes",
+        "name": "Release 1.2 revised",
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "updateRelease-notFound",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestBody": {
+            "description": "New notes",
+            "name": "Release 1.2 revised"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "description": "",
+          "name": "",
+          "tag_name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "input": {
+        "description": "New notes",
+        "name": "Release 1.2 revised",
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "updateRelease-providerRejected",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestBody": {
+            "description": "New notes",
+            "name": "Release 1.2 revised"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "description": "",
+          "name": "",
+          "tag_name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "input": {
+        "description": "New notes",
+        "name": "Release 1.2 revised",
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "updateRelease-invalidResponse",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "description": "",
+          "name": "",
+          "tag_name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "input": {
+        "description": "New notes",
+        "name": "Release 1.2 revised",
+        "projectId": "",
+        "tagName": "v1.2.0"
+      },
+      "name": "updateRelease-defect",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestBody": {
+            "description": "New notes",
+            "name": "Release 1.2 revised"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "input": {
+        "description": "New notes",
+        "name": "Release 1.2 revised",
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "updateRelease-rateLimit",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestBody": {
+            "description": "New notes",
+            "name": "Release 1.2 revised"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "input": {
+        "description": "New notes",
+        "name": "Release 1.2 revised",
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "updateRelease-serviceUnavailable",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestBody": {
+            "description": "New notes",
+            "name": "Release 1.2 revised"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "input": {
+        "description": "New notes",
+        "name": "Release 1.2 revised",
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "updateRelease-serverError",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestBody": {
+            "description": "New notes",
+            "name": "Release 1.2 revised"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
+      "input": {
+        "description": "New notes",
+        "name": "Release 1.2 revised",
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "updateRelease-transportFailure",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "exchanges": [
+        {
+          "body": "{\"tag_name\":\"v1.2.0\",\"name\":\"Release 1.2\",\"description\":\"Notes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "projectId": "meridian/web",
+          "tagName": "v1.2.0"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "deleteRelease-deleted",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "projectId": "",
+          "tagName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "deleteRelease-notFound",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "projectId": "",
+          "tagName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "deleteRelease-providerRejected",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "projectId": "",
+          "tagName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "deleteRelease-invalidResponse",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "projectId": "",
+          "tagName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "input": {
+        "projectId": "",
+        "tagName": "v1.2.0"
+      },
+      "name": "deleteRelease-defect",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "deleteRelease-rateLimit",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "deleteRelease-serviceUnavailable",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "deleteRelease-serverError",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
+      "input": {
+        "projectId": "meridian/web",
+        "tagName": "v1.2.0"
+      },
+      "name": "deleteRelease-transportFailure",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "3205c13d-1924-4fc4-af64-d0a8f43dcd95",
+      "exchanges": [
+        {
+          "body": "[{\"id\":\"abc123\",\"name\":\"main.go\",\"path\":\"cmd/main.go\",\"type\":\"blob\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/repository/tree",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "path": [
+              "cmd"
+            ],
+            "per_page": [
+              "20"
+            ],
+            "ref": [
+              "main"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "entries": [
+            {
+              "id": "abc123",
+              "name": "main.go",
+              "path": "cmd/main.go",
+              "type": "blob"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "path": "cmd",
+        "perPage": 20,
+        "projectId": "meridian/web",
+        "ref": "main"
+      },
+      "name": "listRepositoryTree-listed",
+      "operation": "listRepositoryTree"
+    },
+    {
+      "callId": "3205c13d-1924-4fc4-af64-d0a8f43dcd95",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/repository/tree",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "path": [
+              "cmd"
+            ],
+            "per_page": [
+              "20"
+            ],
+            "ref": [
+              "main"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "entries": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "path": "cmd",
+        "perPage": 20,
+        "projectId": "meridian/web",
+        "ref": "main"
+      },
+      "name": "listRepositoryTree-notFound",
+      "operation": "listRepositoryTree"
+    },
+    {
+      "callId": "3205c13d-1924-4fc4-af64-d0a8f43dcd95",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/repository/tree",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "path": [
+              "cmd"
+            ],
+            "per_page": [
+              "20"
+            ],
+            "ref": [
+              "main"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "entries": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "path": "cmd",
+        "perPage": 20,
+        "projectId": "meridian/web",
+        "ref": "main"
+      },
+      "name": "listRepositoryTree-providerRejected",
+      "operation": "listRepositoryTree"
+    },
+    {
+      "callId": "3205c13d-1924-4fc4-af64-d0a8f43dcd95",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/repository/tree",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "path": [
+              "cmd"
+            ],
+            "per_page": [
+              "20"
+            ],
+            "ref": [
+              "main"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "entries": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "path": "cmd",
+        "perPage": 20,
+        "projectId": "meridian/web",
+        "ref": "main"
+      },
+      "name": "listRepositoryTree-invalidResponse",
+      "operation": "listRepositoryTree"
+    },
+    {
+      "callId": "3205c13d-1924-4fc4-af64-d0a8f43dcd95",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "entries": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "path": "cmd",
+        "perPage": 20,
+        "projectId": "",
+        "ref": "main"
+      },
+      "name": "listRepositoryTree-defect",
+      "operation": "listRepositoryTree"
+    },
+    {
+      "callId": "3205c13d-1924-4fc4-af64-d0a8f43dcd95",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/repository/tree",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "path": [
+              "cmd"
+            ],
+            "per_page": [
+              "20"
+            ],
+            "ref": [
+              "main"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "path": "cmd",
+        "perPage": 20,
+        "projectId": "meridian/web",
+        "ref": "main"
+      },
+      "name": "listRepositoryTree-rateLimit",
+      "operation": "listRepositoryTree"
+    },
+    {
+      "callId": "3205c13d-1924-4fc4-af64-d0a8f43dcd95",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/repository/tree",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "path": [
+              "cmd"
+            ],
+            "per_page": [
+              "20"
+            ],
+            "ref": [
+              "main"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "path": "cmd",
+        "perPage": 20,
+        "projectId": "meridian/web",
+        "ref": "main"
+      },
+      "name": "listRepositoryTree-serviceUnavailable",
+      "operation": "listRepositoryTree"
+    },
+    {
+      "callId": "3205c13d-1924-4fc4-af64-d0a8f43dcd95",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/repository/tree",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "path": [
+              "cmd"
+            ],
+            "per_page": [
+              "20"
+            ],
+            "ref": [
+              "main"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "path": "cmd",
+        "perPage": 20,
+        "projectId": "meridian/web",
+        "ref": "main"
+      },
+      "name": "listRepositoryTree-serverError",
+      "operation": "listRepositoryTree"
+    },
+    {
+      "callId": "3205c13d-1924-4fc4-af64-d0a8f43dcd95",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/repository/tree",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "path": [
+              "cmd"
+            ],
+            "per_page": [
+              "20"
+            ],
+            "ref": [
+              "main"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "path": "cmd",
+        "perPage": 20,
+        "projectId": "meridian/web",
+        "ref": "main"
+      },
+      "name": "listRepositoryTree-transportFailure",
+      "operation": "listRepositoryTree"
+    },
+    {
+      "callId": "527acc42-71eb-4f94-a3af-4232e8f93d32",
+      "exchanges": [
+        {
+          "body": "[{\"id\":123,\"name\":\"web\",\"path_with_namespace\":\"meridian/web\",\"web_url\":\"https://gitlab.com/meridian/web\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/meridian/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "projects": [
+            {
+              "id": 123,
+              "name": "web",
+              "path_with_namespace": "meridian/web",
+              "web_url": "https://gitlab.com/meridian/web"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "userId": "meridian"
+      },
+      "name": "listUserProjects-listed",
+      "operation": "listUserProjects"
+    },
+    {
+      "callId": "527acc42-71eb-4f94-a3af-4232e8f93d32",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/meridian/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "userId": "meridian"
+      },
+      "name": "listUserProjects-notFound",
+      "operation": "listUserProjects"
+    },
+    {
+      "callId": "527acc42-71eb-4f94-a3af-4232e8f93d32",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/meridian/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "userId": "meridian"
+      },
+      "name": "listUserProjects-providerRejected",
+      "operation": "listUserProjects"
+    },
+    {
+      "callId": "527acc42-71eb-4f94-a3af-4232e8f93d32",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/meridian/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "userId": "meridian"
+      },
+      "name": "listUserProjects-invalidResponse",
+      "operation": "listUserProjects"
+    },
+    {
+      "callId": "527acc42-71eb-4f94-a3af-4232e8f93d32",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "userId": ""
+      },
+      "name": "listUserProjects-defect",
+      "operation": "listUserProjects"
+    },
+    {
+      "callId": "527acc42-71eb-4f94-a3af-4232e8f93d32",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/meridian/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "userId": "meridian"
+      },
+      "name": "listUserProjects-rateLimit",
+      "operation": "listUserProjects"
+    },
+    {
+      "callId": "527acc42-71eb-4f94-a3af-4232e8f93d32",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/meridian/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "userId": "meridian"
+      },
+      "name": "listUserProjects-serviceUnavailable",
+      "operation": "listUserProjects"
+    },
+    {
+      "callId": "527acc42-71eb-4f94-a3af-4232e8f93d32",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/meridian/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "userId": "meridian"
+      },
+      "name": "listUserProjects-serverError",
+      "operation": "listUserProjects"
+    },
+    {
+      "callId": "527acc42-71eb-4f94-a3af-4232e8f93d32",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/meridian/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 20,
+        "userId": "meridian"
+      },
+      "name": "listUserProjects-transportFailure",
+      "operation": "listUserProjects"
+    },
+    {
+      "attempts": 3,
+      "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/releases",
+          "requestBody": {
+            "description": "Notes",
+            "name": "Release 1.2",
+            "ref": "main",
+            "tag_name": "v1.2.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/releases",
+          "requestBody": {
+            "description": "Notes",
+            "name": "Release 1.2",
+            "ref": "main",
+            "tag_name": "v1.2.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/releases",
+          "requestBody": {
+            "description": "Notes",
+            "name": "Release 1.2",
+            "ref": "main",
+            "tag_name": "v1.2.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "description": "",
+          "name": "",
+          "tag_name": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "input": {
+        "description": "Notes",
+        "name": "Release 1.2",
+        "projectId": "meridian/web",
+        "ref": "main",
+        "tagName": "v1.2.0"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createRelease-uncertainAfterCap",
+      "operation": "createRelease"
+    },
+    {
+      "attempts": 2,
+      "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/meridian/web/releases",
+          "requestBody": {
+            "description": "Notes",
+            "name": "Release 1.2",
+            "ref": "main",
+            "tag_name": "v1.2.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"tag_name\":\"v1.2.0\",\"name\":\"Release 1.2\",\"description\":\"Notes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/meridian/web/releases/v1.2.0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "description": "Notes",
+          "name": "Release 1.2",
+          "tag_name": "v1.2.0"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+      "input": {
+        "description": "Notes",
+        "name": "Release 1.2",
+        "projectId": "meridian/web",
+        "ref": "main",
+        "tagName": "v1.2.0"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "b1db183c-1452-5f1c-bf5b-25f3d1da46a4",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createRelease-confirmedByReadBack",
+      "operation": "createRelease"
     }
   ],
   "schemaVersion": 1

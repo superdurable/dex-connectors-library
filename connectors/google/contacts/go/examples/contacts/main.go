@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{contactsflow.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{contactsflow.NewFlow(connection), contactsflow.NewUpdateFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Google Contacts list Flow: %w", err)
 	}

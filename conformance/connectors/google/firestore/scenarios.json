@@ -501,6 +501,2489 @@
       },
       "name": "listDocuments-overlongDocumentID",
       "operation": "listDocuments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"projects/sample-project/databases/(default)/documents/events/sample-event\",\"fields\":{\"title\":{\"stringValue\":\"Hello\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+          "name": "projects/sample-project/databases/(default)/documents/events/sample-event"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "projectId": "sample-project"
+      },
+      "name": "getDocument-success",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "projectId": "sample-project"
+      },
+      "name": "getDocument-notFound",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "projectId": "sample-project"
+      },
+      "name": "getDocument-invalidResponse",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "projectId": "sample-project"
+      },
+      "name": "getDocument-providerRejected",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "projectId": ""
+      },
+      "name": "getDocument-defect",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "projectId": "sample-project"
+      },
+      "name": "getDocument-final429",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "projectId": "sample-project"
+      },
+      "name": "getDocument-final503",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "projectId": "sample-project"
+      },
+      "name": "getDocument-transportFailure",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"projects/sample-project/databases/(default)/documents/events/sample-event\",\"fields\":{\"title\":{\"stringValue\":\"Hello\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "documentId": [
+              "sample-event"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+          "name": "projects/sample-project/databases/(default)/documents/events/sample-event"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "name": "createDocument-success",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "documentId": [
+              "sample-event"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "alreadyExists",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "name": "createDocument-alreadyExists",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "documentId": [
+              "sample-event"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "name": "createDocument-invalidResponse",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "documentId": [
+              "sample-event"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "name": "createDocument-providerRejected",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": ""
+      },
+      "name": "createDocument-defect",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "documentId": [
+              "sample-event"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "name": "createDocument-final429",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "documentId": [
+              "sample-event"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "name": "createDocument-final503",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "documentId": [
+              "sample-event"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "name": "createDocument-transportFailure",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "53a2182e-9cbd-5fa8-b04f-939862503975",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"projects/sample-project/databases/(default)/documents/events/sample-event\",\"fields\":{\"title\":{\"stringValue\":\"Hello\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "written",
+        "failureKind": "",
+        "output": {
+          "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+          "name": "projects/sample-project/databases/(default)/documents/events/sample-event"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53a2182e-9cbd-5fa8-b04f-939862503975",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "name": "putDocument-success",
+      "operation": "putDocument"
+    },
+    {
+      "callId": "53a2182e-9cbd-5fa8-b04f-939862503975",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53a2182e-9cbd-5fa8-b04f-939862503975",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "name": "putDocument-invalidResponse",
+      "operation": "putDocument"
+    },
+    {
+      "callId": "53a2182e-9cbd-5fa8-b04f-939862503975",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53a2182e-9cbd-5fa8-b04f-939862503975",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "name": "putDocument-providerRejected",
+      "operation": "putDocument"
+    },
+    {
+      "callId": "53a2182e-9cbd-5fa8-b04f-939862503975",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53a2182e-9cbd-5fa8-b04f-939862503975",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": ""
+      },
+      "name": "putDocument-defect",
+      "operation": "putDocument"
+    },
+    {
+      "callId": "53a2182e-9cbd-5fa8-b04f-939862503975",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53a2182e-9cbd-5fa8-b04f-939862503975",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "name": "putDocument-final429",
+      "operation": "putDocument"
+    },
+    {
+      "callId": "53a2182e-9cbd-5fa8-b04f-939862503975",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53a2182e-9cbd-5fa8-b04f-939862503975",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "name": "putDocument-final503",
+      "operation": "putDocument"
+    },
+    {
+      "callId": "53a2182e-9cbd-5fa8-b04f-939862503975",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53a2182e-9cbd-5fa8-b04f-939862503975",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "name": "putDocument-transportFailure",
+      "operation": "putDocument"
+    },
+    {
+      "callId": "7aaf816f-d503-5117-99e1-83e565c04cc1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "name": "projects/sample-project/databases/(default)/documents/events/sample-event"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7aaf816f-d503-5117-99e1-83e565c04cc1",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "projectId": "sample-project"
+      },
+      "name": "deleteDocument-success",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "7aaf816f-d503-5117-99e1-83e565c04cc1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7aaf816f-d503-5117-99e1-83e565c04cc1",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "projectId": "sample-project"
+      },
+      "name": "deleteDocument-providerRejected",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "7aaf816f-d503-5117-99e1-83e565c04cc1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7aaf816f-d503-5117-99e1-83e565c04cc1",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "projectId": ""
+      },
+      "name": "deleteDocument-defect",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "7aaf816f-d503-5117-99e1-83e565c04cc1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7aaf816f-d503-5117-99e1-83e565c04cc1",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "projectId": "sample-project"
+      },
+      "name": "deleteDocument-final429",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "7aaf816f-d503-5117-99e1-83e565c04cc1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7aaf816f-d503-5117-99e1-83e565c04cc1",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "projectId": "sample-project"
+      },
+      "name": "deleteDocument-final503",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "7aaf816f-d503-5117-99e1-83e565c04cc1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7aaf816f-d503-5117-99e1-83e565c04cc1",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "projectId": "sample-project"
+      },
+      "name": "deleteDocument-transportFailure",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000030",
+      "exchanges": [
+        {
+          "body": "[{\"document\":{\"name\":\"projects/sample-project/databases/(default)/documents/events/sample-event\",\"fields\":{\"title\":{\"stringValue\":\"Hello\"}}}}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents:runQuery",
+          "requestBody": {
+            "structuredQuery": {
+              "from": [
+                {
+                  "collectionId": "events"
+                }
+              ],
+              "limit": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "queried",
+        "failureKind": "",
+        "output": {
+          "documents": [
+            {
+              "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+              "name": "projects/sample-project/databases/(default)/documents/events/sample-event"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "sample-project",
+        "structuredQueryJson": "{\"from\":[{\"collectionId\":\"events\"}],\"limit\":2}"
+      },
+      "name": "runDocumentQuery-success",
+      "operation": "runDocumentQuery"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000031",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents:runQuery",
+          "requestBody": {
+            "structuredQuery": {
+              "from": [
+                {
+                  "collectionId": "events"
+                }
+              ],
+              "limit": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "documents": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "sample-project",
+        "structuredQueryJson": "{\"from\":[{\"collectionId\":\"events\"}],\"limit\":2}"
+      },
+      "name": "runDocumentQuery-invalidResponse",
+      "operation": "runDocumentQuery"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000032",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents:runQuery",
+          "requestBody": {
+            "structuredQuery": {
+              "from": [
+                {
+                  "collectionId": "events"
+                }
+              ],
+              "limit": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "documents": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "sample-project",
+        "structuredQueryJson": "{\"from\":[{\"collectionId\":\"events\"}],\"limit\":2}"
+      },
+      "name": "runDocumentQuery-providerRejected",
+      "operation": "runDocumentQuery"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000033",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "documents": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "",
+        "structuredQueryJson": "{\"from\":[{\"collectionId\":\"events\"}],\"limit\":2}"
+      },
+      "name": "runDocumentQuery-defect",
+      "operation": "runDocumentQuery"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000034",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents:runQuery",
+          "requestBody": {
+            "structuredQuery": {
+              "from": [
+                {
+                  "collectionId": "events"
+                }
+              ],
+              "limit": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "sample-project",
+        "structuredQueryJson": "{\"from\":[{\"collectionId\":\"events\"}],\"limit\":2}"
+      },
+      "name": "runDocumentQuery-final429",
+      "operation": "runDocumentQuery"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000035",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents:runQuery",
+          "requestBody": {
+            "structuredQuery": {
+              "from": [
+                {
+                  "collectionId": "events"
+                }
+              ],
+              "limit": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "sample-project",
+        "structuredQueryJson": "{\"from\":[{\"collectionId\":\"events\"}],\"limit\":2}"
+      },
+      "name": "runDocumentQuery-final503",
+      "operation": "runDocumentQuery"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000036",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents:runQuery",
+          "requestBody": {
+            "structuredQuery": {
+              "from": [
+                {
+                  "collectionId": "events"
+                }
+              ],
+              "limit": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "sample-project",
+        "structuredQueryJson": "{\"from\":[{\"collectionId\":\"events\"}],\"limit\":2}"
+      },
+      "name": "runDocumentQuery-transportFailure",
+      "operation": "runDocumentQuery"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000037",
+      "exchanges": [
+        {
+          "body": "{\"collectionIds\":[\"events\"],\"nextPageToken\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents:listCollectionIds",
+          "requestBody": {
+            "pageSize": 2,
+            "pageToken": "next"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "collectionIds": [
+            "events"
+          ],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listRootCollections-success",
+      "operation": "listRootCollections"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000038",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents:listCollectionIds",
+          "requestBody": {
+            "pageSize": 2,
+            "pageToken": "next"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "collectionIds": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listRootCollections-invalidResponse",
+      "operation": "listRootCollections"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000039",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents:listCollectionIds",
+          "requestBody": {
+            "pageSize": 2,
+            "pageToken": "next"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "collectionIds": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listRootCollections-providerRejected",
+      "operation": "listRootCollections"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000040",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "collectionIds": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next",
+        "projectId": ""
+      },
+      "name": "listRootCollections-defect",
+      "operation": "listRootCollections"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000041",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents:listCollectionIds",
+          "requestBody": {
+            "pageSize": 2,
+            "pageToken": "next"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listRootCollections-final429",
+      "operation": "listRootCollections"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000042",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents:listCollectionIds",
+          "requestBody": {
+            "pageSize": 2,
+            "pageToken": "next"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listRootCollections-final503",
+      "operation": "listRootCollections"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000043",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents:listCollectionIds",
+          "requestBody": {
+            "pageSize": 2,
+            "pageToken": "next"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listRootCollections-transportFailure",
+      "operation": "listRootCollections"
+    },
+    {
+      "attempts": 3,
+      "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "documentId": [
+              "sample-event"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "documentId": [
+              "sample-event"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "documentId": [
+              "sample-event"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"name\":\"projects/sample-project/databases/(default)/documents/events/sample-event\",\"fields\":{\"title\":{\"stringValue\":\"Other\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "name": ""
+        },
+        "requestCount": 7,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 4,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createDocument-conflictReadBackFailureAndMismatch",
+      "operation": "createDocument"
+    },
+    {
+      "attempts": 2,
+      "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "documentId": [
+              "sample-event"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "title": {
+                "stringValue": "Hello"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"name\":\"projects/sample-project/databases/(default)/documents/events/sample-event\",\"fields\":{\"title\":{\"stringValue\":\"Hello\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+          "name": "projects/sample-project/databases/(default)/documents/events/sample-event"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+      "input": {
+        "collectionId": "events",
+        "documentId": "sample-event",
+        "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+        "projectId": "sample-project"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createDocument-readBackConfirmed",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000100",
+      "exchanges": [
+        {
+          "body": "{\"documents\":[{\"name\":\"projects/sample-project/databases/(default)/documents/events/sample-event\",\"fields\":{\"title\":{\"stringValue\":\"Hello\"}}}],\"nextPageToken\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "documents": [
+            {
+              "fieldsJson": "{\"title\":{\"stringValue\":\"Hello\"}}",
+              "name": "projects/sample-project/databases/(default)/documents/events/sample-event"
+            }
+          ],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "pageSize": 2,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listDocumentDetails-success",
+      "operation": "listDocumentDetails"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000101",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "documents": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "pageSize": 2,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listDocumentDetails-providerRejected",
+      "operation": "listDocumentDetails"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000102",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "documents": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "pageSize": 2,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listDocumentDetails-invalidResponse",
+      "operation": "listDocumentDetails"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000103",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "documents": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "pageSize": 2,
+        "pageToken": "next",
+        "projectId": ""
+      },
+      "name": "listDocumentDetails-defect",
+      "operation": "listDocumentDetails"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000104",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "pageSize": 2,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listDocumentDetails-final429",
+      "operation": "listDocumentDetails"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000105",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "pageSize": 2,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listDocumentDetails-final503",
+      "operation": "listDocumentDetails"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000106",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "events",
+        "pageSize": 2,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listDocumentDetails-transportFailure",
+      "operation": "listDocumentDetails"
     }
   ],
   "schemaVersion": 1

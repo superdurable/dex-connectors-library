@@ -43,11 +43,39 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListDocumentDetails() sdkgo.Query[ListDocumentsInput, DocumentDetailsPage]
+	GetDocument() sdkgo.Query[GetDocumentInput, FirestoreDocument]
+	CreateDocument() sdkgo.Mutation[WriteDocumentInput, FirestoreDocument]
+	PutDocument() sdkgo.Mutation[WriteDocumentInput, FirestoreDocument]
+	DeleteDocument() sdkgo.Mutation[GetDocumentInput, FirestoreDocument]
+	RunDocumentQuery() sdkgo.Query[RunDocumentQueryInput, QueriedDocuments]
+	ListRootCollections() sdkgo.Query[ListRootCollectionsInput, CollectionsPage]
 	ListDocuments() sdkgo.Query[ListDocumentsInput, DocumentsPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListDocumentDetails() sdkgo.Query[ListDocumentsInput, DocumentDetailsPage] {
+	return operations.client.ListDocumentDetails()
+}
+func (operations clientOperations) GetDocument() sdkgo.Query[GetDocumentInput, FirestoreDocument] {
+	return operations.client.GetDocument()
+}
+func (operations clientOperations) CreateDocument() sdkgo.Mutation[WriteDocumentInput, FirestoreDocument] {
+	return operations.client.CreateDocument()
+}
+func (operations clientOperations) PutDocument() sdkgo.Mutation[WriteDocumentInput, FirestoreDocument] {
+	return operations.client.PutDocument()
+}
+func (operations clientOperations) DeleteDocument() sdkgo.Mutation[GetDocumentInput, FirestoreDocument] {
+	return operations.client.DeleteDocument()
+}
+func (operations clientOperations) RunDocumentQuery() sdkgo.Query[RunDocumentQueryInput, QueriedDocuments] {
+	return operations.client.RunDocumentQuery()
+}
+func (operations clientOperations) ListRootCollections() sdkgo.Query[ListRootCollectionsInput, CollectionsPage] {
+	return operations.client.ListRootCollections()
+}
 func (operations clientOperations) ListDocuments() sdkgo.Query[ListDocumentsInput, DocumentsPage] {
 	return operations.client.ListDocuments()
 }
@@ -250,6 +278,516 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const ListDocumentDetailsBranchListed sdkgo.BranchID = "listed"
+const ListDocumentDetailsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListDocumentDetailsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListDocumentDetailsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListDocumentDetailsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listDocumentDetails"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListDocumentDetailsBranchListed, Description: "Firestore returned a document content page."},
+		{ID: ListDocumentDetailsBranchProviderRejected, Description: "Firestore rejected the listing.", Optional: true},
+		{ID: ListDocumentDetailsBranchInvalidResponse, Description: "Firestore returned invalid JSON.", Optional: true},
+		{ID: ListDocumentDetailsBranchDefect, Description: "The page input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListDocumentDetailsResult = sdkgo.QueryResult[DocumentDetailsPage]
+
+type ListDocumentDetailsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=google-firestore"`
+	operationID                    struct{}                                               `connector:"operationId=listDocumentDetails"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListDocumentsInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListDocumentDetailsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListDocumentDetailsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListDocumentDetailsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListDocumentDetailsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DocumentDetailsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewListDocumentDetailsStep[IN any](config ListDocumentDetailsStepConfig[IN]) sdkgo.QueryStep[IN, ListDocumentsInput, DocumentDetailsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-firestore connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListDocumentsInput, DocumentDetailsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListDocumentDetails(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListDocumentDetailsResult] {
+			branches := make([]sdkgo.BranchTarget[ListDocumentDetailsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListDocumentDetailsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListDocumentDetailsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListDocumentDetailsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListDocumentDetailsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetDocumentBranchFound sdkgo.BranchID = "found"
+const GetDocumentBranchNotFound sdkgo.BranchID = "notFound"
+const GetDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetDocumentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetDocumentDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetDocumentBranchFound, Description: "Firestore returned the document."},
+		{ID: GetDocumentBranchNotFound, Description: "The document does not exist.", Optional: true},
+		{ID: GetDocumentBranchProviderRejected, Description: "Firestore rejected the read.", Optional: true},
+		{ID: GetDocumentBranchInvalidResponse, Description: "Firestore returned invalid JSON.", Optional: true},
+		{ID: GetDocumentBranchDefect, Description: "The document identity or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetDocumentResult = sdkgo.QueryResult[FirestoreDocument]
+
+type GetDocumentStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=google-firestore"`
+	operationID                    struct{}                                             `connector:"operationId=getDocument"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetDocumentInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetDocumentResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetDocumentResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetDocumentResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetDocumentResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetDocumentResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FirestoreDocument]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewGetDocumentStep[IN any](config GetDocumentStepConfig[IN]) sdkgo.QueryStep[IN, GetDocumentInput, FirestoreDocument] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-firestore connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetDocumentInput, FirestoreDocument]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[GetDocumentResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetDocumentBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetDocumentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetDocumentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetDocumentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateDocumentBranchCreated sdkgo.BranchID = "created"
+const CreateDocumentBranchAlreadyExists sdkgo.BranchID = "alreadyExists"
+const CreateDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateDocumentBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateDocumentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateDocumentBranchCreated, Description: "Firestore created the document."},
+		{ID: CreateDocumentBranchAlreadyExists, Description: "The document ID is already in use.", Optional: true},
+		{ID: CreateDocumentBranchProviderRejected, Description: "Firestore rejected the create.", Optional: true},
+		{ID: CreateDocumentBranchUncertain, Description: "A prior create could not be confirmed after the send cap.", Optional: true},
+		{ID: CreateDocumentBranchDefect, Description: "The document input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateDocumentResult = sdkgo.MutationResult[FirestoreDocument]
+
+type CreateDocumentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=google-firestore"`
+	operationID                       struct{}                                                `connector:"operationId=createDocument"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) WriteDocumentInput                             `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateDocumentResult]                      `connector:"branch=created"`
+	AlreadyExists                     sdkgo.Target[CreateDocumentResult]                      `connector:"branch=alreadyExists,optional"`
+	ProviderRejected                  sdkgo.Target[CreateDocumentResult]                      `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateDocumentResult]                      `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateDocumentResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[FirestoreDocument]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateDocumentStep[IN any](config CreateDocumentStepConfig[IN]) sdkgo.MutationStep[IN, WriteDocumentInput, FirestoreDocument] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-firestore connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, WriteDocumentInput, FirestoreDocument]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[CreateDocumentResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateDocumentBranchCreated))
+			}
+			if config.AlreadyExists.HasStep() {
+				branches = append(branches, config.AlreadyExists.BranchTarget(CreateDocumentBranchAlreadyExists))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateDocumentBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateDocumentBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const PutDocumentBranchWritten sdkgo.BranchID = "written"
+const PutDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PutDocumentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const PutDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PutDocumentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "putDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PutDocumentBranchWritten, Description: "Firestore replaced or created the document."},
+		{ID: PutDocumentBranchProviderRejected, Description: "Firestore rejected the write.", Optional: true},
+		{ID: PutDocumentBranchInvalidResponse, Description: "Firestore returned invalid JSON.", Optional: true},
+		{ID: PutDocumentBranchDefect, Description: "The document input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type PutDocumentResult = sdkgo.MutationResult[FirestoreDocument]
+
+type PutDocumentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=google-firestore"`
+	operationID                       struct{}                                                `connector:"operationId=putDocument"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) WriteDocumentInput                             `connector:"mapToOperationInput"`
+	Written                           sdkgo.Target[PutDocumentResult]                         `connector:"branch=written"`
+	ProviderRejected                  sdkgo.Target[PutDocumentResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[PutDocumentResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[PutDocumentResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[FirestoreDocument]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewPutDocumentStep[IN any](config PutDocumentStepConfig[IN]) sdkgo.MutationStep[IN, WriteDocumentInput, FirestoreDocument] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-firestore connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, WriteDocumentInput, FirestoreDocument]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PutDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PutDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[PutDocumentResult], 0, 4)
+			if config.Written.HasStep() {
+				branches = append(branches, config.Written.BranchTarget(PutDocumentBranchWritten))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PutDocumentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(PutDocumentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PutDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteDocumentBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteDocumentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteDocumentBranchDeleted, Description: "The document is absent."},
+		{ID: DeleteDocumentBranchProviderRejected, Description: "Firestore rejected the deletion.", Optional: true},
+		{ID: DeleteDocumentBranchDefect, Description: "The document identity or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteDocumentResult = sdkgo.MutationResult[FirestoreDocument]
+
+type DeleteDocumentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=google-firestore"`
+	operationID                       struct{}                                                `connector:"operationId=deleteDocument"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetDocumentInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteDocumentResult]                      `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteDocumentResult]                      `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteDocumentResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[FirestoreDocument]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteDocumentStep[IN any](config DeleteDocumentStepConfig[IN]) sdkgo.MutationStep[IN, GetDocumentInput, FirestoreDocument] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-firestore connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetDocumentInput, FirestoreDocument]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteDocumentResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteDocumentBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteDocumentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RunDocumentQueryBranchQueried sdkgo.BranchID = "queried"
+const RunDocumentQueryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RunDocumentQueryBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const RunDocumentQueryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RunDocumentQueryDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "runDocumentQuery"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RunDocumentQueryBranchQueried, Description: "Firestore returned query results."},
+		{ID: RunDocumentQueryBranchProviderRejected, Description: "Firestore rejected the query.", Optional: true},
+		{ID: RunDocumentQueryBranchInvalidResponse, Description: "Firestore returned invalid JSON.", Optional: true},
+		{ID: RunDocumentQueryBranchDefect, Description: "The query input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type RunDocumentQueryResult = sdkgo.QueryResult[QueriedDocuments]
+
+type RunDocumentQueryStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=google-firestore"`
+	operationID                    struct{}                                            `connector:"operationId=runDocumentQuery"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) RunDocumentQueryInput                      `connector:"mapToOperationInput"`
+	Queried                        sdkgo.Target[RunDocumentQueryResult]                `connector:"branch=queried"`
+	ProviderRejected               sdkgo.Target[RunDocumentQueryResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[RunDocumentQueryResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[RunDocumentQueryResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[QueriedDocuments]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewRunDocumentQueryStep[IN any](config RunDocumentQueryStepConfig[IN]) sdkgo.QueryStep[IN, RunDocumentQueryInput, QueriedDocuments] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-firestore connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, RunDocumentQueryInput, QueriedDocuments]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RunDocumentQuery(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RunDocumentQueryResult] {
+			branches := make([]sdkgo.BranchTarget[RunDocumentQueryResult], 0, 4)
+			if config.Queried.HasStep() {
+				branches = append(branches, config.Queried.BranchTarget(RunDocumentQueryBranchQueried))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RunDocumentQueryBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RunDocumentQueryBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RunDocumentQueryBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListRootCollectionsBranchListed sdkgo.BranchID = "listed"
+const ListRootCollectionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListRootCollectionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListRootCollectionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListRootCollectionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listRootCollections"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListRootCollectionsBranchListed, Description: "Firestore returned collection IDs."},
+		{ID: ListRootCollectionsBranchProviderRejected, Description: "Firestore rejected the listing.", Optional: true},
+		{ID: ListRootCollectionsBranchInvalidResponse, Description: "Firestore returned invalid JSON.", Optional: true},
+		{ID: ListRootCollectionsBranchDefect, Description: "The project input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListRootCollectionsResult = sdkgo.QueryResult[CollectionsPage]
+
+type ListRootCollectionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=google-firestore"`
+	operationID                    struct{}                                           `connector:"operationId=listRootCollections"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListRootCollectionsInput                  `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListRootCollectionsResult]            `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListRootCollectionsResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListRootCollectionsResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListRootCollectionsResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CollectionsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListRootCollectionsStep[IN any](config ListRootCollectionsStepConfig[IN]) sdkgo.QueryStep[IN, ListRootCollectionsInput, CollectionsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-firestore connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListRootCollectionsInput, CollectionsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListRootCollections(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListRootCollectionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListRootCollectionsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListRootCollectionsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListRootCollectionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListRootCollectionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListRootCollectionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListDocumentsBranchListed sdkgo.BranchID = "listed"

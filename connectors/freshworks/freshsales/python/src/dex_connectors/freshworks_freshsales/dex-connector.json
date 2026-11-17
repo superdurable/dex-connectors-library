@@ -1,6 +1,6 @@
 {
   "connectorId": "freshsales",
-  "releaseTag": "connectors/freshworks/freshsales/go/v0.1.0",
+  "releaseTag": "connectors/freshworks/freshsales/go/v0.2.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-freshworks-freshsales",
