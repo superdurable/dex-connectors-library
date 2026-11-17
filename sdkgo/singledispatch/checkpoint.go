@@ -41,8 +41,7 @@ var stepCheckpoints = struct {
 	byContext map[any]*stepCheckpoint
 }{byContext: map[any]*stepCheckpoint{}}
 
-// stepCheckpointFor returns the checkpoint shared by every Fence of ctx's current attempt.
-// The entry is released when ctx ends or a later attempt of the same context replaces it.
+// stepCheckpointFor is released when ctx ends or a later attempt replaces it.
 func stepCheckpointFor(ctx dex.Context) *stepCheckpoint {
 	key := stepCheckpointKey(ctx)
 	attempt := ctx.Attempt()
@@ -57,8 +56,7 @@ func stepCheckpointFor(ctx dex.Context) *stepCheckpoint {
 	return checkpoint
 }
 
-// record persists every known Marker with marker replacing its Call ID's entry.
-// The lock spans the heartbeat so the last persisted value holds every committed entry.
+// record holds the lock across the heartbeat so the last persisted value has every committed entry.
 func (checkpoint *stepCheckpoint) record(ctx dex.Context, marker Marker) error {
 	checkpoint.mu.Lock()
 	defer checkpoint.mu.Unlock()
@@ -97,9 +95,7 @@ func previousAttemptMarkers(ctx dex.Context) map[sdkgo.CallID]Marker {
 	return markersFromHeartbeat(heartbeat)
 }
 
-// markersFromHeartbeat reads the map format and drops every entry it cannot read, including
-// a map entry whose key differs from its callId. Any other value, such as a single Marker
-// from an earlier release, yields no entries.
+// markersFromHeartbeat drops unreadable or mis-keyed entries; any non-map value, legacy Markers included, yields none.
 func markersFromHeartbeat(heartbeat any) map[sdkgo.CallID]Marker {
 	markers := map[sdkgo.CallID]Marker{}
 	fields, _ := heartbeat.(map[string]any)
@@ -112,8 +108,7 @@ func markersFromHeartbeat(heartbeat any) map[sdkgo.CallID]Marker {
 	return markers
 }
 
-// markerFromValue decodes a JSON object with only Marker fields, as the Python and
-// TypeScript decoders do. It does not check whether the send count is possible.
+// markerFromValue is as strict as the Python and TypeScript decoders; Decide checks send counts.
 func markerFromValue(value any) (Marker, bool) {
 	fields, isObject := value.(map[string]any)
 	if !isObject {
