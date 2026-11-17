@@ -45,6 +45,10 @@ type Mock struct {
 	createProduct     *connectormock.Mutation[keap.CreateProductInput, keap.ProductProfile]
 	updateProduct     *connectormock.Mutation[keap.UpdateProductInput, keap.ProductProfile]
 	deleteProduct     *connectormock.Mutation[keap.ProductIDInput, keap.ProductDeletion]
+	listEmails        *connectormock.Query[keap.ListEmailsInput, keap.EmailsPage]
+	createEmailRecord *connectormock.Mutation[keap.CreateEmailRecordInput, keap.EmailRecord]
+	sendEmail         *connectormock.Mutation[keap.SendEmailInput, keap.EmailSendReceipt]
+	deleteEmailRecord *connectormock.Mutation[keap.EmailRecordIDInput, keap.EmailRecordDeletion]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -79,6 +83,10 @@ func New(t testing.TB, connectionName string) *Mock {
 		createProduct:     connectormock.NewMutation[keap.CreateProductInput, keap.ProductProfile](t, keap.CreateProductDefinition),
 		updateProduct:     connectormock.NewMutation[keap.UpdateProductInput, keap.ProductProfile](t, keap.UpdateProductDefinition),
 		deleteProduct:     connectormock.NewMutation[keap.ProductIDInput, keap.ProductDeletion](t, keap.DeleteProductDefinition),
+		listEmails:        connectormock.NewQuery[keap.ListEmailsInput, keap.EmailsPage](t, keap.ListEmailsDefinition),
+		createEmailRecord: connectormock.NewMutation[keap.CreateEmailRecordInput, keap.EmailRecord](t, keap.CreateEmailRecordDefinition),
+		sendEmail:         connectormock.NewMutation[keap.SendEmailInput, keap.EmailSendReceipt](t, keap.SendEmailDefinition),
+		deleteEmailRecord: connectormock.NewMutation[keap.EmailRecordIDInput, keap.EmailRecordDeletion](t, keap.DeleteEmailRecordDefinition),
 	}
 	mock.getContact.Default(GetContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
@@ -107,6 +115,10 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createProduct.Default(CreateProductDefault())
 	mock.updateProduct.Default(UpdateProductDefault())
 	mock.deleteProduct.Default(DeleteProductDefault())
+	mock.listEmails.Default(ListEmailsDefault())
+	mock.createEmailRecord.Default(CreateEmailRecordDefault())
+	mock.sendEmail.Default(SendEmailDefault())
+	mock.deleteEmailRecord.Default(DeleteEmailRecordDefault())
 	connection, err := keap.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "keap", Name: connectionName})
 	if err != nil {
 		t.Fatalf("keap mock connection: %v", err)
@@ -253,6 +265,26 @@ func (mock *Mock) DeleteProduct() *connectormock.Mutation[keap.ProductIDInput, k
 	return mock.deleteProduct
 }
 
+// ListEmails returns the listEmails script.
+func (mock *Mock) ListEmails() *connectormock.Query[keap.ListEmailsInput, keap.EmailsPage] {
+	return mock.listEmails
+}
+
+// CreateEmailRecord returns the createEmailRecord script.
+func (mock *Mock) CreateEmailRecord() *connectormock.Mutation[keap.CreateEmailRecordInput, keap.EmailRecord] {
+	return mock.createEmailRecord
+}
+
+// SendEmail returns the sendEmail script.
+func (mock *Mock) SendEmail() *connectormock.Mutation[keap.SendEmailInput, keap.EmailSendReceipt] {
+	return mock.sendEmail
+}
+
+// DeleteEmailRecord returns the deleteEmailRecord script.
+func (mock *Mock) DeleteEmailRecord() *connectormock.Mutation[keap.EmailRecordIDInput, keap.EmailRecordDeletion] {
+	return mock.deleteEmailRecord
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetContact() sdkgo.Query[keap.GetContactInput, keap.ContactProfile] {
@@ -335,6 +367,18 @@ func (operations mockOperations) UpdateProduct() sdkgo.Mutation[keap.UpdateProdu
 }
 func (operations mockOperations) DeleteProduct() sdkgo.Mutation[keap.ProductIDInput, keap.ProductDeletion] {
 	return operations.mock.deleteProduct
+}
+func (operations mockOperations) ListEmails() sdkgo.Query[keap.ListEmailsInput, keap.EmailsPage] {
+	return operations.mock.listEmails
+}
+func (operations mockOperations) CreateEmailRecord() sdkgo.Mutation[keap.CreateEmailRecordInput, keap.EmailRecord] {
+	return operations.mock.createEmailRecord
+}
+func (operations mockOperations) SendEmail() sdkgo.Mutation[keap.SendEmailInput, keap.EmailSendReceipt] {
+	return operations.mock.sendEmail
+}
+func (operations mockOperations) DeleteEmailRecord() sdkgo.Mutation[keap.EmailRecordIDInput, keap.EmailRecordDeletion] {
+	return operations.mock.deleteEmailRecord
 }
 
 // GetContactFound selects the found branch: Keap returned the contact.
@@ -1379,4 +1423,149 @@ func DeleteProductDeletedDefault() connectormock.Case[keap.ProductDeletion] {
 // DeleteProductDefault is the manifest default, deletedDefault, which New installs.
 func DeleteProductDefault() connectormock.Case[keap.ProductDeletion] {
 	return DeleteProductDeletedDefault()
+}
+
+// ListEmailsListed selects the listed branch: Keap returned an email page.
+func ListEmailsListed(value keap.EmailsPage, failure *sdkgo.Failure) connectormock.Case[keap.EmailsPage] {
+	return connectormock.Branch(keap.ListEmailsBranchListed, value, failure)
+}
+
+// ListEmailsProviderRejected selects the providerRejected branch: Keap rejected the list request.
+func ListEmailsProviderRejected(value keap.EmailsPage, failure *sdkgo.Failure) connectormock.Case[keap.EmailsPage] {
+	return connectormock.Branch(keap.ListEmailsBranchProviderRejected, value, failure)
+}
+
+// ListEmailsInvalidResponse selects the invalidResponse branch: Keap returned invalid email list JSON.
+func ListEmailsInvalidResponse(value keap.EmailsPage, failure *sdkgo.Failure) connectormock.Case[keap.EmailsPage] {
+	return connectormock.Branch(keap.ListEmailsBranchInvalidResponse, value, failure)
+}
+
+// ListEmailsDefect selects the defect branch: Input or credentials are invalid.
+func ListEmailsDefect(value keap.EmailsPage, failure *sdkgo.Failure) connectormock.Case[keap.EmailsPage] {
+	return connectormock.Branch(keap.ListEmailsBranchDefect, value, failure)
+}
+
+// ListEmailsRetry asks Dex to retry the listEmails Step, after the delay when it is positive.
+func ListEmailsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.EmailsPage] {
+	return connectormock.Retry[keap.EmailsPage](failure, after)
+}
+
+// ListEmailsListedDefault is the manifest mock listedDefault: A sample sent-email page is returned.
+func ListEmailsListedDefault() connectormock.Case[keap.EmailsPage] {
+	value := connectormock.MustDecodeOutput[keap.EmailsPage](`{"emails":[{"id":"801","subject":"Example email","contactId":"123","sentToAddress":"contact@example.com"}],"nextPageToken":""}`)
+	return connectormock.Branch(keap.ListEmailsBranchListed, value, nil)
+}
+
+// ListEmailsDefault is the manifest default, listedDefault, which New installs.
+func ListEmailsDefault() connectormock.Case[keap.EmailsPage] { return ListEmailsListedDefault() }
+
+// CreateEmailRecordCreated selects the created branch: Keap stored the sent-email record.
+func CreateEmailRecordCreated(value keap.EmailRecord, failure *sdkgo.Failure) connectormock.Case[keap.EmailRecord] {
+	return connectormock.Branch(keap.CreateEmailRecordBranchCreated, value, failure)
+}
+
+// CreateEmailRecordProviderRejected selects the providerRejected branch: Keap rejected the record.
+func CreateEmailRecordProviderRejected(value keap.EmailRecord, failure *sdkgo.Failure) connectormock.Case[keap.EmailRecord] {
+	return connectormock.Branch(keap.CreateEmailRecordBranchProviderRejected, value, failure)
+}
+
+// CreateEmailRecordUncertain returns an uncertain createEmailRecord outcome.
+func CreateEmailRecordUncertain(value keap.EmailRecord, failure sdkgo.Failure) connectormock.Case[keap.EmailRecord] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateEmailRecordDefect selects the defect branch: Input or credentials are invalid.
+func CreateEmailRecordDefect(value keap.EmailRecord, failure *sdkgo.Failure) connectormock.Case[keap.EmailRecord] {
+	return connectormock.Branch(keap.CreateEmailRecordBranchDefect, value, failure)
+}
+
+// CreateEmailRecordRetry asks Dex to retry the createEmailRecord Step, after the delay when it is positive.
+func CreateEmailRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.EmailRecord] {
+	return connectormock.Retry[keap.EmailRecord](failure, after)
+}
+
+// CreateEmailRecordCreatedDefault is the manifest mock createdDefault: A sample sent-email record is created.
+func CreateEmailRecordCreatedDefault() connectormock.Case[keap.EmailRecord] {
+	value := connectormock.MustDecodeOutput[keap.EmailRecord](`{"id":"801","subject":"Example email","contactId":"123","sentToAddress":"contact@example.com"}`)
+	return connectormock.Branch(keap.CreateEmailRecordBranchCreated, value, nil)
+}
+
+// CreateEmailRecordDefault is the manifest default, createdDefault, which New installs.
+func CreateEmailRecordDefault() connectormock.Case[keap.EmailRecord] {
+	return CreateEmailRecordCreatedDefault()
+}
+
+// SendEmailSent selects the sent branch: Keap accepted the email send.
+func SendEmailSent(value keap.EmailSendReceipt, failure *sdkgo.Failure) connectormock.Case[keap.EmailSendReceipt] {
+	return connectormock.Branch(keap.SendEmailBranchSent, value, failure)
+}
+
+// SendEmailProviderRejected selects the providerRejected branch: Keap rejected the send.
+func SendEmailProviderRejected(value keap.EmailSendReceipt, failure *sdkgo.Failure) connectormock.Case[keap.EmailSendReceipt] {
+	return connectormock.Branch(keap.SendEmailBranchProviderRejected, value, failure)
+}
+
+// SendEmailUncertain returns an uncertain sendEmail outcome.
+func SendEmailUncertain(value keap.EmailSendReceipt, failure sdkgo.Failure) connectormock.Case[keap.EmailSendReceipt] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendEmailDefect selects the defect branch: Input or credentials are invalid.
+func SendEmailDefect(value keap.EmailSendReceipt, failure *sdkgo.Failure) connectormock.Case[keap.EmailSendReceipt] {
+	return connectormock.Branch(keap.SendEmailBranchDefect, value, failure)
+}
+
+// SendEmailRetry asks Dex to retry the sendEmail Step, after the delay when it is positive.
+func SendEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.EmailSendReceipt] {
+	return connectormock.Retry[keap.EmailSendReceipt](failure, after)
+}
+
+// SendEmailSentDefault is the manifest mock sentDefault: A sample email send is accepted.
+func SendEmailSentDefault() connectormock.Case[keap.EmailSendReceipt] {
+	value := connectormock.MustDecodeOutput[keap.EmailSendReceipt](`{"contactId":"123","accepted":true}`)
+	return connectormock.Branch(keap.SendEmailBranchSent, value, nil)
+}
+
+// SendEmailDefault is the manifest default, sentDefault, which New installs.
+func SendEmailDefault() connectormock.Case[keap.EmailSendReceipt] { return SendEmailSentDefault() }
+
+// DeleteEmailRecordDeleted selects the deleted branch: Keap accepted the record deletion.
+func DeleteEmailRecordDeleted(value keap.EmailRecordDeletion, failure *sdkgo.Failure) connectormock.Case[keap.EmailRecordDeletion] {
+	return connectormock.Branch(keap.DeleteEmailRecordBranchDeleted, value, failure)
+}
+
+// DeleteEmailRecordNotFound selects the notFound branch: Keap did not find the record.
+func DeleteEmailRecordNotFound(value keap.EmailRecordDeletion, failure *sdkgo.Failure) connectormock.Case[keap.EmailRecordDeletion] {
+	return connectormock.Branch(keap.DeleteEmailRecordBranchNotFound, value, failure)
+}
+
+// DeleteEmailRecordProviderRejected selects the providerRejected branch: Keap rejected the deletion.
+func DeleteEmailRecordProviderRejected(value keap.EmailRecordDeletion, failure *sdkgo.Failure) connectormock.Case[keap.EmailRecordDeletion] {
+	return connectormock.Branch(keap.DeleteEmailRecordBranchProviderRejected, value, failure)
+}
+
+// DeleteEmailRecordInvalidResponse selects the invalidResponse branch: Keap returned invalid deletion JSON.
+func DeleteEmailRecordInvalidResponse(value keap.EmailRecordDeletion, failure *sdkgo.Failure) connectormock.Case[keap.EmailRecordDeletion] {
+	return connectormock.Branch(keap.DeleteEmailRecordBranchInvalidResponse, value, failure)
+}
+
+// DeleteEmailRecordDefect selects the defect branch: Input or credentials are invalid.
+func DeleteEmailRecordDefect(value keap.EmailRecordDeletion, failure *sdkgo.Failure) connectormock.Case[keap.EmailRecordDeletion] {
+	return connectormock.Branch(keap.DeleteEmailRecordBranchDefect, value, failure)
+}
+
+// DeleteEmailRecordRetry asks Dex to retry the deleteEmailRecord Step, after the delay when it is positive.
+func DeleteEmailRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.EmailRecordDeletion] {
+	return connectormock.Retry[keap.EmailRecordDeletion](failure, after)
+}
+
+// DeleteEmailRecordDeletedDefault is the manifest mock deletedDefault: A sample sent-email record is deleted.
+func DeleteEmailRecordDeletedDefault() connectormock.Case[keap.EmailRecordDeletion] {
+	value := connectormock.MustDecodeOutput[keap.EmailRecordDeletion](`{"emailId":"801","deleted":true}`)
+	return connectormock.Branch(keap.DeleteEmailRecordBranchDeleted, value, nil)
+}
+
+// DeleteEmailRecordDefault is the manifest default, deletedDefault, which New installs.
+func DeleteEmailRecordDefault() connectormock.Case[keap.EmailRecordDeletion] {
+	return DeleteEmailRecordDeletedDefault()
 }

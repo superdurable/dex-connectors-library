@@ -10147,6 +10147,1635 @@
       ],
       "name": "createProduct-uncertain",
       "operation": "createProduct"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{\"emails\":[{\"id\":\"801\",\"subject\":\"Example email\",\"contact_id\":\"123\",\"sent_to_address\":\"contact@example.com\"}],\"next_page_token\":\"next-emails\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/emails",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "emails": [
+            {
+              "contactId": "123",
+              "id": "801",
+              "sentToAddress": "contact@example.com",
+              "subject": "Example email"
+            }
+          ],
+          "nextPageToken": "next-emails"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listEmails-happy",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/emails",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "emails": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listEmails-rejected",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{\"emails\":[{\"id\":\"801\",\"subject\":\"Example email\",\"contact_id\":\"123\",\"sent_to_address\":\"contact@example.com\"}],\"next_page_token\":\"next-emails\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/emails",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "emails": [
+            {
+              "contactId": "123",
+              "id": "801",
+              "sentToAddress": "contact@example.com",
+              "subject": "Example email"
+            }
+          ],
+          "nextPageToken": "next-emails"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listEmails-invalid",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/emails",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listEmails-rateLimit",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/emails",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listEmails-unavailable",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/emails",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listEmails-serverFailure",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/emails",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listEmails-transportFailure",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emails": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 101
+      },
+      "name": "listEmails-defect",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"801\",\"subject\":\"Example email\",\"contact_id\":\"123\",\"sent_to_address\":\"contact@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "123",
+          "id": "801",
+          "sentToAddress": "contact@example.com",
+          "subject": "Example email"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "input": {
+        "contactId": "123",
+        "sentToAddress": "contact@example.com",
+        "subject": "Example email"
+      },
+      "name": "createEmailRecord-happy",
+      "operation": "createEmailRecord"
+    },
+    {
+      "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": true,
+          "contactId": "123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "input": {
+        "contactId": "123",
+        "plainContent": "Hello from Dex.",
+        "subject": "Example email",
+        "userId": "321"
+      },
+      "name": "sendEmail-happy",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "",
+          "id": "",
+          "sentToAddress": "",
+          "subject": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "input": {
+        "contactId": "123",
+        "sentToAddress": "contact@example.com",
+        "subject": "Example email"
+      },
+      "name": "createEmailRecord-rejected",
+      "operation": "createEmailRecord"
+    },
+    {
+      "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false,
+          "contactId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "input": {
+        "contactId": "123",
+        "plainContent": "Hello from Dex.",
+        "subject": "Example email",
+        "userId": "321"
+      },
+      "name": "sendEmail-rejected",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "input": {
+        "contactId": "123",
+        "sentToAddress": "contact@example.com",
+        "subject": "Example email"
+      },
+      "name": "createEmailRecord-rateLimit",
+      "operation": "createEmailRecord"
+    },
+    {
+      "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "input": {
+        "contactId": "123",
+        "plainContent": "Hello from Dex.",
+        "subject": "Example email",
+        "userId": "321"
+      },
+      "name": "sendEmail-rateLimit",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "input": {
+        "contactId": "123",
+        "sentToAddress": "contact@example.com",
+        "subject": "Example email"
+      },
+      "name": "createEmailRecord-unavailable",
+      "operation": "createEmailRecord"
+    },
+    {
+      "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "input": {
+        "contactId": "123",
+        "plainContent": "Hello from Dex.",
+        "subject": "Example email",
+        "userId": "321"
+      },
+      "name": "sendEmail-unavailable",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "input": {
+        "contactId": "123",
+        "sentToAddress": "contact@example.com",
+        "subject": "Example email"
+      },
+      "name": "createEmailRecord-serverFailure",
+      "operation": "createEmailRecord"
+    },
+    {
+      "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "input": {
+        "contactId": "123",
+        "plainContent": "Hello from Dex.",
+        "subject": "Example email",
+        "userId": "321"
+      },
+      "name": "sendEmail-serverFailure",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "input": {
+        "contactId": "123",
+        "sentToAddress": "contact@example.com",
+        "subject": "Example email"
+      },
+      "name": "createEmailRecord-transportFailure",
+      "operation": "createEmailRecord"
+    },
+    {
+      "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "input": {
+        "contactId": "123",
+        "plainContent": "Hello from Dex.",
+        "subject": "Example email",
+        "userId": "321"
+      },
+      "name": "sendEmail-transportFailure",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": "",
+          "id": "",
+          "sentToAddress": "",
+          "subject": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "input": {
+        "contactId": "bad id",
+        "sentToAddress": "contact@example.com",
+        "subject": "Example email"
+      },
+      "name": "createEmailRecord-defect",
+      "operation": "createEmailRecord"
+    },
+    {
+      "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false,
+          "contactId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "input": {
+        "contactId": "bad id",
+        "plainContent": "Hello from Dex.",
+        "subject": "Example email",
+        "userId": "321"
+      },
+      "name": "sendEmail-defect",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/emails/801",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "emailId": "801"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "input": {
+        "emailId": "801"
+      },
+      "name": "deleteEmailRecord-happy",
+      "operation": "deleteEmailRecord"
+    },
+    {
+      "callId": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/emails/801",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "emailId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "input": {
+        "emailId": "801"
+      },
+      "name": "deleteEmailRecord-rejected",
+      "operation": "deleteEmailRecord"
+    },
+    {
+      "callId": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "exchanges": [
+        {
+          "body": "invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/emails/801",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "emailId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "input": {
+        "emailId": "801"
+      },
+      "name": "deleteEmailRecord-invalid",
+      "operation": "deleteEmailRecord"
+    },
+    {
+      "callId": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/emails/801",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "emailId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "input": {
+        "emailId": "801"
+      },
+      "name": "deleteEmailRecord-notFound",
+      "operation": "deleteEmailRecord"
+    },
+    {
+      "callId": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/emails/801",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "input": {
+        "emailId": "801"
+      },
+      "name": "deleteEmailRecord-rateLimit",
+      "operation": "deleteEmailRecord"
+    },
+    {
+      "callId": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/emails/801",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "input": {
+        "emailId": "801"
+      },
+      "name": "deleteEmailRecord-unavailable",
+      "operation": "deleteEmailRecord"
+    },
+    {
+      "callId": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/emails/801",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "input": {
+        "emailId": "801"
+      },
+      "name": "deleteEmailRecord-serverFailure",
+      "operation": "deleteEmailRecord"
+    },
+    {
+      "callId": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/emails/801",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "input": {
+        "emailId": "801"
+      },
+      "name": "deleteEmailRecord-transportFailure",
+      "operation": "deleteEmailRecord"
+    },
+    {
+      "callId": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "emailId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
+      "input": {
+        "emailId": "bad id"
+      },
+      "name": "deleteEmailRecord-defect",
+      "operation": "deleteEmailRecord"
+    },
+    {
+      "attempts": 3,
+      "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "",
+          "id": "",
+          "sentToAddress": "",
+          "subject": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "input": {
+        "contactId": "123",
+        "sentToAddress": "contact@example.com",
+        "subject": "Example email"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createEmailRecord-uncertain",
+      "operation": "createEmailRecord"
+    },
+    {
+      "attempts": 3,
+      "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false,
+          "contactId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "input": {
+        "contactId": "123",
+        "plainContent": "Hello from Dex.",
+        "subject": "Example email",
+        "userId": "321"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendEmail-uncertain",
+      "operation": "sendEmail"
     }
   ],
   "schemaVersion": 1

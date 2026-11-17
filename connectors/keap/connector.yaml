@@ -613,3 +613,84 @@ spec:
           default: true
           description: A sample product is deleted.
           output: {productId: '901', deleted: true}
+    - name: listEmails
+      goName: ListEmails
+      inputType: ListEmailsInput
+      outputType: EmailsPage
+      kind: query
+      description: List one bounded page of Keap sent-email records.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Keap returned an email page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid email list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample sent-email page is returned.
+          output: {emails: [{id: '801', subject: Example email, contactId: '123', sentToAddress: contact@example.com}], nextPageToken: ''}
+    - name: createEmailRecord
+      goName: CreateEmailRecord
+      inputType: CreateEmailRecordInput
+      outputType: EmailRecord
+      kind: mutation
+      description: Record an email that was already sent outside Keap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Keap stored the sent-email record.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the record., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The record-create outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample sent-email record is created.
+          output: {id: '801', subject: Example email, contactId: '123', sentToAddress: contact@example.com}
+    - name: sendEmail
+      goName: SendEmail
+      inputType: SendEmailInput
+      outputType: EmailSendReceipt
+      kind: mutation
+      description: Send one email to one Keap contact with bounded sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Keap accepted the email send.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: A sample email send is accepted.
+          output: {contactId: '123', accepted: true}
+    - name: deleteEmailRecord
+      goName: DeleteEmailRecord
+      inputType: EmailRecordIDInput
+      outputType: EmailRecordDeletion
+      kind: mutation
+      description: Delete one Keap sent-email record.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Keap accepted the record deletion.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the record., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample sent-email record is deleted.
+          output: {emailId: '801', deleted: true}

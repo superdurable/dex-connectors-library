@@ -67,6 +67,10 @@ type Operations interface {
 	CreateProduct() sdkgo.Mutation[CreateProductInput, ProductProfile]
 	UpdateProduct() sdkgo.Mutation[UpdateProductInput, ProductProfile]
 	DeleteProduct() sdkgo.Mutation[ProductIDInput, ProductDeletion]
+	ListEmails() sdkgo.Query[ListEmailsInput, EmailsPage]
+	CreateEmailRecord() sdkgo.Mutation[CreateEmailRecordInput, EmailRecord]
+	SendEmail() sdkgo.Mutation[SendEmailInput, EmailSendReceipt]
+	DeleteEmailRecord() sdkgo.Mutation[EmailRecordIDInput, EmailRecordDeletion]
 }
 
 type clientOperations struct{ client *Client }
@@ -151,6 +155,18 @@ func (operations clientOperations) UpdateProduct() sdkgo.Mutation[UpdateProductI
 }
 func (operations clientOperations) DeleteProduct() sdkgo.Mutation[ProductIDInput, ProductDeletion] {
 	return operations.client.DeleteProduct()
+}
+func (operations clientOperations) ListEmails() sdkgo.Query[ListEmailsInput, EmailsPage] {
+	return operations.client.ListEmails()
+}
+func (operations clientOperations) CreateEmailRecord() sdkgo.Mutation[CreateEmailRecordInput, EmailRecord] {
+	return operations.client.CreateEmailRecord()
+}
+func (operations clientOperations) SendEmail() sdkgo.Mutation[SendEmailInput, EmailSendReceipt] {
+	return operations.client.SendEmail()
+}
+func (operations clientOperations) DeleteEmailRecord() sdkgo.Mutation[EmailRecordIDInput, EmailRecordDeletion] {
+	return operations.client.DeleteEmailRecord()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -2339,6 +2355,307 @@ func NewDeleteProductStep[IN any](config DeleteProductStepConfig[IN]) sdkgo.Muta
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteProductBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListEmailsBranchListed sdkgo.BranchID = "listed"
+const ListEmailsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListEmailsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListEmailsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListEmailsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listEmails"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListEmailsBranchListed, Description: "Keap returned an email page."},
+		{ID: ListEmailsBranchProviderRejected, Description: "Keap rejected the list request.", Optional: true},
+		{ID: ListEmailsBranchInvalidResponse, Description: "Keap returned invalid email list JSON.", Optional: true},
+		{ID: ListEmailsBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListEmailsResult = sdkgo.QueryResult[EmailsPage]
+
+type ListEmailsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=keap"`
+	operationID                    struct{}                                      `connector:"operationId=listEmails"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListEmailsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListEmailsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListEmailsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListEmailsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListEmailsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EmailsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListEmailsStep[IN any](config ListEmailsStepConfig[IN]) sdkgo.QueryStep[IN, ListEmailsInput, EmailsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("keap connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListEmailsInput, EmailsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListEmails(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListEmailsResult] {
+			branches := make([]sdkgo.BranchTarget[ListEmailsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListEmailsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListEmailsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListEmailsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListEmailsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateEmailRecordBranchCreated sdkgo.BranchID = "created"
+const CreateEmailRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateEmailRecordBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateEmailRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateEmailRecordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createEmailRecord"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateEmailRecordBranchCreated, Description: "Keap stored the sent-email record."},
+		{ID: CreateEmailRecordBranchProviderRejected, Description: "Keap rejected the record.", Optional: true},
+		{ID: CreateEmailRecordBranchUncertain, Description: "The record-create outcome cannot be confirmed.", Optional: true},
+		{ID: CreateEmailRecordBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateEmailRecordResult = sdkgo.MutationResult[EmailRecord]
+
+type CreateEmailRecordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=keap"`
+	operationID                       struct{}                                          `connector:"operationId=createEmailRecord"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateEmailRecordInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateEmailRecordResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateEmailRecordResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateEmailRecordResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateEmailRecordResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EmailRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateEmailRecordStep[IN any](config CreateEmailRecordStepConfig[IN]) sdkgo.MutationStep[IN, CreateEmailRecordInput, EmailRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("keap connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateEmailRecordInput, EmailRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateEmailRecord(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateEmailRecordResult] {
+			branches := make([]sdkgo.BranchTarget[CreateEmailRecordResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateEmailRecordBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateEmailRecordBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateEmailRecordBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateEmailRecordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendEmailBranchSent sdkgo.BranchID = "sent"
+const SendEmailBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendEmailBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendEmailBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendEmailDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendEmail"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendEmailBranchSent, Description: "Keap accepted the email send."},
+		{ID: SendEmailBranchProviderRejected, Description: "Keap rejected the send.", Optional: true},
+		{ID: SendEmailBranchUncertain, Description: "The send outcome cannot be confirmed.", Optional: true},
+		{ID: SendEmailBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendEmailResult = sdkgo.MutationResult[EmailSendReceipt]
+
+type SendEmailStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=keap"`
+	operationID                       struct{}                                               `connector:"operationId=sendEmail"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendEmailInput                                `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendEmailResult]                          `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendEmailResult]                          `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendEmailResult]                          `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendEmailResult]                          `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EmailSendReceipt]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendEmailStep[IN any](config SendEmailStepConfig[IN]) sdkgo.MutationStep[IN, SendEmailInput, EmailSendReceipt] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("keap connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendEmailInput, EmailSendReceipt]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendEmail(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendEmailResult] {
+			branches := make([]sdkgo.BranchTarget[SendEmailResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendEmailBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendEmailBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendEmailBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendEmailBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const DeleteEmailRecordBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteEmailRecordBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteEmailRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteEmailRecordBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteEmailRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteEmailRecordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteEmailRecord"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteEmailRecordBranchDeleted, Description: "Keap accepted the record deletion."},
+		{ID: DeleteEmailRecordBranchNotFound, Description: "Keap did not find the record.", Optional: true},
+		{ID: DeleteEmailRecordBranchProviderRejected, Description: "Keap rejected the deletion.", Optional: true},
+		{ID: DeleteEmailRecordBranchInvalidResponse, Description: "Keap returned invalid deletion JSON.", Optional: true},
+		{ID: DeleteEmailRecordBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteEmailRecordResult = sdkgo.MutationResult[EmailRecordDeletion]
+
+type DeleteEmailRecordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=keap"`
+	operationID                       struct{}                                                  `connector:"operationId=deleteEmailRecord"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) EmailRecordIDInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteEmailRecordResult]                     `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteEmailRecordResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteEmailRecordResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteEmailRecordResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteEmailRecordResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EmailRecordDeletion]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteEmailRecordStep[IN any](config DeleteEmailRecordStepConfig[IN]) sdkgo.MutationStep[IN, EmailRecordIDInput, EmailRecordDeletion] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("keap connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, EmailRecordIDInput, EmailRecordDeletion]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteEmailRecord(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteEmailRecordResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteEmailRecordResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteEmailRecordBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteEmailRecordBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteEmailRecordBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteEmailRecordBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteEmailRecordBranchDefect))
 			}
 			return branches
 		}(),

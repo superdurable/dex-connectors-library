@@ -24,7 +24,7 @@ import (
 func TestContactReadUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := keapmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, NewDirectoryFlow(mock.Connection()), NewCompanyFlow(mock.Connection()), NewNoteFlow(mock.Connection()), NewTagFlow(mock.Connection()), NewOrderFlow(mock.Connection()), NewProductFlow(mock.Connection())})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewDirectoryFlow(mock.Connection()), NewCompanyFlow(mock.Connection()), NewNoteFlow(mock.Connection()), NewTagFlow(mock.Connection()), NewOrderFlow(mock.Connection()), NewProductFlow(mock.Connection()), NewEmailListFlow(mock.Connection())})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -126,4 +126,16 @@ func TestContactReadUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, productResult.DecodeSingleOutput(&product))
 	require.Equal(t, "901", product.ID)
 	require.Len(t, mock.GetProduct().Calls(), 1)
+	emailFlow := NewEmailListFlow(mock.Connection())
+	emailFlowID := "keap-emails-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, emailFlow, emailFlowID, keap.ListEmailsInput{PageSize: 20}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	emailResult, err := client.WaitForFlow(ctx, emailFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, emailResult.Status, emailResult.ErrorMessage)
+	var emails keap.EmailsPage
+	require.NoError(t, emailResult.DecodeSingleOutput(&emails))
+	require.Len(t, emails.Emails, 1)
+	require.Equal(t, "801", emails.Emails[0].ID)
+	require.Len(t, mock.ListEmails().Calls(), 1)
 }

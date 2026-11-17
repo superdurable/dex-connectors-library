@@ -124,6 +124,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[keap.ProductDeletion](`{"productId":"901","deleted":true}`)
 			return err
 		}},
+		{name: "listEmails/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.EmailsPage](`{"emails":[{"id":"801","subject":"Example email","contactId":"123","sentToAddress":"contact@example.com"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "createEmailRecord/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.EmailRecord](`{"id":"801","subject":"Example email","contactId":"123","sentToAddress":"contact@example.com"}`)
+			return err
+		}},
+		{name: "sendEmail/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.EmailSendReceipt](`{"contactId":"123","accepted":true}`)
+			return err
+		}},
+		{name: "deleteEmailRecord/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.EmailRecordDeletion](`{"emailId":"801","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -214,5 +230,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteProduct().Definition().Operation.OperationID != "deleteProduct" {
 		t.Errorf("deleteProduct mock has another definition")
+	}
+	if mock.ListEmails().Definition().Operation.OperationID != "listEmails" {
+		t.Errorf("listEmails mock has another definition")
+	}
+	if mock.CreateEmailRecord().Definition().Operation.OperationID != "createEmailRecord" {
+		t.Errorf("createEmailRecord mock has another definition")
+	}
+	if mock.SendEmail().Definition().Operation.OperationID != "sendEmail" {
+		t.Errorf("sendEmail mock has another definition")
+	}
+	if mock.DeleteEmailRecord().Definition().Operation.OperationID != "deleteEmailRecord" {
+		t.Errorf("deleteEmailRecord mock has another definition")
 	}
 }
