@@ -13,6 +13,8 @@ const taskIDPattern = /^[A-Za-z0-9_-]{1,128}$/;
 export const emptyTask: Task = { id: '', projectId: '', content: '', description: '', isCompleted: false };
 export const emptyPage: TaskPage = { tasks: [] };
 export const isTaskID = (value: string): boolean => taskIDPattern.test(value);
+/** Statuses proving Todoist refused a write; any other status leaves its outcome unknown. */
+export const definiteWriteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 export const isValidUTF8 = (value: string): boolean => !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(value);
 
 /** Injectable HTTP sender for bounded provider requests. */

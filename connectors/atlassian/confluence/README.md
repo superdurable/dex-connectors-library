@@ -1,8 +1,8 @@
 # Confluence Cloud Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go@v0.25.1`.
 
-The TypeScript package is `@superdurable/connector-atlassian-confluence@0.2.0`.
+The TypeScript package is `@superdurable/connector-atlassian-confluence@0.2.1`.
 It implements all five operations with the same branch identities and OAuth
 refresh declaration as Go, and from 0.2.0 the `pageChanged` Trigger. The
 generated TypeScript models, Step factories, project credential decoders, and
@@ -32,7 +32,7 @@ endpoint.
 ## Python package
 
 The [`dex-connector-atlassian-confluence`](python/README.md) package implements
-all five operations at version `0.2.0`, and from `0.2.0` the `pageChanged`
+all five operations at version `0.2.1`, and from `0.2.0` the `pageChanged`
 Trigger. It requires `dex-connectors-sdk>=0.12.0` and a Python Dex SDK at least
 `1.28.0`. Its [read-page example](python/examples/read_page/README.md) uses the
 static `confluence-pages` connection and its
@@ -287,13 +287,13 @@ was closed Won't Fix. The operation relies on that rule:
 | Outcome | Result |
 | --- | --- |
 | 200 with a valid page | `created` |
-| 400 or 409, and a page with the title exists | `titleConflict` with that page's ID and version, or `created` when it is this Step's page |
-| 400 or 409, and the title lookup is unavailable or unreadable | Retry after at least five seconds |
-| 400 or 409 without such a page or with the lookup refused; 401, 403, 413, or another 4xx except 404, 408, and 429 | `providerRejected` |
+| 400, and a page with the title exists | `titleConflict` with that page's ID and version, or `created` when it is this Step's page |
+| 400, and the title lookup is unavailable or unreadable | Retry after at least five seconds |
+| 400 without such a page or with the lookup refused; 401, 403, 411, 413, 414, 415, or 422 | `providerRejected` |
 | 404, or an unknown space key | `notFound` |
 | 429 | Retry after `Retry-After` |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 3xx, 408, 5xx, or an unusable 2xx body | look the title up now: this Step's page selects `created`; otherwise Retry after at least five seconds |
+| Timeout, dropped connection, 3xx, 408, 409, another 4xx, 5xx, or an unusable 2xx body | look the title up now: this Step's page selects `created`, another page `titleConflict`; otherwise Retry after at least five seconds |
 
 A page found by title is this Step's page only when it was created no earlier
 than a minute before the Step's first attempt, sits below the requested parent,
@@ -323,8 +323,9 @@ connector appends a marker derived from the Step execution's call ID, such as
 
 Confluence accepts each version number once, so a repeated update cannot apply
 twice; it is refused. The v2 API documents 409 only for spaces that require
-approval before publishing, so the connector reads the page after any 400 or
-409 instead of trusting the status:
+approval before publishing, so the connector reads the page after any 400
+instead of trusting the status; a 409 is an unknown outcome, read back the same
+way except that an unchanged page retries:
 
 | Page after the refusal | Result |
 | --- | --- |
@@ -335,26 +336,37 @@ approval before publishing, so the connector reads the page after any 400 or
 After a timeout, dropped connection, 408, 5xx, or unusable 2xx body, the same
 read decides; an unchanged page retries after at least five seconds, because
 sending the same version again is safe. 404 selects `notFound`; 401, 403, 413,
-and other 4xx select `providerRejected`.
+and 422 select `providerRejected`; any other status leaves a write's outcome
+unknown and is read back before a retry.
 
 ### addComment
 
 `AddCommentInput` names the `PageID` and the body and sends one footer comment
 with `POST /footer-comments`. Confluence has no idempotency key and allows any
-number of identical comments, so the operation sends at most once per Step
-execution:
+number of identical comments, so the operation is a `limited` Mutation with
+the default send cap of 3 possibly effective POSTs per Call ID:
 
 1. It runs with sync durability.
-2. Before sending, it records a Dex heartbeat checkpoint with the send time. If
-   Dex does not record it, nothing is sent and the attempt retries.
-3. A 429 or a connection that never opened clears the checkpoint and retries.
-4. A timeout, dropped connection, 3xx, 408, 5xx, or unusable 2xx body keeps the
-   checkpoint and retries after at least five seconds. Every later attempt
-   finds the checkpoint and never sends: it reads the page's 25 newest footer
-   comments and selects `added` with `IsConfirmedByReadBack` when one created
-   since a minute before the first attempt has the same text, or `uncertain`.
-5. 404 selects `notFound`, and 400, 401, 403, 413, and other conclusive 4xx
-   select `providerRejected`.
+2. Before sending, the shared single-dispatch fence records a Dex heartbeat
+   claim that counts the send. If Dex does not record it, nothing is sent and
+   the attempt retries. An unreadable or untrusted checkpoint retries without
+   sending.
+3. A 429 or a connection that never opened records that nothing was sent and
+   retries.
+4. A timeout, dropped connection, 3xx, 408, 409, another 4xx, 5xx, or unusable
+   2xx body keeps the claim and retries after at least five seconds. A later
+   attempt first reads the page's 25 newest footer comments and selects `added`
+   with `IsConfirmedByReadBack` when one created since a minute before the first
+   attempt has the same text. Otherwise it sends again while another POST stays
+   within the cap, and selects `uncertain` at the cap. A missing checkpoint
+   counts each earlier attempt as a possible POST.
+5. On the first POST, 404 selects `notFound`, and 400, 401, 403, 411, 413, 414,
+   415, and 422 select `providerRejected`; after an earlier possible POST they
+   select `uncertain`, because that POST may have added the comment.
+
+A resend may add a duplicate comment when read-back misses the earlier one; at
+most the cap of them exist. Set the Step's `MaxSends` to 1 to forbid any
+resend.
 
 An application handles `uncertain` without adding the comment again
 automatically; the example leaves that branch unwired, so the Flow fails.

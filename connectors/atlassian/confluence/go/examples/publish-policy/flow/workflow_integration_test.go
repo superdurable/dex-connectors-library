@@ -201,7 +201,7 @@ func TestCommentTimeoutIsConfirmedByReadBackWithoutAResendWithRealDex(t *testing
 	publication := runPublicationFlow(t, ctx, harness, flow, "comment-timeout", input)
 	require.Equal(t, PhasePublished, publication.Phase)
 	require.NotEmpty(t, publication.CommentID, "the next attempt found the stored comment")
-	require.Equal(t, 1, provider.commentCount(publication.PageID), "an unconfirmed comment is never re-sent")
+	require.Equal(t, 1, provider.commentCount(publication.PageID), "read-back found the stored comment, so it was not re-sent")
 }
 
 func TestBlankCloudIDUsesTheOnlyGrantedSiteWithRealDex(t *testing.T) {

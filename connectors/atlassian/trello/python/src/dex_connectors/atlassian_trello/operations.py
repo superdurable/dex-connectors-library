@@ -5,11 +5,9 @@
 import json
 import math
 import re
-from dataclasses import dataclass, field, replace
-from datetime import timedelta
-from typing import Any, cast
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
-import dex
 from dex_connectors.sdk import (
     Call,
     CallID,
@@ -25,11 +23,11 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk.providerhttp import ProviderTransportError
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
+    Decision,
     DecisionKind,
+    DispatchNotAllowedError,
     Fence,
     InsufficientAttemptTimeError,
-    Marker,
-    State,
 )
 
 from ._generated import definitions as definitions
@@ -63,50 +61,11 @@ from .models import (
 )
 
 _DECIMAL_POSITION = re.compile(r"[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?")
-_HEX_POSITION = re.compile(
-    r"[+-]?0[xX](?:[0-9a-fA-F]+(?:\.[0-9a-fA-F]*)?|\.[0-9a-fA-F]+)[pP][+-]?[0-9]+"
-)
+_HEX_POSITION = re.compile(r"[+-]?0[xX](?:[0-9a-fA-F]+(?:\.[0-9a-fA-F]*)?|\.[0-9a-fA-F]+)[pP][+-]?[0-9]+")
 
 
-@dataclass(frozen=True, slots=True)
-class _TrelloCheckpoint:
-    dispatched_call_id: CallID = field(metadata={"dex_json_name": "trelloDispatchedCallId"})
-    attempt: int = field(metadata={"dex_json_name": "trelloAttempt"})
-    can_retry: bool = field(
-        default=False, metadata={"dex_json_name": "trelloCanRetry", "dex_json_omit_default": True}
-    )
-
-
-class _TrelloHeartbeatContext:
-    def __init__(self, context: dex.AsyncContext) -> None:
-        self._context = context
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._context, name)
-
-    def has_last_heartbeat_value(self) -> bool:
-        return self._context.has_last_heartbeat_value()
-
-    def get_last_heartbeat_value(self, _value_type: type[Marker]) -> Marker | None:
-        checkpoint = self._context.get_last_heartbeat_value(_TrelloCheckpoint)
-        if checkpoint is None:
-            return None
-        return Marker(
-            checkpoint.dispatched_call_id, checkpoint.attempt,
-            State.CAN_RESEND if checkpoint.can_retry else State.CLAIMED,
-        )
-
-    async def heartbeat(self, marker: Marker) -> None:
-        await self._context.heartbeat(_TrelloCheckpoint(
-            marker.call_id, marker.attempt, marker.state in (State.CAN_RESEND, State.NOT_SENT)
-        ))
-
-
-def _trello_fence(call: Call) -> Fence:
-    if call.context is None:
-        raise ValueError("Trello dispatch requires a Dex context")
-    context = _TrelloHeartbeatContext(call.context)
-    return Fence(replace(call, context=cast(dex.AsyncContext, context)), timedelta(seconds=30))
+_MINIMUM_DISPATCH_WINDOW = timedelta(seconds=3)
+"""The least attempt time in which a Trello write may start."""
 
 
 def _validate_text(value: str, field: str, required: bool = False) -> None:
@@ -335,36 +294,189 @@ class GetCardOperation:
         return QueryAttempt.branch_result("found", card, call_receipt(call, response, card_id))
 
 
+class _FencedWrite:
+    """One attempt of a non-idempotent Trello write behind the shared single-dispatch fence.
+
+    Trello offers no lookup by Call ID, so an unknown outcome resends while the
+    send cap allows and selects `uncertain` at the cap.
+    """
+
+    def __init__(self, call: Call, operation: str, fence: Fence, decision: Decision) -> None:
+        self.call, self.operation, self.fence, self.decision = call, operation, fence, decision
+        self.can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        self.has_possible_earlier_send = decision.prior_send_upper_bound > 0
+
+    @classmethod
+    async def start(
+        cls, call: Call, operation: str, output: Any, receipt: Receipt
+    ) -> "_FencedWrite | MutationAttempt[Any]":
+        """Decide whether this attempt may send, or return the attempt that forbids it."""
+        if call.context is None:
+            return MutationAttempt.retry(
+                failure(operation, FailureKind.AVAILABILITY, "Dex dispatch context is unavailable")
+            )
+        try:
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
+            decision = await fence.decide()
+        except ValueError:
+            return MutationAttempt.branch_result(
+                "defect",
+                output,
+                Receipt(),
+                failure(
+                    operation, FailureKind.LOCAL_DEFECT, "Trello dispatch fence could not be constructed"
+                ),
+            )
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            return MutationAttempt.retry(
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "Trello dispatch checkpoint is unreadable, so nothing was sent in this attempt",
+                )
+            )
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+            return MutationAttempt.uncertain(
+                output,
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "earlier attempts of this Step may have sent the request and the send cap "
+                    "is reached, so it is not sent again",
+                ),
+                receipt,
+            )
+        if decision.marker is not None and decision.marker.provider_id:
+            return MutationAttempt.uncertain(
+                output,
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "an earlier attempt of this Step was accepted, so the request is not sent again",
+                ),
+                receipt,
+            )
+        return cls(call, operation, fence, decision)
+
+    async def credential_failure(self, output: Any, cause: Failure) -> MutationAttempt[Any]:
+        """Map a credential failure before the send."""
+        # notSent after a possible earlier send would hide it, so only a first-send decision records it.
+        if self.decision.kind == DecisionKind.SEND_ALLOWED:
+            try:
+                await self.fence.record_not_sent()
+            except Exception:
+                return MutationAttempt.retry(
+                    failure(
+                        self.operation,
+                        FailureKind.AVAILABILITY,
+                        "Trello setup failed and the not-sent checkpoint could not be recorded",
+                    )
+                )
+        return self.defect_or_select_uncertain(output, Receipt(), cause)
+
+    async def record_can_resend(self, delay: float, reason: Failure) -> MutationAttempt[Any]:
+        """Checkpoint proof that Trello did not process the send, then retry."""
+        try:
+            await self.fence.record_can_resend()
+        except Exception:
+            return MutationAttempt.retry(
+                failure(
+                    self.operation, FailureKind.AVAILABILITY, "Trello retry checkpoint could not be recorded"
+                ),
+                delay,
+            )
+        return MutationAttempt.retry(reason, delay)
+
+    async def reject_or_select_uncertain(
+        self, branch: str, output: Any, receipt: Receipt, cause: Failure
+    ) -> MutationAttempt[Any]:
+        """Select a refusal branch only when no earlier send of this call may have written."""
+        if self.has_possible_earlier_send:
+            return MutationAttempt.uncertain(output, cause, receipt)
+        try:
+            await self.fence.record_can_resend()
+        except Exception:
+            return MutationAttempt.retry(
+                failure(
+                    self.operation,
+                    FailureKind.AVAILABILITY,
+                    "Trello rejection checkpoint could not be recorded",
+                )
+            )
+        return MutationAttempt.branch_result(branch, output, receipt, cause)
+
+    def resend_or_select_uncertain(
+        self, output: Any, cause: Failure, receipt: Receipt
+    ) -> MutationAttempt[Any]:
+        """Retry an unknown outcome while the send cap allows another send."""
+        if self.can_resend_unknown_outcome:
+            # The claim stays the last marker, so the next attempt counts this send.
+            return MutationAttempt.retry(cause)
+        return MutationAttempt.uncertain(output, cause, receipt)
+
+    def defect_or_select_uncertain(
+        self, output: Any, receipt: Receipt, cause: Failure
+    ) -> MutationAttempt[Any]:
+        """Select defect only when no earlier send may have written."""
+        if self.has_possible_earlier_send:
+            return MutationAttempt.uncertain(output, cause, receipt)
+        return MutationAttempt.branch_result("defect", output, receipt, cause)
+
+    async def record_accepted(self, provider_id: str) -> None:
+        """Save the accepted identity so a replayed attempt never resends it."""
+        try:
+            await self.fence.record_provider_id(provider_id)
+        except Exception:
+            pass  # The accepted result stands; a lost identity checkpoint keeps the claim.
+
+
+def _credentials_unavailable(operation: str) -> Failure:
+    return failure(
+        operation,
+        FailureKind.AUTHENTICATION,
+        "Trello connection credentials are unavailable; save an API key and a token for the connection",
+    )
+
+
+def _has_dispatch_window(call: Call) -> bool:
+    deadline = getattr(call.context, "deadline", None)
+    return deadline is None or deadline - datetime.now(UTC) >= _MINIMUM_DISPATCH_WINDOW
+
+
 async def _single_dispatch(
+    write: _FencedWrite,
     client: Client,
-    call: Call,
     credentials: Any,
-    operation: str,
     subject: str,
     request_path: str,
     payload: dict[str, Any],
     requested: Any,
     not_found: bool = False,
 ) -> tuple[ProviderResponse | None, MutationAttempt[Any] | None]:
+    call, operation = write.call, write.operation
     receipt = call_receipt(call, object_id=request_path.split("/")[2] if not_found else "")
-    if call.context is None:
+    if not _has_dispatch_window(call):
+        # notSent after a possible earlier send would hide it, so only a first-send decision records it.
+        if write.decision.kind == DecisionKind.SEND_ALLOWED:
+            try:
+                await write.fence.record_not_sent()
+            except Exception:
+                return None, MutationAttempt.retry(
+                    failure(
+                        operation,
+                        FailureKind.AVAILABILITY,
+                        "Trello not-sent checkpoint could not be recorded",
+                    )
+                )
         return None, MutationAttempt.retry(
-            failure(operation, FailureKind.AVAILABILITY, "Dex dispatch context is unavailable")
-        )
-    fence = _trello_fence(call)
-    decision = await fence.decide()
-    if decision.kind != DecisionKind.SEND_ALLOWED:
-        return None, MutationAttempt.uncertain(
-            requested,
             failure(
                 operation,
-                FailureKind.TRANSPORT,
-                "an earlier attempt of this Step may have sent the request, so it is not sent again",
-            ),
-            receipt,
+                FailureKind.AVAILABILITY,
+                "The attempt has too little time left to send a Trello write",
+            )
         )
     try:
-        response = await fence.dispatch(
+        response = await write.fence.dispatch(
             lambda deadline: client.request(credentials, "POST", request_path, payload=payload)
         )
     except (CheckpointError, InsufficientAttemptTimeError):
@@ -372,43 +484,41 @@ async def _single_dispatch(
             failure(
                 operation,
                 FailureKind.AVAILABILITY,
-                "Dex did not record the dispatch checkpoint, so nothing was sent to Trello",
+                "Trello dispatch checkpoint or request budget is unavailable, so nothing was sent",
             )
+        )
+    except DispatchNotAllowedError:
+        return None, write.defect_or_select_uncertain(
+            requested,
+            receipt,
+            failure(operation, FailureKind.LOCAL_DEFECT, "Trello dispatch was not allowed"),
         )
     except ProviderTransportError as error:
         if error.provably_not_sent:
-            await fence.record_can_resend()
-            return None, MutationAttempt.retry(
+            return None, await write.record_can_resend(
+                0,
                 failure(
                     operation,
                     FailureKind.TRANSPORT,
                     f"Trello could not be reached, so no {subject} was written",
-                )
+                ),
             )
-        return None, MutationAttempt.uncertain(
+        return None, write.resend_or_select_uncertain(
             requested,
             failure(operation, FailureKind.TRANSPORT, f"Trello {subject} outcome is unknown"),
             receipt,
         )
     route, reason, delay = classify_response(operation, subject, response, write=True)
+    if route == "accepted":
+        return response, None
+    assert reason is not None
+    sent_receipt = call_receipt(call, response, receipt.provider_object_id)
     if route == "retry":
-        await fence.record_can_resend()
-        assert reason is not None
-        return response, MutationAttempt.retry(reason, delay)
+        return response, await write.record_can_resend(delay, reason)
     if route == "uncertain":
-        assert reason is not None
-        return response, MutationAttempt.uncertain(
-            requested, reason, call_receipt(call, response, receipt.provider_object_id)
-        )
-    if route in ("providerRejected", "notFound"):
-        assert reason is not None
-        return response, MutationAttempt.branch_result(
-            "notFound" if not_found and route == "notFound" else "providerRejected",
-            requested,
-            call_receipt(call, response, receipt.provider_object_id),
-            reason,
-        )
-    return response, None
+        return response, write.resend_or_select_uncertain(requested, reason, sent_receipt)
+    branch = "notFound" if not_found and route == "notFound" else "providerRejected"
+    return response, await write.reject_or_select_uncertain(branch, requested, sent_receipt, reason)
 
 
 class CreateCardOperation:
@@ -455,24 +565,15 @@ class CreateCardOperation:
             return MutationAttempt.branch_result(
                 "defect", requested, Receipt(), failure("createCard", FailureKind.VALIDATION, str(error))
             )
+        write = await _FencedWrite.start(call, "createCard", requested, call_receipt(call))
+        if isinstance(write, MutationAttempt):
+            return write
         try:
             credentials = await self.client.resolve_credentials(call)
         except Exception:
-            return MutationAttempt.branch_result(
-                "defect",
-                requested,
-                Receipt(),
-                failure(
-                    "createCard",
-                    FailureKind.AUTHENTICATION,
-                    (
-                        "Trello connection credentials are unavailable; "
-                        "save an API key and a token for the connection"
-                    ),
-                ),
-            )
+            return await write.credential_failure(requested, _credentials_unavailable("createCard"))
         response, routed = await _single_dispatch(
-            self.client, call, credentials, "createCard", "card", "/cards", payload, requested
+            write, self.client, credentials, "card", "/cards", payload, requested
         )
         if routed is not None:
             return routed
@@ -483,7 +584,7 @@ class CreateCardOperation:
                 raise ValueError("card response must be an object")
             card_id = trello_id(resource.get("id", ""), "cardId")
         except (ValueError, TypeError, KeyError):
-            return MutationAttempt.uncertain(
+            return write.resend_or_select_uncertain(
                 requested,
                 failure(
                     "createCard",
@@ -492,6 +593,7 @@ class CreateCardOperation:
                 ),
                 call_receipt(call, response),
             )
+        await write.record_accepted(card_id)
         output = CreateCardOutput(
             card_id,
             requested.name,
@@ -532,27 +634,17 @@ class AddCommentOperation:
             return MutationAttempt.branch_result(
                 "defect", requested, Receipt(), failure("addComment", FailureKind.VALIDATION, str(error))
             )
+        write = await _FencedWrite.start(call, "addComment", requested, call_receipt(call, object_id=card_id))
+        if isinstance(write, MutationAttempt):
+            return write
         try:
             credentials = await self.client.resolve_credentials(call)
         except Exception:
-            return MutationAttempt.branch_result(
-                "defect",
-                requested,
-                Receipt(),
-                failure(
-                    "addComment",
-                    FailureKind.AUTHENTICATION,
-                    (
-                        "Trello connection credentials are unavailable; "
-                        "save an API key and a token for the connection"
-                    ),
-                ),
-            )
+            return await write.credential_failure(requested, _credentials_unavailable("addComment"))
         response, routed = await _single_dispatch(
+            write,
             self.client,
-            call,
             credentials,
-            "addComment",
             "comment",
             path("cards", card_id, "actions", "comments"),
             {"text": input.text},
@@ -568,7 +660,7 @@ class AddCommentOperation:
                 raise ValueError("comment response must be an object")
             comment_id = trello_id(resource.get("id", ""), "commentId")
         except (ValueError, TypeError, KeyError):
-            return MutationAttempt.uncertain(
+            return write.resend_or_select_uncertain(
                 requested,
                 failure(
                     "addComment",
@@ -577,6 +669,7 @@ class AddCommentOperation:
                 ),
                 call_receipt(call, response, card_id),
             )
+        await write.record_accepted(comment_id)
         author_id = resource.get("idMemberCreator", "")
         if not isinstance(author_id, str) or len(author_id) != 24:
             author_id = ""

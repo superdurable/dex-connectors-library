@@ -42,7 +42,8 @@ func TestTaskCRUDWithRealDex(t *testing.T) {
 		{"create-service-unavailable", "deletedAndVerified", dex.FlowCompleted, 2, 1},
 		{"delete-retry", "deletedAndVerified", dex.FlowCompleted, 1, 2},
 		{"multi-page", "deletedAndVerified", dex.FlowCompleted, 1, 1},
-		{"create-uncertain", "", dex.FlowFailed, 1, 0},
+		// Every lost create response resends the same request ID until the send cap of 3, then uncertain fails.
+		{"create-uncertain", "", dex.FlowFailed, 3, 0},
 		{"create-answer-incomplete", "deletedAndVerified", dex.FlowCompleted, 1, 1},
 		{"invalid-input", "", dex.FlowFailed, 0, 0},
 	} {
@@ -111,7 +112,10 @@ func TestTaskCRUDWithRealDex(t *testing.T) {
 				require.NotContains(t, result.ErrorMessage, integrationToken)
 				require.Zero(t, provider.reads)
 				require.Zero(t, provider.updates)
-				require.Equal(t, 1, provider.createdTasks)
+				require.Equal(t, 3, provider.createdTasks)
+				for _, requestID := range provider.requestIDs {
+					require.Equal(t, provider.requestIDs[0], requestID)
+				}
 			}
 			if scenario.name == "multi-page" {
 				require.Equal(t, 2, provider.lists)

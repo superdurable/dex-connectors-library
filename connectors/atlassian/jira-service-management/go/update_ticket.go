@@ -6,6 +6,7 @@ package jiraservicemanagement
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -127,7 +128,7 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	}
 	result = client.exchange(session, providerRequest{method: http.MethodPut, api: jiraPlatformAPI, path: issuePath(current.Key), payload: body})
 	receipt = client.receipt(session, result.response, current.Key)
-	if classification := client.classifyRead(updateTicketOperationID, updateTicketFailureSubject, result); classification.outcome != readSucceeded {
+	if classification := client.classifyRepeatableWrite(updateTicketOperationID, updateTicketFailureSubject, result); classification.outcome != readSucceeded {
 		if classification.outcome == readRejected {
 			output.RejectedFieldIDs = readProviderRejection(result.response.body).fieldIDs
 		}
@@ -205,6 +206,19 @@ func validateLabelsAndPriorityChange(input UpdateTicketInput) (labelsAndPriority
 		return labelsAndPriorityChange{}, errors.New("set addLabels, removeLabels, or priorityName")
 	}
 	return change, nil
+}
+
+// classifyRepeatableWrite classifies an edit that the next attempt rereads before repeating:
+// only a definite refusal is terminal, and any other unexpected response returns Retry.
+func (client *Client) classifyRepeatableWrite(operationID string, subject string, result exchangeResult) readClassification {
+	classification := client.classifyRead(operationID, subject, result)
+	isUnknown := classification.outcome == readInvalid ||
+		(classification.outcome == readRejected && !isDefiniteWriteRefusalStatus(result.response.statusCode))
+	if isUnknown {
+		return readClassification{outcome: readRetry, retryAfter: client.retryAfter(result.response), failure: newFailure(operationID, sdkgo.FailureAvailability,
+			fmt.Sprintf("Jira Service Management %s outcome is unknown after HTTP %d; the next attempt rereads the request first", subject, result.response.statusCode))}
+	}
+	return classification
 }
 
 func updateTicketFailureAttempt(classification readClassification, output UpdateTicketOutput, receipt sdkgo.Receipt) sdkgo.MutationAttempt[UpdateTicketOutput] {

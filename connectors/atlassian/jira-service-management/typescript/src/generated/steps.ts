@@ -107,7 +107,7 @@ export interface CreateTicketStepConfig<StepInput, OperationInput = CreateTicket
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Jira Service Management conclusively rejected the request, such as a missing required field, an unknown request type or customer, or missing permission; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but its outcome cannot be confirmed, so the customer request may exist; the connector never resends it. */
+  /** The send cap is reached and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -202,7 +202,7 @@ export interface AddCommentStepConfig<StepInput, OperationInput = AddCommentInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Jira Service Management conclusively rejected the comment, such as missing Add Comments permission; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The comment was sent but its outcome cannot be confirmed, so it may exist; the connector never resends it. */
+  /** The send cap is reached and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

@@ -88,6 +88,7 @@ def new_update_task_content_step(
     defect: dex.StepTarget[MutationResult[Task]] | None = None,
     result_attribute: dex.Attribute[MutationResult[Task]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdateTaskInput, Task]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Todoist Step connection name must match its connection reference")
@@ -119,6 +120,7 @@ def new_update_task_content_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -188,6 +190,7 @@ def new_create_task_step(
     defect: dex.StepTarget[MutationResult[Task]] | None = None,
     result_attribute: dex.Attribute[MutationResult[Task]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateTaskInput, Task]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Todoist Step connection name must match its connection reference")
@@ -219,6 +222,7 @@ def new_create_task_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -238,6 +242,7 @@ def new_delete_task_step(
     defect: dex.StepTarget[MutationResult[DeleteTaskOutcome]] | None = None,
     result_attribute: dex.Attribute[MutationResult[DeleteTaskOutcome]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, DeleteTaskInput, DeleteTaskOutcome]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Todoist Step connection name must match its connection reference")
@@ -269,6 +274,7 @@ def new_delete_task_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 

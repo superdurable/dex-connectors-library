@@ -155,7 +155,7 @@ export const AddCommentBranchAdded = AddCommentBranch.Added;
 export const AddCommentBranchNotFound = AddCommentBranch.NotFound;
 /** Confluence conclusively rejected the comment, such as an invalid body or missing Add comments permission; nothing was added. */
 export const AddCommentBranchProviderRejected = AddCommentBranch.ProviderRejected;
-/** An earlier attempt sent the comment and the page's comments do not confirm it; Confluence has no idempotency key, so it is never sent again automatically. */
+/** The send cap is reached and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically. */
 export const AddCommentBranchUncertain = AddCommentBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddCommentBranchDefect = AddCommentBranch.Defect;
@@ -166,7 +166,7 @@ export const AddCommentDefinition: MutationDefinition = {
     { id: "added", description: "The comment is on the page, including one an earlier attempt of this Step execution sent." },
     { id: "notFound", description: "The page does not exist or the connection cannot view it; nothing was added.", optional: true },
     { id: "providerRejected", description: "Confluence conclusively rejected the comment, such as an invalid body or missing Add comments permission; nothing was added.", optional: true },
-    { id: "uncertain", description: "An earlier attempt sent the comment and the page's comments do not confirm it; Confluence has no idempotency key, so it is never sent again automatically.", optional: true },
+    { id: "uncertain", description: "The send cap is reached and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },

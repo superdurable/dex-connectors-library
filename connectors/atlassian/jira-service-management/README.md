@@ -13,13 +13,13 @@ and customer calls use the request API at `/rest/servicedeskapi`; search,
 labels, priority, and workflow transitions use the Jira platform API at
 `/rest/api/3` on the same site, because every customer request is a Jira issue.
 
-Install this connector with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/go@v0.24.0`.
+Install this connector with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/go@v0.24.1`.
 
-The TypeScript package `@superdurable/connector-atlassian-jira-service-management@0.1.0` implements all seven operations. See its [package README](typescript/README.md) and [runnable Flow](typescript/examples/find-customer/README.md). Its provider behavior is checked against Go-recorded conformance scenarios; live Atlassian behavior remains unverified.
+The TypeScript package `@superdurable/connector-atlassian-jira-service-management@0.1.1` implements all seven operations. See its [package README](typescript/README.md) and [runnable Flow](typescript/examples/find-customer/README.md). Its provider behavior is checked against Go-recorded conformance scenarios; live Atlassian behavior remains unverified.
 
 ## Python package
 
-The `python/` package declares Python release `v0.1.0` independently of the Go connector. It implements all seven operations listed below and uses generated OAuth credential refresh wiring. Its [support request example](python/examples/support_request/README.md) runs lookup and create Flows with the static connection name `jira-service-management-support`, storing only non-secret customer identity details and ticket references. Run the package suite from `python/` with `uv run pytest`; the real Dex integration test requires `DEX_FLOW_SERVICE_ADDRESS` to point at a running `dexcli dev` server.
+The `python/` package declares Python release `v0.1.1` independently of the Go connector. It implements all seven operations listed below and uses generated OAuth credential refresh wiring. Its [support request example](python/examples/support_request/README.md) runs lookup and create Flows with the static connection name `jira-service-management-support`, storing only non-secret customer identity details and ticket references. Run the package suite from `python/` with `uv run pytest`; the real Dex integration test requires `DEX_FLOW_SERVICE_ADDRESS` to point at a running `dexcli dev` server.
 
 Provider conformance replays the Go-recorded scenarios under `conformance/connectors/atlassian/jira-service-management`. The Python integration test uses a local provider stand-in; live Atlassian OAuth and API behavior remain unverified.
 
@@ -242,26 +242,34 @@ Jira Service Management documents no idempotency key, so a repeated create is a
 second request and a repeated public reply is a second customer email. Dex
 can replay a Step after Worker loss or before a result is committed, so the writes take these positions:
 
-- **createTicket** and **addComment** run with sync durability. Before resolving
-  credentials or sending, each checks and records the Step's Call ID and
-  attempt number in a Dex heartbeat. A
-  429, 503, or positively traced pre-connection failure records a `canResend`
-  checkpoint and returns Retry. The next attempt sends only if it sees that
-  checkpoint from the immediately preceding attempt. A missing, stale, or
-  dispatched checkpoint selects `uncertain` without sending. Other 5xx, 408,
-  a lost or unreadable response, and an unusable 2xx remain uncertain. A 409
-  with a usable request or comment ID triggers a read by that ID; mismatched
-  or inconclusive reads remain uncertain.
+- **createTicket** and **addComment** run with sync durability and are
+  `limited` Mutations with the default send cap of 3 possibly effective POSTs
+  per Call ID. Before resolving credentials or sending, the shared
+  single-dispatch fence reads and records the Step's send-count checkpoint in
+  a Dex heartbeat. A 429, 503, or positively traced pre-connection failure
+  records a `canResend` checkpoint and returns Retry. An unknown outcome (a
+  5xx, 408, 409, unlisted 4xx, a lost or unreadable response, or an unusable
+  2xx) returns Retry while another POST stays within the cap, so the next
+  attempt resends; at the cap it selects `uncertain` without sending. A missing
+  or stale checkpoint counts each earlier attempt as a possible POST, and an
+  unreadable or foreign checkpoint returns Retry without sending. A definite
+  refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) of the first POST
+  selects its branch; after an earlier possible POST it selects `uncertain`.
+  The service desk has no lookup by Call ID, so a resend may duplicate a request
+  or a customer reply; at most the cap of them exist. Set the Step's `MaxSends`
+  to 1 to forbid any resend. A 409
+  with a usable request or comment ID triggers a read by that ID first.
   For an accepted create with a valid ID or key but a malformed counterpart,
-  the connector reads the request by that reference before deciding; it never
-  repeats the POST. [Atlassian documents request lookup by ID or key and
+  the connector reads the request by that reference before deciding.
+  [Atlassian documents request lookup by ID or key and
   comment lookup by ID](https://developer.atlassian.com/cloud/jira/service-desk/rest/api-group-request/),
   but its create and comment POSTs document no Call ID field or enforced
   idempotency key. A comment with no returned ID cannot be attributed by
   listing text and timestamps alone. These provider claims have not been
   verified against a live Atlassian site.
 - **updateTicket** and **transitionTicket** keep async durability and read
-  before they write, so a backup attempt finds the change already made.
+  before they write, so a backup attempt finds the change already made. Both
+  declare `repeatOnUnknown: safe`: an unknown write outcome returns Retry.
 
 Real Dex runs with delayed and retried fake provider requests guard each position:
 `TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex`,
@@ -269,9 +277,9 @@ Real Dex runs with delayed and retried fake provider requests guard each positio
 `TestSlowLabelUpdateBackupAttemptWritesOnceWithRealDex` (two reads, one write),
 and `TestSlowTransitionBackupAttemptMovesTheRequestOnceWithRealDex`. Do not
 override `createTicket` or `addComment` to async. Recording the checkpoint
-returns before Dex confirms persistence. A lost `canResend` checkpoint therefore
-selects `uncertain` even after a 429 or 503, and a crash before dispatch can
-report uncertainty for a request the provider never received. The
+returns before Dex confirms persistence. A lost checkpoint therefore counts as
+a possible POST, and a crash before dispatch can use up the send cap and report
+uncertainty for a request the provider never received. The
 [`support-request`](go/examples/support-request) example parks an uncertain create
 for an operator.
 
@@ -310,13 +318,13 @@ token, such as
 
 | Response | Reads, updateTicket, transitionTicket | createTicket, addComment |
 | --- | --- | --- |
-| 400, 401 after one refresh, 403, 422, other 4xx | `providerRejected` | `providerRejected` |
-| 409 | `transitionTicket` reads back and may retry | Read back by a returned ID; otherwise `uncertain` |
-| 404 | `notFound` where declared | `notFound` (`addComment`), `providerRejected` (`createTicket`) |
-| 429, 503 | Retry after `Retry-After` | Retry only with a fresh `canResend` checkpoint |
+| 400, 401 after one refresh, 403, 411, 413, 414, 415, 422 | `providerRejected` | `providerRejected` on the first POST; `uncertain` after an earlier possible POST |
+| 409 | Reads: `providerRejected`; writes: Retry | Read back by a returned ID; otherwise Retry and resend below the send cap, `uncertain` at the cap |
+| 404 | `notFound` where declared | `notFound` (`addComment`), `providerRejected` (`createTicket`), as above |
+| 429, 503 | Retry after `Retry-After` | Checkpoint `canResend`, then Retry |
 | connection refused before sending | Retry | Retry |
-| 408, other 5xx, lost or unreadable response | Retry | `uncertain` |
-| 3xx, oversized, malformed, or token-reflecting 2xx | `invalidResponse` | `uncertain` |
+| 408, other 4xx or 5xx, lost or unreadable response | Retry | Retry and resend below the send cap, `uncertain` at the cap |
+| 3xx, oversized, malformed, or token-reflecting 2xx | Reads: `invalidResponse`; writes: Retry | Retry and resend below the send cap, `uncertain` at the cap |
 | invalid input or credentials | `defect`, no request | `defect`, no request |
 
 ## Not in this release

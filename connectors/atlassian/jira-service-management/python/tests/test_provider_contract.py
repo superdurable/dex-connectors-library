@@ -2,14 +2,11 @@
 # SPDX-License-Identifier: MIT
 """Check provider-specific escaping, validation, and checkpoint wire values."""
 
-import json
 import time
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
-from dex import CodecRegistry
-from dex_connectors.sdk import CallID
 
 from dex_connectors.atlassian_jira_service_management import Client, Config
 from dex_connectors.atlassian_jira_service_management.client import (
@@ -18,7 +15,6 @@ from dex_connectors.atlassian_jira_service_management.client import (
     path_escape,
 )
 from dex_connectors.atlassian_jira_service_management.operations import (
-    _DispatchMarker,
     _email_address,
     _jira_time,
     _json_object,
@@ -79,15 +75,6 @@ def test_jira_date_rejects_invalid_calendar_values(value: str) -> None:
 def test_jira_date_accepts_go_fraction_and_large_offset() -> None:
     """Accept Go's comma fraction and extended numeric offset."""
     assert _jira_time("2026-02-28T10:00:00,5+99:59") == datetime(2026, 2, 24, 6, 1, 0, 500000, UTC)
-
-
-def test_dispatch_checkpoint_uses_go_wire_names() -> None:
-    """Persist the same marker shape Go reads on a later attempt."""
-    marker = _DispatchMarker(CallID("ab66bfde-d934-5d47-9e00-bdf172b83392"), 1)
-    codec = CodecRegistry().resolve(_DispatchMarker)
-    encoded = json.loads(codec.encode(marker).data)
-    assert encoded == {"jiraServiceManagementDispatchedCallId": str(marker.dispatched_call_id), "attempt": 1}
-    assert codec.decode(codec.encode(marker)) == marker
 
 
 def test_wrong_typed_ticket_fields_fail_decoding() -> None:

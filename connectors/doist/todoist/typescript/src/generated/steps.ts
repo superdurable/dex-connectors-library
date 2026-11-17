@@ -104,7 +104,7 @@ export interface CreateTaskStepConfig<StepInput, OperationInput = CreateTaskInpu
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Todoist conclusively rejected creation. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** A creation that may have been sent may have applied, but Todoist returned no usable task and the request ID has no documented replay guarantee. */
+  /** The send cap is reached, or Todoist accepted a task ID that could not be read back, so the task may exist; the connector does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

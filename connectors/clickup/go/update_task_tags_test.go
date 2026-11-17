@@ -55,14 +55,16 @@ func TestUpdateTaskTagsReportsAppliedChangesOnRejection(t *testing.T) {
 	require.Equal(t, sdkgo.FailureAuthorization, result.Failure.Kind)
 }
 
-func TestUpdateTaskTagsRetriesAnUnavailableProvider(t *testing.T) {
-	provider := newRecordingClickUp(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
-		writeJSON(t, response, http.StatusServiceUnavailable, clickupError("SERVER_1"))
-	})
-	_, err := sdkgo.RunMutation(newTestDexContext("tags-unavailable"), newClickUpClient(t, provider.URL).UpdateTaskTags(), clickupConnection,
-		clickup.UpdateTaskTagsInput{TaskID: testTaskID, AddTags: []string{"escalated"}})
-	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry)
+func TestUpdateTaskTagsRetriesAnUnknownOrUnavailableOutcome(t *testing.T) {
+	for _, status := range []int{http.StatusServiceUnavailable, http.StatusInternalServerError, http.StatusConflict, http.StatusGone} {
+		provider := newRecordingClickUp(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+			writeJSON(t, response, status, clickupError("SERVER_1"))
+		})
+		_, err := sdkgo.RunMutation(newTestDexContext("tags-unknown"), newClickUpClient(t, provider.URL).UpdateTaskTags(), clickupConnection,
+			clickup.UpdateTaskTagsInput{TaskID: testTaskID, AddTags: []string{"escalated"}})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "HTTP %d proves no refusal, and a repeated tag change is harmless", status)
+	}
 }
 
 func TestUpdateTaskTagsValidatesTagsWithoutARequest(t *testing.T) {

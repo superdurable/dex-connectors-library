@@ -86,7 +86,7 @@ export const CreateTaskBranch = {
 export const CreateTaskBranchCreated = CreateTaskBranch.Created;
 /** Asana conclusively rejected the task, such as an unknown project, section, assignee, or custom field value, or missing permission; nothing was created. */
 export const CreateTaskBranchProviderRejected = CreateTaskBranch.ProviderRejected;
-/** The request may have reached Asana but its outcome cannot be confirmed; Asana has no idempotency key, so the task may exist and must not be created again automatically. */
+/** The send cap is reached and the outcome cannot be confirmed; Asana has no idempotency key, so the task may exist and must not be created again automatically. */
 export const CreateTaskBranchUncertain = CreateTaskBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateTaskBranchDefect = CreateTaskBranch.Defect;
@@ -96,7 +96,7 @@ export const CreateTaskDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "Asana created the task and returned its ID." },
     { id: "providerRejected", description: "Asana conclusively rejected the task, such as an unknown project, section, assignee, or custom field value, or missing permission; nothing was created.", optional: true },
-    { id: "uncertain", description: "The request may have reached Asana but its outcome cannot be confirmed; Asana has no idempotency key, so the task may exist and must not be created again automatically.", optional: true },
+    { id: "uncertain", description: "The send cap is reached and the outcome cannot be confirmed; Asana has no idempotency key, so the task may exist and must not be created again automatically.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
@@ -154,7 +154,7 @@ export const AddCommentBranchAdded = AddCommentBranch.Added;
 export const AddCommentBranchNotFound = AddCommentBranch.NotFound;
 /** Asana conclusively rejected the comment, such as missing permission or invalid text; nothing was added. */
 export const AddCommentBranchProviderRejected = AddCommentBranch.ProviderRejected;
-/** The request may have reached Asana but its outcome cannot be confirmed; Asana has no idempotency key, so the comment may exist and must not be added again automatically. */
+/** The send cap is reached and the outcome cannot be confirmed; Asana has no idempotency key, so the comment may exist and must not be added again automatically. */
 export const AddCommentBranchUncertain = AddCommentBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddCommentBranchDefect = AddCommentBranch.Defect;
@@ -165,7 +165,7 @@ export const AddCommentDefinition: MutationDefinition = {
     { id: "added", description: "Asana added the comment and returned its story ID." },
     { id: "notFound", description: "The task does not exist or the connection cannot see it; nothing was added.", optional: true },
     { id: "providerRejected", description: "Asana conclusively rejected the comment, such as missing permission or invalid text; nothing was added.", optional: true },
-    { id: "uncertain", description: "The request may have reached Asana but its outcome cannot be confirmed; Asana has no idempotency key, so the comment may exist and must not be added again automatically.", optional: true },
+    { id: "uncertain", description: "The send cap is reached and the outcome cannot be confirmed; Asana has no idempotency key, so the comment may exist and must not be added again automatically.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },

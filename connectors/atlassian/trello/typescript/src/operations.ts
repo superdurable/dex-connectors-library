@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { Fence, type Marker } from '@superdurable/connectors-sdk/singledispatch';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import type { ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { AddCommentDefinition, CreateCardDefinition, GetCardDefinition, ListCardsDefinition, UpdateCardDefinition } from './generated/definitions.js';
@@ -29,10 +29,10 @@ function classify(exchange: TrelloExchange, operation: string, subject: string, 
       if (exchange.status && !(exchange.status >= 200 && exchange.status < 300)) {
         return classify({ response: { status: exchange.status, headers: exchange.headers ?? {}, body: Buffer.alloc(0) }, receipt: exchange.receipt }, operation, subject, mode);
       }
-      return { ...base, kind: mode === 'unkeyed' ? 'uncertain' : 'invalid', failure: trelloFailure(operation, 'PROTOCOL', `Trello ${subject} response contains credential material`) };
+      return { ...base, kind: unknownWriteKind(mode) ?? 'invalid', failure: trelloFailure(operation, 'PROTOCOL', `Trello ${subject} response contains credential material`) };
     }
     if (exchange.error instanceof BodyTooLargeError && exchange.status && exchange.status >= 200 && exchange.status < 300) {
-      const kind = mode === 'unkeyed' ? 'uncertain' : 'invalid';
+      const kind = unknownWriteKind(mode) ?? 'invalid';
       return { ...base, kind, failure: trelloFailure(operation, 'RESPONSE_TOO_LARGE', `Trello ${subject} response exceeds the configured size limit`) };
     }
     const kind = mode === 'read' || mode === 'repeatable' || exchange.isProvablyNotSent ? 'retry' : 'uncertain';
@@ -48,11 +48,21 @@ function classify(exchange: TrelloExchange, operation: string, subject: string, 
     if (mode === 'unkeyed') return { ...base, kind: 'uncertain', failure: trelloFailure(operation, 'AVAILABILITY', `Trello ${subject} outcome is unknown after HTTP ${status}`) };
     return { ...base, kind: 'retry', retryAfterMs: trelloRetryDelay(status, response.headers), failure: trelloFailure(operation, 'AVAILABILITY', `Trello ${subject} is temporarily unavailable`) };
   }
-  if (status >= 400 && status < 500) {
-    if (status === 409 && mode === 'unkeyed') return { ...base, kind: 'uncertain', failure: trelloFailure(operation, 'CONFLICT', `Trello ${subject} conflicts with provider state and cannot be retried without a key`) };
-    return { ...base, kind: 'rejected', failure: trelloFailure(operation, trelloStatusKind(status), `Trello rejected the ${subject} with HTTP ${status}`) };
+  if (status === 409 && mode === 'unkeyed') return { ...base, kind: 'uncertain', failure: trelloFailure(operation, 'CONFLICT', `Trello ${subject} outcome is unknown after a conflict`) };
+  if (mode !== 'read' && !definiteWriteRefusalStatuses.has(status)) {
+    const retryAfterMs = mode === 'repeatable' ? trelloRetryDelay(status, response.headers) : 0;
+    return { ...base, kind: unknownWriteKind(mode)!, retryAfterMs, failure: trelloFailure(operation, 'AVAILABILITY', `Trello ${subject} outcome is unknown after HTTP ${status}`) };
   }
-  return { ...base, kind: mode === 'unkeyed' ? 'uncertain' : 'invalid', failure: trelloFailure(operation, 'PROTOCOL', `Trello returned unexpected HTTP ${status} for the ${subject}`) };
+  if (status >= 400 && status < 500) return { ...base, kind: 'rejected', failure: trelloFailure(operation, trelloStatusKind(status), `Trello rejected the ${subject} with HTTP ${status}`) };
+  return { ...base, kind: 'invalid', failure: trelloFailure(operation, 'PROTOCOL', `Trello returned unexpected HTTP ${status} for the ${subject}`) };
+}
+
+/** Statuses proving Trello refused a write; any other status leaves its outcome unknown. */
+const definiteWriteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** An unknown write outcome resends a repeatable update and bounds an unkeyed one; a read has none. */
+function unknownWriteKind(mode: 'read' | 'unkeyed' | 'repeatable'): 'uncertain' | 'retry' | undefined {
+  return mode === 'unkeyed' ? 'uncertain' : mode === 'repeatable' ? 'retry' : undefined;
 }
 
 function queryOutcome<T>(result: Classified, zero: T): QueryAttempt<T> {
@@ -218,44 +228,60 @@ export class GetCardOperation implements Query<GetCardInput, Card> {
   }
 }
 
-function trelloFence(call: Call): Fence {
-  const context = new Proxy(call.context, {
-    get(target, property) {
-      if (property === 'getLastHeartbeatValue') return () => {
-        const checkpoint = target.getLastHeartbeatValue() as { trelloDispatchedCallId: string; trelloAttempt: number; trelloCanRetry?: boolean } | undefined;
-        if (!checkpoint) return checkpoint;
-        return { callId: checkpoint.trelloDispatchedCallId, attempt: checkpoint.trelloAttempt, state: checkpoint.trelloCanRetry ? 'canResend' : 'claimed' };
-      };
-      if (property === 'recordHeartbeat') return async (value: unknown) => {
-        const marker = value as Marker;
-        await target.recordHeartbeat({ trelloDispatchedCallId: marker.callId, trelloAttempt: marker.attempt,
-          ...(['canResend', 'notSent'].includes(marker.state) ? { trelloCanRetry: true } : {}) });
-      };
-      const value: unknown = Reflect.get(target, property, target);
-      return typeof value === 'function' ? value.bind(target) : value;
-    },
-  });
-  return new Fence({ ...call, context }, 30_000);
-}
+/** The least attempt time in which a Trello write may start. */
+const minimumDispatchWindowMs = 3_000;
 
-async function singleDispatch<Output>(client: TrelloClient, call: Call, operation: string, subject: string, path: string, payload: unknown, requested: Output, successBranch: string, hasNotFound: boolean, decode: (response: ProviderResponse) => { output: Output; objectId: string }): Promise<MutationAttempt<Output>> {
+/**
+ * Send one non-idempotent Trello write behind the shared single-dispatch fence. Trello offers no
+ * lookup by Call ID, so an unknown outcome resends while the send cap allows and selects uncertain
+ * at the cap; an identity Trello returned is never sent again.
+ */
+async function singleDispatch<Output>(client: TrelloClient, call: Call, definition: MutationDefinition, operation: string, subject: string, path: string, payload: unknown, requested: Output, successBranch: string, hasNotFound: boolean, decode: (response: ProviderResponse) => { output: Output; objectId: string }): Promise<MutationAttempt<Output>> {
+  const operationMaxSends = definitionMaxSends(definition);
   let fence: Fence;
-  try { fence = trelloFence(call); }
+  try { fence = newFence(call, 30_000, { maxSends: operationMaxSends }); }
   catch { return newMutationRetry(trelloFailure(operation, 'AVAILABILITY', 'Dex attempt cannot checkpoint the Trello write')); }
   const decision = fence.decide();
-  if (decision.kind !== 'sendAllowed') return newMutationUncertain(requested, trelloFailure(operation, 'TRANSPORT', 'an earlier attempt of this Step may have sent the request, so it is not sent again'), client.receipt(call));
+  if (decision.kind === 'failClosed') return newMutationRetry(trelloFailure(operation, 'AVAILABILITY', 'Trello dispatch checkpoint is unreadable, so nothing was sent in this attempt'));
+  if (decision.kind === 'readBackRequired') return newMutationUncertain(requested, trelloFailure(operation, 'TRANSPORT', 'earlier attempts of this Step may have sent the request and the send cap is reached, so it is not sent again'), client.receipt(call));
+  if (decision.marker?.providerId) return newMutationUncertain(requested, trelloFailure(operation, 'TRANSPORT', 'an earlier attempt of this Step was accepted, so the request is not sent again'), client.receipt(call));
+  // The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins.
+  const maxSends = operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+  const priorSends = decision.priorSendUpperBound ?? 0;
+  const canResendUnknownOutcome = priorSends + 1 < maxSends, hasPossibleEarlierSend = priorSends > 0;
+  const resendOrSelectUncertain = (cause: Failure, receipt: ReceiptDraft): MutationAttempt<Output> => canResendUnknownOutcome ? newMutationRetry(cause) : newMutationUncertain(requested, cause, receipt);
+  const deadline = call.context.deadline?.getTime();
+  if (deadline !== undefined && deadline - Date.now() < minimumDispatchWindowMs) {
+    // notSent after a possible earlier send would hide it, so only a first-send decision records it.
+    if (decision.kind === 'sendAllowed') {
+      try { await fence.recordNotSent(); } catch { return newMutationRetry(trelloFailure(operation, 'AVAILABILITY', 'Trello not-sent checkpoint could not be recorded')); }
+    }
+    return newMutationRetry(trelloFailure(operation, 'AVAILABILITY', 'The attempt has too little time left to send a Trello write'));
+  }
   let exchange: TrelloExchange;
   try { exchange = await fence.dispatch(signal => client.exchange(call, operation, 'POST', path, undefined, payload, signal)); }
-  catch { return newMutationRetry(trelloFailure(operation, 'AVAILABILITY', 'Dex did not record the dispatch checkpoint, so nothing was sent to Trello')); }
+  catch { return newMutationRetry(trelloFailure(operation, 'AVAILABILITY', 'Trello dispatch checkpoint or request budget is unavailable, so nothing was sent')); }
   const classified = classify(exchange, operation, subject, 'unkeyed');
-  if (classified.kind === 'retry' || classified.kind === 'defect') {
-    try { await fence.recordCanResend(); } catch { /* A lost release cannot authorize a second send. */ }
+  if (classified.kind === 'retry') {
+    try { await fence.recordCanResend(); } catch { return newMutationRetry(trelloFailure(operation, 'AVAILABILITY', 'Trello retry checkpoint could not be recorded'), classified.retryAfterMs); }
+    return newMutationRetry(classified.failure!, classified.retryAfterMs);
   }
-  if (classified.kind !== 'success') return mutationOutcome(classified, requested, hasNotFound);
-  try {
-    const result = decode(classified.response!);
-    return newMutationBranch(successBranch, result.output, { ...classified.receipt, providerObjectId: result.objectId });
-  } catch { return newMutationUncertain(requested, trelloFailure(operation, 'PROTOCOL', `Trello accepted the ${subject} but returned an unusable reference`), classified.receipt); }
+  if (classified.kind === 'uncertain') return resendOrSelectUncertain(classified.failure!, classified.receipt);
+  if (classified.kind === 'defect') {
+    // Credentials were unavailable, so nothing was sent; a lost checkpoint only keeps the claim.
+    try { await fence.recordCanResend(); } catch { /* The claim stays, which never permits more than the cap. */ }
+    return hasPossibleEarlierSend ? newMutationUncertain(requested, classified.failure!, classified.receipt) : mutationOutcome(classified, requested, hasNotFound);
+  }
+  if (classified.kind !== 'success') {
+    if (hasPossibleEarlierSend) return newMutationUncertain(requested, classified.failure!, classified.receipt);
+    try { await fence.recordCanResend(); } catch { return newMutationRetry(trelloFailure(operation, 'AVAILABILITY', 'Trello rejection checkpoint could not be recorded')); }
+    return mutationOutcome(classified, requested, hasNotFound);
+  }
+  let result: { output: Output; objectId: string };
+  try { result = decode(classified.response!); }
+  catch { return resendOrSelectUncertain(trelloFailure(operation, 'PROTOCOL', `Trello accepted the ${subject} but returned an unusable reference`), classified.receipt); }
+  try { await fence.recordProviderId(result.objectId); } catch { /* The accepted result stands; a lost checkpoint keeps the claim. */ }
+  return newMutationBranch(successBranch, result.output, { ...classified.receipt, providerObjectId: result.objectId });
 }
 
 /** Create one card after a Dex single-dispatch checkpoint. */
@@ -284,7 +310,7 @@ export class CreateCardOperation implements Mutation<CreateCardInput, CreateCard
         ...(position !== undefined ? { pos: position } : {}),
       };
     } catch (error) { return Promise.resolve(newMutationBranch('defect', requested, {}, defect('createCard', (error as Error).message))); }
-    return singleDispatch(this.client, call, 'createCard', 'card', '/cards', payload, requested, 'created', false, response => {
+    return singleDispatch(this.client, call, CreateCardDefinition, 'createCard', 'card', '/cards', payload, requested, 'created', false, response => {
       const body = parseObject(response.body);
       const cardId = requireId(string(body.id), 'created card id');
       return { objectId: cardId, output: {
@@ -309,7 +335,7 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     let cardId: string;
     try { cardId = requireId(input.cardId, 'cardId'); plainText(input.text, 'text', true); }
     catch (error) { return Promise.resolve(newMutationBranch('defect', requested, {}, defect('addComment', (error as Error).message))); }
-    return singleDispatch(this.client, call, 'addComment', 'comment', `/cards/${cardId}/actions/comments`, { text: input.text }, requested, 'added', true, response => {
+    return singleDispatch(this.client, call, AddCommentDefinition, 'addComment', 'comment', `/cards/${cardId}/actions/comments`, { text: input.text }, requested, 'added', true, response => {
       const body = parseObject(response.body);
       const commentId = requireId(string(body.id), 'comment id');
       return { objectId: commentId, output: { ...requested, commentId,

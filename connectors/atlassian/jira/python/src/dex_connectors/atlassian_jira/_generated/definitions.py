@@ -72,7 +72,7 @@ CREATE_ISSUE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Jira created the issue and returned its key and ID.", False),
         BranchDefinition(PROVIDER_REJECTED, "Jira conclusively rejected the issue, such as a missing required field, an unknown project or issue type, or missing permission; nothing was created.", True),
-        BranchDefinition(UNCERTAIN, "The request may have reached Jira but could not be confirmed; the issue may exist and must not be created again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached and read-back could not confirm the issue; it may exist and must not be created again automatically.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -109,7 +109,7 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         BranchDefinition(ADDED, "Jira added the comment and returned its ID.", False),
         BranchDefinition(NOT_FOUND, "The issue does not exist or the connection cannot browse it; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Jira conclusively rejected the comment, such as missing Add comments permission or the per-issue comment limit; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The request may have reached Jira but could not be confirmed; the comment may exist and must not be added again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached and read-back could not confirm the comment; it may exist and must not be added again automatically.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

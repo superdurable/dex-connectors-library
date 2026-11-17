@@ -521,7 +521,7 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureConflict, "Jira Service Management "+subject+" outcome requires read-back after HTTP 409")}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode, providerRejection{})}
-	case isConclusiveRejectionStatus(response.statusCode):
+	case isDefiniteWriteRefusalStatus(response.statusCode):
 		rejection := readProviderRejection(response.body)
 		return writeClassification{outcome: writeRejected, rejection: rejection, failure: rejectionFailure(operationID, subject, response.statusCode, rejection)}
 	default:
@@ -602,9 +602,16 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
-// isConclusiveRejectionStatus reports a 4xx other than 408 and 429: the provider refused before changing anything.
-func isConclusiveRejectionStatus(statusCode int) bool {
-	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusRequestTimeout && statusCode != http.StatusTooManyRequests
+// isDefiniteWriteRefusalStatus reports a status proving the provider refused a write; others leave it unknown.
+func isDefiniteWriteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
 }
 
 func isRetryableStatus(statusCode int) bool {

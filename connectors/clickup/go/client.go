@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 // Package clickup implements ClickUp task operations and a signed task webhook Trigger as Dex connector
-// Steps. searchTasks, getTask, and findMemberByEmail read; createTask and addComment record a Dex
-// heartbeat checkpoint before they write and reconcile an unconfirmed attempt by reading back instead of
-// resending; updateTask and updateTaskTags apply absolute values and set memberships, so they are safe
-// to repeat. Dex accepts the checkpoint when the Worker writes it to its stream, so a Worker lost before
-// Dex stored it could still send a create or comment twice.
+// Steps. searchTasks, getTask, and findMemberByEmail read; createTask and addComment send behind the
+// shared single-dispatch fence, which counts each possible send in a Dex heartbeat checkpoint. After an
+// unknown outcome the next attempt reads the List or the task's comments back and reports the earlier
+// write it finds; otherwise it resends while possible sends stay within the Step's send cap, and selects
+// uncertain at the cap. updateTask and updateTaskTags apply absolute values and set memberships, so they
+// are safe to repeat and retry every unknown outcome.
 //
 // The connector authenticates with a ClickUp personal API token sent as the raw Authorization header,
 // sends every request to ClickUp API v2 at APIBaseURL, and passes ClickUp's own vocabulary through:
@@ -155,6 +156,20 @@ type clickupExchange struct {
 	retryAfter time.Duration
 }
 
+// writeOutcome is what a sent write proves; only a definite refusal status selects a refusal branch.
+type writeOutcome uint8
+
+const (
+	writeAccepted writeOutcome = iota + 1
+	// writeNotApplied is a 429, a 503, or a connection that never opened: ClickUp did not apply the write.
+	writeNotApplied
+	writeNotFound
+	writeRejected
+	// writeUnknown is a lost response, 408, 409, other 5xx, unlisted status, or unusable 2xx: ClickUp may have applied it.
+	writeUnknown
+	writeDefect
+)
+
 // isRetryableRead reports an outcome that a read, or a write that is safe to repeat, may simply repeat.
 func (result clickupExchange) isRetryableRead() bool {
 	switch result.outcome {
@@ -162,6 +177,31 @@ func (result clickupExchange) isRetryableRead() bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// classifyWrite narrows the shared classification for a write, which repeats every outcome that is not definite.
+func (result clickupExchange) classifyWrite() writeOutcome {
+	switch result.outcome {
+	case exchangeSucceeded:
+		return writeAccepted
+	case exchangeNotSent, exchangeRateLimited:
+		return writeNotApplied
+	case exchangeDefect:
+		return writeDefect
+	case exchangeInvalid:
+		return writeUnknown
+	}
+	status := result.response.statusCode
+	switch {
+	case status == http.StatusServiceUnavailable:
+		return writeNotApplied
+	case result.outcome == exchangeNotFound && status != http.StatusGone:
+		return writeNotFound
+	case result.outcome == exchangeRejected && isDefiniteWriteRefusalStatus(status):
+		return writeRejected
+	default:
+		return writeUnknown
 	}
 }
 
@@ -423,6 +463,18 @@ func rejectionFailureKind(status int) sdkgo.FailureKind {
 		return sdkgo.FailureValidation
 	default:
 		return sdkgo.FailureProviderRejection
+	}
+}
+
+// isDefiniteWriteRefusalStatus reports a status proving ClickUp refused a write; other statuses leave it unknown.
+func isDefiniteWriteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
 	}
 }
 

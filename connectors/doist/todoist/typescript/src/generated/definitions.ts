@@ -67,6 +67,8 @@ export const UpdateTaskDefinition: MutationDefinition = {
     { id: "defect", description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for updateTaskContent. */
 export const UpdateTaskMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -111,7 +113,7 @@ export const CreateTaskBranch = {
 export const CreateTaskBranchCreated = CreateTaskBranch.Created;
 /** Todoist conclusively rejected creation. */
 export const CreateTaskBranchProviderRejected = CreateTaskBranch.ProviderRejected;
-/** A creation that may have been sent may have applied, but Todoist returned no usable task and the request ID has no documented replay guarantee. */
+/** The send cap is reached, or Todoist accepted a task ID that could not be read back, so the task may exist; the connector does not send it again. */
 export const CreateTaskBranchUncertain = CreateTaskBranch.Uncertain;
 /** Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization. */
 export const CreateTaskBranchDefect = CreateTaskBranch.Defect;
@@ -121,10 +123,12 @@ export const CreateTaskDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "Todoist confirmed creation and returned the task ID." },
     { id: "providerRejected", description: "Todoist conclusively rejected creation.", optional: true },
-    { id: "uncertain", description: "A creation that may have been sent may have applied, but Todoist returned no usable task and the request ID has no documented replay guarantee.", optional: true },
+    { id: "uncertain", description: "The send cap is reached, or Todoist accepted a task ID that could not be read back, so the task may exist; the connector does not send it again.", optional: true },
     { id: "defect", description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for createTask. */
 export const CreateTaskMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -154,6 +158,8 @@ export const DeleteTaskDefinition: MutationDefinition = {
     { id: "defect", description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for deleteTask. */
 export const DeleteTaskMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

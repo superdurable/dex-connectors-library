@@ -6,7 +6,7 @@ which starts a Flow when an issue is created or updated. It uses the connector
 manifest's OAuth 2.0 refresh policy and requires `dex-connectors-sdk>=0.12.0`,
 whose poll Trigger kit the Trigger is built on.
 
-Install it with `pip install dex-connector-atlassian-jira==0.2.0`. Configure
+Install it with `pip install dex-connector-atlassian-jira==0.2.1`. Configure
 the static connection in Dex Web using the [Atlassian setup guide](../README.md#atlassian-setup).
 The project connection loader reads `cloudId`, `endpoint`,
 `maxResponseBytes`, and `pollInterval` (at least 5 seconds) from the manifest

@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 import { isIP } from 'node:net';
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { CheckpointError, InsufficientTimeError, newFence, type Decision, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { AddCommentDefinition, CreateTicketDefinition, FindCustomerByEmailDefinition, GetTicketDefinition, SearchTicketsDefinition, TransitionTicketDefinition, UpdateTicketDefinition } from './generated/definitions.js';
 import type { AddCommentInput, AddCommentOutput, CreateTicketInput, CreateTicketOutput, Customer, CustomerMatches, FindCustomerByEmailInput, GetTicketInput, SearchTicketsInput, SearchTicketsOutput, Ticket, TicketDetails, TicketStatus, TransitionTicketInput, TransitionTicketOutput, UpdateTicketInput, UpdateTicketOutput } from './generated/models.js';
-import { isRecord, pathEscape, type Classification, type JiraResult, type JiraServiceManagementClient } from './client.js';
+import { definiteWriteRefusalStatuses, isRecord, pathEscape, type Classification, type JiraResult, type JiraServiceManagementClient } from './client.js';
 
 const numericID = /^[1-9][0-9]{0,17}$/;
 const issueKey = /^[A-Za-z][A-Za-z0-9_]*-[1-9][0-9]{0,17}$/;
@@ -36,6 +37,7 @@ function parsedObject(result: JiraResult): Record<string, unknown> {
 }
 function requiredString(value: unknown): string { if (typeof value !== 'string') throw new TypeError('provider string is invalid'); return value; }
 function optionalString(value: unknown): string { return value === undefined || value === null ? '' : requiredString(value); }
+function optionalReference(value: unknown): string { return typeof value === 'string' ? value : ''; }
 function requiredBoolean(value: unknown): boolean { if (typeof value !== 'boolean') throw new TypeError('provider boolean is invalid'); return value; }
 function requiredArray(value: unknown): unknown[] { if (!Array.isArray(value)) throw new TypeError('provider list is invalid'); return value; }
 function serviceDeskPage(result: JiraResult): { values: unknown[]; isLastPage: boolean } {
@@ -310,36 +312,88 @@ function convertCycle(value: unknown, ongoing: boolean): NonNullable<NonNullable
   return { startedAt, ...(providerDate(value.breachTime) ? { breachAt: providerDate(value.breachTime) } : {}), ...(!ongoing && providerDate(value.stopTime) ? { stoppedAt: providerDate(value.stopTime) } : {}), isBreached: value.breached === undefined ? false : requiredBoolean(value.breached), ...(value.paused ? { isPaused: requiredBoolean(value.paused) } : {}), ...(value.withinCalendarHours ? { isWithinCalendarHours: requiredBoolean(value.withinCalendarHours) } : {}), goalDurationMillis: duration('goalDuration'), elapsedMillis: duration('elapsedTime'), remainingMillis: duration('remainingTime') };
 }
 
-type DispatchMarker = { jiraServiceManagementDispatchedCallId: string; attempt: number; canResend?: boolean };
-async function claimSingleDispatch(call: Call): Promise<'granted' | 'alreadySent' | 'notRecorded'> {
-  let marker: DispatchMarker | undefined;
-  try {
-    if (call.context.hasLastHeartbeatValue()) {
-      const previous: unknown = call.context.getLastHeartbeatValue();
-      if (isRecord(previous) && typeof previous.jiraServiceManagementDispatchedCallId === 'string' && Number.isInteger(previous.attempt) && Number(previous.attempt) >= -2147483648 && Number(previous.attempt) <= 2147483647 && (previous.canResend === undefined || typeof previous.canResend === 'boolean')) marker = previous as DispatchMarker;
-      else return 'alreadySent';
+/**
+ * One attempt of a non-idempotent write behind the shared single-dispatch fence. The service desk
+ * offers no lookup by Call ID, so an unknown outcome resends while the send cap allows.
+ */
+class FencedWrite {
+  readonly canResendUnknownOutcome: boolean;
+  readonly hasPossibleEarlierSend: boolean;
+  private constructor(private readonly operation: string, private readonly fence: Fence, private readonly decision: Decision, maxSends: number) {
+    const priorSends = decision.priorSendUpperBound ?? 0;
+    this.canResendUnknownOutcome = priorSends + 1 < maxSends;
+    this.hasPossibleEarlierSend = priorSends > 0;
+  }
+
+  /** Decide whether this attempt may send, or return the attempt that forbids it. */
+  static start<T>(call: Call, definition: MutationDefinition, operation: string, output: T, receipt: ReceiptDraft): FencedWrite | MutationAttempt<T> {
+    const operationMaxSends = definitionMaxSends(definition);
+    let fence: Fence;
+    try { fence = newFence(call, definition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: operationMaxSends }); }
+    catch { return newMutationBranch('defect', output, {}, failure(operation, 'LOCAL_DEFECT', 'Jira Service Management dispatch fence could not be constructed')); }
+    const decision = fence.decide();
+    if (decision.kind === 'failClosed') return newMutationRetry(failure(operation, 'AVAILABILITY', 'Jira Service Management dispatch checkpoint is unreadable, so nothing was sent in this attempt'));
+    if (decision.kind === 'readBackRequired') return newMutationUncertain(output, failure(operation, 'TRANSPORT', 'earlier attempts of this Step may have sent the request and the send cap is reached, so it is not sent again'), receipt);
+    if (decision.marker?.providerId) return newMutationUncertain(output, failure(operation, 'TRANSPORT', 'an earlier attempt of this Step was accepted, so the request is not sent again'), receipt);
+    // The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins.
+    const maxSends = operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+    return new FencedWrite(operation, fence, decision, maxSends);
+  }
+
+  /** Map a credential or site failure before the send. */
+  async sessionFailure<T>(session: Classification, output: T): Promise<MutationAttempt<T>> {
+    // notSent after a possible earlier send would hide it, so only a first-send decision records it.
+    if (this.decision.kind === 'sendAllowed') {
+      try { await this.fence.recordNotSent(); }
+      catch { return newMutationRetry(failure(this.operation, 'AVAILABILITY', 'Jira Service Management setup failed and the not-sent checkpoint could not be recorded'), session.retryAfterMs); }
     }
-  } catch { return 'alreadySent'; }
-  const attempt = call.context.attempt;
-  if (attempt < 1 || (attempt === 1 && marker !== undefined) || (attempt > 1 && (!marker || marker.jiraServiceManagementDispatchedCallId !== call.id || marker.attempt !== attempt - 1 || !marker.canResend))) return 'alreadySent';
-  try { await call.context.recordHeartbeat({ jiraServiceManagementDispatchedCallId: call.id, attempt }); return 'granted'; }
-  catch { return 'notRecorded'; }
-}
-async function releaseSingleDispatch(call: Call): Promise<void> {
-  try { await call.context.recordHeartbeat({ jiraServiceManagementDispatchedCallId: call.id, attempt: call.context.attempt, canResend: true }); }
-  catch { /* A lost release closes the next attempt, preserving single dispatch. */ }
-}
-function preSendAttempt<T>(claim: 'granted' | 'alreadySent' | 'notRecorded', operation: string, output: T, receipt: ReceiptDraft): MutationAttempt<T> | undefined {
-  if (claim === 'notRecorded') return newMutationRetry(failure(operation, 'AVAILABILITY', 'Dex did not record the dispatch checkpoint; nothing was sent'));
-  if (claim === 'alreadySent') return newMutationUncertain(output, failure(operation, 'TRANSPORT', 'an earlier attempt may have sent the request'), receipt);
-  return undefined;
-}
-async function writeAttempt<T>(call: Call, classification: Classification, output: T, notFoundBranch = 'providerRejected'): Promise<MutationAttempt<T> | undefined> {
-  if (classification.kind === 'success') return undefined;
-  if (classification.kind === 'retry') { await releaseSingleDispatch(call); return newMutationRetry(classification.failure!, classification.retryAfterMs); }
-  if (classification.kind === 'uncertain') return newMutationUncertain(output, classification.failure!, classification.receipt);
-  if (classification.kind === 'defect') await releaseSingleDispatch(call);
-  return mutationClassified(classification, output, notFoundBranch);
+    if (session.kind !== 'retry' && this.hasPossibleEarlierSend) return newMutationUncertain(output, session.failure!, {});
+    return mutationClassified(session, output, 'providerRejected');
+  }
+
+  /** Send once behind the fence, or return the attempt when the fence forbids sending. */
+  async dispatch<T>(output: T, send: () => Promise<JiraResult>): Promise<JiraResult | MutationAttempt<T>> {
+    try { return await this.fence.dispatch(() => send()); }
+    catch (error) {
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(failure(this.operation, 'AVAILABILITY', 'Jira Service Management dispatch checkpoint or request budget is unavailable; nothing was sent'));
+      return this.defectOrSelectUncertain(output, {}, failure(this.operation, 'LOCAL_DEFECT', 'Jira Service Management dispatch refused'));
+    }
+  }
+
+  /** Map a sent request: a definite outcome selects its branch, an unknown one resends below the cap. */
+  async attemptForWrite<T>(classification: Classification, output: T, notFoundBranch = 'providerRejected'): Promise<MutationAttempt<T> | undefined> {
+    if (classification.kind === 'success') return undefined;
+    if (classification.kind === 'retry') {
+      try { await this.fence.recordCanResend(); }
+      catch { return newMutationRetry(failure(this.operation, 'AVAILABILITY', 'Jira Service Management retry checkpoint could not be recorded'), classification.retryAfterMs); }
+      return newMutationRetry(classification.failure!, classification.retryAfterMs);
+    }
+    if (classification.kind === 'uncertain') return this.resendOrSelectUncertain(output, classification.failure!, classification.receipt);
+    if (classification.kind === 'defect') {
+      try { await this.fence.recordCanResend(); } catch { /* The request was never built; a lost checkpoint only keeps the claim. */ }
+      return this.defectOrSelectUncertain(output, classification.receipt, classification.failure!);
+    }
+    if (this.hasPossibleEarlierSend) return newMutationUncertain(output, classification.failure!, classification.receipt);
+    try { await this.fence.recordCanResend(); }
+    catch { return newMutationRetry(failure(this.operation, 'AVAILABILITY', 'Jira Service Management rejection checkpoint could not be recorded')); }
+    return mutationClassified(classification, output, notFoundBranch);
+  }
+
+  /** Retry an unknown outcome while the send cap allows another send. */
+  resendOrSelectUncertain<T>(output: T, cause: Failure, receipt: ReceiptDraft): MutationAttempt<T> {
+    // The claim stays the last marker, so the next attempt counts this send.
+    return this.canResendUnknownOutcome ? newMutationRetry(cause) : newMutationUncertain(output, cause, receipt);
+  }
+
+  /** Select defect only when no earlier send may have written. */
+  defectOrSelectUncertain<T>(output: T, receipt: ReceiptDraft, cause: Failure): MutationAttempt<T> {
+    return this.hasPossibleEarlierSend ? newMutationUncertain(output, cause, receipt) : newMutationBranch('defect', output, receipt, cause);
+  }
+
+  /** Save the accepted identity so a replayed attempt never resends it. */
+  async recordAccepted(providerId: string): Promise<void> {
+    try { await this.fence.recordProviderId(providerId); } catch { /* The accepted result stands; a lost checkpoint keeps the claim. */ }
+  }
 }
 function validatePlainText(value: string, name: string, required: boolean): void {
   if (required && !value.trim()) throw new TypeError(`${name} is required`);
@@ -376,23 +430,28 @@ export class CreateTicketOperation implements Mutation<CreateTicketInput, Create
       for (const [key, value] of Object.entries(extras)) { if (!fieldID.test(key) || key === 'summary' || key === 'description' || Buffer.byteLength(JSON.stringify(value)) > 16384) throw new TypeError('additional field invalid'); values[key] = value; }
       payload = { serviceDeskId: requested.serviceDeskId, requestTypeId: requested.requestTypeId, requestFieldValues: values, ...(requested.raiseOnBehalfOfAccountId ? { raiseOnBehalfOf: requested.raiseOnBehalfOfAccountId } : {}) };
     } catch (error) { return mutationDefect('createTicket', requested, error); }
-    const claim = preSendAttempt(await claimSingleDispatch(call), 'createTicket', requested, this.client.receipt(call));
-    if (claim) return claim;
+    const write = FencedWrite.start(call, CreateTicketDefinition, 'createTicket', requested, this.client.receipt(call));
+    if (!(write instanceof FencedWrite)) return write;
     const session = await this.client.start(call, 'createTicket');
-    if ('kind' in session) { if (session.kind === 'retry') await releaseSingleDispatch(call); return mutationClassified(session, requested); }
-    const result = await this.client.exchange(call, session, { method: 'POST', api: 'desk', path: '/request', payload });
+    if ('kind' in session) return write.sessionFailure(session, requested);
+    const result = await write.dispatch(requested, () => this.client.exchange(call, session, { method: 'POST', api: 'desk', path: '/request', payload }));
+    if ('kind' in result) return result;
     const classification = this.client.write(call, 'createTicket', 'customer request', result);
     if (result.response?.status === 409) {
       const recovered = await this.readBack(call, session, result, requested);
       if (recovered) return newMutationBranch('created', recovered, { ...classification.receipt, providerObjectId: recovered.issueKey });
     }
     if (classification.kind === 'rejected') Object.assign(requested, safeRejection(result.response!.body));
-    const terminal = await writeAttempt(call, classification, requested);
+    const terminal = await write.attemptForWrite(classification, requested);
     if (terminal) return terminal;
-    let created: Record<string, unknown>;
-    try { created = parsedObject(result); } catch { return newMutationUncertain(requested, failure('createTicket', 'PROTOCOL', 'Jira accepted the request but returned an unusable reference'), classification.receipt); }
-    if (!numericID.test(optionalString(created.issueId)) || !issueKey.test(optionalString(created.issueKey))) {
+    let created: Record<string, unknown> = {};
+    try { created = parsedObject(result); } catch { /* An unusable body has no reference, handled below. */ }
+    const reference = numericID.test(optionalReference(created.issueId)) ? optionalReference(created.issueId) : optionalReference(created.issueKey);
+    if (!numericID.test(reference) && !issueKey.test(reference)) return write.resendOrSelectUncertain(requested, failure('createTicket', 'PROTOCOL', 'Jira accepted the request but returned an unusable reference'), classification.receipt);
+    await write.recordAccepted(reference);
+    if (!numericID.test(optionalReference(created.issueId)) || !issueKey.test(optionalReference(created.issueKey))) {
       const recovered = await this.readBack(call, session, result, requested);
+      // The provider returned a reference to an accepted request; a resend would duplicate it.
       if (!recovered) return newMutationUncertain(requested, failure('createTicket', 'PROTOCOL', 'Jira accepted the request but its reference could not be confirmed'), classification.receipt);
       return newMutationBranch('created', recovered, { ...classification.receipt, providerObjectId: recovered.issueKey });
     }
@@ -436,23 +495,27 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     let issue: string;
     try { issue = trimID(input.issueIdOrKey, 'issueIdOrKey', new RegExp(`(?:${numericID.source})|(?:${issueKey.source})`)); requested.issueIdOrKey = issue; validatePlainText(input.body, 'body', true); }
     catch (error) { return mutationDefect('addComment', requested, error); }
-    const claim = preSendAttempt(await claimSingleDispatch(call), 'addComment', requested, this.client.receipt(call));
-    if (claim) return claim;
+    const write = FencedWrite.start(call, AddCommentDefinition, 'addComment', requested, this.client.receipt(call));
+    if (!(write instanceof FencedWrite)) return write;
     const session = await this.client.start(call, 'addComment');
-    if ('kind' in session) { if (session.kind === 'retry') await releaseSingleDispatch(call); return mutationClassified(session, requested); }
-    const result = await this.client.exchange(call, session, { method: 'POST', api: 'desk', path: `${requestPath(issue)}/comment`, payload: { body: input.body, public: requested.isPublic } });
+    if ('kind' in session) return write.sessionFailure(session, requested);
+    const result = await write.dispatch(requested, () => this.client.exchange(call, session, { method: 'POST', api: 'desk', path: `${requestPath(issue)}/comment`, payload: { body: input.body, public: requested.isPublic } }));
+    if ('kind' in result) return result;
     const classification = this.client.write(call, 'addComment', 'comment', result, issue);
     if (result.response?.status === 409) {
       const recovered = await this.readBack(call, session, result, issue, input);
       if (recovered) return newMutationBranch('added', { ...requested, commentId: requiredString(recovered.id), isPublic: requiredBoolean(recovered.public), ...(providerDate(recovered.created) ? { createdAt: providerDate(recovered.created) } : {}) }, classification.receipt);
     }
-    const terminal = await writeAttempt(call, classification, requested, 'notFound');
+    const terminal = await write.attemptForWrite(classification, requested, 'notFound');
     if (terminal) return terminal;
+    let added: AddCommentOutput;
     try {
       const created = parsedObject(result);
       if (!numericID.test(requiredString(created.id))) throw new TypeError('comment ID invalid');
-      return newMutationBranch('added', { ...requested, commentId: requiredString(created.id), ...(created.public !== undefined && created.public !== null ? { isPublic: requiredBoolean(created.public) } : {}), ...(providerDate(created.created) ? { createdAt: providerDate(created.created) } : {}) }, classification.receipt);
-    } catch { return newMutationUncertain(requested, failure('addComment', 'PROTOCOL', 'Jira accepted the comment but returned an unusable reference'), classification.receipt); }
+      added = { ...requested, commentId: requiredString(created.id), ...(created.public !== undefined && created.public !== null ? { isPublic: requiredBoolean(created.public) } : {}), ...(providerDate(created.created) ? { createdAt: providerDate(created.created) } : {}) };
+    } catch { return write.resendOrSelectUncertain(requested, failure('addComment', 'PROTOCOL', 'Jira accepted the comment but returned an unusable reference'), classification.receipt); }
+    await write.recordAccepted(added.commentId!);
+    return newMutationBranch('added', added, classification.receipt);
   }
   private async readBack(call: Call, session: { token: string; cloudID: string }, result: JiraResult, issue: string, input: AddCommentInput): Promise<Record<string, unknown> | undefined> {
     let conflict: Record<string, unknown>;
@@ -511,7 +574,7 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     const receipt = { ...classification.receipt, providerObjectId: key };
     if (!Object.keys(payload).length) return newMutationBranch('updated', { ...output, wasAlreadyApplied: true }, receipt);
     result = await this.client.exchange(call, session, { method: 'PUT', api: 'platform', path: issuePath(key), payload });
-    classification = this.client.read(call, 'updateTicket', 'request update', result, key);
+    classification = this.client.repeatableWrite(call, 'updateTicket', 'request update', result, key);
     if (classification.kind !== 'success') {
       if (classification.kind === 'rejected') output.rejectedFieldIds = safeRejection(result.response!.body).rejectedFieldIds;
       return mutationClassified(classification, output);
@@ -559,8 +622,9 @@ export class TransitionTicketOperation implements Mutation<TransitionTicketInput
     const reread = await this.readSnapshot(call, session, issue);
     if ('kind' in reread) return newMutationRetry(failure('transitionTicket', 'AVAILABILITY', 'Jira transition outcome could not be read back'));
     if (reread.snapshot.status.id === chosen.destinationStatus.id) return newMutationBranch('transitioned', { ...output, status: reread.snapshot.status }, writeReceipt);
-    if (!result.error && [400, 401, 403, 405, 410, 413, 415, 422].includes(result.response!.status)) return newMutationBranch('providerRejected', { ...output, status: reread.snapshot.status, ...safeRejection(result.response!.body) }, writeReceipt, failure('transitionTicket', result.response!.status === 401 ? 'AUTHENTICATION' : result.response!.status === 403 ? 'AUTHORIZATION' : [400, 422].includes(result.response!.status) ? 'VALIDATION' : 'PROVIDER_REJECTION', 'Jira rejected the transition'));
-    if (!result.error && result.response!.status < 400) return invalidMutation('transitionTicket', output, writeReceipt);
+    if (!result.error && definiteWriteRefusalStatuses.has(result.response!.status)) return newMutationBranch('providerRejected', { ...output, status: reread.snapshot.status, ...safeRejection(result.response!.body) }, writeReceipt, failure('transitionTicket', result.response!.status === 401 ? 'AUTHENTICATION' : result.response!.status === 403 ? 'AUTHORIZATION' : [400, 422].includes(result.response!.status) ? 'VALIDATION' : 'PROVIDER_REJECTION', 'Jira rejected the transition'));
+    // An unexpected status leaves the outcome unknown; the next attempt rereads before writing.
+    if (!result.error && result.response!.status < 400) return newMutationRetry(failure('transitionTicket', 'PROTOCOL', `Jira returned unexpected HTTP ${result.response!.status} for the transition`));
     return newMutationRetry(failure('transitionTicket', result.response?.status === 409 ? 'CONFLICT' : 'AVAILABILITY', 'Jira did not confirm the transition'));
   }
   private async readSnapshot(call: Call, session: { token: string; cloudID: string }, issue: string): Promise<{ snapshot: { id: string; key: string; status: TicketStatus; transitions: NonNullable<TransitionTicketOutput['availableTransitions']> }; receipt: ReceiptDraft } | Classification> {

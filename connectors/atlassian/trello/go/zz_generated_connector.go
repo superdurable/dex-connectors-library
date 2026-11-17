@@ -427,7 +427,7 @@ var CreateCardDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateCardBranchCreated, Description: "Trello created the card and returned its ID."},
 		{ID: CreateCardBranchProviderRejected, Description: "Trello conclusively rejected the card, such as an unknown list, label, or member, or missing permission; nothing was created.", Optional: true},
-		{ID: CreateCardBranchUncertain, Description: "The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically.", Optional: true},
+		{ID: CreateCardBranchUncertain, Description: "The send cap is reached and the outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically.", Optional: true},
 		{ID: CreateCardBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -587,7 +587,7 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		{ID: AddCommentBranchAdded, Description: "Trello added the comment and returned its action ID."},
 		{ID: AddCommentBranchNotFound, Description: "The card does not exist; nothing was added.", Optional: true},
 		{ID: AddCommentBranchProviderRejected, Description: "Trello conclusively rejected the comment, such as missing permission or invalid text; nothing was added.", Optional: true},
-		{ID: AddCommentBranchUncertain, Description: "The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically.", Optional: true},
+		{ID: AddCommentBranchUncertain, Description: "The send cap is reached and the outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically.", Optional: true},
 		{ID: AddCommentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

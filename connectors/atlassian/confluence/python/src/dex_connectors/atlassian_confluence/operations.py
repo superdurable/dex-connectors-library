@@ -21,6 +21,13 @@ from dex_connectors.sdk import (
     QueryAttempt,
     Receipt,
 )
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    DecisionKind,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
+)
 
 from ._generated.definitions import (
     ADD_COMMENT_DEFINITION,
@@ -966,94 +973,96 @@ class AddCommentOperation:
                 "defect", requested, Receipt(), failure(operation, FailureKind.VALIDATION, str(error))
             )
         try:
-            session = await self.client.start_session(call, operation)
-        except SessionError as error:
-            return (
-                MutationAttempt.retry(error.failure, error.retry_after)
-                if error.retryable
-                else MutationAttempt.branch_result("defect", requested, Receipt(), error.failure)
-            )
-        first_send_at = _first_send_at(call, self.client.now())
-        checkpoint_at = _checkpoint_time(call, first_send_at)
-        if checkpoint_at is not None:
-            first_send_at = min(first_send_at, checkpoint_at)
-            response = await self.client.exchange(
-                session,
-                "GET",
-                "content",
-                f"/pages/{path_escape(page_id)}/footer-comments",
-                {"body-format": "storage", "sort": "-created-date", "limit": "25"},
-            )
-            classified = self.client.classify_read(operation, "page comments", response)
-            receipt = self.client.receipt(session, response)
-            if classified.outcome == "retry":
-                return MutationAttempt.retry(cast(Failure, classified.failure), classified.retry_after)
-            if classified.outcome == "notFound":
-                return MutationAttempt.branch_result("notFound", requested, receipt, classified.failure)
-            if classified.outcome != "accepted":
-                return MutationAttempt.uncertain(requested, cast(Failure, classified.failure), receipt)
-            try:
-                results = decode_object(response).get("results")
-                if not isinstance(results, list):
-                    raise ValueError("invalid comment list")
-                for item in results:
-                    if not isinstance(item, dict):
-                        continue
-                    try:
-                        comment_id = _string(item, "id")
-                        body = _string(_object(_object(item, "body"), "storage"), "value")
-                        created_at = _date(_string(_object(item, "version"), "createdAt"))
-                    except (ValueError, TypeError):
-                        continue
-                    if (
-                        _ID.fullmatch(comment_id)
-                        and created_at >= first_send_at - timedelta(minutes=1)
-                        and comparison_text(body) == comparison
-                    ):
-                        output = _comment_output(requested, item, True)
-                        return MutationAttempt.branch_result(
-                            "added", output, self.client.receipt(session, response, comment_id)
-                        )
-            except (ValueError, TypeError):
-                return MutationAttempt.uncertain(
-                    requested,
-                    failure(
-                        operation,
-                        FailureKind.PROTOCOL,
-                        (
-                            "an earlier attempt of this Step sent the comment, and the page's "
-                            "comments read back are invalid"
-                        ),
-                    ),
-                    receipt,
-                )
-            return MutationAttempt.uncertain(
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
+            decision = await fence.decide()
+        except ValueError:
+            return MutationAttempt.branch_result(
+                "defect",
                 requested,
+                Receipt(),
                 failure(
-                    operation,
-                    FailureKind.TRANSPORT,
-                    (
-                        "an earlier attempt of this Step sent the comment without a confirmed outcome, "
-                        "and the page shows no matching comment, so it is not sent again"
-                    ),
+                    operation, FailureKind.LOCAL_DEFECT, "Confluence dispatch fence could not be constructed"
                 ),
-                receipt,
             )
-        if not await _heartbeat(call, first_send_at):
+        if decision.kind == DecisionKind.FAIL_CLOSED:
             return MutationAttempt.retry(
                 failure(
                     operation,
                     FailureKind.AVAILABILITY,
-                    "the comment checkpoint could not be recorded, so nothing was sent to Confluence",
+                    "the comment checkpoint is unreadable, so nothing was sent in this attempt",
                 )
             )
-        response = await self.client.exchange(
-            session,
-            "POST",
-            "content",
-            "/footer-comments",
-            payload={"pageId": page_id, "body": {"representation": "storage", "value": storage}},
-        )
+        # An earlier send of this call may have taken effect, so a refusal or defect proves nothing.
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
+        try:
+            session = await self.client.start_session(call, operation)
+        except SessionError as error:
+            # notSent after a possible earlier send would hide it, so only a first-send decision records it.
+            if decision.kind == DecisionKind.SEND_ALLOWED:
+                try:
+                    await fence.record_not_sent()
+                except Exception:
+                    return MutationAttempt.retry(
+                        failure(
+                            operation,
+                            FailureKind.AVAILABILITY,
+                            "Confluence setup failed and the not-sent checkpoint could not be recorded",
+                        ),
+                        error.retry_after,
+                    )
+            if error.retryable:
+                return MutationAttempt.retry(error.failure, error.retry_after)
+            return _comment_refusal_or_uncertain(
+                has_possible_earlier_send, "defect", requested, Receipt(), error.failure
+            )
+        first_send_at = _first_send_at(call, self.client.now())
+        has_saved_identity = decision.marker is not None and bool(decision.marker.provider_id)
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED or (
+            decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+        ):
+            found, read_receipt = await self._read_back(
+                session, requested, page_id, comparison, first_send_at
+            )
+            if found is not None:
+                return found
+            if decision.kind == DecisionKind.READ_BACK_REQUIRED or has_saved_identity:
+                return MutationAttempt.uncertain(
+                    requested,
+                    failure(
+                        operation,
+                        FailureKind.TRANSPORT,
+                        "earlier attempts of this Step sent the comment up to the send cap, and the page "
+                        "shows no matching comment, so it is not sent again",
+                    ),
+                    read_receipt,
+                )
+        try:
+            response = await fence.dispatch(
+                lambda _deadline: self.client.exchange(
+                    session,
+                    "POST",
+                    "content",
+                    "/footer-comments",
+                    payload={"pageId": page_id, "body": {"representation": "storage", "value": storage}},
+                )
+            )
+        except (CheckpointError, InsufficientAttemptTimeError):
+            return MutationAttempt.retry(
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "the comment checkpoint or request budget is unavailable, "
+                    "so nothing was sent to Confluence",
+                )
+            )
+        except DispatchNotAllowedError:
+            return _comment_refusal_or_uncertain(
+                has_possible_earlier_send,
+                "defect",
+                requested,
+                Receipt(),
+                failure(operation, FailureKind.LOCAL_DEFECT, "Confluence dispatch was not allowed"),
+            )
         classified = self.client.classify_write(operation, "comment", response)
         receipt = self.client.receipt(session, response)
         if classified.outcome == "accepted":
@@ -1063,9 +1072,6 @@ class AddCommentOperation:
                 if not _ID.fullmatch(comment_id):
                     raise ValueError("invalid comment ID")
                 output = _comment_output(requested, resource)
-                return MutationAttempt.branch_result(
-                    "added", output, self.client.receipt(session, response, comment_id)
-                )
             except (ValueError, TypeError):
                 classified = Classification(
                     "ambiguous",
@@ -1075,12 +1081,97 @@ class AddCommentOperation:
                         "Confluence accepted the comment but returned an unusable comment",
                     ),
                 )
-        if classified.outcome == "notApplied":
-            await _clear_heartbeat(call)
-            return MutationAttempt.retry(cast(Failure, classified.failure), classified.retry_after)
-        if classified.outcome in ("notFound", "rejected", "defect"):
-            if classified.outcome == "defect":
-                await _clear_heartbeat(call)
+            else:
+                try:
+                    await fence.record_provider_id(comment_id)
+                except Exception:
+                    pass  # The accepted comment stands; a lost identity checkpoint keeps the claim.
+                return MutationAttempt.branch_result(
+                    "added", output, self.client.receipt(session, response, comment_id)
+                )
+        if classified.outcome in ("notApplied", "notFound", "rejected", "defect"):
+            if classified.outcome == "defect" or not has_possible_earlier_send:
+                try:
+                    await fence.record_can_resend()
+                except Exception:
+                    if classified.outcome != "defect":
+                        return MutationAttempt.retry(
+                            failure(
+                                operation,
+                                FailureKind.AVAILABILITY,
+                                "Confluence checkpoint could not be recorded",
+                            ),
+                            classified.retry_after,
+                        )
+            if classified.outcome == "notApplied":
+                return MutationAttempt.retry(cast(Failure, classified.failure), classified.retry_after)
             branch = "providerRejected" if classified.outcome == "rejected" else classified.outcome
-            return MutationAttempt.branch_result(branch, requested, receipt, classified.failure)
+            return _comment_refusal_or_uncertain(
+                has_possible_earlier_send, branch, requested, receipt, cast(Failure, classified.failure)
+            )
+        # The claim stays, so the next attempt reads the page's comments, then resends within the cap.
         return MutationAttempt.retry(cast(Failure, classified.failure), max(classified.retry_after, 5))
+
+    async def _read_back(
+        self,
+        session: Any,
+        requested: AddCommentOutput,
+        page_id: str,
+        comparison: str,
+        first_send_at: datetime,
+    ) -> tuple[MutationAttempt[AddCommentOutput] | None, Receipt]:
+        """Report an earlier comment, a transient Retry, or a missing page; None means unconfirmed."""
+        response = await self.client.exchange(
+            session,
+            "GET",
+            "content",
+            f"/pages/{path_escape(page_id)}/footer-comments",
+            {"body-format": "storage", "sort": "-created-date", "limit": "25"},
+        )
+        classified = self.client.classify_read("addComment", "page comments", response)
+        receipt = self.client.receipt(session, response)
+        if classified.outcome == "retry":
+            return MutationAttempt.retry(cast(Failure, classified.failure), classified.retry_after), receipt
+        if classified.outcome == "notFound":
+            return MutationAttempt.branch_result("notFound", requested, receipt, classified.failure), receipt
+        if classified.outcome != "accepted":
+            return None, receipt
+        try:
+            results = decode_object(response).get("results")
+            if not isinstance(results, list):
+                raise ValueError("invalid comment list")
+        except (ValueError, TypeError):
+            return None, receipt
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            try:
+                comment_id = _string(item, "id")
+                body = _string(_object(_object(item, "body"), "storage"), "value")
+                created_at = _date(_string(_object(item, "version"), "createdAt"))
+            except (ValueError, TypeError):
+                continue
+            if (
+                _ID.fullmatch(comment_id)
+                and created_at >= first_send_at - timedelta(minutes=1)
+                and comparison_text(body) == comparison
+            ):
+                output = _comment_output(requested, item, True)
+                found = MutationAttempt.branch_result(
+                    "added", output, self.client.receipt(session, response, comment_id)
+                )
+                return found, receipt
+        return None, receipt
+
+
+def _comment_refusal_or_uncertain(
+    has_possible_earlier_send: bool,
+    branch: str,
+    requested: AddCommentOutput,
+    receipt: Receipt,
+    cause: Failure,
+) -> MutationAttempt[AddCommentOutput]:
+    """Select a definite branch only when no earlier send may have added the comment."""
+    if has_possible_earlier_send:
+        return MutationAttempt.uncertain(requested, cause, receipt)
+    return MutationAttempt.branch_result(branch, requested, receipt, cause)

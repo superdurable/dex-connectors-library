@@ -6,17 +6,17 @@ metadata:
   description: Search Confluence Cloud pages with bounded CQL, read a page as Markdown or plain text, publish and update pages without duplicates, add footer comments, and receive created and updated pages.
   company: Atlassian
   categories: [productivity, files-documents]
-  version: v0.25.0
+  version: v0.25.1
 spec:
   provider: atlassian
   languages:
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: '@superdurable/connector-atlassian-confluence'
       operations: [searchPages, getPage, createPage, updatePage, addComment]
       triggers: [pageChanged]
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-atlassian-confluence
       operations: [searchPages, getPage, createPage, updatePage, addComment]
       triggers: [pageChanged]
@@ -309,19 +309,19 @@ spec:
       inputType: AddCommentInput
       outputType: AddCommentOutput
       kind: mutation
-      description: Add one footer comment with a Markdown or plain-text body to a page, sending it at most once per Step execution and confirming an unconfirmed attempt by reading the page's comments.
+      description: Add one footer comment with a Markdown or plain-text body to a page; an unconfirmed attempt is confirmed by reading the page's comments before a resend within the send cap.
       idempotency: required
       authorization: required
       branches:
         - {id: added, goName: Added, description: "The comment is on the page, including one an earlier attempt of this Step execution sent."}
         - {id: notFound, goName: NotFound, description: The page does not exist or the connection cannot view it; nothing was added., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Confluence conclusively rejected the comment, such as an invalid body or missing Add comments permission; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "An earlier attempt sent the comment and the page's comments do not confirm it; Confluence has no idempotency key, so it is never sent again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could add another comment because Confluence has no comment key and the next attempt sends without read-back."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Each resend after an unconfirmed read-back can add another comment because Confluence has no comment key."}}
       mocks:
         - name: publicationComment
           branch: added

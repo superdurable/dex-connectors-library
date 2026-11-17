@@ -140,7 +140,7 @@ export interface AddCommentStepConfig<StepInput, OperationInput = AddCommentInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Confluence conclusively rejected the comment, such as an invalid body or missing Add comments permission; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** An earlier attempt sent the comment and the page's comments do not confirm it; Confluence has no idempotency key, so it is never sent again automatically. */
+  /** The send cap is reached and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

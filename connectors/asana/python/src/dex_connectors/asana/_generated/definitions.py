@@ -72,7 +72,7 @@ CREATE_TASK_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Asana created the task and returned its ID.", False),
         BranchDefinition(PROVIDER_REJECTED, "Asana conclusively rejected the task, such as an unknown project, section, assignee, or custom field value, or missing permission; nothing was created.", True),
-        BranchDefinition(UNCERTAIN, "The request may have reached Asana but its outcome cannot be confirmed; Asana has no idempotency key, so the task may exist and must not be created again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached and the outcome cannot be confirmed; Asana has no idempotency key, so the task may exist and must not be created again automatically.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -107,7 +107,7 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         BranchDefinition(ADDED, "Asana added the comment and returned its story ID.", False),
         BranchDefinition(NOT_FOUND, "The task does not exist or the connection cannot see it; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Asana conclusively rejected the comment, such as missing permission or invalid text; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The request may have reached Asana but its outcome cannot be confirmed; Asana has no idempotency key, so the comment may exist and must not be added again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached and the outcome cannot be confirmed; Asana has no idempotency key, so the comment may exist and must not be added again automatically.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

@@ -120,19 +120,19 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, requested, failurePointer(createTicketOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
-	if attempt, isTerminal := singleDispatchAttemptBeforeSend(claimSingleDispatch(call), createTicketOperationID, requested, singleDispatchReceipt(call)); isTerminal {
+	write, attempt, isTerminal := startFencedWrite(call, CreateTicketDefinition.StepDefaults.ExecuteMethodTimeout, createTicketOperationID, requested, CreateTicketBranchDefect)
+	if isTerminal {
 		return attempt
 	}
 	session, cancel, sessionErr := client.startSession(call, createTicketOperationID)
 	if sessionErr != nil {
-		if sessionErr.isRetryable {
-			releaseSingleDispatch(call)
-			return sdkgo.NewMutationRetry[CreateTicketOutput](sessionErr.failure, sessionErr.retryAfter)
-		}
-		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, requested, sessionErr.pointer(), sdkgo.Receipt{})
+		return sessionFailureAttempt(write, createTicketOperationID, sessionErr, requested, CreateTicketBranchDefect)
 	}
 	defer cancel()
-	result := client.exchange(session, providerRequest{method: http.MethodPost, api: serviceDeskAPI, path: "/request", payload: body})
+	result, attempt, isTerminal := dispatchFencedWrite(write, client, session, providerRequest{method: http.MethodPost, api: serviceDeskAPI, path: "/request", payload: body}, createTicketOperationID, requested, CreateTicketBranchDefect)
+	if isTerminal {
+		return attempt
+	}
 	classification := client.classifyUnkeyedWrite(createTicketOperationID, createTicketFailureSubject, result)
 	receipt := client.receipt(session, result.response, "")
 	if result.response.statusCode == http.StatusConflict {
@@ -146,20 +146,30 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 	if classification.outcome == writeRejected {
 		requested.RejectedFieldIDs, requested.ProviderErrorKey = classification.rejection.fieldIDs, classification.rejection.errorKey
 	}
-	if attempt, isTerminal := singleDispatchAttemptForWrite(call, classification, requested, receipt, singleDispatchBranches{
+	if attempt, isTerminal := attemptForWrite(write, createTicketOperationID, classification, requested, receipt, singleDispatchBranches{
 		providerRejected: CreateTicketBranchProviderRejected, defect: CreateTicketBranchDefect,
 	}); isTerminal {
 		return attempt
 	}
 	var created createdRequestResource
-	if err := json.Unmarshal(result.response.body, &created); err != nil {
-		return sdkgo.NewMutationUncertain(requested, newFailure(createTicketOperationID, sdkgo.FailureProtocol,
+	reference := ""
+	if json.Unmarshal(result.response.body, &created) == nil {
+		reference = created.IssueID
+		if !numericIDPattern.MatchString(reference) {
+			reference = created.IssueKey
+		}
+	}
+	if !numericIDPattern.MatchString(reference) && !issueKeyPattern.MatchString(reference) {
+		return resendOrSelectUncertain(write, requested, newFailure(createTicketOperationID, sdkgo.FailureProtocol,
 			"Jira Service Management accepted the customer request but returned an unusable request reference"), receipt)
 	}
+	// A saved reference keeps a replayed attempt from resending an accepted request.
+	_ = write.fence.RecordProviderID(reference)
 	if !numericIDPattern.MatchString(created.IssueID) || !issueKeyPattern.MatchString(created.IssueKey) {
 		if recovered, isConfirmed := client.readBackCreatedTicket(session, created, requested); isConfirmed {
 			created = recovered
 		} else {
+			// The provider returned a reference to an accepted request, so a resend would surely duplicate it.
 			return sdkgo.NewMutationUncertain(requested, newFailure(createTicketOperationID, sdkgo.FailureProtocol,
 				"Jira Service Management accepted the customer request but its reference could not be confirmed"), receipt)
 		}

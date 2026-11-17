@@ -47,8 +47,9 @@ func TestAddCommentClassifiesPostOutcomesWithoutResendingAmbiguousWrites(t *test
 		{name: "permission", status: http.StatusForbidden, branch: asana.AddCommentBranchProviderRejected},
 		{name: "rate limit", status: http.StatusTooManyRequests, isRetry: true},
 		{name: "unavailable", status: http.StatusServiceUnavailable, isRetry: true},
-		{name: "server error", status: http.StatusInternalServerError, branch: asana.AddCommentBranchUncertain},
-		{name: "unusable story", status: http.StatusCreated, branch: asana.AddCommentBranchUncertain},
+		// Unknown outcomes resend on the next attempt below the send cap.
+		{name: "server error", status: http.StatusInternalServerError, isRetry: true},
+		{name: "unusable story", status: http.StatusCreated, isRetry: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingAsana(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -59,11 +60,8 @@ func TestAddCommentClassifiesPostOutcomesWithoutResendingAmbiguousWrites(t *test
 				asana.AddCommentInput{TaskID: testTaskID, Text: "Approved."})
 			require.Equal(t, 1, provider.requestCount())
 			if test.isRetry {
-				kind := sdkgo.FailureRateLimit
-				if test.status == http.StatusServiceUnavailable {
-					kind = sdkgo.FailureAvailability
-				}
-				requireRetry(t, err, kind)
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
 				return
 			}
 			require.NoError(t, err)
@@ -75,13 +73,13 @@ func TestAddCommentClassifiesPostOutcomesWithoutResendingAmbiguousWrites(t *test
 	}
 }
 
-func TestAddCommentTimeoutAfterDispatchIsUncertain(t *testing.T) {
+func TestAddCommentTimeoutAfterDispatchIsUncertainWithASendCapOfOne(t *testing.T) {
 	provider := newRecordingAsana(t, func(_ http.ResponseWriter, request *http.Request, _ int) {
 		<-request.Context().Done()
 	})
 	client := newAsanaClient(t, provider.URL, asana.WithHTTPClient(&http.Client{Timeout: 200 * time.Millisecond}))
 	result, err := sdkgo.RunMutation(newAsanaDexContext("comment-timeout"), client.AddComment(), asanaConnection,
-		asana.AddCommentInput{TaskID: testTaskID, Text: "Approved."})
+		asana.AddCommentInput{TaskID: testTaskID, Text: "Approved."}, sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, asana.AddCommentBranchUncertain, result.Branch)
 	require.Equal(t, 1, provider.requestCount())
@@ -130,9 +128,9 @@ func TestAddCommentLostAcceptedIDCheckpointNeverResends(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, asana.AddCommentBranchAdded, result.Branch)
 	second := newReplayAsanaDexContext("comment-lost-id", 2, first.lastHeartbeat())
-	result, err = sdkgo.RunMutation(second, client.AddComment(), asanaConnection, input)
+	result, err = sdkgo.RunMutation(second, client.AddComment(), asanaConnection, input, sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
-	require.Equal(t, asana.AddCommentBranchUncertain, result.Branch)
+	require.Equal(t, asana.AddCommentBranchUncertain, result.Branch, "a send cap of 1 never resends after a lost ID")
 	require.Equal(t, 1, provider.requestCount())
 }
 

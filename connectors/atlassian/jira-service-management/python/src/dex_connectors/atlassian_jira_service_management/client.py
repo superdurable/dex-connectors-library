@@ -82,6 +82,10 @@ class Classification:
     error_key: str = ""
 
 
+DEFINITE_WRITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+"""Statuses proving the provider refused a write; any other status leaves its outcome unknown."""
+
+
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
     """Build a secret-safe provider failure."""
     return Failure(kind, "jira-service-management", operation, message)
@@ -466,6 +470,31 @@ class Client:
         except (httpx.HTTPError, ValueError, TypeError):
             return ProviderResponse(request_not_built=True)
 
+    def classify_repeatable_write(
+        self, operation: str, subject: str, response: ProviderResponse
+    ) -> Classification:
+        """Classify an edit that the next attempt rereads before repeating.
+
+        Only a definite refusal is terminal; any other unexpected response returns Retry.
+        """
+        classification = self.classify_read(operation, subject, response)
+        is_unknown = classification.outcome == "invalidResponse" or (
+            classification.outcome == "providerRejected"
+            and response.status_code not in DEFINITE_WRITE_REFUSAL_STATUSES
+        )
+        if is_unknown:
+            return Classification(
+                "retry",
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    f"Jira Service Management {subject} outcome is unknown after HTTP "
+                    f"{response.status_code}; the next attempt rereads the request first",
+                ),
+                self.retry_after(response),
+            )
+        return classification
+
     def classify_read(self, operation: str, subject: str, response: ProviderResponse) -> Classification:
         """Classify a read using Go's branch and retry boundaries."""
         if response.too_little_time:
@@ -660,7 +689,7 @@ class Client:
         if status == 404:
             rejection, fields, key = _rejection_failure(operation, subject, response)
             return Classification("notFound", rejection, field_ids=fields, error_key=key)
-        if 400 <= status < 500 and status != 408:
+        if status in DEFINITE_WRITE_REFUSAL_STATUSES:
             rejection, fields, key = _rejection_failure(operation, subject, response)
             return Classification("providerRejected", rejection, field_ids=fields, error_key=key)
         return Classification(

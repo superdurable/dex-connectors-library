@@ -206,13 +206,14 @@ func (operation TransitionTicketOperation) reconcileTransition(
 	switch {
 	case readFailure != nil:
 		return sdkgo.NewMutationRetry[TransitionTicketOutput](newFailure(transitionTicketOperationID, sdkgo.FailureAvailability, "Jira transition outcome could not be read back"), 0)
-	case result.err == nil && isConclusiveRejectionStatus(statusCode) && statusCode != http.StatusConflict:
+	case result.err == nil && isDefiniteWriteRefusalStatus(statusCode):
 		output.Status = reread.status
 		output.RejectedFieldIDs = readProviderRejection(result.response.body).fieldIDs
 		failure := rejectionFailure(transitionTicketOperationID, transitionTicketFailureSubject, statusCode, providerRejection{fieldIDs: output.RejectedFieldIDs})
 		return sdkgo.NewMutationBranch(TransitionTicketBranchProviderRejected, output, &failure, receipt)
 	case result.err == nil && statusCode < 400:
-		return sdkgo.NewMutationBranch(TransitionTicketBranchInvalidResponse, output, failurePointer(transitionTicketOperationID, sdkgo.FailureProtocol, fmt.Sprintf("Jira returned unexpected HTTP %d for the transition", statusCode)), receipt)
+		// An unexpected status leaves the outcome unknown; the next attempt rereads before writing.
+		return sdkgo.NewMutationRetry[TransitionTicketOutput](newFailure(transitionTicketOperationID, sdkgo.FailureProtocol, fmt.Sprintf("Jira returned unexpected HTTP %d for the transition", statusCode)), 0)
 	case result.err == nil && statusCode == http.StatusConflict:
 		return sdkgo.NewMutationRetry[TransitionTicketOutput](newFailure(transitionTicketOperationID, sdkgo.FailureConflict, "Jira reported a conflicting update, so the transition is retried"), client.retryAfter(result.response))
 	default:

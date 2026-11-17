@@ -196,6 +196,7 @@ type testDexContext struct {
 	mutex          sync.Mutex
 	heartbeat      []byte
 	recordErr      error
+	attempt        int32
 }
 
 func newTestDexContext(step string) *testDexContext {
@@ -209,7 +210,7 @@ func (dexContext *testDexContext) StepExecutionID() string      { return dexCont
 func (*testDexContext) FromStepExecutionID() string             { return "" }
 func (*testDexContext) RecoveryError() *dex.RecoveryErrorInfo   { return nil }
 func (dexContext *testDexContext) FirstAttemptAt() time.Time    { return dexContext.firstAttemptAt }
-func (*testDexContext) Attempt() int32                          { return 1 }
+func (dexContext *testDexContext) Attempt() int32               { return max(dexContext.attempt, 1) }
 func (*testDexContext) HasTimerFired() bool                     { return false }
 func (*testDexContext) HasTimerFiredByIndex(int) bool           { return false }
 func (*testDexContext) WaitForMethodFailed() bool               { return false }

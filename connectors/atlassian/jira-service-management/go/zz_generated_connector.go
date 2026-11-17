@@ -523,7 +523,7 @@ var CreateTicketDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTicketBranchCreated, Description: "Jira Service Management created the request and returned its key."},
 		{ID: CreateTicketBranchProviderRejected, Description: "Jira Service Management conclusively rejected the request, such as a missing required field, an unknown request type or customer, or missing permission; nothing was created.", Optional: true},
-		{ID: CreateTicketBranchUncertain, Description: "The request was sent but its outcome cannot be confirmed, so the customer request may exist; the connector never resends it.", Optional: true},
+		{ID: CreateTicketBranchUncertain, Description: "The send cap is reached and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again.", Optional: true},
 		{ID: CreateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -531,6 +531,8 @@ var CreateTicketDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateTicketResult = sdkgo.MutationResult[CreateTicketOutput]
@@ -551,6 +553,8 @@ type CreateTicketStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateTicketResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateTicketOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateTicketStep[IN any](config CreateTicketStepConfig[IN]) sdkgo.MutationStep[IN, CreateTicketInput, CreateTicketOutput] {
@@ -583,6 +587,7 @@ func NewCreateTicketStep[IN any](config CreateTicketStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -606,6 +611,7 @@ var UpdateTicketDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateTicketResult = sdkgo.MutationResult[UpdateTicketOutput]
@@ -687,6 +693,7 @@ var TransitionTicketDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type TransitionTicketResult = sdkgo.MutationResult[TransitionTicketOutput]
@@ -762,7 +769,7 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		{ID: AddCommentBranchAdded, Description: "Jira Service Management added the comment and returned its ID."},
 		{ID: AddCommentBranchNotFound, Description: "The request does not exist or the connection cannot view it; nothing was added.", Optional: true},
 		{ID: AddCommentBranchProviderRejected, Description: "Jira Service Management conclusively rejected the comment, such as missing Add Comments permission; nothing was added.", Optional: true},
-		{ID: AddCommentBranchUncertain, Description: "The comment was sent but its outcome cannot be confirmed, so it may exist; the connector never resends it.", Optional: true},
+		{ID: AddCommentBranchUncertain, Description: "The send cap is reached and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again.", Optional: true},
 		{ID: AddCommentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -770,6 +777,8 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type AddCommentResult = sdkgo.MutationResult[AddCommentOutput]
@@ -791,6 +800,8 @@ type AddCommentStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[AddCommentResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AddCommentOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewAddCommentStep[IN any](config AddCommentStepConfig[IN]) sdkgo.MutationStep[IN, AddCommentInput, AddCommentOutput] {
@@ -826,5 +837,6 @@ func NewAddCommentStep[IN any](config AddCommentStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

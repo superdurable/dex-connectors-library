@@ -1,10 +1,10 @@
 {
   "connectorId": "jira",
-  "releaseTag": "connectors/atlassian/jira/go/v0.25.0",
+  "releaseTag": "connectors/atlassian/jira/go/v0.25.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-atlassian-jira",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -211,7 +211,7 @@
       "kind": "mutation",
       "operationId": "createIssue",
       "inputType": "CreateIssueInput",
-      "description": "Create one issue in a project with a summary, a plain-text description converted to Atlassian Document Format, labels, and an optional assignee. A synchronous single-dispatch fence prevents a lost Step result from resending a possibly accepted issue.",
+      "description": "Create one issue in a project with a summary, a plain-text description converted to Atlassian Document Format, labels, and an optional assignee. A synchronous single-dispatch fence counts each send, and an unknown outcome is read back by a Call ID property before a resend within the send cap.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -366,7 +366,7 @@
       "kind": "mutation",
       "operationId": "addComment",
       "inputType": "AddCommentInput",
-      "description": "Add one plain-text comment, converted to Atlassian Document Format, to an issue. A synchronous single-dispatch fence prevents a lost Step result from resending a possibly accepted comment.",
+      "description": "Add one plain-text comment, converted to Atlassian Document Format, to an issue. A synchronous single-dispatch fence counts each send, and an unknown outcome is read back by a Call ID property before a resend within the send cap.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

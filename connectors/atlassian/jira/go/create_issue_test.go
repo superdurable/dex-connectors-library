@@ -57,7 +57,7 @@ func TestCreateIssueByIDsOmitsBlankOptionalFields(t *testing.T) {
 	require.JSONEq(t, `{"fields":{"project":{"id":"10000"},"issuetype":{"id":"10001"},"summary":"Rotate badges"}}`, provider.requestBodyWithoutWriteMarker(0))
 }
 
-func TestCreateIssueNeverResendsARequestJiraMayHaveReceived(t *testing.T) {
+func TestCreateIssueFirstSendOutcomes(t *testing.T) {
 	for _, test := range []struct {
 		name     string
 		status   int
@@ -73,10 +73,14 @@ func TestCreateIssueNeverResendsARequestJiraMayHaveReceived(t *testing.T) {
 		{name: "configuration", status: http.StatusUnprocessableEntity, body: `{"errorMessages":["SENTINEL"]}`, branch: jira.CreateIssueBranchProviderRejected, kind: sdkgo.FailureProviderRejection},
 		{name: "rate limit", status: http.StatusTooManyRequests, body: `{}`, isRetry: true, kind: sdkgo.FailureRateLimit},
 		{name: "service unavailable", status: http.StatusServiceUnavailable, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
-		{name: "server error", status: http.StatusInternalServerError, body: `{"errorMessages":["SENTINEL"]}`, branch: jira.CreateIssueBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "gateway timeout", status: http.StatusGatewayTimeout, body: `{}`, branch: jira.CreateIssueBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "redirect", status: http.StatusFound, body: `{}`, branch: jira.CreateIssueBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "unusable created body", status: http.StatusCreated, body: `{"id":"SENTINEL","key":"not a key"}`, branch: jira.CreateIssueBranchUncertain, kind: sdkgo.FailureProtocol},
+		// Unknown outcomes read back, find nothing, and resend on the next attempt below the send cap.
+		{name: "server error", status: http.StatusInternalServerError, body: `{"errorMessages":["SENTINEL"]}`, isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "gateway timeout", status: http.StatusGatewayTimeout, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "redirect", status: http.StatusFound, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "request timeout", status: http.StatusRequestTimeout, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "conflict", status: http.StatusConflict, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "unlisted client error", status: http.StatusGone, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "unusable created body", status: http.StatusCreated, body: `{"id":"SENTINEL","key":"not a key"}`, isRetry: true, kind: sdkgo.FailureProtocol},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {

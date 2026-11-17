@@ -4,105 +4,147 @@
 package asana
 
 import (
+	"context"
 	"errors"
-	"sync"
-	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
-// Two heartbeats fit within Dex's ten-second minimum heartbeat timeout.
-const unkeyedWriteHeartbeatInterval = 5 * time.Second
-
-var errForeignCheckpoint = errors.New("the Step heartbeat belongs to another connector call")
-
-type unkeyedWriteCheckpoint struct {
-	CallID    sdkgo.CallID `json:"callId"`
-	Operation string       `json:"operation"`
-	Attempt   int32        `json:"attempt"`
-	ObjectID  string       `json:"objectId,omitempty"`
-	CanResend bool         `json:"canResend,omitempty"`
+// fencedWrite is one attempt of a non-idempotent Asana write behind the shared single-dispatch fence.
+// Asana offers no lookup by Call ID, so an unknown outcome resends while the send cap allows and
+// selects uncertain at the cap. A write Asana identified is read back by its ID and never resent.
+type fencedWrite struct {
+	fence *singledispatch.Fence
+	// decision is the fence's checkpoint decision for this attempt.
+	decision singledispatch.Decision
+	// canResendUnknownOutcome is true while another send stays within the cap.
+	canResendUnknownOutcome bool
+	// hasPossibleEarlierSend is true when an earlier send of this call may have taken effect.
+	hasPossibleEarlierSend bool
 }
 
-type unkeyedWriteHeartbeat struct {
-	call       sdkgo.Call
-	operation  string
-	mutex      sync.Mutex
-	checkpoint unkeyedWriteCheckpoint
-	stopSignal chan struct{}
-	stopped    chan struct{}
+// startFencedWrite decides whether this attempt may send. It returns a terminal attempt when it may not.
+// savedObjectID is the identity an earlier attempt saved; a caller reads it back instead of sending.
+func startFencedWrite[OUT any](client *Client, call sdkgo.Call, definition sdkgo.MutationDefinition, operationID string, echo OUT, defect sdkgo.BranchID) (*fencedWrite, string, sdkgo.MutationAttempt[OUT], bool) {
+	fence, err := singledispatch.NewFence(call, definition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
+	if err != nil {
+		return nil, "", sdkgo.NewMutationBranch(defect, echo, failurePointer(operationID, sdkgo.FailureLocalDefect, "Asana dispatch fence could not be constructed"), sdkgo.Receipt{}), true
+	}
+	decision := fence.Decide()
+	write := &fencedWrite{
+		fence: fence, decision: decision,
+		canResendUnknownOutcome: decision.MaximumPriorSends+1 < call.MaxSends(),
+		hasPossibleEarlierSend:  decision.MaximumPriorSends > 0,
+	}
+	switch {
+	case decision.Kind == singledispatch.FailClosed:
+		return nil, "", sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Asana dispatch checkpoint is unreadable, so nothing was sent in this attempt"), 0), true
+	case decision.Marker.ProviderID != "":
+		if !gidPattern.MatchString(decision.Marker.ProviderID) {
+			return nil, "", sdkgo.NewMutationUncertain(echo, newFailure(operationID, sdkgo.FailureProtocol, "Asana dispatch checkpoint has an invalid object ID"), client.receiptForCall(call, "")), true
+		}
+		return write, decision.Marker.ProviderID, sdkgo.MutationAttempt[OUT]{}, false
+	case decision.Kind == singledispatch.ReadBackRequired:
+		return nil, "", sdkgo.NewMutationUncertain(echo, newFailure(operationID, sdkgo.FailureTransport,
+			"earlier attempts of this Step may have sent the request and the send cap is reached, so it is not sent again"), client.receiptForCall(call, "")), true
+	}
+	return write, "", sdkgo.MutationAttempt[OUT]{}, false
 }
 
-func newUnkeyedWriteHeartbeat(call sdkgo.Call, operation string) *unkeyedWriteHeartbeat {
-	return &unkeyedWriteHeartbeat{call: call, operation: operation}
-}
-
-func (heartbeat *unkeyedWriteHeartbeat) begin(objectID string) error {
-	err := heartbeat.record(unkeyedWriteCheckpoint{
-		CallID: heartbeat.call.ID, Operation: heartbeat.operation,
-		Attempt: heartbeat.call.Context.Attempt(), ObjectID: objectID,
-	})
-	heartbeat.stopSignal = make(chan struct{})
-	heartbeat.stopped = make(chan struct{})
-	go heartbeat.recordUntilStopped()
-	return err
-}
-
-func (heartbeat *unkeyedWriteHeartbeat) recordObjectID(objectID string) error {
-	return heartbeat.record(unkeyedWriteCheckpoint{
-		CallID: heartbeat.call.ID, Operation: heartbeat.operation,
-		Attempt: heartbeat.call.Context.Attempt(), ObjectID: objectID,
-	})
-}
-
-func (heartbeat *unkeyedWriteHeartbeat) recordCanResend() error {
-	return heartbeat.record(unkeyedWriteCheckpoint{
-		CallID: heartbeat.call.ID, Operation: heartbeat.operation,
-		Attempt: heartbeat.call.Context.Attempt(), CanResend: true,
-	})
-}
-
-func (heartbeat *unkeyedWriteHeartbeat) record(checkpoint unkeyedWriteCheckpoint) error {
-	heartbeat.mutex.Lock()
-	defer heartbeat.mutex.Unlock()
-	heartbeat.checkpoint = checkpoint
-	return heartbeat.call.Context.RecordHeartbeat(checkpoint)
-}
-
-func (heartbeat *unkeyedWriteHeartbeat) recordUntilStopped() {
-	defer close(heartbeat.stopped)
-	ticker := time.NewTicker(unkeyedWriteHeartbeatInterval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-heartbeat.stopSignal:
-			return
-		case <-heartbeat.call.Context.Done():
-			return
-		case <-ticker.C:
-			heartbeat.mutex.Lock()
-			// A lost heartbeat only risks timeout; the next attempt fails closed without its dispatch marker.
-			_ = heartbeat.call.Context.RecordHeartbeat(heartbeat.checkpoint)
-			heartbeat.mutex.Unlock()
+// sessionFailureAttempt maps a credential failure before the send.
+func sessionFailureAttempt[OUT any](write *fencedWrite, operationID string, failure *sdkgo.Failure, echo OUT, defect sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
+	// notSent after a possible earlier send would hide it, so only a first-send decision records it.
+	if write.decision.Kind == singledispatch.SendAllowed {
+		if err := write.fence.RecordNotSent(); err != nil {
+			return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Asana setup failed and the not-sent checkpoint could not be recorded"), 0)
 		}
 	}
+	return defectOrSelectUncertain(write, defect, echo, *failure, sdkgo.Receipt{})
 }
 
-func (heartbeat *unkeyedWriteHeartbeat) stop() {
-	if heartbeat.stopSignal != nil {
-		close(heartbeat.stopSignal)
-		<-heartbeat.stopped
+// dispatchFencedWrite sends once behind the fence; it returns a terminal attempt when the fence forbids sending.
+func dispatchFencedWrite[OUT any](write *fencedWrite, client *Client, session *operationSession, request asanaRequest, operationID string, echo OUT, defect sdkgo.BranchID) (exchangeResult, sdkgo.MutationAttempt[OUT], bool) {
+	var result exchangeResult
+	if !client.canStartRequest(session) {
+		// notSent after a possible earlier send would hide it, so only a first-send decision records it.
+		if write.decision.Kind == singledispatch.SendAllowed {
+			if err := write.fence.RecordNotSent(); err != nil {
+				return result, sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Asana not-sent checkpoint could not be recorded"), 0), true
+			}
+		}
+		return result, sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureTransport, "Asana attempt deadline is too close to send"), 0), true
+	}
+	err := write.fence.Dispatch(func(requestContext context.Context) error {
+		fencedSession := *session
+		fencedSession.context = requestContext
+		result = client.exchange(&fencedSession, request)
+		return nil
+	})
+	switch {
+	case err == nil:
+		return result, sdkgo.MutationAttempt[OUT]{}, false
+	case errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime):
+		return result, sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Asana dispatch checkpoint or request budget is unavailable, so nothing was sent"), 0), true
+	default:
+		return result, defectOrSelectUncertain(write, defect, echo, newFailure(operationID, sdkgo.FailureLocalDefect, "Asana dispatch was not allowed"), sdkgo.Receipt{}), true
 	}
 }
 
-func previousUnkeyedWriteCheckpoint(call sdkgo.Call, operation string) (unkeyedWriteCheckpoint, bool, error) {
-	var checkpoint unkeyedWriteCheckpoint
-	hasCheckpoint, err := call.Context.GetLastHeartbeatValue(&checkpoint)
-	if err != nil {
-		return checkpoint, false, err
+// attemptForWrite maps a sent request: a definite outcome selects its branch, and an unknown one
+// resends while the send cap allows.
+func attemptForWrite[OUT any](write *fencedWrite, operationID string, classification writeClassification, echo OUT, receipt sdkgo.Receipt, notFound sdkgo.BranchID, providerRejected sdkgo.BranchID, defect sdkgo.BranchID) (sdkgo.MutationAttempt[OUT], bool) {
+	switch classification.outcome {
+	case writeAccepted:
+		return sdkgo.MutationAttempt[OUT]{}, false
+	case writeRetry:
+		if err := write.fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Asana retry checkpoint could not be recorded"), classification.retryAfter), true
+		}
+		return sdkgo.NewMutationRetry[OUT](classification.failure, classification.retryAfter), true
+	case writeDefect:
+		// The request was never built, so nothing was sent; a lost checkpoint only keeps the claim.
+		_ = write.fence.RecordCanResend()
+		return defectOrSelectUncertain(write, defect, echo, classification.failure, receipt), true
+	case writeUncertain:
+		return resendOrSelectUncertain(write, echo, classification.failure, receipt), true
+	case writeNotFound:
+		return rejectOrSelectUncertain(write, operationID, notFound, echo, classification.failure, receipt), true
+	default:
+		return rejectOrSelectUncertain(write, operationID, providerRejected, echo, classification.failure, receipt), true
 	}
-	if hasCheckpoint && (checkpoint.CallID != call.ID || checkpoint.Operation != operation) {
-		return checkpoint, false, errForeignCheckpoint
+}
+
+// recordAcceptedWrite saves the accepted identity so a replayed attempt reads it back instead of resending.
+func recordAcceptedWrite(write *fencedWrite, objectID string) {
+	// The accepted result stands; a lost identity checkpoint only keeps the claim.
+	_ = write.fence.RecordProviderID(objectID)
+}
+
+// resendOrSelectUncertain retries an unknown outcome while the send cap allows another send.
+func resendOrSelectUncertain[OUT any](write *fencedWrite, echo OUT, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[OUT] {
+	if write.canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt counts this send.
+		return sdkgo.NewMutationRetry[OUT](failure, 0)
 	}
-	return checkpoint, hasCheckpoint, nil
+	return sdkgo.NewMutationUncertain(echo, failure, receipt)
+}
+
+// rejectOrSelectUncertain selects a refusal branch only when no earlier send may have written.
+func rejectOrSelectUncertain[OUT any](write *fencedWrite, operationID string, branch sdkgo.BranchID, echo OUT, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[OUT] {
+	if write.hasPossibleEarlierSend {
+		return sdkgo.NewMutationUncertain(echo, failure, receipt)
+	}
+	if err := write.fence.RecordCanResend(); err != nil {
+		return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Asana rejection checkpoint could not be recorded"), 0)
+	}
+	return sdkgo.NewMutationBranch(branch, echo, &failure, receipt)
+}
+
+// defectOrSelectUncertain selects defect only when no earlier send may have written.
+func defectOrSelectUncertain[OUT any](write *fencedWrite, defect sdkgo.BranchID, echo OUT, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[OUT] {
+	if write.hasPossibleEarlierSend {
+		return sdkgo.NewMutationUncertain(echo, failure, receipt)
+	}
+	return sdkgo.NewMutationBranch(defect, echo, &failure, receipt)
 }

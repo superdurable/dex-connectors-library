@@ -6,7 +6,7 @@ import hashlib
 import json
 import math
 import re
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any, TypeVar, cast
@@ -38,7 +38,16 @@ from ._generated.definitions import (
     SEARCH_ISSUES_DEFINITION,
     TRANSITION_ISSUE_DEFINITION,
 )
-from .client import Client, Exchange, SessionError, failure, path_escape, rejected_fields, rejection_failure
+from .client import (
+    DEFINITE_WRITE_REFUSAL_STATUSES,
+    Client,
+    Exchange,
+    SessionError,
+    failure,
+    path_escape,
+    rejected_fields,
+    rejection_failure,
+)
 from .models import (
     AccountReference,
     AddCommentInput,
@@ -724,17 +733,15 @@ class TransitionIssueOperation:
             )
         assert reread is not None
         if not response.transport_error and response.status < 400:
-            return _mutation(
-                "invalidResponse",
-                output,
-                receipt,
+            # An unexpected status leaves the outcome unknown; the next attempt rereads before writing.
+            return MutationAttempt.retry(
                 failure(
                     "transitionIssue",
                     FailureKind.PROTOCOL,
                     f"Jira returned unexpected HTTP {response.status} for the transition",
-                ),
+                )
             )
-        if 400 <= response.status < 500 and response.status not in (408, 409, 429):
+        if not response.transport_error and response.status in DEFINITE_WRITE_REFUSAL_STATUSES:
             fields = rejected_fields(response.body)
             return _mutation(
                 "providerRejected",
@@ -969,6 +976,54 @@ class _WriteDispatch:
         )
 
 
+@dataclass(frozen=True)
+class _SendCapPolicy:
+    """One fenced attempt's send-cap facts from its Fence decision."""
+
+    can_resend_unknown_outcome: bool = False
+    """Another send stays within the cap."""
+    has_possible_earlier_send: bool = False
+    """An earlier send of this call may have taken effect."""
+
+
+def _resend_or_select_uncertain(
+    policy: _SendCapPolicy, value: T, receipt: Receipt, cause: Failure
+) -> MutationAttempt[T]:
+    if policy.can_resend_unknown_outcome:
+        # The claim stays the last marker, so the next attempt counts this send.
+        return MutationAttempt.retry(cause)
+    return MutationAttempt.uncertain(value, cause, receipt)
+
+
+async def _reject_or_select_uncertain(
+    fence: Fence,
+    policy: _SendCapPolicy,
+    operation: str,
+    branch: str,
+    value: T,
+    receipt: Receipt,
+    cause: Failure,
+) -> MutationAttempt[T]:
+    """Select a refusal branch only when no earlier send of this call may have written."""
+    if policy.has_possible_earlier_send:
+        return MutationAttempt.uncertain(value, cause, receipt)
+    try:
+        await fence.record_can_resend()
+    except Exception:
+        return MutationAttempt.retry(
+            failure(operation, FailureKind.AVAILABILITY, "Jira rejection checkpoint could not be recorded")
+        )
+    return _mutation(branch, value, receipt, cause)
+
+
+def _defect_or_select_uncertain(
+    policy: _SendCapPolicy, value: T, receipt: Receipt, cause: Failure
+) -> MutationAttempt[T]:
+    if policy.has_possible_earlier_send:
+        return MutationAttempt.uncertain(value, cause, receipt)
+    return _mutation("defect", value, receipt, cause)
+
+
 class _FencedWrite:
     """Common single-dispatch and status path for Jira's two unkeyed writes."""
 
@@ -981,6 +1036,17 @@ class _FencedWrite:
     def _prepare(self, input: Any) -> tuple[Any, str, dict[str, Any]]:
         raise NotImplementedError
 
+    async def _find(
+        self,
+        call: Call,
+        credentials: Any,
+        cloud_id: str,
+        requested: Any,
+        marker: dict[str, str],
+        provider_id: str,
+    ) -> tuple[dict[str, Any] | None, str]:
+        raise NotImplementedError
+
     async def _reconcile(
         self,
         call: Call,
@@ -989,10 +1055,48 @@ class _FencedWrite:
         requested: Any,
         marker: dict[str, str],
         provider_id: str,
+        policy: _SendCapPolicy,
         cause: Failure,
         receipt: Receipt,
     ) -> MutationAttempt[Any]:
-        raise NotImplementedError
+        """Read back a possible write; a missing write resends while the policy allows.
+
+        A write Jira already identified is never sent again.
+        """
+        candidate, status = await self._find(call, credentials, cloud_id, requested, marker, provider_id)
+        if status == "found" and candidate is not None:
+            return self._accepted(requested, candidate, receipt)
+        if status == "retry":
+            return self._read_back_retry()
+        if provider_id:
+            return MutationAttempt.uncertain(requested, cause, receipt)
+        return _resend_or_select_uncertain(policy, requested, receipt, cause)
+
+    async def _find_before_resend(
+        self,
+        call: Call,
+        credentials: Any,
+        cloud_id: str,
+        requested: Any,
+        marker: dict[str, str],
+        receipt: Receipt,
+    ) -> MutationAttempt[Any] | None:
+        """Return the outcome of an earlier send that read-back finds, or None to resend."""
+        candidate, status = await self._find(call, credentials, cloud_id, requested, marker, "")
+        if status == "found" and candidate is not None:
+            return self._accepted(requested, candidate, receipt)
+        if status == "retry":
+            return self._read_back_retry()
+        return None
+
+    def _read_back_retry(self) -> MutationAttempt[Any]:
+        return MutationAttempt.retry(
+            failure(
+                self.operation,
+                FailureKind.AVAILABILITY,
+                f"Jira {self.subject} read-back is temporarily unavailable",
+            )
+        )
 
     def _accepted(self, requested: Any, resource: dict[str, Any], receipt: Receipt) -> MutationAttempt[Any]:
         raise NotImplementedError
@@ -1012,7 +1116,7 @@ class _FencedWrite:
                 failure(self.operation, FailureKind.VALIDATION, str(error)),
             )
         try:
-            fence = Fence(call, timedelta(seconds=30))
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
             decision = await fence.decide()
         except ValueError:
             return _mutation(
@@ -1024,11 +1128,17 @@ class _FencedWrite:
                 ),
             )
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return MutationAttempt.uncertain(
-                requested,
-                failure(self.operation, FailureKind.PROTOCOL, "Jira dispatch checkpoint cannot be trusted"),
-                Receipt(),
+            return MutationAttempt.retry(
+                failure(
+                    self.operation,
+                    FailureKind.AVAILABILITY,
+                    "Jira dispatch checkpoint is unreadable, so nothing was sent in this attempt",
+                )
             )
+        policy = _SendCapPolicy(
+            can_resend_unknown_outcome=decision.prior_send_upper_bound + 1 < call.max_sends,
+            has_possible_earlier_send=decision.prior_send_upper_bound > 0,
+        )
         try:
             credentials, cloud_id = await self.client.session(call, self.operation)
         except SessionError as error:
@@ -1044,16 +1154,18 @@ class _FencedWrite:
                         ),
                         error.retry_after,
                     )
-                return cast(MutationAttempt[Any], _session_result(error, requested, True))
             if error.retryable:
                 return MutationAttempt.retry(error.failure, error.retry_after)
-            return MutationAttempt.uncertain(requested, error.failure, Receipt())
+            return _defect_or_select_uncertain(policy, requested, Receipt(), error.failure)
         marker = _marker(call)
         receipt = self.client.receipt(call)
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
-            provider_id = (
-                decision.marker.provider_id if decision.marker and decision.marker.call_id == call.id else ""
-            )
+        provider_id = decision.marker.provider_id if decision.marker else ""
+        earlier_send = failure(
+            self.operation, FailureKind.AVAILABILITY, f"Jira {self.subject} dispatch may have succeeded"
+        )
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED or (
+            decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED and provider_id
+        ):
             return await self._reconcile(
                 call,
                 credentials,
@@ -1061,13 +1173,14 @@ class _FencedWrite:
                 requested,
                 marker,
                 provider_id,
-                failure(
-                    self.operation,
-                    FailureKind.AVAILABILITY,
-                    f"Jira {self.subject} dispatch may have succeeded",
-                ),
+                _SendCapPolicy(),
+                earlier_send,
                 receipt,
             )
+        if decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED:
+            found = await self._find_before_resend(call, credentials, cloud_id, requested, marker, receipt)
+            if found is not None:
+                return found
         payload["properties"] = [marker]
         dispatch = _WriteDispatch(self.client, call, credentials, cloud_id, path, payload)
         try:
@@ -1080,6 +1193,7 @@ class _FencedWrite:
                 requested,
                 marker,
                 "",
+                policy,
                 failure(self.operation, FailureKind.AVAILABILITY, f"Jira {self.subject} dispatch timed out"),
                 receipt,
             )
@@ -1092,14 +1206,17 @@ class _FencedWrite:
                 )
             )
         except (DispatchNotAllowedError, ValueError):
-            return _mutation(
-                "defect",
+            return _defect_or_select_uncertain(
+                policy,
                 requested,
                 receipt,
                 failure(self.operation, FailureKind.LOCAL_DEFECT, "Jira dispatch was not allowed"),
             )
         classified = self.client.classify_write(self.operation, self.subject, response)
         receipt = self.client.receipt(call, response)
+        if classified.outcome == "defect":
+            assert classified.failure is not None
+            return _defect_or_select_uncertain(policy, requested, receipt, classified.failure)
         if classified.outcome == "retry":
             try:
                 await fence.record_can_resend()
@@ -1117,7 +1234,7 @@ class _FencedWrite:
         if classified.outcome == "uncertain":
             assert classified.failure is not None
             return await self._reconcile(
-                call, credentials, cloud_id, requested, marker, "", classified.failure, receipt
+                call, credentials, cloud_id, requested, marker, "", policy, classified.failure, receipt
             )
         if classified.outcome in ("rejected", "notFound"):
             if response.status == 401 and await _refresh_after_rejection(self.client, call):
@@ -1138,18 +1255,20 @@ class _FencedWrite:
                         "Jira access token was refreshed for retry",
                     )
                 )
-            if response.status == 409:
-                assert classified.failure is not None
-                return await self._reconcile(
-                    call, credentials, cloud_id, requested, marker, "", classified.failure, receipt
-                )
             branch = (
                 "notFound"
                 if classified.outcome == "notFound" and self.operation == "addComment"
                 else "providerRejected"
             )
-            return _mutation(
-                branch, self._rejected(requested, classified.rejected_fields), receipt, classified.failure
+            assert classified.failure is not None
+            return await _reject_or_select_uncertain(
+                fence,
+                policy,
+                self.operation,
+                branch,
+                self._rejected(requested, classified.rejected_fields),
+                receipt,
+                classified.failure,
             )
         try:
             resource = _object(json.loads(response.body))
@@ -1170,6 +1289,7 @@ class _FencedWrite:
                 requested,
                 marker,
                 provider_id,
+                policy,
                 failure(
                     self.operation,
                     FailureKind.PROTOCOL,
@@ -1184,6 +1304,7 @@ class _FencedWrite:
             requested,
             marker,
             "",
+            policy,
             failure(
                 self.operation,
                 FailureKind.PROTOCOL,
@@ -1269,7 +1390,7 @@ class CreateIssueOperation(_FencedWrite):
             replace(receipt, provider_object_id=key),
         )
 
-    async def _reconcile(
+    async def _find(
         self,
         call: Call,
         credentials: Any,
@@ -1277,23 +1398,8 @@ class CreateIssueOperation(_FencedWrite):
         requested: CreateIssueOutput,
         marker: dict[str, str],
         provider_id: str,
-        cause: Failure,
-        receipt: Receipt,
-    ) -> MutationAttempt[CreateIssueOutput]:
-        candidate, status = await _find_created(
-            self.client, call, credentials, cloud_id, requested, marker, provider_id
-        )
-        if status == "found" and candidate is not None:
-            return self._accepted(requested, candidate, receipt)
-        if status == "retry":
-            return MutationAttempt.retry(
-                failure(
-                    self.operation,
-                    FailureKind.AVAILABILITY,
-                    "Jira issue read-back is temporarily unavailable",
-                )
-            )
-        return MutationAttempt.uncertain(requested, cause, receipt)
+    ) -> tuple[dict[str, Any] | None, str]:
+        return await _find_created(self.client, call, credentials, cloud_id, requested, marker, provider_id)
 
 
 class AddCommentOperation(_FencedWrite):
@@ -1342,7 +1448,7 @@ class AddCommentOperation(_FencedWrite):
             replace(receipt, provider_object_id=comment_id),
         )
 
-    async def _reconcile(
+    async def _find(
         self,
         call: Call,
         credentials: Any,
@@ -1350,20 +1456,7 @@ class AddCommentOperation(_FencedWrite):
         requested: AddCommentOutput,
         marker: dict[str, str],
         provider_id: str,
-        cause: Failure,
-        receipt: Receipt,
-    ) -> MutationAttempt[AddCommentOutput]:
-        candidate, status = await _find_comment(
+    ) -> tuple[dict[str, Any] | None, str]:
+        return await _find_comment(
             self.client, call, credentials, cloud_id, requested.issue_id_or_key, marker, provider_id
         )
-        if status == "found" and candidate is not None:
-            return self._accepted(requested, candidate, receipt)
-        if status == "retry":
-            return MutationAttempt.retry(
-                failure(
-                    self.operation,
-                    FailureKind.AVAILABILITY,
-                    "Jira comment read-back is temporarily unavailable",
-                )
-            )
-        return MutationAttempt.uncertain(requested, cause, receipt)

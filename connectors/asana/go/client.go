@@ -349,7 +349,7 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Asana "+subject+" is temporarily unavailable")}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode)}
-	case isConclusiveRejectionStatus(response.statusCode):
+	case isDefiniteWriteRefusalStatus(response.statusCode):
 		return writeClassification{outcome: writeRejected, failure: rejectionFailure(operationID, subject, response.statusCode)}
 	default:
 		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureAvailability, fmt.Sprintf("Asana %s outcome is unknown after HTTP %d", subject, response.statusCode))}
@@ -370,21 +370,19 @@ func (client *Client) classifyRepeatableWrite(operationID string, subject string
 	case isSuccessStatus(response.statusCode) && response.hasBodyReadFailed:
 		return writeClassification{outcome: writeRetry, failure: newFailure(operationID, sdkgo.FailureTransport, "Asana "+subject+" response was interrupted, so the update is sent again")}
 	case isSuccessStatus(response.statusCode) && response.isBodyTooLarge:
-		return writeClassification{outcome: writeInvalid, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Asana "+subject+" response exceeds the configured size limit")}
+		return writeClassification{outcome: writeRetry, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Asana "+subject+" response exceeds the configured size limit, so the update is sent again")}
 	case isSuccessStatus(response.statusCode) && response.reflectsSecret:
-		return writeClassification{outcome: writeInvalid, failure: newFailure(operationID, sdkgo.FailureProtocol, "Asana "+subject+" response contains credential material")}
+		return writeClassification{outcome: writeRetry, failure: newFailure(operationID, sdkgo.FailureProtocol, "Asana "+subject+" response contains credential material, so the update is sent again")}
 	case isSuccessStatus(response.statusCode):
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Asana rate limited the "+subject)}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode)}
-	case isConclusiveRejectionStatus(response.statusCode):
+	case isDefiniteWriteRefusalStatus(response.statusCode):
 		return writeClassification{outcome: writeRejected, failure: rejectionFailure(operationID, subject, response.statusCode)}
-	case isRetryableStatus(response.statusCode):
-		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Asana "+subject+" is temporarily unavailable")}
 	default:
-		return writeClassification{outcome: writeInvalid, failure: newFailure(operationID, sdkgo.FailureProtocol, fmt.Sprintf("Asana returned unexpected HTTP %d for the %s", response.statusCode, subject))}
+		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, fmt.Sprintf("Asana %s outcome is unknown after HTTP %d, so the update is sent again", subject, response.statusCode))}
 	}
 }
 
@@ -432,9 +430,16 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
-// isConclusiveRejectionStatus reports a 4xx other than 408 and 429: Asana refused before changing anything.
-func isConclusiveRejectionStatus(statusCode int) bool {
-	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusRequestTimeout && statusCode != http.StatusTooManyRequests
+// isDefiniteWriteRefusalStatus reports a status proving Asana refused a write; others leave it unknown.
+func isDefiniteWriteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
 }
 
 func isRetryableStatus(statusCode int) bool {

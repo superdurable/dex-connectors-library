@@ -1,8 +1,8 @@
 # Trello Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go@v0.24.1`.
 
-The Python package `dex-connector-atlassian-trello` implements all five operations and the `cardChanged` Trigger at `v0.2.0`; see its [package README](python/README.md), [runnable card-read Flow](python/examples/approved_request_card/README.md), and [card-changed Flow](python/examples/card_changed/README.md). Go-recorded provider scenarios cover Python requests, retries, branches, and output encoding, and Go-generated fixtures check the Python Trigger's requests, cursor tokens, and events byte for byte. The Python examples ran through a local Dex Worker and Client with a fake Trello HTTP service; live Trello authorization and provider behavior remain unverified for Python.
+The Python package `dex-connector-atlassian-trello` implements all five operations and the `cardChanged` Trigger at `v0.2.1`; see its [package README](python/README.md), [runnable card-read Flow](python/examples/approved_request_card/README.md), and [card-changed Flow](python/examples/card_changed/README.md). Go-recorded provider scenarios cover Python requests, retries, branches, and output encoding, and Go-generated fixtures check the Python Trigger's requests, cursor tokens, and events byte for byte. The Python examples ran through a local Dex Worker and Client with a fake Trello HTTP service; live Trello authorization and provider behavior remain unverified for Python.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/trello`.
 
@@ -41,7 +41,7 @@ release; see [Not in this release](#not-in-this-release).
 
 ## TypeScript package
 
-Install `@superdurable/connector-atlassian-trello@0.2.0` for TypeScript Flows. It implements all five operations listed above with the same branches and non-idempotent create and comment checkpoint behavior, and the `cardChanged` Trigger. The [runnable approved board Flow](typescript/examples/approved-board-cards/README.md) uses the static `trello-approved-board` connection, and the [card-changed Flow](typescript/examples/card-changed/README.md) is started by `cardChanged`. The package replays Go-recorded provider scenarios, and Go-generated fixtures check the Trigger's requests, cursor tokens, and events byte for byte; live Trello behavior for TypeScript remains unverified.
+Install `@superdurable/connector-atlassian-trello@0.2.1` for TypeScript Flows. It implements all five operations listed above with the same branches and non-idempotent create and comment checkpoint behavior, and the `cardChanged` Trigger. The [runnable approved board Flow](typescript/examples/approved-board-cards/README.md) uses the static `trello-approved-board` connection, and the [card-changed Flow](typescript/examples/card-changed/README.md) is started by `cardChanged`. The package replays Go-recorded provider scenarios, and Go-generated fixtures check the Trigger's requests, cursor tokens, and events byte for byte; live Trello behavior for TypeScript remains unverified.
 
 ## Authentication
 
@@ -212,7 +212,10 @@ before dispatch; a shorter attempt records a not-sent checkpoint and retries.
 Redirects are never followed. A response that contains the key or the
 token is never returned. Reads and `updateCard` retry 408, 429, 5xx, and
 transport failures; 404 selects `notFound` where the operation declares it;
-400, 401, 403, 409, and other 4xx select `providerRejected`.
+400, 401, 403, 411, 413, 414, 415, and 422 select `providerRejected`. After an
+`updateCard` `PUT`, 409, another 4xx, a 3xx, and an oversized or
+credential-reflecting 2xx also retry, because the outcome is unknown and a
+repeated `PUT` of absolute values changes nothing.
 
 Trello limits each API key to 300 requests and each token to 100 requests per
 10 seconds, and answers with 429 and a JSON code such as
@@ -261,19 +264,22 @@ content never travels in a URL. Due dates are sent in UTC with millisecond
 precision. Trello documents no limit for a card name or a comment; the
 connector bounds both at 16384 characters, like a description.
 
-Trello has no idempotency key. The connector prevents replay after an ambiguous
-or accepted answer; 429 and 503 can retry in the same Step execution:
+Trello has no idempotency key, so `createCard` and `addComment` are `limited`
+Mutations with the default send cap of 3 possibly effective POSTs per Call ID.
+An unknown outcome resends while another POST stays within the cap; 429 and 503
+always retry:
 
 | Outcome | Result |
 | --- | --- |
-| 2xx with a card ID | `created` |
-| 400, 401, 403, 404, or another 4xx except 408, 409, and 429 | `providerRejected` |
+| 2xx with a card ID | `created`, and the card ID is checkpointed so a replayed attempt never sends again |
+| 400, 401, 403, 404, 411, 413, 414, 415, or 422 on the first POST | Checkpoint `canResend`, then `providerRejected` |
+| One of those refusals after an earlier possible POST | `uncertain`, because the earlier POST may have created the card |
 | 429 or 503 | Retry, honoring `Retry-After` when present; a 429 without it waits one 10-second window |
-| 409 without a provider key or conclusive read-back | `uncertain`; no resend |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 408, 3xx, or 5xx other than 503 after dispatch | `uncertain` |
-| 2xx whose body is oversized, unreadable, unusable, or reflects a credential | `uncertain` |
-| An earlier attempt left a dispatch checkpoint without a current safe-retry release | `uncertain`, with nothing sent |
+| Timeout, dropped connection, 3xx, 408, 409, another 4xx, or another 5xx after dispatch | Retry and resend below the send cap; `uncertain` at the cap |
+| 2xx whose body is oversized, unreadable, unusable, or reflects a credential | Retry and resend below the send cap; `uncertain` at the cap |
+| Earlier attempts may already have sent the cap of POSTs, or one was accepted | `uncertain`, with nothing sent |
+| Unreadable or untrusted dispatch checkpoint | Retry, with nothing sent |
 
 On `providerRejected` and `uncertain`, the Value echoes the requested name and
 list without a card ID.
@@ -320,18 +326,19 @@ recorded one create request;
 `TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex` guard this. Do not
 override these Steps to async.
 
-Before it sends, each of the two operations records a Dex heartbeat checkpoint
-naming its Call ID. An attempt of the same Step execution that finds the
-checkpoint, after a lost Worker or an Execute timeout, selects `uncertain`
-without sending; `TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex`
-force-stops the Worker while the fake holds the create and proves the next
-Worker's attempt sends nothing. A 429, 503, traced failure before connection
-acquisition, short attempt window, or failed claim can record permission for the
-immediately next attempt when no write was accepted or sent. Dex does not
-acknowledge checkpoint persistence. A later attempt with a missing or
-stale checkpoint therefore selects `uncertain` without sending. A crash after
-a checkpoint but before the request left can report `uncertain` for a request
-Trello never received.
+Before it sends, each of the two operations records a shared single-dispatch
+checkpoint with its Call ID and send count in a Dex heartbeat. An attempt of the
+same Step execution that finds an unresolved claim, after a lost Worker or an
+Execute timeout, resends while the send cap allows and selects `uncertain` at
+the cap; `TestLostWorkerDuringCreateResendsWithinTheSendCapWithRealDex`
+force-stops the Worker while the fake holds the create and checks that the
+replacement Worker sends at most the cap. A 429, 503, traced failure before
+connection acquisition, or short attempt window records that nothing was sent.
+Dex does not acknowledge checkpoint persistence, so a missing or stale
+checkpoint counts each earlier attempt as a possible POST. A crash after a
+checkpoint but before the request left can use up the cap and report
+`uncertain` for a request Trello never received. Set the Step's `MaxSends` to
+1 to forbid any resend.
 
 Trello documents card listings and card comment actions, but neither endpoint
 provides a documented Call ID lookup or enforces a unique marker for these

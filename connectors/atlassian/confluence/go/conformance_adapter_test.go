@@ -4,6 +4,7 @@
 package confluence_test
 
 import (
+    "encoding/json"
     "net/http"
     "testing"
     "time"
@@ -29,10 +30,18 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
     require.NoError(t, err)
     context := newTestDexContext(scenario.Name)
     context.firstAttemptAt = time.Date(2026, 10, 25, 9, 0, 0, 0, time.UTC)
+    priorAttempt := int32(0)
     if len(scenario.PriorHeartbeat) > 0 {
+        var prior struct {
+            Attempt int32 `json:"attempt"`
+        }
+        require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &prior))
+        priorAttempt = prior.Attempt
         context.heartbeat = append([]byte(nil), scenario.PriorHeartbeat...)
     }
-    return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+    // Each scenario attempt follows the prior heartbeat's attempt, as Dex numbers them.
+    before := func(attempt int) { context.attempt = priorAttempt + int32(attempt) }
+    return &conformanceMappedInvoker{t: t, scenario: scenario, before: before, actions: map[string]conformanceOperationInvocation{
         "searchPages": newConformanceQueryInvocation(t, scenario.Input, context, client.SearchPages(), confluenceConnection),
         "getPage": newConformanceQueryInvocation(t, scenario.Input, context, client.GetPage(), confluenceConnection),
         "createPage": newConformanceMutationInvocation(t, scenario.Input, context, client.CreatePage(), confluenceConnection, scenario.CallID),

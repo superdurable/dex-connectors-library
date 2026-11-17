@@ -71,22 +71,22 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	if err := validatePlainText(input.Body, "body", true); err != nil {
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, failurePointer(addCommentOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
-	if attempt, isTerminal := singleDispatchAttemptBeforeSend(claimSingleDispatch(call), addCommentOperationID, requested, singleDispatchReceipt(call)); isTerminal {
+	write, attempt, isTerminal := startFencedWrite(call, AddCommentDefinition.StepDefaults.ExecuteMethodTimeout, addCommentOperationID, requested, AddCommentBranchDefect)
+	if isTerminal {
 		return attempt
 	}
 	session, cancel, sessionErr := client.startSession(call, addCommentOperationID)
 	if sessionErr != nil {
-		if sessionErr.isRetryable {
-			releaseSingleDispatch(call)
-			return sdkgo.NewMutationRetry[AddCommentOutput](sessionErr.failure, sessionErr.retryAfter)
-		}
-		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, sessionErr.pointer(), sdkgo.Receipt{})
+		return sessionFailureAttempt(write, addCommentOperationID, sessionErr, requested, AddCommentBranchDefect)
 	}
 	defer cancel()
-	result := client.exchange(session, providerRequest{
+	result, attempt, isTerminal := dispatchFencedWrite(write, client, session, providerRequest{
 		method: http.MethodPost, api: serviceDeskAPI, path: requestPath(issueIDOrKey) + "/comment",
 		payload: addCommentRequestBody{Body: input.Body, Public: input.IsPublic},
-	})
+	}, addCommentOperationID, requested, AddCommentBranchDefect)
+	if isTerminal {
+		return attempt
+	}
 	classification := client.classifyUnkeyedWrite(addCommentOperationID, addCommentFailureSubject, result)
 	receipt := client.receipt(session, result.response, issueIDOrKey)
 	if result.response.statusCode == http.StatusConflict {
@@ -97,16 +97,18 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 			}
 		}
 	}
-	if attempt, isTerminal := singleDispatchAttemptForWrite(call, classification, requested, receipt, singleDispatchBranches{
+	if attempt, isTerminal := attemptForWrite(write, addCommentOperationID, classification, requested, receipt, singleDispatchBranches{
 		notFound: AddCommentBranchNotFound, providerRejected: AddCommentBranchProviderRejected, defect: AddCommentBranchDefect,
 	}); isTerminal {
 		return attempt
 	}
 	var created serviceDeskComment
 	if err := json.Unmarshal(result.response.body, &created); err != nil || !numericIDPattern.MatchString(created.ID) {
-		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol,
+		return resendOrSelectUncertain(write, requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol,
 			"Jira Service Management accepted the comment but returned an unusable comment reference"), receipt)
 	}
+	// A saved comment ID keeps a replayed attempt from resending an accepted comment.
+	_ = write.fence.RecordProviderID(created.ID)
 	return addedCommentAttempt(requested, created, receipt)
 }
 

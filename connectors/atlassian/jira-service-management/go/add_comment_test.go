@@ -56,16 +56,20 @@ func TestAddCommentSelectsNotFoundAndUncertain(t *testing.T) {
 
 	lost := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) { dropConnection(t, response) })
 	ctx := newTestDexContext("comment-lost")
-	result, err = sdkgo.RunMutation(ctx, newTestClient(t, lost.URL).AddComment(), jsmConnection,
-		jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "Hello", IsPublic: true})
+	input := jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "Hello", IsPublic: true}
+	for sends := 1; sends < int(jiraservicemanagement.AddCommentDefinition.MaxSends); sends++ {
+		_, err = sdkgo.RunMutation(ctx, newTestClient(t, lost.URL).AddComment(), jsmConnection, input)
+		requireRetry(t, err, sdkgo.FailureTransport)
+		ctx = ctx.nextAttempt()
+	}
+	result, err = sdkgo.RunMutation(ctx, newTestClient(t, lost.URL).AddComment(), jsmConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch)
 	require.True(t, result.Value.IsPublic)
-	replay, err := sdkgo.RunMutation(ctx.nextAttempt(), newTestClient(t, lost.URL).AddComment(), jsmConnection,
-		jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "Hello", IsPublic: true})
+	replay, err := sdkgo.RunMutation(ctx.nextAttempt(), newTestClient(t, lost.URL).AddComment(), jsmConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, replay.Branch)
-	require.Equal(t, 1, lost.requestCount(), "a customer never receives the reply twice from one Step execution")
+	require.Equal(t, int(jiraservicemanagement.AddCommentDefinition.MaxSends), lost.requestCount(), "a customer receives the reply at most the send cap times")
 }
 
 func TestAddCommentRejectsABlankBodyWithoutARequest(t *testing.T) {
@@ -93,47 +97,58 @@ func TestAddCommentRetries503AndFailsClosedAfterAnAcceptedReply(t *testing.T) {
 	ctx := newTestDexContext("comment-503")
 	_, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
 	requireRetry(t, err, sdkgo.FailureAvailability)
-	require.Contains(t, string(ctx.recordedHeartbeat), `"canResend":true`)
+	require.Contains(t, string(ctx.recordedHeartbeat), `"state":"canResend"`)
 	next := ctx.nextAttempt()
 	result, err := sdkgo.RunMutation(next, newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, jiraservicemanagement.AddCommentBranchAdded, result.Branch)
-	third := next.nextAttempt()
+	replay := next.nextAttempt()
+	result, err = sdkgo.RunMutation(replay, newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch, "the saved comment ID forbids a resend")
+	third := replay.nextAttempt()
 	third.previousHeartbeat = ctx.recordedHeartbeat
-	result, err = sdkgo.RunMutation(third, newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
+	result, err = sdkgo.RunMutation(third, newTestClient(t, provider.URL).AddComment(), jsmConnection, input, sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch)
 	require.Equal(t, 2, provider.requestCount(), "an accepted reply is never resent")
 }
 
-func TestAddCommentKeepsAConflictUncertainWithoutResending(t *testing.T) {
-	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
-		writeJSON(t, response, http.StatusConflict, `{"errorMessage":"SENTINEL conflict"}`)
-	})
-	input := jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "We are on it.", IsPublic: true}
-	ctx := newTestDexContext("comment-conflict")
-	result, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch)
-	require.Equal(t, sdkgo.FailureConflict, result.Failure.Kind)
-	replay, err := sdkgo.RunMutation(ctx.nextAttempt(), newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, replay.Branch)
-	require.Equal(t, 1, provider.requestCount())
+func TestAddCommentResendsAnUnknownOutcomeOnlyBelowTheSendCap(t *testing.T) {
+	for name, reply := range map[string]func(*testing.T, http.ResponseWriter){
+		"conflict": func(t *testing.T, response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusConflict, `{"errorMessage":"SENTINEL conflict"}`)
+		},
+		"interrupted accepted response": func(t *testing.T, response http.ResponseWriter) { writeInterruptedAcceptedJSON(t, response) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) { reply(t, response) })
+			input := jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "We are on it.", IsPublic: true}
+			ctx := newTestDexContext("comment-" + name)
+			_, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).AddComment(), jsmConnection, input, sdkgo.WithMaxSends(2))
+			require.Error(t, err, "the first unknown outcome is resent")
+			next := ctx.nextAttempt()
+			result, err := sdkgo.RunMutation(next, newTestClient(t, provider.URL).AddComment(), jsmConnection, input, sdkgo.WithMaxSends(2))
+			require.NoError(t, err)
+			require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch)
+			replay, err := sdkgo.RunMutation(next.nextAttempt(), newTestClient(t, provider.URL).AddComment(), jsmConnection, input, sdkgo.WithMaxSends(2))
+			require.NoError(t, err)
+			require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, replay.Branch)
+			require.Equal(t, 2, provider.requestCount())
+		})
+	}
 }
 
-func TestAddCommentDoesNotResendAfterAnInterruptedAcceptedResponse(t *testing.T) {
+func TestAddCommentRefusalRecordsCanResendAndIsNeverResent(t *testing.T) {
 	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
-		writeInterruptedAcceptedJSON(t, response)
+		writeJSON(t, response, http.StatusForbidden, `{"errorMessage":"SENTINEL forbidden"}`)
 	})
-	input := jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "We are on it.", IsPublic: true}
-	ctx := newTestDexContext("comment-interrupted-accepted")
-	result, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
+	ctx := newTestDexContext("comment-refused")
+	result, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).AddComment(), jsmConnection,
+		jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "We are on it."})
 	require.NoError(t, err)
-	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch)
-	replay, err := sdkgo.RunMutation(ctx.nextAttempt(), newTestClient(t, provider.URL).AddComment(), jsmConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, replay.Branch)
+	require.Equal(t, jiraservicemanagement.AddCommentBranchProviderRejected, result.Branch)
+	require.Contains(t, string(ctx.recordedHeartbeat), `"state":"canResend"`)
 	require.Equal(t, 1, provider.requestCount())
 }
 
@@ -147,10 +162,10 @@ func TestAddCommentDoesNotResendAfterAnOversizedAcceptedResponse(t *testing.T) {
 	require.NoError(t, err)
 	input := jiraservicemanagement.AddCommentInput{IssueIDOrKey: "ITH-42", Body: "We are on it.", IsPublic: true}
 	ctx := newTestDexContext("comment-oversized-accepted")
-	result, err := sdkgo.RunMutation(ctx, client.AddComment(), jsmConnection, input)
+	result, err := sdkgo.RunMutation(ctx, client.AddComment(), jsmConnection, input, sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
-	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch)
-	replay, err := sdkgo.RunMutation(ctx.nextAttempt(), client.AddComment(), jsmConnection, input)
+	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, result.Branch, "a send cap of 1 never resends")
+	replay, err := sdkgo.RunMutation(ctx.nextAttempt(), client.AddComment(), jsmConnection, input, sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, jiraservicemanagement.AddCommentBranchUncertain, replay.Branch)
 	require.Equal(t, 1, provider.requestCount())

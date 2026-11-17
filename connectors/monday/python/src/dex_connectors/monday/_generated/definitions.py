@@ -73,7 +73,7 @@ CREATE_ITEM_DEFINITION = MutationDefinition(
         BranchDefinition(CREATED, "monday.com created the item, or replayed the item this Step already created, and returned it.", False),
         BranchDefinition(NOT_FOUND, "The board or group does not exist or the connection cannot see it; nothing was created.", True),
         BranchDefinition(PROVIDER_REJECTED, "monday.com conclusively rejected the item, such as an invalid column value, a missing status label, the board's item limit, or missing permission; nothing was created.", True),
-        BranchDefinition(UNCERTAIN, "An earlier create may have been accepted, but its result cannot be confirmed; the item must not be created again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, or monday.com identified the item without a usable result, and the outcome cannot be confirmed; the item may exist and must not be created again automatically.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -92,7 +92,7 @@ UPDATE_ITEM_COLUMN_VALUES_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "monday.com set the column values and returned the item.", False),
         BranchDefinition(NOT_FOUND, "The board or item does not exist or the connection cannot see it; nothing was changed.", True),
         BranchDefinition(PROVIDER_REJECTED, "monday.com conclusively rejected the change, such as an invalid column value, a missing status label, or missing permission.", True),
-        BranchDefinition(INVALID_RESPONSE, "monday.com returned an invalid or oversized item, so the values may have been set; repeating the Step is safe.", True),
+        BranchDefinition(INVALID_RESPONSE, "monday.com's response echoed the connection credential, so it was discarded; the values may have been set, and repeating the Step is safe. An oversized or malformed item is retried instead.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -109,7 +109,7 @@ ADD_UPDATE_DEFINITION = MutationDefinition(
         BranchDefinition(ADDED, "monday.com added the update, or replayed the update this Step already added, and returned it.", False),
         BranchDefinition(NOT_FOUND, "The item does not exist or the connection cannot see it; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "monday.com conclusively rejected the update, such as missing permission; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "An earlier update may have been accepted, but its result cannot be confirmed; the update must not be added again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, or monday.com identified the update without a usable result, and the outcome cannot be confirmed; the update may exist and must not be added again automatically.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

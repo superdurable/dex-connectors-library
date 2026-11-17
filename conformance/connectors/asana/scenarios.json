@@ -597,8 +597,9 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
-          "objectId": "1204567890123456",
-          "operation": "createTask"
+          "providerId": "1204567890123456",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "createdAt": "2026-09-30T16:15:00Z",
@@ -686,8 +687,9 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
-          "objectId": "1204567890123456",
-          "operation": "createTask"
+          "providerId": "1204567890123456",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "createdAt": "2026-09-30T16:15:00Z",
@@ -766,7 +768,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
-          "operation": "createTask"
+          "state": "canResend"
         },
         "output": {
           "name": "[REQ-1042] Replace badge reader",
@@ -863,22 +865,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
-          "operation": "createTask"
-        },
-        "output": {
-          "name": "[REQ-1042] Replace badge reader",
-          "projectId": "1201000000000001",
-          "sectionId": "1201000000000101"
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
       "input": {
@@ -965,22 +963,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
-          "operation": "createTask"
-        },
-        "output": {
-          "name": "[REQ-1042] Replace badge reader",
-          "projectId": "1201000000000001",
-          "sectionId": "1201000000000101"
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
       "input": {
@@ -1470,8 +1464,9 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
-          "objectId": "1205000000000001",
-          "operation": "addComment"
+          "providerId": "1205000000000001",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "author": {
@@ -1534,7 +1529,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
-          "operation": "addComment"
+          "state": "canResend"
         },
         "output": {
           "taskId": "1204567890123456"
@@ -1591,7 +1586,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
-          "operation": "addComment"
+          "state": "canResend"
         },
         "output": {
           "taskId": "1204567890123456"
@@ -1643,20 +1638,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
-          "operation": "addComment"
-        },
-        "output": {
-          "taskId": "1204567890123456"
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
       "input": {
@@ -1700,20 +1693,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
-          "operation": "addComment"
-        },
-        "output": {
-          "taskId": "1204567890123456"
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
       "input": {
@@ -2055,8 +2046,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
-          "canResend": true,
-          "operation": "createTask"
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -2153,8 +2143,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
-          "canResend": true,
-          "operation": "createTask"
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -2249,8 +2238,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
-          "canResend": true,
-          "operation": "createTask"
+          "state": "canResend"
         },
         "requestCount": 0,
         "retry": true,
@@ -2486,8 +2474,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
-          "canResend": true,
-          "operation": "addComment"
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -2541,8 +2528,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
-          "canResend": true,
-          "operation": "addComment"
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -2594,8 +2580,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
-          "canResend": true,
-          "operation": "addComment"
+          "state": "canResend"
         },
         "requestCount": 0,
         "retry": true,
@@ -2638,12 +2623,6 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
-        "heartbeat": {
-          "attempt": 2,
-          "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
-          "objectId": "1204567890123456",
-          "operation": "createTask"
-        },
         "output": {
           "createdAt": "2026-09-30T16:15:00Z",
           "name": "[REQ-1042] Replace badge reader",
@@ -2691,12 +2670,39 @@
       "operation": "createTask",
       "priorHeartbeat": {
         "attempt": 1,
-        "value": {
-          "attempt": 1,
-          "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
-          "objectId": "1204567890123456",
-          "operation": "createTask"
-        }
+        "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+        "providerId": "1204567890123456",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "name": "[REQ-1042] Replace badge reader",
+          "projectId": "1201000000000001"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "input": {
+        "name": "[REQ-1042] Replace badge reader",
+        "projectId": "1201000000000001"
+      },
+      "name": "createTask_uncertain_at_send_cap",
+      "operation": "createTask",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+        "sendCount": 3,
+        "state": "claimed"
       }
     },
     {
@@ -2727,12 +2733,6 @@
       "expected": {
         "branch": "added",
         "failureKind": "",
-        "heartbeat": {
-          "attempt": 2,
-          "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
-          "objectId": "1205000000000001",
-          "operation": "addComment"
-        },
         "output": {
           "author": {
             "id": "1200000000000042",
@@ -2756,12 +2756,38 @@
       "operation": "addComment",
       "priorHeartbeat": {
         "attempt": 1,
-        "value": {
-          "attempt": 1,
-          "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
-          "objectId": "1205000000000001",
-          "operation": "addComment"
-        }
+        "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+        "providerId": "1205000000000001",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "input": {
+        "taskId": "1204567890123456",
+        "text": "Approved."
+      },
+      "name": "addComment_uncertain_at_send_cap",
+      "operation": "addComment",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+        "sendCount": 3,
+        "state": "claimed"
       }
     },
     {
@@ -2869,8 +2895,9 @@
         "heartbeat": {
           "attempt": 2,
           "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
-          "objectId": "1204567890123456",
-          "operation": "createTask"
+          "providerId": "1204567890123456",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "createdAt": "2026-09-30T16:15:00Z",
@@ -2922,8 +2949,7 @@
           "heartbeat": {
             "attempt": 1,
             "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
-            "canResend": true,
-            "operation": "createTask"
+            "state": "canResend"
           },
           "retryAfterMs": 0
         }
@@ -3000,8 +3026,9 @@
         "heartbeat": {
           "attempt": 2,
           "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
-          "objectId": "1205000000000001",
-          "operation": "addComment"
+          "providerId": "1205000000000001",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "author": {
@@ -3029,8 +3056,7 @@
           "heartbeat": {
             "attempt": 1,
             "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
-            "canResend": true,
-            "operation": "addComment"
+            "state": "canResend"
           },
           "retryAfterMs": 0
         }

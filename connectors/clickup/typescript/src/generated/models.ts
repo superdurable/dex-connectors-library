@@ -250,7 +250,7 @@ export interface CreateTaskOutput {
   /** Task is the task ClickUp created, or empty on every branch except created. */
   "task": Task;
   /** WasAlreadyApplied reports that an earlier attempt of this Step created the task without a
-   * confirmed outcome and this attempt found it in the List, so nothing was sent again. */
+   * confirmed outcome and this attempt read it back, so nothing was sent again. */
   "wasAlreadyApplied"?: boolean | undefined;
 }
 /** UpdateTaskInput changes one task. Only set fields change; every change is an absolute value or a set

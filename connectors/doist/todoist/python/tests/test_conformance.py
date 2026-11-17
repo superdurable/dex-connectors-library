@@ -27,6 +27,7 @@ ADAPTER = conformance.PythonOperationAdapter(
         ),
         http_client,
     ),
+    with_context=True,
 )
 
 
