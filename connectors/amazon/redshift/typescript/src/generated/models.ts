@@ -12,9 +12,9 @@ export interface Config {
   region?: string;
   /** Optional Redshift Data API root. Blank derives the regional AWS endpoint from region. Override only for a trusted compatible endpoint; local tests may use loopback HTTP. */
   endpoint?: string;
-  /** Maximum duration of one result-page request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network. Runtime value in milliseconds. */
+  /** Maximum duration of one Data API request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete result page in bytes. Blank uses the displayed default; increase only for a known large page. */
+  /** Maximum complete Data API response in bytes. Blank uses the displayed default; increase only for a known large page. */
   maxResponseBytes?: number;
 }
 
