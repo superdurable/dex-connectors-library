@@ -207,7 +207,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: OpenAI rejected the conversation request., optional: true}
         - {id: uncertain, goName: Uncertain, description: A sent request may have created a conversation that cannot be found without its ID., optional: true}
         - {id: defect, goName: Defect, description: Input or connection is invalid., optional: true}
-      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
       mocks:
         - name: conversationCreated
           branch: created

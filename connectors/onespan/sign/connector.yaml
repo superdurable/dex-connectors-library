@@ -100,7 +100,7 @@ spec:
       description: Create a draft transaction package without documents.
       idempotency: required
       authorization: required
-      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: OneSpan Sign returned the package outcome.}
         - {id: providerRejected, goName: ProviderRejected, description: OneSpan Sign rejected the request., optional: true}
@@ -133,7 +133,7 @@ spec:
       description: Send a prepared transaction for signing.
       idempotency: required
       authorization: required
-      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
       branches:
         - {id: sent, goName: Sent, description: OneSpan Sign returned the package outcome.}
         - {id: notFound, goName: NotFound, description: OneSpan Sign did not find the package., optional: true}
@@ -217,7 +217,7 @@ spec:
       description: Add one named signer role to a draft package.
       idempotency: required
       authorization: required
-      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
       branches:
         - {id: added, goName: Added, description: OneSpan Sign returned the signer role outcome.}
         - {id: providerRejected, goName: ProviderRejected, description: OneSpan Sign rejected the signer role request., optional: true}
