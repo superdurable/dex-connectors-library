@@ -24,7 +24,8 @@ import (
 func TestPropertyUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := analytics4mock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	realtimeFlow := NewRealtimeFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, realtimeFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -57,4 +58,15 @@ func TestPropertyUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "properties/123456789", output.Name)
 	require.Equal(t, "Example Analytics", output.DisplayName)
 	require.Len(t, mock.GetProperty().Calls(), 1)
+	realtimeFlowID := "google-analytics-4-realtime-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	realtimeRequest := analytics4.RunRealtimeReportInput{PropertyID: "123456789", Dimensions: []string{"country"}, Metrics: []string{"activeUsers"}}
+	_, err = client.StartFlow(ctx, realtimeFlow, realtimeFlowID, realtimeRequest, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	realtimeResult, err := client.WaitForFlow(ctx, realtimeFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, realtimeResult.Status, realtimeResult.ErrorMessage)
+	var realtimeOutput analytics4.ReportPage
+	require.NoError(t, realtimeResult.DecodeSingleOutput(&realtimeOutput))
+	require.Equal(t, int64(1), realtimeOutput.RowCount)
+	require.Len(t, mock.RunRealtimeReport().Calls(), 1)
 }

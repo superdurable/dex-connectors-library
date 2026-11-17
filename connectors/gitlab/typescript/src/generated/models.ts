@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret GitLab personal access token from User Settings > Access Tokens at https://gitlab.com/-/user_settings/personal_access_tokens. Create a token with read_api for reads or api for label updates, and copy it. Blank prevents requests. */
+  /** Secret GitLab personal access token from User Settings > Access Tokens at https://gitlab.com/-/user_settings/personal_access_tokens. Create a token with read_api for reads or api for issue, release, or repository writes, and copy it. Blank prevents requests. */
   accessToken: SecretString;
 }
 

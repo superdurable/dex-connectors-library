@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = ""
@@ -23,7 +24,17 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	mutationContext := singledispatchtest.NewContext("google-ads-provider-test", "mutation")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			mutationContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
 		"listAccessibleCustomers": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAccessibleCustomers(), reference),
+		"listCampaigns":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCampaigns(), reference),
+		"getCampaign":             newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCampaign(), reference),
+		"createCampaign":          newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreateCampaign(), reference, scenario.CallID),
+		"updateCampaignStatus":    newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.UpdateCampaignStatus(), reference, scenario.CallID),
+		"removeCampaign":          newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.RemoveCampaign(), reference, scenario.CallID),
 	}}
 }
