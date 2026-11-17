@@ -15,7 +15,11 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay, static_credentials  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = [scenario for scenario in load_scenarios(ROOT / "conformance/connectors/google/cloud-storage/scenarios.json") if scenario["operation"] in {"listObjects", "downloadObject", "uploadObject"}]
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/google/cloud-storage/scenarios.json")
+    if scenario["operation"] in {"listObjects", "downloadObject", "uploadObject"}
+]
 CONNECTION = sdk.ConnectionRef("google-cloud-storage", "google-cloud-storage")
 
 

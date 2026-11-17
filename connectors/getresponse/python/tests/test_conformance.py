@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = [scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/getresponse/scenarios.json") if scenario["operation"] in {"listContacts", "getContact"}]
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/getresponse/scenarios.json")
+    if scenario["operation"] in {"listContacts", "getContact"}
+]
 CONNECTION = sdk.ConnectionRef("getresponse", "getresponse")
 ADAPTER = conformance.PythonOperationAdapter(
     "getresponse",

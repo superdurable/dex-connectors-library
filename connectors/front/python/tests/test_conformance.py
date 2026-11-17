@@ -15,8 +15,16 @@ sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
 
 SCENARIOS = [
-    scenario for scenario in load_scenarios(ROOT / "conformance/connectors/front/scenarios.json")
-    if scenario["operation"] in {"searchConversations", "getConversation", "replyToConversation", "updateConversation", "findContactByEmail"}
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/front/scenarios.json")
+    if scenario["operation"]
+    in {
+        "searchConversations",
+        "getConversation",
+        "replyToConversation",
+        "updateConversation",
+        "findContactByEmail",
+    }
 ]
 CONNECTION = sdk.ConnectionRef("front", "front-test")
 ADAPTER = PythonOperationAdapter(
