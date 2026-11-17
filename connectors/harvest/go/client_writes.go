@@ -102,7 +102,7 @@ func (operation CreateClientOperation) Invoke(call sdkgo.Call, input CreateClien
 	if err != nil {
 		return failedClientMutation[ClientRecord]("createClient", CreateClientBranchDefect, sdkgo.FailureValidation, "client input cannot be encoded")
 	}
-	request, err := operation.client.newClientRequest(call.Context, credentials, http.MethodPost, "/clients", payload)
+	request, err := operation.client.newHarvestRequest(call.Context, credentials, http.MethodPost, "/clients", payload)
 	if err != nil {
 		return failedClientMutation[ClientRecord]("createClient", CreateClientBranchDefect, sdkgo.FailureLocalDefect, "client request cannot be built")
 	}
@@ -200,7 +200,7 @@ func (operation UpdateClientOperation) Invoke(call sdkgo.Call, input UpdateClien
 	if err != nil {
 		return failedClientMutation[ClientRecord]("updateClient", UpdateClientBranchDefect, sdkgo.FailureValidation, "client update cannot be encoded")
 	}
-	return invokeSafeClientWrite(operation.client, call, "updateClient", http.MethodPatch, "/clients/"+strconv.FormatInt(input.ID, 10), payload, UpdateClientBranchUpdated, UpdateClientBranchNotFound, UpdateClientBranchProviderRejected, decodeClientRecord)
+	return invokeSafeHarvestWrite(operation.client, call, "updateClient", http.MethodPatch, "/clients/"+strconv.FormatInt(input.ID, 10), payload, UpdateClientBranchUpdated, UpdateClientBranchNotFound, UpdateClientBranchProviderRejected, decodeClientRecord)
 }
 
 // DeleteClientOperation deletes a client with no related records.
@@ -223,10 +223,10 @@ func (operation DeleteClientOperation) Invoke(call sdkgo.Call, input DeleteClien
 		return failedClientMutation[DeletedClient]("deleteClient", DeleteClientBranchDefect, sdkgo.FailureValidation, "client ID must be positive")
 	}
 	decode := func(_ []byte) (DeletedClient, error) { return DeletedClient{ID: input.ID}, nil }
-	return invokeSafeClientWrite(operation.client, call, "deleteClient", http.MethodDelete, "/clients/"+strconv.FormatInt(input.ID, 10), nil, DeleteClientBranchDeleted, DeleteClientBranchNotFound, DeleteClientBranchProviderRejected, decode)
+	return invokeSafeHarvestWrite(operation.client, call, "deleteClient", http.MethodDelete, "/clients/"+strconv.FormatInt(input.ID, 10), nil, DeleteClientBranchDeleted, DeleteClientBranchNotFound, DeleteClientBranchProviderRejected, decode)
 }
 
-func (client *Client) newClientRequest(ctx context.Context, credentials Credentials, method, path string, body []byte) (*http.Request, error) {
+func (client *Client) newHarvestRequest(ctx context.Context, credentials Credentials, method, path string, body []byte) (*http.Request, error) {
 	request, err := http.NewRequestWithContext(ctx, method, client.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -241,12 +241,12 @@ func (client *Client) newClientRequest(ctx context.Context, credentials Credenti
 	return request, nil
 }
 
-func invokeSafeClientWrite[T any](client *Client, call sdkgo.Call, operationID, method, path string, payload []byte, successBranch, notFoundBranch, rejectedBranch sdkgo.BranchID, decode func([]byte) (T, error)) sdkgo.MutationAttempt[T] {
+func invokeSafeHarvestWrite[T any](client *Client, call sdkgo.Call, operationID, method, path string, payload []byte, successBranch, notFoundBranch, rejectedBranch sdkgo.BranchID, decode func([]byte) (T, error)) sdkgo.MutationAttempt[T] {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
 		return failedClientMutation[T](operationID, "defect", sdkgo.FailureAuthentication, "connection credentials are invalid")
 	}
-	request, err := client.newClientRequest(call.Context, credentials, method, path, payload)
+	request, err := client.newHarvestRequest(call.Context, credentials, method, path, payload)
 	if err != nil {
 		return failedClientMutation[T](operationID, "defect", sdkgo.FailureLocalDefect, "client request cannot be built")
 	}

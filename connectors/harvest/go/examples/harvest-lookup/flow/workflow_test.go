@@ -20,6 +20,11 @@ func TestMapToListClientsInput(t *testing.T) {
 	require.Equal(t, harvest.ListClientsInput{PerPage: 10}, MapToListClientsInput(harvest.ListTimeEntriesResult{}))
 }
 
+func TestMapToGetProjectInput(t *testing.T) {
+	input := harvest.ListProjectsResult{Value: harvest.ProjectPage{Projects: []harvest.Project{{ID: 3001}}}}
+	require.Equal(t, harvest.GetProjectInput{ID: 3001}, MapToGetProjectInput(input))
+}
+
 func TestFlowRegistersWithMockConnection(t *testing.T) {
 	mock := harvestmock.New(t, ConnectionName)
 	_, err := dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})

@@ -20,6 +20,7 @@ The TypeScript package is [`@superdurable/connector-harvest`](typescript/README.
 | Operation | Official API reference |
 | --- | --- |
 | `listProjects` | [Harvest listProjects](https://help.getharvest.com/api-v2/projects-api/projects/projects/) |
+| `getProject`, `createProject`, `updateProject`, `deleteProject` | [Harvest Projects API](https://help.getharvest.com/api-v2/projects-api/projects/projects/) |
 | `listTimeEntries` | [Harvest listTimeEntries](https://help.getharvest.com/api-v2/timesheets-api/timesheets/time-entries/) |
 | `listClients`, `getClient`, `createClient`, `updateClient`, `deleteClient` | [Harvest Clients API](https://help.getharvest.com/api-v2/clients-api/clients/clients/) |
 
@@ -27,13 +28,15 @@ Each operation returns a bounded, typed response. A 404 on a single-resource rea
 
 `createClient` is a limited-repeat Mutation with at most three sends because Harvest does not support an idempotency key and client names are not unique enough for reliable read-back. If a possible create remains unconfirmed at the cap, it selects `uncertain`; inspect Harvest before another create. `updateClient` applies absolute fields and `deleteClient` is idempotent, so unknown responses Retry safely. Each requires the connection owner's Harvest permission to manage clients.
 
+`createProject` also uses a three-send limited tier because Harvest does not deduplicate project POSTs. It reads back a returned project ID on recovery; when no ID was received, a project name alone cannot safely identify the create. `updateProject` sends absolute fields and `deleteProject` uses repeat-safe DELETE. Project writes require Administrator or Manager access to managed projects.
+
 ## Mocks
 
 The generated `harvestmock` package includes one default Meridian answer per operation and an invalid-key rejection for each. The defaults describe a consistent set of project, lead, sheet, or file records.
 
 ## Example
 
-The runnable [example](go/examples/harvest-lookup/README.md) registers a Worker and a Flow using the static `harvest` connection. It reads projects, time entries, and clients. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
+The runnable [example](go/examples/harvest-lookup/README.md) registers a Worker and a Flow using the static `harvest` connection. It lists projects, reads the first project's details, then reads time entries and clients. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
 
 ## Live verification
 

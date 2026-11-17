@@ -2439,6 +2439,1463 @@
           "state": "claimed"
         }
       }
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000036",
+      "exchanges": [
+        {
+          "body": "{\"id\":3001,\"name\":\"Meridian Website\",\"is_active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": 3001,
+          "isActive": true,
+          "name": "Meridian Website"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 3001
+      },
+      "name": "getProject-success",
+      "operation": "getProject"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000037",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": 0,
+          "isActive": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 3001
+      },
+      "name": "getProject-rejected",
+      "operation": "getProject"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000038",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 3001
+      },
+      "name": "getProject-rate-limit",
+      "operation": "getProject"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000039",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 3001
+      },
+      "name": "getProject-server-error",
+      "operation": "getProject"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000040",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 3001
+      },
+      "name": "getProject-unavailable",
+      "operation": "getProject"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000041",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 3001
+      },
+      "name": "getProject-transport",
+      "operation": "getProject"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000042",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "isActive": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 3001
+      },
+      "name": "getProject-not-found",
+      "operation": "getProject"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000043",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "isActive": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 3001
+      },
+      "name": "getProject-invalid",
+      "operation": "getProject"
+    },
+    {
+      "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+      "exchanges": [
+        {
+          "body": "{\"id\":3001,\"name\":\"Meridian Website\",\"is_active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "bill_by": "Project",
+            "budget_by": "project",
+            "client_id": 2001,
+            "code": "MW",
+            "is_billable": true,
+            "name": "Meridian Website",
+            "notes": "Website"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+          "providerId": "3001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 3001,
+          "isActive": true,
+          "name": "Meridian Website"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+      "input": {
+        "billBy": "Project",
+        "budgetBy": "project",
+        "clientId": 2001,
+        "code": "MW",
+        "isBillable": true,
+        "name": "Meridian Website",
+        "notes": "Website"
+      },
+      "name": "createProject-success",
+      "operation": "createProject"
+    },
+    {
+      "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "bill_by": "Project",
+            "budget_by": "project",
+            "client_id": 2001,
+            "code": "MW",
+            "is_billable": true,
+            "name": "Meridian Website",
+            "notes": "Website"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "isActive": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+      "input": {
+        "billBy": "Project",
+        "budgetBy": "project",
+        "clientId": 2001,
+        "code": "MW",
+        "isBillable": true,
+        "name": "Meridian Website",
+        "notes": "Website"
+      },
+      "name": "createProject-rejected",
+      "operation": "createProject"
+    },
+    {
+      "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "bill_by": "Project",
+            "budget_by": "project",
+            "client_id": 2001,
+            "code": "MW",
+            "is_billable": true,
+            "name": "Meridian Website",
+            "notes": "Website"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+      "input": {
+        "billBy": "Project",
+        "budgetBy": "project",
+        "clientId": 2001,
+        "code": "MW",
+        "isBillable": true,
+        "name": "Meridian Website",
+        "notes": "Website"
+      },
+      "name": "createProject-rate-limit",
+      "operation": "createProject"
+    },
+    {
+      "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "bill_by": "Project",
+            "budget_by": "project",
+            "client_id": 2001,
+            "code": "MW",
+            "is_billable": true,
+            "name": "Meridian Website",
+            "notes": "Website"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+      "input": {
+        "billBy": "Project",
+        "budgetBy": "project",
+        "clientId": 2001,
+        "code": "MW",
+        "isBillable": true,
+        "name": "Meridian Website",
+        "notes": "Website"
+      },
+      "name": "createProject-server-error",
+      "operation": "createProject"
+    },
+    {
+      "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "bill_by": "Project",
+            "budget_by": "project",
+            "client_id": 2001,
+            "code": "MW",
+            "is_billable": true,
+            "name": "Meridian Website",
+            "notes": "Website"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+      "input": {
+        "billBy": "Project",
+        "budgetBy": "project",
+        "clientId": 2001,
+        "code": "MW",
+        "isBillable": true,
+        "name": "Meridian Website",
+        "notes": "Website"
+      },
+      "name": "createProject-unavailable",
+      "operation": "createProject"
+    },
+    {
+      "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "bill_by": "Project",
+            "budget_by": "project",
+            "client_id": 2001,
+            "code": "MW",
+            "is_billable": true,
+            "name": "Meridian Website",
+            "notes": "Website"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+      "input": {
+        "billBy": "Project",
+        "budgetBy": "project",
+        "clientId": 2001,
+        "code": "MW",
+        "isBillable": true,
+        "name": "Meridian Website",
+        "notes": "Website"
+      },
+      "name": "createProject-transport",
+      "operation": "createProject"
+    },
+    {
+      "callId": "864ace6c-386b-5f30-92aa-c561f649b6f8",
+      "exchanges": [
+        {
+          "body": "{\"id\":3001,\"name\":\"Meridian Website\",\"is_active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/3001",
+          "requestBody": {
+            "code": "MW",
+            "is_active": true,
+            "name": "Meridian Website",
+            "notes": "Website"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 3001,
+          "isActive": true,
+          "name": "Meridian Website"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "864ace6c-386b-5f30-92aa-c561f649b6f8",
+      "input": {
+        "code": "MW",
+        "id": 3001,
+        "isActive": true,
+        "name": "Meridian Website",
+        "notes": "Website"
+      },
+      "name": "updateProject-success",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "864ace6c-386b-5f30-92aa-c561f649b6f8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/3001",
+          "requestBody": {
+            "code": "MW",
+            "is_active": true,
+            "name": "Meridian Website",
+            "notes": "Website"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "isActive": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "864ace6c-386b-5f30-92aa-c561f649b6f8",
+      "input": {
+        "code": "MW",
+        "id": 3001,
+        "isActive": true,
+        "name": "Meridian Website",
+        "notes": "Website"
+      },
+      "name": "updateProject-rejected",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "864ace6c-386b-5f30-92aa-c561f649b6f8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/3001",
+          "requestBody": {
+            "code": "MW",
+            "is_active": true,
+            "name": "Meridian Website",
+            "notes": "Website"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "864ace6c-386b-5f30-92aa-c561f649b6f8",
+      "input": {
+        "code": "MW",
+        "id": 3001,
+        "isActive": true,
+        "name": "Meridian Website",
+        "notes": "Website"
+      },
+      "name": "updateProject-rate-limit",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "864ace6c-386b-5f30-92aa-c561f649b6f8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/3001",
+          "requestBody": {
+            "code": "MW",
+            "is_active": true,
+            "name": "Meridian Website",
+            "notes": "Website"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "864ace6c-386b-5f30-92aa-c561f649b6f8",
+      "input": {
+        "code": "MW",
+        "id": 3001,
+        "isActive": true,
+        "name": "Meridian Website",
+        "notes": "Website"
+      },
+      "name": "updateProject-server-error",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "864ace6c-386b-5f30-92aa-c561f649b6f8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/3001",
+          "requestBody": {
+            "code": "MW",
+            "is_active": true,
+            "name": "Meridian Website",
+            "notes": "Website"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "864ace6c-386b-5f30-92aa-c561f649b6f8",
+      "input": {
+        "code": "MW",
+        "id": 3001,
+        "isActive": true,
+        "name": "Meridian Website",
+        "notes": "Website"
+      },
+      "name": "updateProject-unavailable",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "864ace6c-386b-5f30-92aa-c561f649b6f8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/3001",
+          "requestBody": {
+            "code": "MW",
+            "is_active": true,
+            "name": "Meridian Website",
+            "notes": "Website"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "864ace6c-386b-5f30-92aa-c561f649b6f8",
+      "input": {
+        "code": "MW",
+        "id": 3001,
+        "isActive": true,
+        "name": "Meridian Website",
+        "notes": "Website"
+      },
+      "name": "updateProject-transport",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "864ace6c-386b-5f30-92aa-c561f649b6f8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/3001",
+          "requestBody": {
+            "code": "MW",
+            "is_active": true,
+            "name": "Meridian Website",
+            "notes": "Website"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "isActive": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "864ace6c-386b-5f30-92aa-c561f649b6f8",
+      "input": {
+        "code": "MW",
+        "id": 3001,
+        "isActive": true,
+        "name": "Meridian Website",
+        "notes": "Website"
+      },
+      "name": "updateProject-not-found",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "5eb46710-b9eb-5618-950b-b2166a92daa8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 3001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5eb46710-b9eb-5618-950b-b2166a92daa8",
+      "input": {
+        "id": 3001
+      },
+      "name": "deleteProject-success",
+      "operation": "deleteProject"
+    },
+    {
+      "callId": "5eb46710-b9eb-5618-950b-b2166a92daa8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5eb46710-b9eb-5618-950b-b2166a92daa8",
+      "input": {
+        "id": 3001
+      },
+      "name": "deleteProject-rejected",
+      "operation": "deleteProject"
+    },
+    {
+      "callId": "5eb46710-b9eb-5618-950b-b2166a92daa8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5eb46710-b9eb-5618-950b-b2166a92daa8",
+      "input": {
+        "id": 3001
+      },
+      "name": "deleteProject-rate-limit",
+      "operation": "deleteProject"
+    },
+    {
+      "callId": "5eb46710-b9eb-5618-950b-b2166a92daa8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5eb46710-b9eb-5618-950b-b2166a92daa8",
+      "input": {
+        "id": 3001
+      },
+      "name": "deleteProject-server-error",
+      "operation": "deleteProject"
+    },
+    {
+      "callId": "5eb46710-b9eb-5618-950b-b2166a92daa8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5eb46710-b9eb-5618-950b-b2166a92daa8",
+      "input": {
+        "id": 3001
+      },
+      "name": "deleteProject-unavailable",
+      "operation": "deleteProject"
+    },
+    {
+      "callId": "5eb46710-b9eb-5618-950b-b2166a92daa8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5eb46710-b9eb-5618-950b-b2166a92daa8",
+      "input": {
+        "id": 3001
+      },
+      "name": "deleteProject-transport",
+      "operation": "deleteProject"
+    },
+    {
+      "callId": "5eb46710-b9eb-5618-950b-b2166a92daa8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5eb46710-b9eb-5618-950b-b2166a92daa8",
+      "input": {
+        "id": 3001
+      },
+      "name": "deleteProject-not-found",
+      "operation": "deleteProject"
+    },
+    {
+      "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": 0,
+          "isActive": false,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+      "input": {
+        "billBy": "Project",
+        "budgetBy": "project",
+        "clientId": 2001,
+        "code": "MW",
+        "isBillable": true,
+        "name": "Meridian Website",
+        "notes": "Website"
+      },
+      "name": "createProject-send-cap-uncertain",
+      "operation": "createProject",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

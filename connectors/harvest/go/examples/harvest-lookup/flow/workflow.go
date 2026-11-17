@@ -16,6 +16,7 @@ const FlowType = "HarvestLookup"
 // ConnectionName is the static Dex Web connection name.
 const ConnectionName = "harvest"
 const firstStepType = "ReadHarvestFirst"
+const projectStepType = "ReadHarvestProject"
 const secondStepType = "ReadHarvestSecond"
 const clientStepType = "ReadHarvestClients"
 
@@ -67,7 +68,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStartStep(startRequest{}),
 		dex.DefineStep(harvest.NewListProjectsStep(harvest.ListProjectsStepConfig[Request]{StepType: firstStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read Harvest records."}, MapToOperationInput: MapToListProjectsInput, Listed: sdkgo.GoTo(afterFirst{})})),
 		dex.DefineStep(afterFirst{}),
-		dex.DefineStep(harvest.NewListTimeEntriesStep(harvest.ListTimeEntriesStepConfig[harvest.ListProjectsResult]{StepType: secondStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read the related Harvest resource."}, MapToOperationInput: MapToListTimeEntriesInput, Listed: sdkgo.GoTo(afterTimeEntries{})})),
+		dex.DefineStep(harvest.NewGetProjectStep(harvest.GetProjectStepConfig[harvest.ListProjectsResult]{StepType: projectStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read the first listed Harvest project."}, MapToOperationInput: MapToGetProjectInput, Found: sdkgo.GoTo(afterProject{})})),
+		dex.DefineStep(afterProject{}),
+		dex.DefineStep(harvest.NewListTimeEntriesStep(harvest.ListTimeEntriesStepConfig[harvest.GetProjectResult]{StepType: secondStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read the related Harvest resource."}, MapToOperationInput: MapToListTimeEntriesInput, Listed: sdkgo.GoTo(afterTimeEntries{})})),
 		dex.DefineStep(afterTimeEntries{}),
 		dex.DefineStep(harvest.NewListClientsStep(harvest.ListClientsStepConfig[harvest.ListTimeEntriesResult]{StepType: clientStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read Harvest clients."}, MapToOperationInput: MapToListClientsInput, Listed: sdkgo.GoTo(completeLookup{})})),
 		dex.DefineStep(completeLookup{}),
@@ -79,8 +82,16 @@ func MapToListProjectsInput(request Request) harvest.ListProjectsInput {
 	return harvest.ListProjectsInput{PerPage: request.PerPage}
 }
 
-// MapToListTimeEntriesInput maps the transition value to the second read.
-func MapToListTimeEntriesInput(input harvest.ListProjectsResult) harvest.ListTimeEntriesInput {
+// MapToGetProjectInput selects the first listed project for a detail read.
+func MapToGetProjectInput(input harvest.ListProjectsResult) harvest.GetProjectInput {
+	if len(input.Value.Projects) == 0 {
+		return harvest.GetProjectInput{}
+	}
+	return harvest.GetProjectInput{ID: input.Value.Projects[0].ID}
+}
+
+// MapToListTimeEntriesInput maps the transition value to the time read.
+func MapToListTimeEntriesInput(_ harvest.GetProjectResult) harvest.ListTimeEntriesInput {
 	return harvest.ListTimeEntriesInput{PerPage: 10}
 }
 
@@ -109,7 +120,18 @@ type afterFirst struct {
 
 func (afterFirst) GetStepType() string { return "AfterHarvestFirst" }
 func (afterFirst) Execute(_ dex.Context, result harvest.ListProjectsResult) (*dex.StepDecision, error) {
-	return dex.GoTo(sdkgo.StepRef[harvest.ListProjectsResult](secondStepType), result), nil
+	return dex.GoTo(sdkgo.StepRef[harvest.ListProjectsResult](projectStepType), result), nil
+}
+
+// dex:group group-id:harvest-lookup group-label:"Harvest lookup"
+// dex:explanation text:"Choose the Harvest time-entry read."
+type afterProject struct {
+	dex.StepDefaultsNoWaitFor[harvest.GetProjectResult]
+}
+
+func (afterProject) GetStepType() string { return "AfterHarvestProject" }
+func (afterProject) Execute(_ dex.Context, result harvest.GetProjectResult) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[harvest.GetProjectResult](secondStepType), result), nil
 }
 
 // dex:group group-id:harvest-lookup group-label:"Harvest lookup"

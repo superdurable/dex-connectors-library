@@ -37,6 +37,19 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[harvest.ProjectPage](`{"projects":[{"id":3001,"name":"Meridian Website","isActive":true}]}`)
 			return err
 		}},
+		{name: "getProject/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.Project](`{"id":3001,"name":"Meridian Website","isActive":true}`)
+			return err
+		}},
+		{name: "createProject/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.Project](`{"id":3001,"name":"Meridian Website","isActive":true}`)
+			return err
+		}},
+		{name: "updateProject/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.Project](`{"id":3001,"name":"Meridian Website","isActive":true}`)
+			return err
+		}},
+		{name: "deleteProject/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedProject](`{"id":3001}`); return err }},
 		{name: "listTimeEntries/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[harvest.TimeEntryPage](`{"timeEntries":[{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}]}`)
 			return err
@@ -68,6 +81,18 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
 		t.Errorf("listProjects mock has another definition")
+	}
+	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
+		t.Errorf("getProject mock has another definition")
+	}
+	if mock.CreateProject().Definition().Operation.OperationID != "createProject" {
+		t.Errorf("createProject mock has another definition")
+	}
+	if mock.UpdateProject().Definition().Operation.OperationID != "updateProject" {
+		t.Errorf("updateProject mock has another definition")
+	}
+	if mock.DeleteProject().Definition().Operation.OperationID != "deleteProject" {
+		t.Errorf("deleteProject mock has another definition")
 	}
 	if mock.ListTimeEntries().Definition().Operation.OperationID != "listTimeEntries" {
 		t.Errorf("listTimeEntries mock has another definition")

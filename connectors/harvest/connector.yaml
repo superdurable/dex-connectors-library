@@ -188,6 +188,87 @@ spec:
           branch: providerRejected
           description: "The connection token is invalid."
           failure: {kind: AUTHENTICATION, message: "Harvest rejected the token."}
+    - name: getProject
+      goName: GetProject
+      inputType: GetProjectInput
+      outputType: Project
+      kind: query
+      description: Retrieve a Harvest project by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest returned the project.}
+        - {id: notFound, goName: NotFound, description: The project ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the project read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: The Meridian project.
+          output: {id: 3001, name: Meridian Website, isActive: true}
+    - name: createProject
+      goName: CreateProject
+      inputType: CreateProjectInput
+      outputType: Project
+      kind: mutation
+      description: Create a Harvest project with a bounded resend on unknown outcomes.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Harvest created the project.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the project creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A submitted create could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          default: true
+          description: A Meridian project was created.
+          output: {id: 3001, name: Meridian Website, isActive: true}
+    - name: updateProject
+      goName: UpdateProject
+      inputType: UpdateProjectInput
+      outputType: Project
+      kind: mutation
+      description: Set absolute fields on a Harvest project.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Harvest updated the project.}
+        - {id: notFound, goName: NotFound, description: The project ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the project update., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          default: true
+          description: A Meridian project was updated.
+          output: {id: 3001, name: Meridian Website, isActive: true}
+    - name: deleteProject
+      goName: DeleteProject
+      inputType: DeleteProjectInput
+      outputType: DeletedProject
+      kind: mutation
+      description: Delete a Harvest project without tracked time or expenses.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Harvest deleted the project.}
+        - {id: notFound, goName: NotFound, description: The project ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the project deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          default: true
+          description: A Meridian project was deleted.
+          output: {id: 3001}
     - name: listTimeEntries
       goName: ListTimeEntries
       inputType: ListTimeEntriesInput

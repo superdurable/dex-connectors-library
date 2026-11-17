@@ -1,6 +1,6 @@
 # Harvest lookup example
 
-This Worker registers `HarvestLookup` with static connection name `harvest`. It calls `listProjects`, `listTimeEntries`, and `listClients` in one typed Flow.
+This Worker registers `HarvestLookup` with static connection name `harvest`. It calls `listProjects`, `getProject`, `listTimeEntries`, and `listClients` in one typed Flow.
 
 ## Generate and run
 
