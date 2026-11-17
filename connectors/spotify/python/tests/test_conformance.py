@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/spotify/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/spotify/scenarios.json")
+    if scenario["operation"] == "listPlaylistTracks"
+]
 CONNECTION = sdk.ConnectionRef("spotify", "playlist-reader")
 ADAPTER = PythonOperationAdapter(
     "spotify",

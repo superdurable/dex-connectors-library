@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { Client } from '../src/client.js';
 import { GetPaymentInputSchema, ListPaymentsInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/square/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/square/scenarios.json', import.meta.url))
+  .filter(scenario => ['listPayments', 'getPayment'].includes(scenario.operation));
 const connection = { provider: 'square', name: 'square' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeSquare));

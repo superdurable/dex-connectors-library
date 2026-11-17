@@ -1,6 +1,6 @@
 # Spotify Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/spotify/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/spotify/go@v0.25.0`.
 
 The Python port is `dex-connector-spotify==0.2.0`. Its generated
 `new_project_connection` binds the same `listPlaylistTracks` Query and Spotify
@@ -12,6 +12,14 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/spotify`.
 
 The Python and TypeScript packages offer `listPlaylistTracks` to Dex agent
 hosts as a read-only tool.
+
+The Go connector reads playlist metadata with `getPlaylist`, lists the authenticated user's playlists with `listUserPlaylists`, searches playlists with `searchPlaylists`, and lists one bounded page of tracks with `listPlaylistTracks`. `getPlaylist` returns the owner ID, name, description, Spotify link, visibility, and snapshot ID. The new operations are safe Queries and use the existing `playlist-read-private` grant. `searchPlaylists` accepts a nonempty text query and an optional two-letter market. Both list operations return one page with `nextOffset` for continuation. Spotify removed listing another user's playlists from development-mode apps in February 2026.
+
+Album Queries are `getAlbum`, `listAlbumTracks`, and `searchAlbums`. They return album identity, artists, release date, track count, and attribution links; track pages contain bounded title, artist, and duration metadata. `listAlbumTracks` accepts an album ID, market, limit up to 50, and offset. `searchAlbums` accepts query text, market, limit up to 10, and offset. All three use the existing OAuth grant and repeat safely after unknown read outcomes. Spotify removed the n8n node's `getNewReleases` endpoint for development-mode apps in February 2026, so the connector does not expose it.
+
+Artist Queries are `getArtist`, `listArtistAlbums`, and `searchArtists`. They return artist identity, genres, attribution link, and bounded album pages. `listArtistAlbums` accepts an artist ID, optional `includeGroups` from `album`, `single`, `appears_on`, and `compilation`, market, limit up to 50, and offset. `searchArtists` accepts query text, market, limit up to 10, and offset. Spotify removed the n8n node's artist top tracks endpoint in February 2026; related artists is unavailable to new and development-mode apps since November 2024.
+
+Track Queries are `getTrack` and `searchTracks`. They return bounded title, artist, album, duration, URI, and Spotify attribution link metadata. `getTrack` accepts a track ID and optional market; `searchTracks` accepts query text, market, limit up to 10, and offset. Spotify's audio-features endpoint is unavailable to new and development-mode apps, so the n8n node's `getAudioFeatures` action is omitted.
 
 The Spotify connector lists one bounded page of tracks from a playlist through
 Spotify's official [Get Playlist Items](https://developer.spotify.com/documentation/web-api/reference/get-playlists-items)
@@ -40,11 +48,12 @@ connector asks once for a refresh, which project storage performs only when the
 recorded expiry has passed, and then retries the request once; otherwise the
 401 selects `authorizationRevoked`.
 
-The operation has these branches:
+Both operations have these terminal branches; their happy paths are `found` for `getPlaylist` and `listed` for `listPlaylistTracks`:
 
 | Branch | Meaning |
 | --- | --- |
 | `listed` | One bounded page was loaded. |
+| `found` | Playlist metadata was loaded. |
 | `authorizationRevoked` | The access token is invalid or revoked. |
 | `accessDenied` | Spotify does not allow this user to read the playlist items. |
 | `notFound` | Spotify did not find the playlist. |

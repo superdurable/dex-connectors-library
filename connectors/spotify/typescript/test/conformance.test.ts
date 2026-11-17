@@ -7,7 +7,8 @@ import { ProviderTransportError, type ProviderRequest } from '@superdurable/conn
 import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { SpotifyClient } from '../src/client.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/spotify/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/spotify/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'listPlaylistTracks');
 const connection = { provider: 'spotify', name: 'playlist-reader' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeSpotify));
