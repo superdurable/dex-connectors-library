@@ -3332,6 +3332,1743 @@
       ],
       "name": "createContact-uncertain",
       "operation": "createContact"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"oppo_meridian1\",\"lead_id\":\"lead_meridian1\",\"value\":50000,\"status_id\":\"stat_active1\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/opportunity/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "opportunities": [
+            {
+              "id": "oppo_meridian1",
+              "leadId": "lead_meridian1",
+              "statusId": "stat_active1",
+              "valueCents": 50000
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listOpportunities-listed",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/opportunity/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "hasMore": false,
+          "opportunities": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listOpportunities-providerRejected",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/opportunity/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "opportunities": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listOpportunities-invalidResponse",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "opportunities": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listOpportunities-defect",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/opportunity/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listOpportunities-rateLimit",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/opportunity/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listOpportunities-serverUnavailable",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/opportunity/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listOpportunities-transportFailure",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"oppo_meridian1\",\"lead_id\":\"lead_meridian1\",\"value\":50000,\"status_id\":\"stat_active1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "oppo_meridian1",
+          "leadId": "lead_meridian1",
+          "statusId": "stat_active1",
+          "valueCents": 50000
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "oppo_meridian1"
+      },
+      "name": "getOpportunity-found",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "statusId": "",
+          "valueCents": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "oppo_meridian1"
+      },
+      "name": "getOpportunity-notFound",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "statusId": "",
+          "valueCents": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "oppo_meridian1"
+      },
+      "name": "getOpportunity-providerRejected",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "statusId": "",
+          "valueCents": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "oppo_meridian1"
+      },
+      "name": "getOpportunity-invalidResponse",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "statusId": "",
+          "valueCents": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": ""
+      },
+      "name": "getOpportunity-defect",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "oppo_meridian1"
+      },
+      "name": "getOpportunity-rateLimit",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "oppo_meridian1"
+      },
+      "name": "getOpportunity-serverUnavailable",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "oppo_meridian1"
+      },
+      "name": "getOpportunity-transportFailure",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"oppo_meridian1\",\"lead_id\":\"lead_meridian1\",\"value\":50000,\"status_id\":\"stat_active1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/opportunity/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "status_id": "stat_active1",
+            "value": 50000,
+            "value_period": "monthly"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+          "providerId": "oppo_meridian1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "oppo_meridian1",
+          "leadId": "lead_meridian1",
+          "statusId": "stat_active1",
+          "valueCents": 50000
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "input": {
+        "leadId": "lead_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 50000,
+        "valuePeriod": "monthly"
+      },
+      "name": "createOpportunity-created",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/opportunity/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "status_id": "stat_active1",
+            "value": 50000,
+            "value_period": "monthly"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "leadId": "",
+          "statusId": "",
+          "valueCents": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "input": {
+        "leadId": "lead_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 50000,
+        "valuePeriod": "monthly"
+      },
+      "name": "createOpportunity-providerRejected",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "statusId": "",
+          "valueCents": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "input": {
+        "leadId": "",
+        "statusId": "stat_active1",
+        "valueCents": 50000,
+        "valuePeriod": "monthly"
+      },
+      "name": "createOpportunity-defect",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/opportunity/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "status_id": "stat_active1",
+            "value": 50000,
+            "value_period": "monthly"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "input": {
+        "leadId": "lead_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 50000,
+        "valuePeriod": "monthly"
+      },
+      "name": "createOpportunity-rateLimit",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/opportunity/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "status_id": "stat_active1",
+            "value": 50000,
+            "value_period": "monthly"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "input": {
+        "leadId": "lead_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 50000,
+        "valuePeriod": "monthly"
+      },
+      "name": "createOpportunity-serverUnavailable",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/opportunity/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "status_id": "stat_active1",
+            "value": 50000,
+            "value_period": "monthly"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "input": {
+        "leadId": "lead_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 50000,
+        "valuePeriod": "monthly"
+      },
+      "name": "createOpportunity-serverError",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/opportunity/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "status_id": "stat_active1",
+            "value": 50000,
+            "value_period": "monthly"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "input": {
+        "leadId": "lead_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 50000,
+        "valuePeriod": "monthly"
+      },
+      "name": "createOpportunity-transportFailure",
+      "operation": "createOpportunity"
+    },
+    {
+      "attempts": 3,
+      "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/opportunity/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "status_id": "stat_active1",
+            "value": 50000,
+            "value_period": "monthly"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/opportunity/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "status_id": "stat_active1",
+            "value": 50000,
+            "value_period": "monthly"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/opportunity/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "status_id": "stat_active1",
+            "value": 50000,
+            "value_period": "monthly"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "leadId": "",
+          "statusId": "",
+          "valueCents": null
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "input": {
+        "leadId": "lead_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 50000,
+        "valuePeriod": "monthly"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createOpportunity-uncertain",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"oppo_meridian1\",\"lead_id\":\"lead_meridian1\",\"value\":60000,\"status_id\":\"stat_active1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestBody": {
+            "status_id": "stat_active1",
+            "value": 60000
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "oppo_meridian1",
+          "leadId": "lead_meridian1",
+          "statusId": "stat_active1",
+          "valueCents": 60000
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "input": {
+        "opportunityId": "oppo_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 60000
+      },
+      "name": "updateOpportunity-updated",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestBody": {
+            "status_id": "stat_active1",
+            "value": 60000
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "statusId": "",
+          "valueCents": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "input": {
+        "opportunityId": "oppo_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 60000
+      },
+      "name": "updateOpportunity-notFound",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestBody": {
+            "status_id": "stat_active1",
+            "value": 60000
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "statusId": "",
+          "valueCents": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "input": {
+        "opportunityId": "oppo_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 60000
+      },
+      "name": "updateOpportunity-providerRejected",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestBody": {
+            "status_id": "stat_active1",
+            "value": 60000
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "statusId": "",
+          "valueCents": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "input": {
+        "opportunityId": "oppo_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 60000
+      },
+      "name": "updateOpportunity-invalidResponse",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "statusId": "",
+          "valueCents": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "input": {
+        "opportunityId": "",
+        "statusId": "stat_active1",
+        "valueCents": 60000
+      },
+      "name": "updateOpportunity-defect",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestBody": {
+            "status_id": "stat_active1",
+            "value": 60000
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "input": {
+        "opportunityId": "oppo_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 60000
+      },
+      "name": "updateOpportunity-rateLimit",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestBody": {
+            "status_id": "stat_active1",
+            "value": 60000
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "input": {
+        "opportunityId": "oppo_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 60000
+      },
+      "name": "updateOpportunity-serverUnavailable",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestBody": {
+            "status_id": "stat_active1",
+            "value": 60000
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "72634bd0-436f-5532-8ab9-70584a29bc08",
+      "input": {
+        "opportunityId": "oppo_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 60000
+      },
+      "name": "updateOpportunity-transportFailure",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "opportunityId": "oppo_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
+      "input": {
+        "opportunityId": "oppo_meridian1"
+      },
+      "name": "deleteOpportunity-deleted",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "opportunityId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
+      "input": {
+        "opportunityId": "oppo_meridian1"
+      },
+      "name": "deleteOpportunity-providerRejected",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
+      "exchanges": [
+        {
+          "body": "garbage",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "opportunityId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
+      "input": {
+        "opportunityId": "oppo_meridian1"
+      },
+      "name": "deleteOpportunity-invalidResponse",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "opportunityId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
+      "input": {
+        "opportunityId": ""
+      },
+      "name": "deleteOpportunity-defect",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
+      "input": {
+        "opportunityId": "oppo_meridian1"
+      },
+      "name": "deleteOpportunity-rateLimit",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
+      "input": {
+        "opportunityId": "oppo_meridian1"
+      },
+      "name": "deleteOpportunity-serverUnavailable",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
+      "input": {
+        "opportunityId": "oppo_meridian1"
+      },
+      "name": "deleteOpportunity-transportFailure",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"oppo_meridian1\",\"lead_id\":\"lead_meridian1\",\"value\":50000,\"status_id\":\"stat_active1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/opportunity/oppo_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "oppo_meridian1",
+          "leadId": "lead_meridian1",
+          "statusId": "stat_active1",
+          "valueCents": 50000
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+      "input": {
+        "leadId": "lead_meridian1",
+        "statusId": "stat_active1",
+        "valueCents": 50000,
+        "valuePeriod": "monthly"
+      },
+      "name": "createOpportunity-readBackKnownID",
+      "operation": "createOpportunity",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
+        "providerId": "oppo_meridian1",
+        "state": "claimed"
+      }
     }
   ],
   "schemaVersion": 1

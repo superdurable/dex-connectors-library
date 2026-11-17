@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: close
   displayName: Close
-  description: Create, read, and maintain Close leads and contacts with a connection-owned API key.
+  description: Create, read, and maintain Close leads, contacts, and opportunities with a connection-owned API key.
   company: Close
   categories: [crm-sales]
   version: v0.3.0
@@ -56,6 +56,108 @@ spec:
         - "Paste it into secret api_key. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
         - "To revoke access, delete the token on the same provider page."
   operations:
+    - name: listOpportunities
+      goName: ListOpportunities
+      inputType: ListOpportunitiesInput
+      outputType: OpportunityPage
+      kind: query
+      description: List a bounded page of opportunities on a lead.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Close returned the opportunity page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Meridian Labs has one sample opportunity.
+          output: {opportunities: [{id: oppo_meridian1, leadId: lead_meridian1, valueCents: 50000, statusId: stat_active1}], hasMore: false}
+    - name: getOpportunity
+      goName: GetOpportunity
+      inputType: GetOpportunityInput
+      outputType: Opportunity
+      kind: query
+      description: Read one opportunity by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Close returned the opportunity.}
+        - {id: notFound, goName: NotFound, description: The opportunity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Meridian Labs has one sample opportunity.
+          output: {id: oppo_meridian1, leadId: lead_meridian1, valueCents: 50000, statusId: stat_active1}
+    - name: createOpportunity
+      goName: CreateOpportunity
+      inputType: CreateOpportunityInput
+      outputType: Opportunity
+      kind: mutation
+      description: Create an opportunity on an existing lead.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Close returned the created opportunity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The opportunity may have been created but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A Meridian Labs opportunity was created.
+          output: {id: oppo_meridian1, leadId: lead_meridian1, valueCents: 50000, statusId: stat_active1}
+    - name: updateOpportunity
+      goName: UpdateOpportunity
+      inputType: UpdateOpportunityInput
+      outputType: Opportunity
+      kind: mutation
+      description: Replace selected opportunity fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Close returned the updated opportunity.}
+        - {id: notFound, goName: NotFound, description: The opportunity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A Meridian Labs opportunity was updated.
+          output: {id: oppo_meridian1, leadId: lead_meridian1, valueCents: 60000, statusId: stat_active1}
+    - name: deleteOpportunity
+      goName: DeleteOpportunity
+      inputType: DeleteOpportunityInput
+      outputType: DeletedOpportunity
+      kind: mutation
+      description: Delete an opportunity by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Close accepted deletion or the opportunity is already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A Meridian Labs opportunity was deleted.
+          output: {opportunityId: oppo_meridian1}
     - name: createLead
       goName: CreateLead
       inputType: CreateLeadInput

@@ -17,17 +17,22 @@ import (
 
 // Mock is a scripted close connection. Script each operation through its accessor.
 type Mock struct {
-	connection    close.Connection
-	createLead    *connectormock.Mutation[close.CreateLeadInput, close.Lead]
-	createContact *connectormock.Mutation[close.CreateContactInput, close.Contact]
-	listLeads     *connectormock.Query[close.ListLeadsInput, close.LeadPage]
-	updateLead    *connectormock.Mutation[close.UpdateLeadInput, close.Lead]
-	deleteLead    *connectormock.Mutation[close.DeleteLeadInput, close.DeletedLead]
-	listContacts  *connectormock.Query[close.ListContactsInput, close.ContactPage]
-	getContact    *connectormock.Query[close.GetContactInput, close.Contact]
-	updateContact *connectormock.Mutation[close.UpdateContactInput, close.Contact]
-	deleteContact *connectormock.Mutation[close.DeleteContactInput, close.DeletedContact]
-	getLead       *connectormock.Query[close.GetLeadInput, close.Lead]
+	connection        close.Connection
+	listOpportunities *connectormock.Query[close.ListOpportunitiesInput, close.OpportunityPage]
+	getOpportunity    *connectormock.Query[close.GetOpportunityInput, close.Opportunity]
+	createOpportunity *connectormock.Mutation[close.CreateOpportunityInput, close.Opportunity]
+	updateOpportunity *connectormock.Mutation[close.UpdateOpportunityInput, close.Opportunity]
+	deleteOpportunity *connectormock.Mutation[close.DeleteOpportunityInput, close.DeletedOpportunity]
+	createLead        *connectormock.Mutation[close.CreateLeadInput, close.Lead]
+	createContact     *connectormock.Mutation[close.CreateContactInput, close.Contact]
+	listLeads         *connectormock.Query[close.ListLeadsInput, close.LeadPage]
+	updateLead        *connectormock.Mutation[close.UpdateLeadInput, close.Lead]
+	deleteLead        *connectormock.Mutation[close.DeleteLeadInput, close.DeletedLead]
+	listContacts      *connectormock.Query[close.ListContactsInput, close.ContactPage]
+	getContact        *connectormock.Query[close.GetContactInput, close.Contact]
+	updateContact     *connectormock.Mutation[close.UpdateContactInput, close.Contact]
+	deleteContact     *connectormock.Mutation[close.DeleteContactInput, close.DeletedContact]
+	getLead           *connectormock.Query[close.GetLeadInput, close.Lead]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -35,17 +40,27 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createLead:    connectormock.NewMutation[close.CreateLeadInput, close.Lead](t, close.CreateLeadDefinition),
-		createContact: connectormock.NewMutation[close.CreateContactInput, close.Contact](t, close.CreateContactDefinition),
-		listLeads:     connectormock.NewQuery[close.ListLeadsInput, close.LeadPage](t, close.ListLeadsDefinition),
-		updateLead:    connectormock.NewMutation[close.UpdateLeadInput, close.Lead](t, close.UpdateLeadDefinition),
-		deleteLead:    connectormock.NewMutation[close.DeleteLeadInput, close.DeletedLead](t, close.DeleteLeadDefinition),
-		listContacts:  connectormock.NewQuery[close.ListContactsInput, close.ContactPage](t, close.ListContactsDefinition),
-		getContact:    connectormock.NewQuery[close.GetContactInput, close.Contact](t, close.GetContactDefinition),
-		updateContact: connectormock.NewMutation[close.UpdateContactInput, close.Contact](t, close.UpdateContactDefinition),
-		deleteContact: connectormock.NewMutation[close.DeleteContactInput, close.DeletedContact](t, close.DeleteContactDefinition),
-		getLead:       connectormock.NewQuery[close.GetLeadInput, close.Lead](t, close.GetLeadDefinition),
+		listOpportunities: connectormock.NewQuery[close.ListOpportunitiesInput, close.OpportunityPage](t, close.ListOpportunitiesDefinition),
+		getOpportunity:    connectormock.NewQuery[close.GetOpportunityInput, close.Opportunity](t, close.GetOpportunityDefinition),
+		createOpportunity: connectormock.NewMutation[close.CreateOpportunityInput, close.Opportunity](t, close.CreateOpportunityDefinition),
+		updateOpportunity: connectormock.NewMutation[close.UpdateOpportunityInput, close.Opportunity](t, close.UpdateOpportunityDefinition),
+		deleteOpportunity: connectormock.NewMutation[close.DeleteOpportunityInput, close.DeletedOpportunity](t, close.DeleteOpportunityDefinition),
+		createLead:        connectormock.NewMutation[close.CreateLeadInput, close.Lead](t, close.CreateLeadDefinition),
+		createContact:     connectormock.NewMutation[close.CreateContactInput, close.Contact](t, close.CreateContactDefinition),
+		listLeads:         connectormock.NewQuery[close.ListLeadsInput, close.LeadPage](t, close.ListLeadsDefinition),
+		updateLead:        connectormock.NewMutation[close.UpdateLeadInput, close.Lead](t, close.UpdateLeadDefinition),
+		deleteLead:        connectormock.NewMutation[close.DeleteLeadInput, close.DeletedLead](t, close.DeleteLeadDefinition),
+		listContacts:      connectormock.NewQuery[close.ListContactsInput, close.ContactPage](t, close.ListContactsDefinition),
+		getContact:        connectormock.NewQuery[close.GetContactInput, close.Contact](t, close.GetContactDefinition),
+		updateContact:     connectormock.NewMutation[close.UpdateContactInput, close.Contact](t, close.UpdateContactDefinition),
+		deleteContact:     connectormock.NewMutation[close.DeleteContactInput, close.DeletedContact](t, close.DeleteContactDefinition),
+		getLead:           connectormock.NewQuery[close.GetLeadInput, close.Lead](t, close.GetLeadDefinition),
 	}
+	mock.listOpportunities.Default(ListOpportunitiesDefault())
+	mock.getOpportunity.Default(GetOpportunityDefault())
+	mock.createOpportunity.Default(CreateOpportunityDefault())
+	mock.updateOpportunity.Default(UpdateOpportunityDefault())
+	mock.deleteOpportunity.Default(DeleteOpportunityDefault())
 	mock.createLead.Default(CreateLeadDefault())
 	mock.createContact.Default(CreateContactDefault())
 	mock.listLeads.Default(ListLeadsDefault())
@@ -66,6 +81,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() close.Connection { return mock.connection }
+
+// ListOpportunities returns the listOpportunities script.
+func (mock *Mock) ListOpportunities() *connectormock.Query[close.ListOpportunitiesInput, close.OpportunityPage] {
+	return mock.listOpportunities
+}
+
+// GetOpportunity returns the getOpportunity script.
+func (mock *Mock) GetOpportunity() *connectormock.Query[close.GetOpportunityInput, close.Opportunity] {
+	return mock.getOpportunity
+}
+
+// CreateOpportunity returns the createOpportunity script.
+func (mock *Mock) CreateOpportunity() *connectormock.Mutation[close.CreateOpportunityInput, close.Opportunity] {
+	return mock.createOpportunity
+}
+
+// UpdateOpportunity returns the updateOpportunity script.
+func (mock *Mock) UpdateOpportunity() *connectormock.Mutation[close.UpdateOpportunityInput, close.Opportunity] {
+	return mock.updateOpportunity
+}
+
+// DeleteOpportunity returns the deleteOpportunity script.
+func (mock *Mock) DeleteOpportunity() *connectormock.Mutation[close.DeleteOpportunityInput, close.DeletedOpportunity] {
+	return mock.deleteOpportunity
+}
 
 // CreateLead returns the createLead script.
 func (mock *Mock) CreateLead() *connectormock.Mutation[close.CreateLeadInput, close.Lead] {
@@ -117,6 +157,21 @@ func (mock *Mock) GetLead() *connectormock.Query[close.GetLeadInput, close.Lead]
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListOpportunities() sdkgo.Query[close.ListOpportunitiesInput, close.OpportunityPage] {
+	return operations.mock.listOpportunities
+}
+func (operations mockOperations) GetOpportunity() sdkgo.Query[close.GetOpportunityInput, close.Opportunity] {
+	return operations.mock.getOpportunity
+}
+func (operations mockOperations) CreateOpportunity() sdkgo.Mutation[close.CreateOpportunityInput, close.Opportunity] {
+	return operations.mock.createOpportunity
+}
+func (operations mockOperations) UpdateOpportunity() sdkgo.Mutation[close.UpdateOpportunityInput, close.Opportunity] {
+	return operations.mock.updateOpportunity
+}
+func (operations mockOperations) DeleteOpportunity() sdkgo.Mutation[close.DeleteOpportunityInput, close.DeletedOpportunity] {
+	return operations.mock.deleteOpportunity
+}
 func (operations mockOperations) CreateLead() sdkgo.Mutation[close.CreateLeadInput, close.Lead] {
 	return operations.mock.createLead
 }
@@ -146,6 +201,196 @@ func (operations mockOperations) DeleteContact() sdkgo.Mutation[close.DeleteCont
 }
 func (operations mockOperations) GetLead() sdkgo.Query[close.GetLeadInput, close.Lead] {
 	return operations.mock.getLead
+}
+
+// ListOpportunitiesListed selects the listed branch: Close returned the opportunity page.
+func ListOpportunitiesListed(value close.OpportunityPage, failure *sdkgo.Failure) connectormock.Case[close.OpportunityPage] {
+	return connectormock.Branch(close.ListOpportunitiesBranchListed, value, failure)
+}
+
+// ListOpportunitiesProviderRejected selects the providerRejected branch: Close conclusively rejected the read.
+func ListOpportunitiesProviderRejected(value close.OpportunityPage, failure *sdkgo.Failure) connectormock.Case[close.OpportunityPage] {
+	return connectormock.Branch(close.ListOpportunitiesBranchProviderRejected, value, failure)
+}
+
+// ListOpportunitiesInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func ListOpportunitiesInvalidResponse(value close.OpportunityPage, failure *sdkgo.Failure) connectormock.Case[close.OpportunityPage] {
+	return connectormock.Branch(close.ListOpportunitiesBranchInvalidResponse, value, failure)
+}
+
+// ListOpportunitiesDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListOpportunitiesDefect(value close.OpportunityPage, failure *sdkgo.Failure) connectormock.Case[close.OpportunityPage] {
+	return connectormock.Branch(close.ListOpportunitiesBranchDefect, value, failure)
+}
+
+// ListOpportunitiesRetry asks Dex to retry the listOpportunities Step, after the delay when it is positive.
+func ListOpportunitiesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.OpportunityPage] {
+	return connectormock.Retry[close.OpportunityPage](failure, after)
+}
+
+// ListOpportunitiesListedDefault is the manifest mock listedDefault: Meridian Labs has one sample opportunity.
+func ListOpportunitiesListedDefault() connectormock.Case[close.OpportunityPage] {
+	value := connectormock.MustDecodeOutput[close.OpportunityPage](`{"opportunities":[{"id":"oppo_meridian1","leadId":"lead_meridian1","valueCents":50000,"statusId":"stat_active1"}],"hasMore":false}`)
+	return connectormock.Branch(close.ListOpportunitiesBranchListed, value, nil)
+}
+
+// ListOpportunitiesDefault is the manifest default, listedDefault, which New installs.
+func ListOpportunitiesDefault() connectormock.Case[close.OpportunityPage] {
+	return ListOpportunitiesListedDefault()
+}
+
+// GetOpportunityFound selects the found branch: Close returned the opportunity.
+func GetOpportunityFound(value close.Opportunity, failure *sdkgo.Failure) connectormock.Case[close.Opportunity] {
+	return connectormock.Branch(close.GetOpportunityBranchFound, value, failure)
+}
+
+// GetOpportunityNotFound selects the notFound branch: The opportunity does not exist.
+func GetOpportunityNotFound(value close.Opportunity, failure *sdkgo.Failure) connectormock.Case[close.Opportunity] {
+	return connectormock.Branch(close.GetOpportunityBranchNotFound, value, failure)
+}
+
+// GetOpportunityProviderRejected selects the providerRejected branch: Close conclusively rejected the read.
+func GetOpportunityProviderRejected(value close.Opportunity, failure *sdkgo.Failure) connectormock.Case[close.Opportunity] {
+	return connectormock.Branch(close.GetOpportunityBranchProviderRejected, value, failure)
+}
+
+// GetOpportunityInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func GetOpportunityInvalidResponse(value close.Opportunity, failure *sdkgo.Failure) connectormock.Case[close.Opportunity] {
+	return connectormock.Branch(close.GetOpportunityBranchInvalidResponse, value, failure)
+}
+
+// GetOpportunityDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetOpportunityDefect(value close.Opportunity, failure *sdkgo.Failure) connectormock.Case[close.Opportunity] {
+	return connectormock.Branch(close.GetOpportunityBranchDefect, value, failure)
+}
+
+// GetOpportunityRetry asks Dex to retry the getOpportunity Step, after the delay when it is positive.
+func GetOpportunityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.Opportunity] {
+	return connectormock.Retry[close.Opportunity](failure, after)
+}
+
+// GetOpportunityFoundDefault is the manifest mock foundDefault: Meridian Labs has one sample opportunity.
+func GetOpportunityFoundDefault() connectormock.Case[close.Opportunity] {
+	value := connectormock.MustDecodeOutput[close.Opportunity](`{"id":"oppo_meridian1","leadId":"lead_meridian1","valueCents":50000,"statusId":"stat_active1"}`)
+	return connectormock.Branch(close.GetOpportunityBranchFound, value, nil)
+}
+
+// GetOpportunityDefault is the manifest default, foundDefault, which New installs.
+func GetOpportunityDefault() connectormock.Case[close.Opportunity] {
+	return GetOpportunityFoundDefault()
+}
+
+// CreateOpportunityCreated selects the created branch: Close returned the created opportunity.
+func CreateOpportunityCreated(value close.Opportunity, failure *sdkgo.Failure) connectormock.Case[close.Opportunity] {
+	return connectormock.Branch(close.CreateOpportunityBranchCreated, value, failure)
+}
+
+// CreateOpportunityProviderRejected selects the providerRejected branch: Close conclusively rejected the creation.
+func CreateOpportunityProviderRejected(value close.Opportunity, failure *sdkgo.Failure) connectormock.Case[close.Opportunity] {
+	return connectormock.Branch(close.CreateOpportunityBranchProviderRejected, value, failure)
+}
+
+// CreateOpportunityUncertain returns an uncertain createOpportunity outcome.
+func CreateOpportunityUncertain(value close.Opportunity, failure sdkgo.Failure) connectormock.Case[close.Opportunity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateOpportunityDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateOpportunityDefect(value close.Opportunity, failure *sdkgo.Failure) connectormock.Case[close.Opportunity] {
+	return connectormock.Branch(close.CreateOpportunityBranchDefect, value, failure)
+}
+
+// CreateOpportunityRetry asks Dex to retry the createOpportunity Step, after the delay when it is positive.
+func CreateOpportunityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.Opportunity] {
+	return connectormock.Retry[close.Opportunity](failure, after)
+}
+
+// CreateOpportunityCreatedDefault is the manifest mock createdDefault: A Meridian Labs opportunity was created.
+func CreateOpportunityCreatedDefault() connectormock.Case[close.Opportunity] {
+	value := connectormock.MustDecodeOutput[close.Opportunity](`{"id":"oppo_meridian1","leadId":"lead_meridian1","valueCents":50000,"statusId":"stat_active1"}`)
+	return connectormock.Branch(close.CreateOpportunityBranchCreated, value, nil)
+}
+
+// CreateOpportunityDefault is the manifest default, createdDefault, which New installs.
+func CreateOpportunityDefault() connectormock.Case[close.Opportunity] {
+	return CreateOpportunityCreatedDefault()
+}
+
+// UpdateOpportunityUpdated selects the updated branch: Close returned the updated opportunity.
+func UpdateOpportunityUpdated(value close.Opportunity, failure *sdkgo.Failure) connectormock.Case[close.Opportunity] {
+	return connectormock.Branch(close.UpdateOpportunityBranchUpdated, value, failure)
+}
+
+// UpdateOpportunityNotFound selects the notFound branch: The opportunity does not exist.
+func UpdateOpportunityNotFound(value close.Opportunity, failure *sdkgo.Failure) connectormock.Case[close.Opportunity] {
+	return connectormock.Branch(close.UpdateOpportunityBranchNotFound, value, failure)
+}
+
+// UpdateOpportunityProviderRejected selects the providerRejected branch: Close conclusively rejected the update.
+func UpdateOpportunityProviderRejected(value close.Opportunity, failure *sdkgo.Failure) connectormock.Case[close.Opportunity] {
+	return connectormock.Branch(close.UpdateOpportunityBranchProviderRejected, value, failure)
+}
+
+// UpdateOpportunityInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func UpdateOpportunityInvalidResponse(value close.Opportunity, failure *sdkgo.Failure) connectormock.Case[close.Opportunity] {
+	return connectormock.Branch(close.UpdateOpportunityBranchInvalidResponse, value, failure)
+}
+
+// UpdateOpportunityDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateOpportunityDefect(value close.Opportunity, failure *sdkgo.Failure) connectormock.Case[close.Opportunity] {
+	return connectormock.Branch(close.UpdateOpportunityBranchDefect, value, failure)
+}
+
+// UpdateOpportunityRetry asks Dex to retry the updateOpportunity Step, after the delay when it is positive.
+func UpdateOpportunityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.Opportunity] {
+	return connectormock.Retry[close.Opportunity](failure, after)
+}
+
+// UpdateOpportunityUpdatedDefault is the manifest mock updatedDefault: A Meridian Labs opportunity was updated.
+func UpdateOpportunityUpdatedDefault() connectormock.Case[close.Opportunity] {
+	value := connectormock.MustDecodeOutput[close.Opportunity](`{"id":"oppo_meridian1","leadId":"lead_meridian1","valueCents":60000,"statusId":"stat_active1"}`)
+	return connectormock.Branch(close.UpdateOpportunityBranchUpdated, value, nil)
+}
+
+// UpdateOpportunityDefault is the manifest default, updatedDefault, which New installs.
+func UpdateOpportunityDefault() connectormock.Case[close.Opportunity] {
+	return UpdateOpportunityUpdatedDefault()
+}
+
+// DeleteOpportunityDeleted selects the deleted branch: Close accepted deletion or the opportunity is already absent.
+func DeleteOpportunityDeleted(value close.DeletedOpportunity, failure *sdkgo.Failure) connectormock.Case[close.DeletedOpportunity] {
+	return connectormock.Branch(close.DeleteOpportunityBranchDeleted, value, failure)
+}
+
+// DeleteOpportunityProviderRejected selects the providerRejected branch: Close conclusively rejected the deletion.
+func DeleteOpportunityProviderRejected(value close.DeletedOpportunity, failure *sdkgo.Failure) connectormock.Case[close.DeletedOpportunity] {
+	return connectormock.Branch(close.DeleteOpportunityBranchProviderRejected, value, failure)
+}
+
+// DeleteOpportunityInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func DeleteOpportunityInvalidResponse(value close.DeletedOpportunity, failure *sdkgo.Failure) connectormock.Case[close.DeletedOpportunity] {
+	return connectormock.Branch(close.DeleteOpportunityBranchInvalidResponse, value, failure)
+}
+
+// DeleteOpportunityDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteOpportunityDefect(value close.DeletedOpportunity, failure *sdkgo.Failure) connectormock.Case[close.DeletedOpportunity] {
+	return connectormock.Branch(close.DeleteOpportunityBranchDefect, value, failure)
+}
+
+// DeleteOpportunityRetry asks Dex to retry the deleteOpportunity Step, after the delay when it is positive.
+func DeleteOpportunityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.DeletedOpportunity] {
+	return connectormock.Retry[close.DeletedOpportunity](failure, after)
+}
+
+// DeleteOpportunityDeletedDefault is the manifest mock deletedDefault: A Meridian Labs opportunity was deleted.
+func DeleteOpportunityDeletedDefault() connectormock.Case[close.DeletedOpportunity] {
+	value := connectormock.MustDecodeOutput[close.DeletedOpportunity](`{"opportunityId":"oppo_meridian1"}`)
+	return connectormock.Branch(close.DeleteOpportunityBranchDeleted, value, nil)
+}
+
+// DeleteOpportunityDefault is the manifest default, deletedDefault, which New installs.
+func DeleteOpportunityDefault() connectormock.Case[close.DeletedOpportunity] {
+	return DeleteOpportunityDeletedDefault()
 }
 
 // CreateLeadCreated selects the created branch: Close returned the created lead.

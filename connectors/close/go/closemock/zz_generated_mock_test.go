@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listOpportunities/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.OpportunityPage](`{"opportunities":[{"id":"oppo_meridian1","leadId":"lead_meridian1","valueCents":50000,"statusId":"stat_active1"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getOpportunity/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Opportunity](`{"id":"oppo_meridian1","leadId":"lead_meridian1","valueCents":50000,"statusId":"stat_active1"}`)
+			return err
+		}},
+		{name: "createOpportunity/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Opportunity](`{"id":"oppo_meridian1","leadId":"lead_meridian1","valueCents":50000,"statusId":"stat_active1"}`)
+			return err
+		}},
+		{name: "updateOpportunity/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Opportunity](`{"id":"oppo_meridian1","leadId":"lead_meridian1","valueCents":60000,"statusId":"stat_active1"}`)
+			return err
+		}},
+		{name: "deleteOpportunity/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedOpportunity](`{"opportunityId":"oppo_meridian1"}`)
+			return err
+		}},
 		{name: "createLead/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[close.Lead](`{"id":"lead_meridian1","name":"Meridian Labs"}`)
 			return err
@@ -66,6 +86,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListOpportunities().Definition().Operation.OperationID != "listOpportunities" {
+		t.Errorf("listOpportunities mock has another definition")
+	}
+	if mock.GetOpportunity().Definition().Operation.OperationID != "getOpportunity" {
+		t.Errorf("getOpportunity mock has another definition")
+	}
+	if mock.CreateOpportunity().Definition().Operation.OperationID != "createOpportunity" {
+		t.Errorf("createOpportunity mock has another definition")
+	}
+	if mock.UpdateOpportunity().Definition().Operation.OperationID != "updateOpportunity" {
+		t.Errorf("updateOpportunity mock has another definition")
+	}
+	if mock.DeleteOpportunity().Definition().Operation.OperationID != "deleteOpportunity" {
+		t.Errorf("deleteOpportunity mock has another definition")
+	}
 	if mock.CreateLead().Definition().Operation.OperationID != "createLead" {
 		t.Errorf("createLead mock has another definition")
 	}
