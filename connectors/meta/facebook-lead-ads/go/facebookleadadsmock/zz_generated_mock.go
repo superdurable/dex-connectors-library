@@ -18,6 +18,7 @@ import (
 // Mock is a scripted facebook-lead-ads connection. Script each operation through its accessor.
 type Mock struct {
 	connection    facebookleadads.Connection
+	listLeads     *connectormock.Query[facebookleadads.ListLeadsInput, facebookleadads.LeadsPage]
 	listLeadForms *connectormock.Query[facebookleadads.ListLeadFormsInput, facebookleadads.LeadFormsPage]
 	getLead       *connectormock.Query[facebookleadads.GetLeadInput, facebookleadads.LeadMetadata]
 }
@@ -27,9 +28,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listLeads:     connectormock.NewQuery[facebookleadads.ListLeadsInput, facebookleadads.LeadsPage](t, facebookleadads.ListLeadsDefinition),
 		listLeadForms: connectormock.NewQuery[facebookleadads.ListLeadFormsInput, facebookleadads.LeadFormsPage](t, facebookleadads.ListLeadFormsDefinition),
 		getLead:       connectormock.NewQuery[facebookleadads.GetLeadInput, facebookleadads.LeadMetadata](t, facebookleadads.GetLeadDefinition),
 	}
+	mock.listLeads.Default(ListLeadsDefault())
 	mock.listLeadForms.Default(ListLeadFormsDefault())
 	mock.getLead.Default(GetLeadDefault())
 	connection, err := facebookleadads.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "facebook-lead-ads", Name: connectionName})
@@ -43,6 +46,11 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() facebookleadads.Connection { return mock.connection }
 
+// ListLeads returns the listLeads script.
+func (mock *Mock) ListLeads() *connectormock.Query[facebookleadads.ListLeadsInput, facebookleadads.LeadsPage] {
+	return mock.listLeads
+}
+
 // ListLeadForms returns the listLeadForms script.
 func (mock *Mock) ListLeadForms() *connectormock.Query[facebookleadads.ListLeadFormsInput, facebookleadads.LeadFormsPage] {
 	return mock.listLeadForms
@@ -55,11 +63,55 @@ func (mock *Mock) GetLead() *connectormock.Query[facebookleadads.GetLeadInput, f
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListLeads() sdkgo.Query[facebookleadads.ListLeadsInput, facebookleadads.LeadsPage] {
+	return operations.mock.listLeads
+}
 func (operations mockOperations) ListLeadForms() sdkgo.Query[facebookleadads.ListLeadFormsInput, facebookleadads.LeadFormsPage] {
 	return operations.mock.listLeadForms
 }
 func (operations mockOperations) GetLead() sdkgo.Query[facebookleadads.GetLeadInput, facebookleadads.LeadMetadata] {
 	return operations.mock.getLead
+}
+
+// ListLeadsListed selects the listed branch: Meta returned one lead page.
+func ListLeadsListed(value facebookleadads.LeadsPage, failure *sdkgo.Failure) connectormock.Case[facebookleadads.LeadsPage] {
+	return connectormock.Branch(facebookleadads.ListLeadsBranchListed, value, failure)
+}
+
+// ListLeadsNotFound selects the notFound branch: The form is missing or inaccessible.
+func ListLeadsNotFound(value facebookleadads.LeadsPage, failure *sdkgo.Failure) connectormock.Case[facebookleadads.LeadsPage] {
+	return connectormock.Branch(facebookleadads.ListLeadsBranchNotFound, value, failure)
+}
+
+// ListLeadsProviderRejected selects the providerRejected branch: Meta definitively rejected the lookup.
+func ListLeadsProviderRejected(value facebookleadads.LeadsPage, failure *sdkgo.Failure) connectormock.Case[facebookleadads.LeadsPage] {
+	return connectormock.Branch(facebookleadads.ListLeadsBranchProviderRejected, value, failure)
+}
+
+// ListLeadsInvalidResponse selects the invalidResponse branch: Meta returned malformed or oversized JSON.
+func ListLeadsInvalidResponse(value facebookleadads.LeadsPage, failure *sdkgo.Failure) connectormock.Case[facebookleadads.LeadsPage] {
+	return connectormock.Branch(facebookleadads.ListLeadsBranchInvalidResponse, value, failure)
+}
+
+// ListLeadsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListLeadsDefect(value facebookleadads.LeadsPage, failure *sdkgo.Failure) connectormock.Case[facebookleadads.LeadsPage] {
+	return connectormock.Branch(facebookleadads.ListLeadsBranchDefect, value, failure)
+}
+
+// ListLeadsRetry asks Dex to retry the listLeads Step, after the delay when it is positive.
+func ListLeadsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[facebookleadads.LeadsPage] {
+	return connectormock.Retry[facebookleadads.LeadsPage](failure, after)
+}
+
+// ListLeadsListedDefault is the manifest mock listedDefault: One lead identity is available.
+func ListLeadsListedDefault() connectormock.Case[facebookleadads.LeadsPage] {
+	value := connectormock.MustDecodeOutput[facebookleadads.LeadsPage](`{"leads":[{"id":"987654321012345","formId":"123456789012345","adId":"112233445566778","createdTime":"2026-11-08T10:00:00+0000"}],"nextCursor":""}`)
+	return connectormock.Branch(facebookleadads.ListLeadsBranchListed, value, nil)
+}
+
+// ListLeadsDefault is the manifest default, listedDefault, which New installs.
+func ListLeadsDefault() connectormock.Case[facebookleadads.LeadsPage] {
+	return ListLeadsListedDefault()
 }
 
 // ListLeadFormsListed selects the listed branch: Meta returned one lead-form page.
