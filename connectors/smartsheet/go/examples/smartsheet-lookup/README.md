@@ -1,6 +1,6 @@
 # Smartsheet lookup example
 
-This Worker registers `SmartsheetLookup` and `SmartsheetRowLookup` with static connection name `smartsheet`. The first Flow calls `listSheets` and `getSheet`; the second calls `getRow` with `{"sheetId":1001,"rowId":3001}`.
+This Worker registers `SmartsheetLookup`, `SmartsheetRowLookup`, and `SmartsheetSheetCreate` with static connection name `smartsheet`. The first Flow calls `listSheets` and `getSheet`; the second calls `getRow` with `{"sheetId":1001,"rowId":3001}`; the third creates a sheet with `{"workspaceId":4001,"name":"Meridian Planning","primaryColumnTitle":"Task"}`. Choose IDs and a token with permission to create sheets in the target workspace.
 
 ## Generate and run
 

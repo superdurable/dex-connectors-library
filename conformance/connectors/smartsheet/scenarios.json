@@ -1913,6 +1913,1199 @@
         "callId": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
         "state": "claimed"
       }
+    },
+    {
+      "callId": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+      "exchanges": [
+        {
+          "body": "{\"resultCode\":0,\"message\":\"SUCCESS\",\"result\":{\"id\":1001,\"name\":\"Meridian Planning\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces/1002/sheets",
+          "requestBody": {
+            "columns": [
+              {
+                "primary": true,
+                "title": "Task",
+                "type": "TEXT_NUMBER"
+              }
+            ],
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+          "providerId": "1001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 1001,
+          "name": "Meridian Planning"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+      "input": {
+        "name": "Meridian Planning",
+        "primaryColumnTitle": "Task",
+        "workspaceId": 1002
+      },
+      "name": "createSheetInWorkspace-created",
+      "operation": "createSheetInWorkspace"
+    },
+    {
+      "callId": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces/1002/sheets",
+          "requestBody": {
+            "columns": [
+              {
+                "primary": true,
+                "title": "Task",
+                "type": "TEXT_NUMBER"
+              }
+            ],
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+      "input": {
+        "name": "Meridian Planning",
+        "primaryColumnTitle": "Task",
+        "workspaceId": 1002
+      },
+      "name": "createSheetInWorkspace-providerRejected",
+      "operation": "createSheetInWorkspace"
+    },
+    {
+      "callId": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces/1002/sheets",
+          "requestBody": {
+            "columns": [
+              {
+                "primary": true,
+                "title": "Task",
+                "type": "TEXT_NUMBER"
+              }
+            ],
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+      "input": {
+        "name": "Meridian Planning",
+        "primaryColumnTitle": "Task",
+        "workspaceId": 1002
+      },
+      "name": "createSheetInWorkspace-rateLimited",
+      "operation": "createSheetInWorkspace"
+    },
+    {
+      "callId": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces/1002/sheets",
+          "requestBody": {
+            "columns": [
+              {
+                "primary": true,
+                "title": "Task",
+                "type": "TEXT_NUMBER"
+              }
+            ],
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+      "input": {
+        "name": "Meridian Planning",
+        "primaryColumnTitle": "Task",
+        "workspaceId": 1002
+      },
+      "name": "createSheetInWorkspace-serverUnavailable",
+      "operation": "createSheetInWorkspace"
+    },
+    {
+      "callId": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces/1002/sheets",
+          "requestBody": {
+            "columns": [
+              {
+                "primary": true,
+                "title": "Task",
+                "type": "TEXT_NUMBER"
+              }
+            ],
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+      "input": {
+        "name": "Meridian Planning",
+        "primaryColumnTitle": "Task",
+        "workspaceId": 1002
+      },
+      "name": "createSheetInWorkspace-transport",
+      "operation": "createSheetInWorkspace"
+    },
+    {
+      "callId": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+      "exchanges": [
+        {
+          "body": "{\"resultCode\":0,\"message\":\"SUCCESS\",\"result\":{\"id\":1001,\"name\":\"Meridian Planning\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/1003/sheets",
+          "requestBody": {
+            "columns": [
+              {
+                "primary": true,
+                "title": "Task",
+                "type": "TEXT_NUMBER"
+              }
+            ],
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+          "providerId": "1001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 1001,
+          "name": "Meridian Planning"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+      "input": {
+        "folderId": 1003,
+        "name": "Meridian Planning",
+        "primaryColumnTitle": "Task"
+      },
+      "name": "createSheetInFolder-created",
+      "operation": "createSheetInFolder"
+    },
+    {
+      "callId": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/1003/sheets",
+          "requestBody": {
+            "columns": [
+              {
+                "primary": true,
+                "title": "Task",
+                "type": "TEXT_NUMBER"
+              }
+            ],
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+      "input": {
+        "folderId": 1003,
+        "name": "Meridian Planning",
+        "primaryColumnTitle": "Task"
+      },
+      "name": "createSheetInFolder-providerRejected",
+      "operation": "createSheetInFolder"
+    },
+    {
+      "callId": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/1003/sheets",
+          "requestBody": {
+            "columns": [
+              {
+                "primary": true,
+                "title": "Task",
+                "type": "TEXT_NUMBER"
+              }
+            ],
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+      "input": {
+        "folderId": 1003,
+        "name": "Meridian Planning",
+        "primaryColumnTitle": "Task"
+      },
+      "name": "createSheetInFolder-rateLimited",
+      "operation": "createSheetInFolder"
+    },
+    {
+      "callId": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/1003/sheets",
+          "requestBody": {
+            "columns": [
+              {
+                "primary": true,
+                "title": "Task",
+                "type": "TEXT_NUMBER"
+              }
+            ],
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+      "input": {
+        "folderId": 1003,
+        "name": "Meridian Planning",
+        "primaryColumnTitle": "Task"
+      },
+      "name": "createSheetInFolder-serverUnavailable",
+      "operation": "createSheetInFolder"
+    },
+    {
+      "callId": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/1003/sheets",
+          "requestBody": {
+            "columns": [
+              {
+                "primary": true,
+                "title": "Task",
+                "type": "TEXT_NUMBER"
+              }
+            ],
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+      "input": {
+        "folderId": 1003,
+        "name": "Meridian Planning",
+        "primaryColumnTitle": "Task"
+      },
+      "name": "createSheetInFolder-transport",
+      "operation": "createSheetInFolder"
+    },
+    {
+      "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "exchanges": [
+        {
+          "body": "{\"resultCode\":0,\"message\":\"SUCCESS\",\"result\":{\"id\":1001,\"name\":\"Meridian Planning\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001",
+          "requestBody": {
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 1001,
+          "name": "Meridian Planning"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "input": {
+        "name": "Meridian Planning",
+        "sheetId": 1001
+      },
+      "name": "updateSheet-updated",
+      "operation": "updateSheet"
+    },
+    {
+      "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001",
+          "requestBody": {
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "input": {
+        "name": "Meridian Planning",
+        "sheetId": 1001
+      },
+      "name": "updateSheet-notFound",
+      "operation": "updateSheet"
+    },
+    {
+      "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001",
+          "requestBody": {
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "input": {
+        "name": "Meridian Planning",
+        "sheetId": 1001
+      },
+      "name": "updateSheet-providerRejected",
+      "operation": "updateSheet"
+    },
+    {
+      "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001",
+          "requestBody": {
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "input": {
+        "name": "Meridian Planning",
+        "sheetId": 1001
+      },
+      "name": "updateSheet-invalidResponse",
+      "operation": "updateSheet"
+    },
+    {
+      "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001",
+          "requestBody": {
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "input": {
+        "name": "Meridian Planning",
+        "sheetId": 1001
+      },
+      "name": "updateSheet-rateLimited",
+      "operation": "updateSheet"
+    },
+    {
+      "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001",
+          "requestBody": {
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "input": {
+        "name": "Meridian Planning",
+        "sheetId": 1001
+      },
+      "name": "updateSheet-serverUnavailable",
+      "operation": "updateSheet"
+    },
+    {
+      "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001",
+          "requestBody": {
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "input": {
+        "name": "Meridian Planning",
+        "sheetId": 1001
+      },
+      "name": "updateSheet-transport",
+      "operation": "updateSheet"
+    },
+    {
+      "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "exchanges": [
+        {
+          "body": "{\"resultCode\":0,\"message\":\"SUCCESS\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "sheetId": 1001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "input": {
+        "sheetId": 1001
+      },
+      "name": "deleteSheet-deleted",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "sheetId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "input": {
+        "sheetId": 1001
+      },
+      "name": "deleteSheet-notFound",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "sheetId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "input": {
+        "sheetId": 1001
+      },
+      "name": "deleteSheet-providerRejected",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "sheetId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "input": {
+        "sheetId": 1001
+      },
+      "name": "deleteSheet-invalidResponse",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "input": {
+        "sheetId": 1001
+      },
+      "name": "deleteSheet-rateLimited",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "input": {
+        "sheetId": 1001
+      },
+      "name": "deleteSheet-serverUnavailable",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "input": {
+        "sheetId": 1001
+      },
+      "name": "deleteSheet-transport",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+      "input": {
+        "name": "Meridian Planning",
+        "primaryColumnTitle": "Task",
+        "workspaceId": 1002
+      },
+      "name": "createSheetInWorkspace-uncertain",
+      "operation": "createSheetInWorkspace",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "6b3b3f4c-448c-50bb-9bfb-e71249263944",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+      "input": {
+        "folderId": 1003,
+        "name": "Meridian Planning",
+        "primaryColumnTitle": "Task"
+      },
+      "name": "createSheetInFolder-uncertain",
+      "operation": "createSheetInFolder",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "034d5b03-de1d-55f7-9805-5d180c33f3de",
+        "state": "claimed"
+      }
     }
   ],
   "schemaVersion": 1

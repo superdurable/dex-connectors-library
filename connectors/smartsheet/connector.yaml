@@ -176,3 +176,85 @@ spec:
         - {id: defect, goName: Defect, description: Row ID or credentials are invalid., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: One sample row is deleted., output: {rowId: 3001}}
+    - name: createSheetInWorkspace
+      goName: CreateSheetInWorkspace
+      inputType: CreateSheetInWorkspaceInput
+      outputType: SheetSummary
+      kind: mutation
+      description: Create a sheet with one primary text column at a workspace top level.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Smartsheet created the sheet.}
+        - {id: providerRejected, goName: ProviderRejected, description: Smartsheet providerRejected outcome for the sheet., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The sheet create outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Sheet input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample sheet is created.
+          output: {"id":1001,"name":"Meridian Planning"}
+    - name: createSheetInFolder
+      goName: CreateSheetInFolder
+      inputType: CreateSheetInFolderInput
+      outputType: SheetSummary
+      kind: mutation
+      description: Create a sheet with one primary text column in a folder.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Smartsheet created the sheet.}
+        - {id: providerRejected, goName: ProviderRejected, description: Smartsheet providerRejected outcome for the sheet., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The sheet create outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Sheet input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample sheet is created.
+          output: {"id":1001,"name":"Meridian Planning"}
+    - name: updateSheet
+      goName: UpdateSheet
+      inputType: UpdateSheetInput
+      outputType: SheetSummary
+      kind: mutation
+      description: Replace a sheet's display name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Smartsheet updated the sheet.}
+        - {id: notFound, goName: NotFound, description: Smartsheet notFound outcome for the sheet., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Smartsheet providerRejected outcome for the sheet., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Smartsheet invalidResponse outcome for the sheet., optional: true}
+        - {id: defect, goName: Defect, description: Sheet input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample sheet is updated.
+          output: {"id":1001,"name":"Meridian Planning"}
+    - name: deleteSheet
+      goName: DeleteSheet
+      inputType: DeleteSheetInput
+      outputType: DeleteSheetOutput
+      kind: mutation
+      description: Delete one sheet by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Smartsheet deleted the sheet.}
+        - {id: notFound, goName: NotFound, description: Smartsheet notFound outcome for the sheet., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Smartsheet providerRejected outcome for the sheet., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Smartsheet invalidResponse outcome for the sheet., optional: true}
+        - {id: defect, goName: Defect, description: Sheet input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample sheet is deleted.
+          output: {"sheetId":1001}

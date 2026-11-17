@@ -57,11 +57,15 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.attempt = int32(attempt)
 		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"listSheets": newConformanceQueryInvocation(t, scenario.Input, context, client.ListSheets(), conformanceConnection),
-		"getSheet":   newConformanceQueryInvocation(t, scenario.Input, context, client.GetSheet(), conformanceConnection),
-		"getRow":     newConformanceQueryInvocation(t, scenario.Input, context, client.GetRow(), conformanceConnection),
-		"addRow":     newConformanceMutationInvocation(t, scenario.Input, context, client.AddRow(), conformanceConnection, scenario.CallID),
-		"updateRow":  newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateRow(), conformanceConnection, scenario.CallID),
-		"deleteRow":  newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteRow(), conformanceConnection, scenario.CallID),
+		"listSheets":             newConformanceQueryInvocation(t, scenario.Input, context, client.ListSheets(), conformanceConnection),
+		"getSheet":               newConformanceQueryInvocation(t, scenario.Input, context, client.GetSheet(), conformanceConnection),
+		"getRow":                 newConformanceQueryInvocation(t, scenario.Input, context, client.GetRow(), conformanceConnection),
+		"addRow":                 newConformanceMutationInvocation(t, scenario.Input, context, client.AddRow(), conformanceConnection, scenario.CallID),
+		"updateRow":              newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateRow(), conformanceConnection, scenario.CallID),
+		"deleteRow":              newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteRow(), conformanceConnection, scenario.CallID),
+		"createSheetInWorkspace": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateSheetInWorkspace(), conformanceConnection, scenario.CallID),
+		"createSheetInFolder":    newConformanceMutationInvocation(t, scenario.Input, context, client.CreateSheetInFolder(), conformanceConnection, scenario.CallID),
+		"updateSheet":            newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateSheet(), conformanceConnection, scenario.CallID),
+		"deleteSheet":            newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteSheet(), conformanceConnection, scenario.CallID),
 	}}
 }

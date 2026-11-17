@@ -40,6 +40,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[smartsheet.DeleteRowOutput](`{"rowId":3001}`)
 			return err
 		}},
+		{name: "createSheetInWorkspace/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.SheetSummary](`{"id":1001,"name":"Meridian Planning"}`)
+			return err
+		}},
+		{name: "createSheetInFolder/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.SheetSummary](`{"id":1001,"name":"Meridian Planning"}`)
+			return err
+		}},
+		{name: "updateSheet/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.SheetSummary](`{"id":1001,"name":"Meridian Planning"}`)
+			return err
+		}},
+		{name: "deleteSheet/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.DeleteSheetOutput](`{"sheetId":1001}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -67,5 +83,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteRow().Definition().Operation.OperationID != "deleteRow" {
 		t.Errorf("deleteRow mock has another definition")
+	}
+	if mock.CreateSheetInWorkspace().Definition().Operation.OperationID != "createSheetInWorkspace" {
+		t.Errorf("createSheetInWorkspace mock has another definition")
+	}
+	if mock.CreateSheetInFolder().Definition().Operation.OperationID != "createSheetInFolder" {
+		t.Errorf("createSheetInFolder mock has another definition")
+	}
+	if mock.UpdateSheet().Definition().Operation.OperationID != "updateSheet" {
+		t.Errorf("updateSheet mock has another definition")
+	}
+	if mock.DeleteSheet().Definition().Operation.OperationID != "deleteSheet" {
+		t.Errorf("deleteSheet mock has another definition")
 	}
 }

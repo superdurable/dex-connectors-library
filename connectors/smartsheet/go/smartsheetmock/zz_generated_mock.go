@@ -17,13 +17,17 @@ import (
 
 // Mock is a scripted smartsheet connection. Script each operation through its accessor.
 type Mock struct {
-	connection smartsheet.Connection
-	listSheets *connectormock.Query[smartsheet.ListSheetsInput, smartsheet.SheetPage]
-	getSheet   *connectormock.Query[smartsheet.GetSheetInput, smartsheet.Sheet]
-	getRow     *connectormock.Query[smartsheet.GetRowInput, smartsheet.SheetRow]
-	addRow     *connectormock.Mutation[smartsheet.AddRowInput, smartsheet.SheetRow]
-	updateRow  *connectormock.Mutation[smartsheet.UpdateRowInput, smartsheet.SheetRow]
-	deleteRow  *connectormock.Mutation[smartsheet.DeleteRowInput, smartsheet.DeleteRowOutput]
+	connection             smartsheet.Connection
+	listSheets             *connectormock.Query[smartsheet.ListSheetsInput, smartsheet.SheetPage]
+	getSheet               *connectormock.Query[smartsheet.GetSheetInput, smartsheet.Sheet]
+	getRow                 *connectormock.Query[smartsheet.GetRowInput, smartsheet.SheetRow]
+	addRow                 *connectormock.Mutation[smartsheet.AddRowInput, smartsheet.SheetRow]
+	updateRow              *connectormock.Mutation[smartsheet.UpdateRowInput, smartsheet.SheetRow]
+	deleteRow              *connectormock.Mutation[smartsheet.DeleteRowInput, smartsheet.DeleteRowOutput]
+	createSheetInWorkspace *connectormock.Mutation[smartsheet.CreateSheetInWorkspaceInput, smartsheet.SheetSummary]
+	createSheetInFolder    *connectormock.Mutation[smartsheet.CreateSheetInFolderInput, smartsheet.SheetSummary]
+	updateSheet            *connectormock.Mutation[smartsheet.UpdateSheetInput, smartsheet.SheetSummary]
+	deleteSheet            *connectormock.Mutation[smartsheet.DeleteSheetInput, smartsheet.DeleteSheetOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -31,12 +35,16 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listSheets: connectormock.NewQuery[smartsheet.ListSheetsInput, smartsheet.SheetPage](t, smartsheet.ListSheetsDefinition),
-		getSheet:   connectormock.NewQuery[smartsheet.GetSheetInput, smartsheet.Sheet](t, smartsheet.GetSheetDefinition),
-		getRow:     connectormock.NewQuery[smartsheet.GetRowInput, smartsheet.SheetRow](t, smartsheet.GetRowDefinition),
-		addRow:     connectormock.NewMutation[smartsheet.AddRowInput, smartsheet.SheetRow](t, smartsheet.AddRowDefinition),
-		updateRow:  connectormock.NewMutation[smartsheet.UpdateRowInput, smartsheet.SheetRow](t, smartsheet.UpdateRowDefinition),
-		deleteRow:  connectormock.NewMutation[smartsheet.DeleteRowInput, smartsheet.DeleteRowOutput](t, smartsheet.DeleteRowDefinition),
+		listSheets:             connectormock.NewQuery[smartsheet.ListSheetsInput, smartsheet.SheetPage](t, smartsheet.ListSheetsDefinition),
+		getSheet:               connectormock.NewQuery[smartsheet.GetSheetInput, smartsheet.Sheet](t, smartsheet.GetSheetDefinition),
+		getRow:                 connectormock.NewQuery[smartsheet.GetRowInput, smartsheet.SheetRow](t, smartsheet.GetRowDefinition),
+		addRow:                 connectormock.NewMutation[smartsheet.AddRowInput, smartsheet.SheetRow](t, smartsheet.AddRowDefinition),
+		updateRow:              connectormock.NewMutation[smartsheet.UpdateRowInput, smartsheet.SheetRow](t, smartsheet.UpdateRowDefinition),
+		deleteRow:              connectormock.NewMutation[smartsheet.DeleteRowInput, smartsheet.DeleteRowOutput](t, smartsheet.DeleteRowDefinition),
+		createSheetInWorkspace: connectormock.NewMutation[smartsheet.CreateSheetInWorkspaceInput, smartsheet.SheetSummary](t, smartsheet.CreateSheetInWorkspaceDefinition),
+		createSheetInFolder:    connectormock.NewMutation[smartsheet.CreateSheetInFolderInput, smartsheet.SheetSummary](t, smartsheet.CreateSheetInFolderDefinition),
+		updateSheet:            connectormock.NewMutation[smartsheet.UpdateSheetInput, smartsheet.SheetSummary](t, smartsheet.UpdateSheetDefinition),
+		deleteSheet:            connectormock.NewMutation[smartsheet.DeleteSheetInput, smartsheet.DeleteSheetOutput](t, smartsheet.DeleteSheetDefinition),
 	}
 	mock.listSheets.Default(ListSheetsDefault())
 	mock.getSheet.Default(GetSheetDefault())
@@ -44,6 +52,10 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.addRow.Default(AddRowDefault())
 	mock.updateRow.Default(UpdateRowDefault())
 	mock.deleteRow.Default(DeleteRowDefault())
+	mock.createSheetInWorkspace.Default(CreateSheetInWorkspaceDefault())
+	mock.createSheetInFolder.Default(CreateSheetInFolderDefault())
+	mock.updateSheet.Default(UpdateSheetDefault())
+	mock.deleteSheet.Default(DeleteSheetDefault())
 	connection, err := smartsheet.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "smartsheet", Name: connectionName})
 	if err != nil {
 		t.Fatalf("smartsheet mock connection: %v", err)
@@ -85,6 +97,26 @@ func (mock *Mock) DeleteRow() *connectormock.Mutation[smartsheet.DeleteRowInput,
 	return mock.deleteRow
 }
 
+// CreateSheetInWorkspace returns the createSheetInWorkspace script.
+func (mock *Mock) CreateSheetInWorkspace() *connectormock.Mutation[smartsheet.CreateSheetInWorkspaceInput, smartsheet.SheetSummary] {
+	return mock.createSheetInWorkspace
+}
+
+// CreateSheetInFolder returns the createSheetInFolder script.
+func (mock *Mock) CreateSheetInFolder() *connectormock.Mutation[smartsheet.CreateSheetInFolderInput, smartsheet.SheetSummary] {
+	return mock.createSheetInFolder
+}
+
+// UpdateSheet returns the updateSheet script.
+func (mock *Mock) UpdateSheet() *connectormock.Mutation[smartsheet.UpdateSheetInput, smartsheet.SheetSummary] {
+	return mock.updateSheet
+}
+
+// DeleteSheet returns the deleteSheet script.
+func (mock *Mock) DeleteSheet() *connectormock.Mutation[smartsheet.DeleteSheetInput, smartsheet.DeleteSheetOutput] {
+	return mock.deleteSheet
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListSheets() sdkgo.Query[smartsheet.ListSheetsInput, smartsheet.SheetPage] {
@@ -104,6 +136,18 @@ func (operations mockOperations) UpdateRow() sdkgo.Mutation[smartsheet.UpdateRow
 }
 func (operations mockOperations) DeleteRow() sdkgo.Mutation[smartsheet.DeleteRowInput, smartsheet.DeleteRowOutput] {
 	return operations.mock.deleteRow
+}
+func (operations mockOperations) CreateSheetInWorkspace() sdkgo.Mutation[smartsheet.CreateSheetInWorkspaceInput, smartsheet.SheetSummary] {
+	return operations.mock.createSheetInWorkspace
+}
+func (operations mockOperations) CreateSheetInFolder() sdkgo.Mutation[smartsheet.CreateSheetInFolderInput, smartsheet.SheetSummary] {
+	return operations.mock.createSheetInFolder
+}
+func (operations mockOperations) UpdateSheet() sdkgo.Mutation[smartsheet.UpdateSheetInput, smartsheet.SheetSummary] {
+	return operations.mock.updateSheet
+}
+func (operations mockOperations) DeleteSheet() sdkgo.Mutation[smartsheet.DeleteSheetInput, smartsheet.DeleteSheetOutput] {
+	return operations.mock.deleteSheet
 }
 
 // ListSheetsListed selects the listed branch: Smartsheet returned the requested data.
@@ -342,4 +386,158 @@ func DeleteRowDeletedDefault() connectormock.Case[smartsheet.DeleteRowOutput] {
 // DeleteRowDefault is the manifest default, deletedDefault, which New installs.
 func DeleteRowDefault() connectormock.Case[smartsheet.DeleteRowOutput] {
 	return DeleteRowDeletedDefault()
+}
+
+// CreateSheetInWorkspaceCreated selects the created branch: Smartsheet created the sheet.
+func CreateSheetInWorkspaceCreated(value smartsheet.SheetSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Branch(smartsheet.CreateSheetInWorkspaceBranchCreated, value, failure)
+}
+
+// CreateSheetInWorkspaceProviderRejected selects the providerRejected branch: Smartsheet providerRejected outcome for the sheet.
+func CreateSheetInWorkspaceProviderRejected(value smartsheet.SheetSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Branch(smartsheet.CreateSheetInWorkspaceBranchProviderRejected, value, failure)
+}
+
+// CreateSheetInWorkspaceUncertain returns an uncertain createSheetInWorkspace outcome.
+func CreateSheetInWorkspaceUncertain(value smartsheet.SheetSummary, failure sdkgo.Failure) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateSheetInWorkspaceDefect selects the defect branch: Sheet input or credentials are invalid.
+func CreateSheetInWorkspaceDefect(value smartsheet.SheetSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Branch(smartsheet.CreateSheetInWorkspaceBranchDefect, value, failure)
+}
+
+// CreateSheetInWorkspaceRetry asks Dex to retry the createSheetInWorkspace Step, after the delay when it is positive.
+func CreateSheetInWorkspaceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Retry[smartsheet.SheetSummary](failure, after)
+}
+
+// CreateSheetInWorkspaceCreatedDefault is the manifest mock createdDefault: One sample sheet is created.
+func CreateSheetInWorkspaceCreatedDefault() connectormock.Case[smartsheet.SheetSummary] {
+	value := connectormock.MustDecodeOutput[smartsheet.SheetSummary](`{"id":1001,"name":"Meridian Planning"}`)
+	return connectormock.Branch(smartsheet.CreateSheetInWorkspaceBranchCreated, value, nil)
+}
+
+// CreateSheetInWorkspaceDefault is the manifest default, createdDefault, which New installs.
+func CreateSheetInWorkspaceDefault() connectormock.Case[smartsheet.SheetSummary] {
+	return CreateSheetInWorkspaceCreatedDefault()
+}
+
+// CreateSheetInFolderCreated selects the created branch: Smartsheet created the sheet.
+func CreateSheetInFolderCreated(value smartsheet.SheetSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Branch(smartsheet.CreateSheetInFolderBranchCreated, value, failure)
+}
+
+// CreateSheetInFolderProviderRejected selects the providerRejected branch: Smartsheet providerRejected outcome for the sheet.
+func CreateSheetInFolderProviderRejected(value smartsheet.SheetSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Branch(smartsheet.CreateSheetInFolderBranchProviderRejected, value, failure)
+}
+
+// CreateSheetInFolderUncertain returns an uncertain createSheetInFolder outcome.
+func CreateSheetInFolderUncertain(value smartsheet.SheetSummary, failure sdkgo.Failure) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateSheetInFolderDefect selects the defect branch: Sheet input or credentials are invalid.
+func CreateSheetInFolderDefect(value smartsheet.SheetSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Branch(smartsheet.CreateSheetInFolderBranchDefect, value, failure)
+}
+
+// CreateSheetInFolderRetry asks Dex to retry the createSheetInFolder Step, after the delay when it is positive.
+func CreateSheetInFolderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Retry[smartsheet.SheetSummary](failure, after)
+}
+
+// CreateSheetInFolderCreatedDefault is the manifest mock createdDefault: One sample sheet is created.
+func CreateSheetInFolderCreatedDefault() connectormock.Case[smartsheet.SheetSummary] {
+	value := connectormock.MustDecodeOutput[smartsheet.SheetSummary](`{"id":1001,"name":"Meridian Planning"}`)
+	return connectormock.Branch(smartsheet.CreateSheetInFolderBranchCreated, value, nil)
+}
+
+// CreateSheetInFolderDefault is the manifest default, createdDefault, which New installs.
+func CreateSheetInFolderDefault() connectormock.Case[smartsheet.SheetSummary] {
+	return CreateSheetInFolderCreatedDefault()
+}
+
+// UpdateSheetUpdated selects the updated branch: Smartsheet updated the sheet.
+func UpdateSheetUpdated(value smartsheet.SheetSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Branch(smartsheet.UpdateSheetBranchUpdated, value, failure)
+}
+
+// UpdateSheetNotFound selects the notFound branch: Smartsheet notFound outcome for the sheet.
+func UpdateSheetNotFound(value smartsheet.SheetSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Branch(smartsheet.UpdateSheetBranchNotFound, value, failure)
+}
+
+// UpdateSheetProviderRejected selects the providerRejected branch: Smartsheet providerRejected outcome for the sheet.
+func UpdateSheetProviderRejected(value smartsheet.SheetSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Branch(smartsheet.UpdateSheetBranchProviderRejected, value, failure)
+}
+
+// UpdateSheetInvalidResponse selects the invalidResponse branch: Smartsheet invalidResponse outcome for the sheet.
+func UpdateSheetInvalidResponse(value smartsheet.SheetSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Branch(smartsheet.UpdateSheetBranchInvalidResponse, value, failure)
+}
+
+// UpdateSheetDefect selects the defect branch: Sheet input or credentials are invalid.
+func UpdateSheetDefect(value smartsheet.SheetSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Branch(smartsheet.UpdateSheetBranchDefect, value, failure)
+}
+
+// UpdateSheetRetry asks Dex to retry the updateSheet Step, after the delay when it is positive.
+func UpdateSheetRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[smartsheet.SheetSummary] {
+	return connectormock.Retry[smartsheet.SheetSummary](failure, after)
+}
+
+// UpdateSheetUpdatedDefault is the manifest mock updatedDefault: One sample sheet is updated.
+func UpdateSheetUpdatedDefault() connectormock.Case[smartsheet.SheetSummary] {
+	value := connectormock.MustDecodeOutput[smartsheet.SheetSummary](`{"id":1001,"name":"Meridian Planning"}`)
+	return connectormock.Branch(smartsheet.UpdateSheetBranchUpdated, value, nil)
+}
+
+// UpdateSheetDefault is the manifest default, updatedDefault, which New installs.
+func UpdateSheetDefault() connectormock.Case[smartsheet.SheetSummary] {
+	return UpdateSheetUpdatedDefault()
+}
+
+// DeleteSheetDeleted selects the deleted branch: Smartsheet deleted the sheet.
+func DeleteSheetDeleted(value smartsheet.DeleteSheetOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteSheetOutput] {
+	return connectormock.Branch(smartsheet.DeleteSheetBranchDeleted, value, failure)
+}
+
+// DeleteSheetNotFound selects the notFound branch: Smartsheet notFound outcome for the sheet.
+func DeleteSheetNotFound(value smartsheet.DeleteSheetOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteSheetOutput] {
+	return connectormock.Branch(smartsheet.DeleteSheetBranchNotFound, value, failure)
+}
+
+// DeleteSheetProviderRejected selects the providerRejected branch: Smartsheet providerRejected outcome for the sheet.
+func DeleteSheetProviderRejected(value smartsheet.DeleteSheetOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteSheetOutput] {
+	return connectormock.Branch(smartsheet.DeleteSheetBranchProviderRejected, value, failure)
+}
+
+// DeleteSheetInvalidResponse selects the invalidResponse branch: Smartsheet invalidResponse outcome for the sheet.
+func DeleteSheetInvalidResponse(value smartsheet.DeleteSheetOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteSheetOutput] {
+	return connectormock.Branch(smartsheet.DeleteSheetBranchInvalidResponse, value, failure)
+}
+
+// DeleteSheetDefect selects the defect branch: Sheet input or credentials are invalid.
+func DeleteSheetDefect(value smartsheet.DeleteSheetOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteSheetOutput] {
+	return connectormock.Branch(smartsheet.DeleteSheetBranchDefect, value, failure)
+}
+
+// DeleteSheetRetry asks Dex to retry the deleteSheet Step, after the delay when it is positive.
+func DeleteSheetRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[smartsheet.DeleteSheetOutput] {
+	return connectormock.Retry[smartsheet.DeleteSheetOutput](failure, after)
+}
+
+// DeleteSheetDeletedDefault is the manifest mock deletedDefault: One sample sheet is deleted.
+func DeleteSheetDeletedDefault() connectormock.Case[smartsheet.DeleteSheetOutput] {
+	value := connectormock.MustDecodeOutput[smartsheet.DeleteSheetOutput](`{"sheetId":1001}`)
+	return connectormock.Branch(smartsheet.DeleteSheetBranchDeleted, value, nil)
+}
+
+// DeleteSheetDefault is the manifest default, deletedDefault, which New installs.
+func DeleteSheetDefault() connectormock.Case[smartsheet.DeleteSheetOutput] {
+	return DeleteSheetDeletedDefault()
 }

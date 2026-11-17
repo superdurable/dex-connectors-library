@@ -23,8 +23,14 @@ The Python package is [`dex-connector-smartsheet`](python/README.md), imported a
 | `addRow` | [Smartsheet add rows](https://developers.smartsheet.com/api/smartsheet/openapi/rows/rows-addtosheet) |
 | `updateRow` | [Smartsheet update rows](https://developers.smartsheet.com/api/smartsheet/openapi/rows/update-rows) |
 | `deleteRow` | [Smartsheet delete rows](https://developers.smartsheet.com/api/smartsheet/openapi/rows/delete-rows) |
+| `createSheetInWorkspace` | [Create sheet in workspace](https://developers.smartsheet.com/api/smartsheet/openapi/sheets/create-sheet-in-workspace) |
+| `createSheetInFolder` | [Create sheet in folder](https://developers.smartsheet.com/api/smartsheet/openapi/sheets/create-sheet-in-folder) |
+| `updateSheet` | [Update sheet](https://developers.smartsheet.com/api/smartsheet/openapi/sheets/update-sheet) |
+| `deleteSheet` | [Delete sheet](https://developers.smartsheet.com/api/smartsheet/openapi/sheets/delete-sheet) |
 
 Each operation returns a bounded, typed response. `addRow` accepts text cells and limits possibly effective sends to three; a fully exhausted cap selects `uncertain`. Absolute `updateRow` and `deleteRow` can safely retry. A 404 on a single-resource read selects `notFound`; other definitive 4xx select `providerRejected`; 408, 409, 429, 5xx, and interrupted reads Retry under the default one-hour budget. Malformed and oversized JSON selects `invalidResponse` for reads and safe writes. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
+
+Sheet creation requires a parent workspace or folder and a primary text column. Both create operations allow at most three possibly effective sends; an unconfirmed result after the cap selects `uncertain`. Renaming and deletion are safe to retry. The connection token must have the provider's required permissions.
 
 ## Mocks
 

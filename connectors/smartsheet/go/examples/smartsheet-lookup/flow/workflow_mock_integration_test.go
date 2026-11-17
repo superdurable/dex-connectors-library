@@ -103,3 +103,42 @@ func TestRowLookupMockWithRealDex(t *testing.T) {
 	require.Equal(t, int64(3001), row.ID)
 	require.Len(t, mock.GetRow().Calls(), 1)
 }
+
+func TestSheetCreateMockWithRealDex(t *testing.T) {
+	mock := smartsheetmock.New(t, ConnectionName)
+	flow := NewSheetCreateFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	defer func() { require.NoError(t, cache.Close()) }()
+	server := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
+	if server == "" {
+		server = "127.0.0.1:9580"
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: server})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(ctx), <-workerResult))
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: server})
+	require.NoError(t, err)
+	defer func() { require.NoError(t, client.Close()) }()
+	flowID := "smartsheet-sheet-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, flow, flowID, smartsheet.CreateSheetInWorkspaceInput{WorkspaceID: 4001, Name: "Meridian Planning", PrimaryColumnTitle: "Task"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var sheet smartsheet.SheetSummary
+	require.NoError(t, result.DecodeSingleOutput(&sheet))
+	require.Equal(t, int64(1001), sheet.ID)
+	require.Len(t, mock.CreateSheetInWorkspace().Calls(), 1)
+}
