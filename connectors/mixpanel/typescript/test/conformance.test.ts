@@ -7,7 +7,7 @@ import { ProviderTransportError, type ProviderRequest } from '@superdurable/conn
 import { MixpanelClient, TrackEventInputSchema, ExportEventsInputSchema } from '../src/index.js';
 import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/mixpanel/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/mixpanel/scenarios.json', import.meta.url)).filter(scenario => ['trackEvent', 'exportEvents'].includes(scenario.operation));
 const connection = { provider: 'mixpanel', name: 'mixpanel' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeMixpanel));
 

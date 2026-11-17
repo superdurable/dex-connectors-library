@@ -1151,6 +1151,666 @@
       },
       "name": "exportEvents-too-many-events",
       "operation": "exportEvents"
+    },
+    {
+      "callId": "queryProfiles-success",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"results\":[{\"$distinct_id\":\"member-1\",\"$properties\":{\"$email\":\"private@example.test\"}}]}",
+          "form": {
+            "distinct_id": [
+              "member-1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/query/engage",
+          "query": {
+            "project_id": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "queried",
+        "failureKind": "",
+        "output": {
+          "distinctIDs": [
+            "member-1"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "distinctID": "member-1"
+      },
+      "name": "queryProfiles-success",
+      "operation": "queryProfiles"
+    },
+    {
+      "callId": "queryProfiles-provider-rejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "distinct_id": [
+              "member-1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/query/engage",
+          "query": {
+            "project_id": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "distinctIDs": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "distinctID": "member-1"
+      },
+      "name": "queryProfiles-provider-rejected",
+      "operation": "queryProfiles"
+    },
+    {
+      "callId": "queryProfiles-invalid-response",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "form": {
+            "distinct_id": [
+              "member-1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/query/engage",
+          "query": {
+            "project_id": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "distinctIDs": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "distinctID": "member-1"
+      },
+      "name": "queryProfiles-invalid-response",
+      "operation": "queryProfiles"
+    },
+    {
+      "callId": "queryProfiles-rate-limit",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "distinct_id": [
+              "member-1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/query/engage",
+          "query": {
+            "project_id": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "distinctID": "member-1"
+      },
+      "name": "queryProfiles-rate-limit",
+      "operation": "queryProfiles"
+    },
+    {
+      "callId": "queryProfiles-server-error",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "distinct_id": [
+              "member-1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/query/engage",
+          "query": {
+            "project_id": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "distinctID": "member-1"
+      },
+      "name": "queryProfiles-server-error",
+      "operation": "queryProfiles"
+    },
+    {
+      "callId": "queryProfiles-transport-before-send",
+      "exchanges": [
+        {
+          "form": {
+            "distinct_id": [
+              "member-1"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/query/engage",
+          "query": {
+            "project_id": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "distinctID": "member-1"
+      },
+      "name": "queryProfiles-transport-before-send",
+      "operation": "queryProfiles"
+    },
+    {
+      "callId": "queryProfiles-transport-after-send",
+      "exchanges": [
+        {
+          "form": {
+            "distinct_id": [
+              "member-1"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/query/engage",
+          "query": {
+            "project_id": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "distinctID": "member-1"
+      },
+      "name": "queryProfiles-transport-after-send",
+      "operation": "queryProfiles"
+    },
+    {
+      "callId": "queryProfiles-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "distinctIDs": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "distinctID": ""
+      },
+      "name": "queryProfiles-defect",
+      "operation": "queryProfiles"
+    },
+    {
+      "callId": "listSavedCohorts-success",
+      "exchanges": [
+        {
+          "body": "[{\"id\":1000,\"name\":\"Signup\",\"count\":150}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/query/cohorts/list",
+          "query": {
+            "project_id": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cohorts": [
+            {
+              "count": 150,
+              "id": 1000,
+              "name": "Signup"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10
+      },
+      "name": "listSavedCohorts-success",
+      "operation": "listSavedCohorts"
+    },
+    {
+      "callId": "listSavedCohorts-provider-rejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/query/cohorts/list",
+          "query": {
+            "project_id": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "cohorts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10
+      },
+      "name": "listSavedCohorts-provider-rejected",
+      "operation": "listSavedCohorts"
+    },
+    {
+      "callId": "listSavedCohorts-invalid-response",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/query/cohorts/list",
+          "query": {
+            "project_id": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cohorts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10
+      },
+      "name": "listSavedCohorts-invalid-response",
+      "operation": "listSavedCohorts"
+    },
+    {
+      "callId": "listSavedCohorts-rate-limit",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/query/cohorts/list",
+          "query": {
+            "project_id": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10
+      },
+      "name": "listSavedCohorts-rate-limit",
+      "operation": "listSavedCohorts"
+    },
+    {
+      "callId": "listSavedCohorts-server-error",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/query/cohorts/list",
+          "query": {
+            "project_id": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10
+      },
+      "name": "listSavedCohorts-server-error",
+      "operation": "listSavedCohorts"
+    },
+    {
+      "callId": "listSavedCohorts-transport-before-send",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/query/cohorts/list",
+          "query": {
+            "project_id": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10
+      },
+      "name": "listSavedCohorts-transport-before-send",
+      "operation": "listSavedCohorts"
+    },
+    {
+      "callId": "listSavedCohorts-transport-after-send",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/query/cohorts/list",
+          "query": {
+            "project_id": [
+              "12345"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10
+      },
+      "name": "listSavedCohorts-transport-after-send",
+      "operation": "listSavedCohorts"
+    },
+    {
+      "callId": "listSavedCohorts-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "cohorts": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 0
+      },
+      "name": "listSavedCohorts-defect",
+      "operation": "listSavedCohorts"
     }
   ],
   "schemaVersion": 1

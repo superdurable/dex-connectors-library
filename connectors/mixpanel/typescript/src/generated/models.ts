@@ -12,6 +12,8 @@ export interface Config {
   baseUrl?: string;
   /** Mixpanel raw export API base URL; leave blank for the US endpoint, or enter the matching regional HTTPS host for your project. */
   exportBaseUrl?: string;
+  /** Mixpanel Query API base URL; leave blank for the US endpoint, or enter the matching EU or India regional HTTPS host from https://docs.mixpanel.com/reference/query-api-authentication. */
+  queryBaseUrl?: string;
   /** Positive numeric Project ID from https://mixpanel.com/settings/project/ under Project Settings > Overview; required for service-account authentication. Blank cannot authenticate. */
   projectId?: number;
   /** Positive Go duration limiting each HTTP request; leave blank for the displayed default, or override for a slower network. Runtime value in milliseconds. */
@@ -24,6 +26,7 @@ export interface Config {
 export const ConfigSchema = z.object({
   "baseUrl": z.string().optional(),
   "exportBaseUrl": z.string().optional(),
+  "queryBaseUrl": z.string().optional(),
   "projectId": z.number().int().optional(),
   "timeoutMs": z.number().int().optional(),
   "maxResponseBytes": z.number().int().optional(),

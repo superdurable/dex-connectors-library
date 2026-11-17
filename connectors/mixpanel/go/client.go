@@ -28,6 +28,7 @@ type Option interface{ applyClientOption(*Client) }
 type Client struct {
 	baseURL          string
 	exportBaseURL    string
+	queryBaseURL     string
 	projectID        int64
 	maxResponseBytes int64
 	credentials      CredentialSource
@@ -106,7 +107,11 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Mixpanel export base URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, exportBaseURL: exportBaseURL, projectID: config.ProjectID, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	queryBaseURL, err := providerhttp.ValidateBaseURL(config.QueryBaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("Mixpanel query base URL: %w", err)
+	}
+	client := &Client{baseURL: baseURL, exportBaseURL: exportBaseURL, queryBaseURL: queryBaseURL, projectID: config.ProjectID, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
 	for _, option := range options {
 		option.applyClientOption(client)
 	}
@@ -236,7 +241,11 @@ func (client *Client) send(call sdkgo.Call, method, address string, payload []by
 		request.Header.Set("Accept", "text/plain")
 	}
 	if method == http.MethodPost {
-		request.Header.Set("Content-Type", "application/json")
+		if strings.HasPrefix(address, client.queryBaseURL+"/engage?") {
+			request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		} else if len(payload) > 0 {
+			request.Header.Set("Content-Type", "application/json")
+		}
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {

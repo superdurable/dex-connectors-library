@@ -121,7 +121,7 @@ setattr(new_project_connection, '__module__', 'dex_connectors.mixpanel.connectio
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"baseUrl", "exportBaseUrl", "projectId", "timeout", "maxResponseBytes"}:
+    if set(value) - {"baseUrl", "exportBaseUrl", "queryBaseUrl", "projectId", "timeout", "maxResponseBytes"}:
         raise ValueError("Mixpanel configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "baseUrl" in value:
@@ -134,6 +134,11 @@ def _decode_config(value: dict[str, Any]) -> Config:
         if not (isinstance(export_base_url, str)):
             raise ValueError("Mixpanel configuration exportBaseUrl has an invalid type")
         config_arguments['export_base_url'] = export_base_url
+    if "queryBaseUrl" in value:
+        query_base_url = value["queryBaseUrl"]
+        if not (isinstance(query_base_url, str)):
+            raise ValueError("Mixpanel configuration queryBaseUrl has an invalid type")
+        config_arguments['query_base_url'] = query_base_url
     if "projectId" in value:
         project_id = value["projectId"]
         if not (type(project_id) is int):
