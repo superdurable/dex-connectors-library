@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { isIP } from 'node:net';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
@@ -46,6 +46,8 @@ export interface QuickBooksExchange {
   receipt: ReceiptDraft;
   /** HTTP status, when the provider answered. */
   status: number;
+  /** True when no request byte reached QuickBooks, such as a credential failure or a refused connection. */
+  isProvablyUnsent?: boolean;
 }
 
 /** One QuickBooks request below the connected company's API path. */
@@ -55,6 +57,7 @@ export interface QuickBooksRequest {
   /** Additional query values. */ query?: Record<string, string>;
   /** Encoded JSON payload supplied by an operation. */ body?: Uint8Array;
   /** Whether the operation uses QuickBooks requestid. */ mutation?: boolean;
+  /** Replaces the Step cancellation signal, such as a single-dispatch Fence's write-window signal. */ signal?: AbortSignal;
 }
 
 interface AttemptBudget { deadline: number; minimumWriteTime: number; }
@@ -141,7 +144,7 @@ export class QuickBooksClient {
   }
 
   private localFailure(call: Call, disposition: QuickBooksExchange['disposition'], kind: Failure['kind'], operation: string, message: string, objectID = ''): QuickBooksExchange {
-    return { disposition, failure: this.failure(kind, operation, message), retryAfterMs: 0, status: 0, receipt: this.receipt(call, objectID) };
+    return { disposition, failure: this.failure(kind, operation, message), retryAfterMs: 0, status: 0, receipt: this.receipt(call, objectID), isProvablyUnsent: true };
   }
 
   /** Create a receipt after a provider attempt. */
@@ -153,7 +156,8 @@ export class QuickBooksClient {
     const receipt = this.receipt(call, objectID);
     const now = this.now().getTime();
     if (request.mutation && (budget.minimumWriteTime <= 0 || budget.deadline - now < budget.minimumWriteTime)) return this.localFailure(call, 'retry', 'TRANSPORT', operation, 'QuickBooks write was not sent because too little attempt time remains', objectID);
-    if (call.context.cancellationSignal.aborted) return this.localFailure(call, 'retry', 'TRANSPORT', operation, 'QuickBooks attempt has no time left for a request; no request was sent', objectID);
+    const signal = request.signal ?? call.context.cancellationSignal;
+    if (signal.aborted) return this.localFailure(call, 'retry', 'TRANSPORT', operation, 'QuickBooks attempt has no time left for a request; no request was sent', objectID);
     const deadline = Math.min(call.context.deadline?.getTime() ?? Infinity, request.mutation ? budget.deadline : Infinity);
     if (deadline !== Infinity && deadline - now <= 500) return this.localFailure(call, 'retry', 'TRANSPORT', operation, 'QuickBooks attempt has no time left for a request; no request was sent', objectID);
     const timeoutMs = Math.min(20_000, deadline === Infinity ? 20_000 : deadline - now - 500);
@@ -164,7 +168,7 @@ export class QuickBooksClient {
     let observedStatus = 0;
     let observedHeaders: ProviderResponse['headers'] = {};
     try {
-      response = await this.send({ url, method: request.method, headers, ...(request.body ? { body: request.body } : {}), maxResponseBytes: this.maxResponseBytes, maxErrorResponseBytes: 65_536, ignoreErrorBodyReadFailure: true, addressPolicy: this.endpoint.startsWith('https://') ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs, signal: call.context.cancellationSignal, onResponseChunk: (_chunk, status, responseHeaders) => { observedStatus = status; observedHeaders = responseHeaders; } });
+      response = await this.send({ url, method: request.method, headers, ...(request.body ? { body: request.body } : {}), maxResponseBytes: this.maxResponseBytes, maxErrorResponseBytes: 65_536, ignoreErrorBodyReadFailure: true, addressPolicy: this.endpoint.startsWith('https://') ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs, signal, onResponseChunk: (_chunk, status, responseHeaders) => { observedStatus = status; observedHeaders = responseHeaders; } });
     } catch (error) {
       if (error instanceof BodyTooLargeError) {
         const transaction = error.headers?.intuit_tid;
@@ -176,7 +180,8 @@ export class QuickBooksClient {
       const transactionID = Array.isArray(transaction) ? transaction[0] : transaction;
       if (transactionID && transactionPattern.test(transactionID)) receipt.providerRequestId = transactionID;
       if (observedStatus >= 200 && observedStatus < 300) return { disposition: 'interrupted', status: observedStatus, failure: this.failure('TRANSPORT', operation, 'QuickBooks response was interrupted'), receipt, retryAfterMs: 0 };
-      return { disposition: 'retry', status: observedStatus, failure: this.failure('TRANSPORT', operation, 'QuickBooks request failed before a response arrived'), receipt, retryAfterMs: 0 };
+      const isProvablyUnsent = observedStatus === 0 && (error instanceof AddressRefusal || (error instanceof ProviderTransportError && error.isProvablyNotSent));
+      return { disposition: 'retry', status: observedStatus, failure: this.failure('TRANSPORT', operation, isProvablyUnsent ? 'QuickBooks could not be reached; no request was sent' : 'QuickBooks request failed before a response arrived'), receipt, retryAfterMs: 0, isProvablyUnsent };
     }
     const transactionID = response.headers.intuit_tid;
     const reportedID = Array.isArray(transactionID) ? transactionID[0] : transactionID;

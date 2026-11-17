@@ -77,7 +77,10 @@ func (RecordPaymentOperation) IdempotencyKey(callID sdkgo.CallID, _ RecordPaymen
 }
 
 // Invoke records the payment with POST /payment under the Step's requestid and checks that the
-// returned payment applies the amount to the invoice.
+// returned payment applies the amount to the invoice. The send runs under a single-dispatch fence
+// capped by call.MaxSends: an unknown outcome is resent with the same requestid while the cap allows
+// another send and selects uncertain at the cap, and an accepted but unusable answer is read back
+// by its payment ID, which every later attempt reads back instead of resending.
 func (operation RecordPaymentOperation) Invoke(call sdkgo.Call, input RecordPaymentInput) sdkgo.MutationAttempt[Payment] {
 	client := operation.client
 	attemptBudget := client.newAttemptBudget(call.Context, RecordPaymentDefinition.StepDefaults.ExecuteMethodTimeout)
@@ -87,11 +90,21 @@ func (operation RecordPaymentOperation) Invoke(call sdkgo.Call, input RecordPaym
 		return sdkgo.NewMutationBranch(RecordPaymentBranchDefect, requested,
 			quickbooksFailurePointer(sdkgo.FailureValidation, recordPaymentOperationID, err.Error()), sdkgo.Receipt{})
 	}
-	result := client.exchange(call, recordPaymentOperationID, quickbooksRequest{method: http.MethodPost, path: "/payment", payload: payload, isMutation: true, attemptBudget: attemptBudget})
+	write, attempt, isDecided := newFencedWrite(client, call, recordPaymentOperationID, RecordPaymentDefinition.StepDefaults.ExecuteMethodTimeout, requested,
+		mutationBranches{providerRejected: RecordPaymentBranchProviderRejected, defect: RecordPaymentBranchDefect},
+		acceptedWriteReadBack[Payment]{entityPath: "payment", happy: RecordPaymentBranchRecorded,
+			confirm: func(body []byte, paymentID string) (Payment, bool) {
+				return confirmRecordedPayment(body, paymentID, payload, input.Amount)
+			}})
+	if isDecided {
+		return attempt
+	}
+	result, notSent := write.dispatch(quickbooksRequest{method: http.MethodPost, path: "/payment", payload: payload, isMutation: true, attemptBudget: attemptBudget})
+	if notSent != nil {
+		return *notSent
+	}
 	receipt := client.receipt(call, result, "")
-	if attempt, isTerminal := mutationAttemptForExchange(result, requested, receipt, mutationBranches{
-		providerRejected: RecordPaymentBranchProviderRejected, defect: RecordPaymentBranchDefect,
-	}); isTerminal {
+	if attempt, isTerminal := write.attemptForExchange(result, receipt); isTerminal {
 		return attempt
 	}
 	wire, err := decodeEntity[paymentWire](result.response.body, "Payment")
@@ -103,21 +116,21 @@ func (operation RecordPaymentOperation) Invoke(call sdkgo.Call, input RecordPaym
 		err = errors.New("the returned payment does not apply to the invoice")
 	}
 	if err != nil {
-		if paymentID := acceptedEntityID(result.response.body, "Payment"); paymentID != "" {
-			if body, isFound := readAcceptedEntity(client, call, recordPaymentOperationID, "payment", paymentID); isFound {
-				if readWire, readErr := decodeEntity[paymentWire](body, "Payment"); readErr == nil {
-					if readPayment, decodeErr := decodePayment(readWire); decodeErr == nil && readPayment.PaymentID == paymentID && readPayment.CustomerID == payload.CustomerRef.Value && areDecimalsNumericallyEqual(readPayment.TotalAmount, input.Amount) && appliesToInvoice(readPayment, payload.Line[0].LinkedTxn[0].TxnID) {
-						receipt.ProviderObjectID = paymentID
-						return sdkgo.NewMutationBranch(RecordPaymentBranchRecorded, readPayment, nil, receipt)
-					}
-				}
-			}
-		}
-		return sdkgo.NewMutationUncertain(requested, quickbooksFailure(sdkgo.FailureProtocol, recordPaymentOperationID,
-			"QuickBooks accepted the payment but returned an unusable payment: "+err.Error()), receipt)
+		return write.unusableAccepted(acceptedEntityID(result.response.body, "Payment"), receipt, err)
 	}
 	receipt.ProviderObjectID = payment.PaymentID
 	return sdkgo.NewMutationBranch(RecordPaymentBranchRecorded, payment, nil, receipt)
+}
+
+// confirmRecordedPayment decodes a read payment and reports whether it is the one this Step recorded.
+func confirmRecordedPayment(body []byte, paymentID string, payload recordPaymentRequestWire, amount Decimal) (Payment, bool) {
+	wire, err := decodeEntity[paymentWire](body, "Payment")
+	if err != nil {
+		return Payment{}, false
+	}
+	payment, err := decodePayment(wire)
+	return payment, err == nil && payment.PaymentID == paymentID && payment.CustomerID == payload.CustomerRef.Value &&
+		areDecimalsNumericallyEqual(payment.TotalAmount, amount) && appliesToInvoice(payment, payload.Line[0].LinkedTxn[0].TxnID)
 }
 
 // buildRecordPaymentRequest applies the whole amount to the one invoice, deterministically.

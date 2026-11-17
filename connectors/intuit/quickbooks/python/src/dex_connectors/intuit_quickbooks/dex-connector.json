@@ -1,10 +1,10 @@
 {
   "connectorId": "quickbooks",
-  "releaseTag": "connectors/intuit/quickbooks/go/v0.25.0",
+  "releaseTag": "connectors/intuit/quickbooks/go/v0.25.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-intuit-quickbooks",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
