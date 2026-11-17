@@ -7,16 +7,20 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/twilio/mes
 > is not verified.
 
 This module sends SMS, MMS, and WhatsApp messages through Twilio Programmable
-Messaging, reads their delivery status, and receives inbound messages:
+Messaging, lists, redacts, and deletes message records, reads delivery status,
+and receives inbound messages:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/twilio/messaging/go@v0.24.0
+go get github.com/superdurable/dex-connectors-library/connectors/twilio/messaging/go@v0.25.0
 ```
 
 | Operation | Kind | Happy branch | Other branches |
 | --- | --- | --- | --- |
 | `sendMessage` | Mutation | `accepted` | `providerRejected`, `uncertain`, `defect` |
 | `getMessage` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `listMessages` | Query | `listed` | `providerRejected`, `invalidResponse`, `defect` |
+| `deleteMessage` | Mutation (safe repeat) | `deleted` | `providerRejected`, `defect` |
+| `redactMessage` | Mutation (safe repeat) | `redacted` | `notFound`, `providerRejected`, `defect` |
 
 It also exposes one Trigger:
 
@@ -44,8 +48,9 @@ belongs to a subaccount. Then choose one authentication method:
   The token grants full account access.
 - **API key** (`api-key`, recommended) authenticates with an API key SID
   (`SK...`) and its secret, created under Account > API keys & tokens. The
-  secret is shown once. A Restricted key can be limited to creating and reading
-  Messages, and deleting the key revokes only this connection.
+  secret is shown once. A Restricted key needs the create, read, list, update,
+  and delete Messages permissions for all operations; grant only those a Flow
+  uses. Deleting the key revokes only this connection.
 
 The **default sender** is optional. It is an SMS-capable Twilio number in
 E.164 form, a WhatsApp sender written `whatsapp:+14155550100`, or a Messaging

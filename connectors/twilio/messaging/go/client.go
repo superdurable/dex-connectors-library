@@ -161,6 +161,46 @@ type GetMessageInput struct {
 	MessageSID string `json:"messageSid"`
 }
 
+// ListMessagesInput filters one page of account messages.
+type ListMessagesInput struct {
+	// To filters by recipient address; blank includes all recipients.
+	To string `json:"to,omitempty"`
+	// From filters by sender address; blank includes all senders.
+	From string `json:"from,omitempty"`
+	// PageSize bounds messages per page; zero uses Twilio's default.
+	PageSize int `json:"pageSize,omitempty"`
+	// Page is a zero-based page index; zero selects the first page.
+	Page int `json:"page,omitempty"`
+}
+
+// MessagePage contains one Twilio message list page without message bodies.
+type MessagePage struct {
+	// Messages contains message metadata only.
+	Messages []Message `json:"messages"`
+	// Page is the zero-based page index returned by Twilio.
+	Page int `json:"page"`
+	// PageSize is Twilio's page size.
+	PageSize int `json:"pageSize"`
+}
+
+// DeleteMessageInput identifies a message whose record should be deleted.
+type DeleteMessageInput struct {
+	// MessageSID is the SM or MM message SID.
+	MessageSID string `json:"messageSid"`
+}
+
+// DeletedMessage records which message record was deleted or already absent.
+type DeletedMessage struct {
+	// MessageSID is the SM or MM message SID.
+	MessageSID string `json:"messageSid"`
+}
+
+// RedactMessageInput identifies a message whose stored body should be erased.
+type RedactMessageInput struct {
+	// MessageSID is the SM or MM message SID.
+	MessageSID string `json:"messageSid"`
+}
+
 // Option configures Client construction.
 type Option func(*clientOptions)
 
@@ -207,6 +247,15 @@ type SendMessageOperation struct{ client *Client }
 
 // GetMessageOperation implements the getMessage Query.
 type GetMessageOperation struct{ client *Client }
+
+// ListMessagesOperation implements the listMessages Query.
+type ListMessagesOperation struct{ client *Client }
+
+// DeleteMessageOperation implements the deleteMessage Mutation.
+type DeleteMessageOperation struct{ client *Client }
+
+// RedactMessageOperation implements the redactMessage Mutation.
+type RedactMessageOperation struct{ client *Client }
 
 type messageSender struct {
 	fromAddress         string
@@ -320,6 +369,21 @@ func (client *Client) SendMessage() SendMessageOperation { return SendMessageOpe
 
 // GetMessage returns the getMessage Query bound to this client.
 func (client *Client) GetMessage() GetMessageOperation { return GetMessageOperation{client: client} }
+
+// ListMessages returns the listMessages Query bound to this client.
+func (client *Client) ListMessages() ListMessagesOperation {
+	return ListMessagesOperation{client: client}
+}
+
+// DeleteMessage returns the deleteMessage Mutation bound to this client.
+func (client *Client) DeleteMessage() DeleteMessageOperation {
+	return DeleteMessageOperation{client: client}
+}
+
+// RedactMessage returns the redactMessage Mutation bound to this client.
+func (client *Client) RedactMessage() RedactMessageOperation {
+	return RedactMessageOperation{client: client}
+}
 
 // Definition returns the immutable connector operation definition.
 func (SendMessageOperation) Definition() sdkgo.MutationDefinition { return SendMessageDefinition }
@@ -517,6 +581,167 @@ func (operation GetMessageOperation) Invoke(call sdkgo.Call, input GetMessageInp
 	default:
 		return sdkgo.NewQueryBranch(GetMessageBranchInvalidResponse, Message{}, failurePointer("getMessage", sdkgo.FailureProtocol, "Twilio returned an unexpected HTTP status"), client.receipt(call, response, messageSID, 0))
 	}
+}
+
+// Definition returns the immutable listMessages contract.
+func (ListMessagesOperation) Definition() sdkgo.QueryDefinition { return ListMessagesDefinition }
+
+// Invoke reads one page of messages without returning their bodies.
+func (operation ListMessagesOperation) Invoke(call sdkgo.Call, input ListMessagesInput) sdkgo.QueryAttempt[MessagePage] {
+	client := operation.client
+	if input.Page < 0 || input.PageSize < 0 || input.PageSize > 1000 ||
+		(input.To != "" && !isSafeProviderAddress(input.To)) || (input.From != "" && !isSafeProviderAddress(input.From)) {
+		return sdkgo.NewQueryBranch(ListMessagesBranchDefect, MessagePage{}, failurePointer("listMessages", sdkgo.FailureValidation, "message list filters or page settings are invalid"), sdkgo.Receipt{})
+	}
+	authorization, failure, isTransient := client.resolveAuthorization(call, "listMessages")
+	if failure != nil {
+		if isTransient {
+			return sdkgo.NewQueryRetry[MessagePage](*failure, 0)
+		}
+		return sdkgo.NewQueryBranch(ListMessagesBranchDefect, MessagePage{}, failure, sdkgo.Receipt{})
+	}
+	query := url.Values{}
+	if input.To != "" {
+		query.Set("To", input.To)
+	}
+	if input.From != "" {
+		query.Set("From", input.From)
+	}
+	if input.PageSize > 0 {
+		query.Set("PageSize", strconv.Itoa(input.PageSize))
+	}
+	if input.Page > 0 {
+		query.Set("Page", strconv.Itoa(input.Page))
+	}
+	target := client.messagesURL + ".json"
+	if len(query) > 0 {
+		target += "?" + query.Encode()
+	}
+	response, _, err := client.exchange(call, authorization, http.MethodGet, target, nil)
+	if errors.Is(err, errRequestNotBuilt) {
+		return sdkgo.NewQueryBranch(ListMessagesBranchDefect, MessagePage{}, failurePointer("listMessages", sdkgo.FailureLocalDefect, "message list request could not be built"), sdkgo.Receipt{})
+	}
+	if err != nil {
+		return sdkgo.NewQueryRetry[MessagePage](newFailure("listMessages", sdkgo.FailureTransport, "Twilio message list is temporarily unavailable"), 0)
+	}
+	switch {
+	case response.statusCode == http.StatusTooManyRequests:
+		return sdkgo.NewQueryRetry[MessagePage](newFailure("listMessages", sdkgo.FailureRateLimit, "Twilio rate limited the message list"), providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now()))
+	case response.statusCode == http.StatusRequestTimeout || response.statusCode >= 500:
+		return sdkgo.NewQueryRetry[MessagePage](newFailure("listMessages", sdkgo.FailureAvailability, "Twilio message list is temporarily unavailable"), 0)
+	case response.statusCode != http.StatusOK:
+		return sdkgo.NewQueryBranch(ListMessagesBranchProviderRejected, MessagePage{}, rejectionFailure("listMessages", "message list", response.statusCode, readErrorCode(response.body)), client.receipt(call, response, "", readErrorCode(response.body)))
+	case response.hasBodyReadFailed:
+		return sdkgo.NewQueryRetry[MessagePage](newFailure("listMessages", sdkgo.FailureTransport, "Twilio message list response was interrupted"), 0)
+	case response.isBodyTooLarge:
+		return sdkgo.NewQueryBranch(ListMessagesBranchInvalidResponse, MessagePage{}, failurePointer("listMessages", sdkgo.FailureResponseTooLarge, "Twilio message list exceeds the configured size limit"), client.receipt(call, response, "", 0))
+	}
+	var resource struct {
+		Messages []json.RawMessage `json:"messages"`
+		Page     int               `json:"page"`
+		PageSize int               `json:"page_size"`
+	}
+	if err := json.Unmarshal(response.body, &resource); err != nil || resource.Messages == nil || resource.Page < 0 || resource.PageSize < 0 {
+		return sdkgo.NewQueryBranch(ListMessagesBranchInvalidResponse, MessagePage{}, failurePointer("listMessages", sdkgo.FailureProtocol, "Twilio returned an invalid message list"), client.receipt(call, response, "", 0))
+	}
+	page := MessagePage{Messages: make([]Message, 0, len(resource.Messages)), Page: resource.Page, PageSize: resource.PageSize}
+	for _, contents := range resource.Messages {
+		message, err := client.decodeMessage(contents, authorization)
+		if err != nil {
+			return sdkgo.NewQueryBranch(ListMessagesBranchInvalidResponse, MessagePage{}, failurePointer("listMessages", sdkgo.FailureProtocol, "Twilio returned an invalid message list"), client.receipt(call, response, "", 0))
+		}
+		page.Messages = append(page.Messages, message)
+	}
+	return sdkgo.NewQueryBranch(ListMessagesBranchListed, page, nil, client.receipt(call, response, "", 0))
+}
+
+// Definition returns the immutable deleteMessage contract.
+func (DeleteMessageOperation) Definition() sdkgo.MutationDefinition { return DeleteMessageDefinition }
+
+// IdempotencyKey records the stable call identity; Twilio does not accept the key.
+func (DeleteMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ DeleteMessageInput) sdkgo.IdempotencyKey {
+	return sdkgo.IdempotencyKey(callID)
+}
+
+// Invoke removes a message record; repeating a DELETE is harmless.
+func (operation DeleteMessageOperation) Invoke(call sdkgo.Call, input DeleteMessageInput) sdkgo.MutationAttempt[DeletedMessage] {
+	client := operation.client
+	messageSID := strings.TrimSpace(input.MessageSID)
+	if !messageSIDPattern.MatchString(messageSID) {
+		return sdkgo.NewMutationBranch(DeleteMessageBranchDefect, DeletedMessage{}, failurePointer("deleteMessage", sdkgo.FailureValidation, "message SID must be SM or MM followed by 32 lowercase hexadecimal characters"), sdkgo.Receipt{})
+	}
+	authorization, failure, isTransient := client.resolveAuthorization(call, "deleteMessage")
+	if failure != nil {
+		if isTransient {
+			return sdkgo.NewMutationRetry[DeletedMessage](*failure, 0)
+		}
+		return sdkgo.NewMutationBranch(DeleteMessageBranchDefect, DeletedMessage{}, failure, sdkgo.Receipt{})
+	}
+	response, _, err := client.exchange(call, authorization, http.MethodDelete, client.messagesURL+"/"+messageSID+".json", nil)
+	if errors.Is(err, errRequestNotBuilt) {
+		return sdkgo.NewMutationBranch(DeleteMessageBranchDefect, DeletedMessage{}, failurePointer("deleteMessage", sdkgo.FailureLocalDefect, "message delete request could not be built"), sdkgo.Receipt{})
+	}
+	if err != nil {
+		return sdkgo.NewMutationRetry[DeletedMessage](newFailure("deleteMessage", sdkgo.FailureTransport, "Twilio message deletion is temporarily unavailable"), 0)
+	}
+	switch {
+	case response.statusCode == http.StatusNoContent || response.statusCode == http.StatusNotFound:
+		return sdkgo.NewMutationBranch(DeleteMessageBranchDeleted, DeletedMessage{MessageSID: messageSID}, nil, client.receipt(call, response, messageSID, 0))
+	case response.statusCode == http.StatusTooManyRequests:
+		return sdkgo.NewMutationRetry[DeletedMessage](newFailure("deleteMessage", sdkgo.FailureRateLimit, "Twilio rate limited message deletion"), providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now()))
+	case response.statusCode == http.StatusRequestTimeout || response.statusCode >= 500:
+		return sdkgo.NewMutationRetry[DeletedMessage](newFailure("deleteMessage", sdkgo.FailureAvailability, "Twilio message deletion is temporarily unavailable"), 0)
+	default:
+		return sdkgo.NewMutationBranch(DeleteMessageBranchProviderRejected, DeletedMessage{}, rejectionFailure("deleteMessage", "message deletion", response.statusCode, readErrorCode(response.body)), client.receipt(call, response, messageSID, readErrorCode(response.body)))
+	}
+}
+
+// Definition returns the immutable redactMessage contract.
+func (RedactMessageOperation) Definition() sdkgo.MutationDefinition { return RedactMessageDefinition }
+
+// IdempotencyKey records the stable call identity; replacing the body with empty text is repeatable.
+func (RedactMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ RedactMessageInput) sdkgo.IdempotencyKey {
+	return sdkgo.IdempotencyKey(callID)
+}
+
+// Invoke replaces a stored message body with empty text.
+func (operation RedactMessageOperation) Invoke(call sdkgo.Call, input RedactMessageInput) sdkgo.MutationAttempt[Message] {
+	client := operation.client
+	messageSID := strings.TrimSpace(input.MessageSID)
+	if !messageSIDPattern.MatchString(messageSID) {
+		return sdkgo.NewMutationBranch(RedactMessageBranchDefect, Message{}, failurePointer("redactMessage", sdkgo.FailureValidation, "message SID must be SM or MM followed by 32 lowercase hexadecimal characters"), sdkgo.Receipt{})
+	}
+	authorization, failure, isTransient := client.resolveAuthorization(call, "redactMessage")
+	if failure != nil {
+		if isTransient {
+			return sdkgo.NewMutationRetry[Message](*failure, 0)
+		}
+		return sdkgo.NewMutationBranch(RedactMessageBranchDefect, Message{}, failure, sdkgo.Receipt{})
+	}
+	response, _, err := client.exchange(call, authorization, http.MethodPost, client.messagesURL+"/"+messageSID+".json", url.Values{"Body": {""}})
+	if errors.Is(err, errRequestNotBuilt) {
+		return sdkgo.NewMutationBranch(RedactMessageBranchDefect, Message{}, failurePointer("redactMessage", sdkgo.FailureLocalDefect, "message redaction request could not be built"), sdkgo.Receipt{})
+	}
+	if err != nil {
+		return sdkgo.NewMutationRetry[Message](newFailure("redactMessage", sdkgo.FailureTransport, "Twilio message redaction is temporarily unavailable"), 0)
+	}
+	switch {
+	case response.statusCode == http.StatusTooManyRequests:
+		return sdkgo.NewMutationRetry[Message](newFailure("redactMessage", sdkgo.FailureRateLimit, "Twilio rate limited message redaction"), providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now()))
+	case response.statusCode == http.StatusRequestTimeout || response.statusCode >= 500:
+		return sdkgo.NewMutationRetry[Message](newFailure("redactMessage", sdkgo.FailureAvailability, "Twilio message redaction is temporarily unavailable"), 0)
+	case response.statusCode == http.StatusNotFound:
+		return sdkgo.NewMutationBranch(RedactMessageBranchNotFound, Message{}, failurePointer("redactMessage", sdkgo.FailureNotFound, "Twilio has no message with that SID"), client.receipt(call, response, messageSID, 0))
+	case response.statusCode != http.StatusOK:
+		return sdkgo.NewMutationBranch(RedactMessageBranchProviderRejected, Message{}, rejectionFailure("redactMessage", "message redaction", response.statusCode, readErrorCode(response.body)), client.receipt(call, response, messageSID, readErrorCode(response.body)))
+	case response.hasBodyReadFailed || response.isBodyTooLarge:
+		return sdkgo.NewMutationRetry[Message](newFailure("redactMessage", sdkgo.FailureTransport, "Twilio message redaction response was interrupted"), 0)
+	}
+	message, err := client.decodeMessage(response.body, authorization)
+	if err != nil || message.SID != messageSID {
+		return sdkgo.NewMutationRetry[Message](newFailure("redactMessage", sdkgo.FailureProtocol, "Twilio message redaction response was invalid"), 0)
+	}
+	return sdkgo.NewMutationBranch(RedactMessageBranchRedacted, message, nil, client.receipt(call, response, messageSID, 0))
 }
 
 func (client *Client) buildSendRequest(input SendMessageInput) (sendRequest, error) {

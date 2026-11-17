@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { TwilioClient } from '../src/client.js';
 import { GetMessageInputSchema, SendMessageInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/twilio/messaging/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/twilio/messaging/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'sendMessage' || scenario.operation === 'getMessage');
 const connection = { provider: 'twilio', name: 'twilio-test' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeTwilio, '/2010-04-01'));
 
