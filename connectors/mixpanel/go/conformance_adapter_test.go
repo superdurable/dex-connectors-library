@@ -16,13 +16,15 @@ const conformanceFixturePathPrefix = ""
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
-	client, err := New(Config{BaseURL: endpoint, ExportBaseURL: endpoint + "/api/2.0", ProjectID: 12345}, sdkgo.StaticCredentialProvider[Credentials]{
+	client, err := New(Config{BaseURL: endpoint, ExportBaseURL: endpoint + "/api/2.0", QueryBaseURL: endpoint + "/api/query", ProjectID: 12345}, sdkgo.StaticCredentialProvider[Credentials]{
 		testConnection: {ServiceAccountUsername: sdkgo.NewSecretString("service-user"), ServiceAccountSecret: sdkgo.NewSecretString("service-secret")},
 	})
 	require.NoError(t, err)
 	client.httpClient = transport
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"trackEvent":   newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.TrackEvent(), testConnection, scenario.CallID),
-		"exportEvents": newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.ExportEvents(), testConnection),
+		"trackEvent":       newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.TrackEvent(), testConnection, scenario.CallID),
+		"exportEvents":     newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.ExportEvents(), testConnection),
+		"queryProfiles":    newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.QueryProfiles(), testConnection),
+		"listSavedCohorts": newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.ListSavedCohorts(), testConnection),
 	}}
 }

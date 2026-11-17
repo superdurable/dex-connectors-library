@@ -17,9 +17,13 @@ import (
 
 // Mock is a scripted microsoft-todo connection. Script each operation through its accessor.
 type Mock struct {
-	connection    todo.Connection
-	listTaskLists *connectormock.Query[todo.ListTaskListsInput, todo.TaskListsPage]
-	listTasks     *connectormock.Query[todo.ListTasksInput, todo.TasksPage]
+	connection          todo.Connection
+	getTaskList         *connectormock.Query[todo.GetTaskListInput, todo.TaskList]
+	getTask             *connectormock.Query[todo.GetTaskInput, todo.Task]
+	listLinkedResources *connectormock.Query[todo.ListLinkedResourcesInput, todo.LinkedResourcesPage]
+	getLinkedResource   *connectormock.Query[todo.GetLinkedResourceInput, todo.LinkedResource]
+	listTaskLists       *connectormock.Query[todo.ListTaskListsInput, todo.TaskListsPage]
+	listTasks           *connectormock.Query[todo.ListTasksInput, todo.TasksPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,9 +31,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listTaskLists: connectormock.NewQuery[todo.ListTaskListsInput, todo.TaskListsPage](t, todo.ListTaskListsDefinition),
-		listTasks:     connectormock.NewQuery[todo.ListTasksInput, todo.TasksPage](t, todo.ListTasksDefinition),
+		getTaskList:         connectormock.NewQuery[todo.GetTaskListInput, todo.TaskList](t, todo.GetTaskListDefinition),
+		getTask:             connectormock.NewQuery[todo.GetTaskInput, todo.Task](t, todo.GetTaskDefinition),
+		listLinkedResources: connectormock.NewQuery[todo.ListLinkedResourcesInput, todo.LinkedResourcesPage](t, todo.ListLinkedResourcesDefinition),
+		getLinkedResource:   connectormock.NewQuery[todo.GetLinkedResourceInput, todo.LinkedResource](t, todo.GetLinkedResourceDefinition),
+		listTaskLists:       connectormock.NewQuery[todo.ListTaskListsInput, todo.TaskListsPage](t, todo.ListTaskListsDefinition),
+		listTasks:           connectormock.NewQuery[todo.ListTasksInput, todo.TasksPage](t, todo.ListTasksDefinition),
 	}
+	mock.getTaskList.Default(GetTaskListDefault())
+	mock.getTask.Default(GetTaskDefault())
+	mock.listLinkedResources.Default(ListLinkedResourcesDefault())
+	mock.getLinkedResource.Default(GetLinkedResourceDefault())
 	mock.listTaskLists.Default(ListTaskListsDefault())
 	mock.listTasks.Default(ListTasksDefault())
 	connection, err := todo.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "microsoft", Name: connectionName})
@@ -43,6 +55,24 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() todo.Connection { return mock.connection }
 
+// GetTaskList returns the getTaskList script.
+func (mock *Mock) GetTaskList() *connectormock.Query[todo.GetTaskListInput, todo.TaskList] {
+	return mock.getTaskList
+}
+
+// GetTask returns the getTask script.
+func (mock *Mock) GetTask() *connectormock.Query[todo.GetTaskInput, todo.Task] { return mock.getTask }
+
+// ListLinkedResources returns the listLinkedResources script.
+func (mock *Mock) ListLinkedResources() *connectormock.Query[todo.ListLinkedResourcesInput, todo.LinkedResourcesPage] {
+	return mock.listLinkedResources
+}
+
+// GetLinkedResource returns the getLinkedResource script.
+func (mock *Mock) GetLinkedResource() *connectormock.Query[todo.GetLinkedResourceInput, todo.LinkedResource] {
+	return mock.getLinkedResource
+}
+
 // ListTaskLists returns the listTaskLists script.
 func (mock *Mock) ListTaskLists() *connectormock.Query[todo.ListTaskListsInput, todo.TaskListsPage] {
 	return mock.listTaskLists
@@ -55,11 +85,183 @@ func (mock *Mock) ListTasks() *connectormock.Query[todo.ListTasksInput, todo.Tas
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetTaskList() sdkgo.Query[todo.GetTaskListInput, todo.TaskList] {
+	return operations.mock.getTaskList
+}
+func (operations mockOperations) GetTask() sdkgo.Query[todo.GetTaskInput, todo.Task] {
+	return operations.mock.getTask
+}
+func (operations mockOperations) ListLinkedResources() sdkgo.Query[todo.ListLinkedResourcesInput, todo.LinkedResourcesPage] {
+	return operations.mock.listLinkedResources
+}
+func (operations mockOperations) GetLinkedResource() sdkgo.Query[todo.GetLinkedResourceInput, todo.LinkedResource] {
+	return operations.mock.getLinkedResource
+}
 func (operations mockOperations) ListTaskLists() sdkgo.Query[todo.ListTaskListsInput, todo.TaskListsPage] {
 	return operations.mock.listTaskLists
 }
 func (operations mockOperations) ListTasks() sdkgo.Query[todo.ListTasksInput, todo.TasksPage] {
 	return operations.mock.listTasks
+}
+
+// GetTaskListRetrieved selects the retrieved branch: Graph returned the task list.
+func GetTaskListRetrieved(value todo.TaskList, failure *sdkgo.Failure) connectormock.Case[todo.TaskList] {
+	return connectormock.Branch(todo.GetTaskListBranchRetrieved, value, failure)
+}
+
+// GetTaskListNotFound selects the notFound branch: The task list was absent or inaccessible.
+func GetTaskListNotFound(value todo.TaskList, failure *sdkgo.Failure) connectormock.Case[todo.TaskList] {
+	return connectormock.Branch(todo.GetTaskListBranchNotFound, value, failure)
+}
+
+// GetTaskListProviderRejected selects the providerRejected branch: Graph conclusively rejected the request.
+func GetTaskListProviderRejected(value todo.TaskList, failure *sdkgo.Failure) connectormock.Case[todo.TaskList] {
+	return connectormock.Branch(todo.GetTaskListBranchProviderRejected, value, failure)
+}
+
+// GetTaskListInvalidResponse selects the invalidResponse branch: Graph returned malformed or oversized JSON.
+func GetTaskListInvalidResponse(value todo.TaskList, failure *sdkgo.Failure) connectormock.Case[todo.TaskList] {
+	return connectormock.Branch(todo.GetTaskListBranchInvalidResponse, value, failure)
+}
+
+// GetTaskListDefect selects the defect branch: Local input or connection configuration is invalid.
+func GetTaskListDefect(value todo.TaskList, failure *sdkgo.Failure) connectormock.Case[todo.TaskList] {
+	return connectormock.Branch(todo.GetTaskListBranchDefect, value, failure)
+}
+
+// GetTaskListRetry asks Dex to retry the getTaskList Step, after the delay when it is positive.
+func GetTaskListRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[todo.TaskList] {
+	return connectormock.Retry[todo.TaskList](failure, after)
+}
+
+// GetTaskListRetrievedDefault is the manifest mock retrievedDefault: One sample task list is returned.
+func GetTaskListRetrievedDefault() connectormock.Case[todo.TaskList] {
+	value := connectormock.MustDecodeOutput[todo.TaskList](`{"id":"sample-list-1","displayName":"Tasks"}`)
+	return connectormock.Branch(todo.GetTaskListBranchRetrieved, value, nil)
+}
+
+// GetTaskListDefault is the manifest default, retrievedDefault, which New installs.
+func GetTaskListDefault() connectormock.Case[todo.TaskList] { return GetTaskListRetrievedDefault() }
+
+// GetTaskRetrieved selects the retrieved branch: Graph returned the task.
+func GetTaskRetrieved(value todo.Task, failure *sdkgo.Failure) connectormock.Case[todo.Task] {
+	return connectormock.Branch(todo.GetTaskBranchRetrieved, value, failure)
+}
+
+// GetTaskNotFound selects the notFound branch: The task was absent or inaccessible.
+func GetTaskNotFound(value todo.Task, failure *sdkgo.Failure) connectormock.Case[todo.Task] {
+	return connectormock.Branch(todo.GetTaskBranchNotFound, value, failure)
+}
+
+// GetTaskProviderRejected selects the providerRejected branch: Graph conclusively rejected the request.
+func GetTaskProviderRejected(value todo.Task, failure *sdkgo.Failure) connectormock.Case[todo.Task] {
+	return connectormock.Branch(todo.GetTaskBranchProviderRejected, value, failure)
+}
+
+// GetTaskInvalidResponse selects the invalidResponse branch: Graph returned malformed or oversized JSON.
+func GetTaskInvalidResponse(value todo.Task, failure *sdkgo.Failure) connectormock.Case[todo.Task] {
+	return connectormock.Branch(todo.GetTaskBranchInvalidResponse, value, failure)
+}
+
+// GetTaskDefect selects the defect branch: Local input or connection configuration is invalid.
+func GetTaskDefect(value todo.Task, failure *sdkgo.Failure) connectormock.Case[todo.Task] {
+	return connectormock.Branch(todo.GetTaskBranchDefect, value, failure)
+}
+
+// GetTaskRetry asks Dex to retry the getTask Step, after the delay when it is positive.
+func GetTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[todo.Task] {
+	return connectormock.Retry[todo.Task](failure, after)
+}
+
+// GetTaskRetrievedDefault is the manifest mock retrievedDefault: One sample task is returned.
+func GetTaskRetrievedDefault() connectormock.Case[todo.Task] {
+	value := connectormock.MustDecodeOutput[todo.Task](`{"id":"sample-task-1","title":"Review request","status":"notStarted"}`)
+	return connectormock.Branch(todo.GetTaskBranchRetrieved, value, nil)
+}
+
+// GetTaskDefault is the manifest default, retrievedDefault, which New installs.
+func GetTaskDefault() connectormock.Case[todo.Task] { return GetTaskRetrievedDefault() }
+
+// ListLinkedResourcesListed selects the listed branch: Graph returned linked resources.
+func ListLinkedResourcesListed(value todo.LinkedResourcesPage, failure *sdkgo.Failure) connectormock.Case[todo.LinkedResourcesPage] {
+	return connectormock.Branch(todo.ListLinkedResourcesBranchListed, value, failure)
+}
+
+// ListLinkedResourcesNotFound selects the notFound branch: The task was absent or inaccessible.
+func ListLinkedResourcesNotFound(value todo.LinkedResourcesPage, failure *sdkgo.Failure) connectormock.Case[todo.LinkedResourcesPage] {
+	return connectormock.Branch(todo.ListLinkedResourcesBranchNotFound, value, failure)
+}
+
+// ListLinkedResourcesProviderRejected selects the providerRejected branch: Graph conclusively rejected the request.
+func ListLinkedResourcesProviderRejected(value todo.LinkedResourcesPage, failure *sdkgo.Failure) connectormock.Case[todo.LinkedResourcesPage] {
+	return connectormock.Branch(todo.ListLinkedResourcesBranchProviderRejected, value, failure)
+}
+
+// ListLinkedResourcesInvalidResponse selects the invalidResponse branch: Graph returned malformed or oversized JSON.
+func ListLinkedResourcesInvalidResponse(value todo.LinkedResourcesPage, failure *sdkgo.Failure) connectormock.Case[todo.LinkedResourcesPage] {
+	return connectormock.Branch(todo.ListLinkedResourcesBranchInvalidResponse, value, failure)
+}
+
+// ListLinkedResourcesDefect selects the defect branch: Local input or connection configuration is invalid.
+func ListLinkedResourcesDefect(value todo.LinkedResourcesPage, failure *sdkgo.Failure) connectormock.Case[todo.LinkedResourcesPage] {
+	return connectormock.Branch(todo.ListLinkedResourcesBranchDefect, value, failure)
+}
+
+// ListLinkedResourcesRetry asks Dex to retry the listLinkedResources Step, after the delay when it is positive.
+func ListLinkedResourcesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[todo.LinkedResourcesPage] {
+	return connectormock.Retry[todo.LinkedResourcesPage](failure, after)
+}
+
+// ListLinkedResourcesListedDefault is the manifest mock listedDefault: One sample linked resource is returned.
+func ListLinkedResourcesListedDefault() connectormock.Case[todo.LinkedResourcesPage] {
+	value := connectormock.MustDecodeOutput[todo.LinkedResourcesPage](`{"resources":[{"id":"sample-resource-1","displayName":"Source item","applicationName":"Example","externalId":"item-1","webUrl":"https://example.com/item-1"}]}`)
+	return connectormock.Branch(todo.ListLinkedResourcesBranchListed, value, nil)
+}
+
+// ListLinkedResourcesDefault is the manifest default, listedDefault, which New installs.
+func ListLinkedResourcesDefault() connectormock.Case[todo.LinkedResourcesPage] {
+	return ListLinkedResourcesListedDefault()
+}
+
+// GetLinkedResourceRetrieved selects the retrieved branch: Graph returned the linked resource.
+func GetLinkedResourceRetrieved(value todo.LinkedResource, failure *sdkgo.Failure) connectormock.Case[todo.LinkedResource] {
+	return connectormock.Branch(todo.GetLinkedResourceBranchRetrieved, value, failure)
+}
+
+// GetLinkedResourceNotFound selects the notFound branch: The linked resource was absent or inaccessible.
+func GetLinkedResourceNotFound(value todo.LinkedResource, failure *sdkgo.Failure) connectormock.Case[todo.LinkedResource] {
+	return connectormock.Branch(todo.GetLinkedResourceBranchNotFound, value, failure)
+}
+
+// GetLinkedResourceProviderRejected selects the providerRejected branch: Graph conclusively rejected the request.
+func GetLinkedResourceProviderRejected(value todo.LinkedResource, failure *sdkgo.Failure) connectormock.Case[todo.LinkedResource] {
+	return connectormock.Branch(todo.GetLinkedResourceBranchProviderRejected, value, failure)
+}
+
+// GetLinkedResourceInvalidResponse selects the invalidResponse branch: Graph returned malformed or oversized JSON.
+func GetLinkedResourceInvalidResponse(value todo.LinkedResource, failure *sdkgo.Failure) connectormock.Case[todo.LinkedResource] {
+	return connectormock.Branch(todo.GetLinkedResourceBranchInvalidResponse, value, failure)
+}
+
+// GetLinkedResourceDefect selects the defect branch: Local input or connection configuration is invalid.
+func GetLinkedResourceDefect(value todo.LinkedResource, failure *sdkgo.Failure) connectormock.Case[todo.LinkedResource] {
+	return connectormock.Branch(todo.GetLinkedResourceBranchDefect, value, failure)
+}
+
+// GetLinkedResourceRetry asks Dex to retry the getLinkedResource Step, after the delay when it is positive.
+func GetLinkedResourceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[todo.LinkedResource] {
+	return connectormock.Retry[todo.LinkedResource](failure, after)
+}
+
+// GetLinkedResourceRetrievedDefault is the manifest mock retrievedDefault: One sample linked resource is returned.
+func GetLinkedResourceRetrievedDefault() connectormock.Case[todo.LinkedResource] {
+	value := connectormock.MustDecodeOutput[todo.LinkedResource](`{"id":"sample-resource-1","displayName":"Source item","applicationName":"Example","externalId":"item-1","webUrl":"https://example.com/item-1"}`)
+	return connectormock.Branch(todo.GetLinkedResourceBranchRetrieved, value, nil)
+}
+
+// GetLinkedResourceDefault is the manifest default, retrievedDefault, which New installs.
+func GetLinkedResourceDefault() connectormock.Case[todo.LinkedResource] {
+	return GetLinkedResourceRetrievedDefault()
 }
 
 // ListTaskListsListed selects the listed branch: Graph returned task lists.

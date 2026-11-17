@@ -1,6 +1,6 @@
 {
   "connectorId": "mixpanel",
-  "releaseTag": "connectors/mixpanel/go/v0.2.0",
+  "releaseTag": "connectors/mixpanel/go/v0.3.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-mixpanel",

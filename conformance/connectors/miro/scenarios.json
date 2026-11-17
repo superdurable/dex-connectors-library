@@ -273,6 +273,1318 @@
       },
       "name": "getBoard-transportFailure",
       "operation": "getBoard"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"uXjVOD6LSME=\",\"name\":\"Planning board\"}],\"offset\":1,\"total\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "1"
+            ],
+            "query": [
+              "planning"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "boards": [
+            {
+              "id": "uXjVOD6LSME=",
+              "name": "Planning board"
+            }
+          ],
+          "offset": 1,
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "offset": 1,
+        "query": "planning"
+      },
+      "name": "listBoards-listed",
+      "operation": "listBoards"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "1"
+            ],
+            "query": [
+              "planning"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "boards": [],
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "offset": 1,
+        "query": "planning"
+      },
+      "name": "listBoards-providerRejected",
+      "operation": "listBoards"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "1"
+            ],
+            "query": [
+              "planning"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "boards": [],
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "offset": 1,
+        "query": "planning"
+      },
+      "name": "listBoards-invalidResponse",
+      "operation": "listBoards"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "boards": [],
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "offset": -1,
+        "query": "planning"
+      },
+      "name": "listBoards-defect",
+      "operation": "listBoards"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "1"
+            ],
+            "query": [
+              "planning"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "offset": 1,
+        "query": "planning"
+      },
+      "name": "listBoards-rateLimit",
+      "operation": "listBoards"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "1"
+            ],
+            "query": [
+              "planning"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "offset": 1,
+        "query": "planning"
+      },
+      "name": "listBoards-serverUnavailable",
+      "operation": "listBoards"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "1"
+            ],
+            "query": [
+              "planning"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "offset": 1,
+        "query": "planning"
+      },
+      "name": "listBoards-transportFailure",
+      "operation": "listBoards"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"item-1\",\"type\":\"sticky_note\",\"data\":{\"content\":\"Plan next release\"}}],\"cursor\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/items",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cursor": "",
+          "items": [
+            {
+              "content": "Plan next release",
+              "id": "item-1",
+              "type": "sticky_note"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "cursor": "cursor-1",
+        "limit": 10
+      },
+      "name": "listBoardItems-listed",
+      "operation": "listBoardItems"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/items",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "cursor": "",
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "cursor": "cursor-1",
+        "limit": 10
+      },
+      "name": "listBoardItems-notFound",
+      "operation": "listBoardItems"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/items",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "cursor": "",
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "cursor": "cursor-1",
+        "limit": 10
+      },
+      "name": "listBoardItems-providerRejected",
+      "operation": "listBoardItems"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/items",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cursor": "",
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "cursor": "cursor-1",
+        "limit": 10
+      },
+      "name": "listBoardItems-invalidResponse",
+      "operation": "listBoardItems"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "cursor": "",
+          "items": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "",
+        "cursor": "cursor-1",
+        "limit": 10
+      },
+      "name": "listBoardItems-defect",
+      "operation": "listBoardItems"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/items",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "cursor": "cursor-1",
+        "limit": 10
+      },
+      "name": "listBoardItems-rateLimit",
+      "operation": "listBoardItems"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/items",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "cursor": "cursor-1",
+        "limit": 10
+      },
+      "name": "listBoardItems-serverUnavailable",
+      "operation": "listBoardItems"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/items",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "cursor": "cursor-1",
+        "limit": 10
+      },
+      "name": "listBoardItems-transportFailure",
+      "operation": "listBoardItems"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"item-1\",\"type\":\"sticky_note\",\"data\":{\"content\":\"Plan next release\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/items/item-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "content": "Plan next release",
+          "id": "item-1",
+          "type": "sticky_note"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "itemId": "item-1"
+      },
+      "name": "getBoardItem-found",
+      "operation": "getBoardItem"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/items/item-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "itemId": "item-1"
+      },
+      "name": "getBoardItem-notFound",
+      "operation": "getBoardItem"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/items/item-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "itemId": "item-1"
+      },
+      "name": "getBoardItem-providerRejected",
+      "operation": "getBoardItem"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/items/item-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "itemId": "item-1"
+      },
+      "name": "getBoardItem-invalidResponse",
+      "operation": "getBoardItem"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "",
+        "itemId": "item-1"
+      },
+      "name": "getBoardItem-defect",
+      "operation": "getBoardItem"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/items/item-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "itemId": "item-1"
+      },
+      "name": "getBoardItem-rateLimit",
+      "operation": "getBoardItem"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/items/item-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "itemId": "item-1"
+      },
+      "name": "getBoardItem-serverUnavailable",
+      "operation": "getBoardItem"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/items/item-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "itemId": "item-1"
+      },
+      "name": "getBoardItem-transportFailure",
+      "operation": "getBoardItem"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"member-1\",\"role\":\"viewer\"}],\"offset\":1,\"total\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/members",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "members": [
+            {
+              "id": "member-1",
+              "role": "viewer"
+            }
+          ],
+          "offset": 1,
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "limit": 20,
+        "offset": 1
+      },
+      "name": "listBoardMembers-listed",
+      "operation": "listBoardMembers"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/members",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "members": [],
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "limit": 20,
+        "offset": 1
+      },
+      "name": "listBoardMembers-notFound",
+      "operation": "listBoardMembers"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/members",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "members": [],
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "limit": 20,
+        "offset": 1
+      },
+      "name": "listBoardMembers-providerRejected",
+      "operation": "listBoardMembers"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/members",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "members": [],
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "limit": 20,
+        "offset": 1
+      },
+      "name": "listBoardMembers-invalidResponse",
+      "operation": "listBoardMembers"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "members": [],
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "",
+        "limit": 20,
+        "offset": 1
+      },
+      "name": "listBoardMembers-defect",
+      "operation": "listBoardMembers"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/members",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "limit": 20,
+        "offset": 1
+      },
+      "name": "listBoardMembers-rateLimit",
+      "operation": "listBoardMembers"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/members",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "limit": 20,
+        "offset": 1
+      },
+      "name": "listBoardMembers-serverUnavailable",
+      "operation": "listBoardMembers"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/uXjVOD6LSME=/members",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-miro-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "uXjVOD6LSME=",
+        "limit": 20,
+        "offset": 1
+      },
+      "name": "listBoardMembers-transportFailure",
+      "operation": "listBoardMembers"
     }
   ],
   "schemaVersion": 1

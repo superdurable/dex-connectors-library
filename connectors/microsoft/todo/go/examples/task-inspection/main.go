@@ -40,7 +40,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{listinspection.NewListFlow(connection), taskinspection.NewTaskFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{listinspection.NewListFlow(connection), taskinspection.NewTaskFlow(connection), taskinspection.NewGetTaskFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Microsoft To Do task inspection Flow: %w", err)
 	}

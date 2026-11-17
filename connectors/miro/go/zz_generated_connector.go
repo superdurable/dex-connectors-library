@@ -40,11 +40,27 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListBoards() sdkgo.Query[ListBoardsInput, BoardsPage]
+	ListBoardItems() sdkgo.Query[ListBoardItemsInput, BoardItemsPage]
+	GetBoardItem() sdkgo.Query[GetBoardItemInput, BoardItemMetadata]
+	ListBoardMembers() sdkgo.Query[ListBoardMembersInput, BoardMembersPage]
 	GetBoard() sdkgo.Query[GetBoardInput, BoardMetadata]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListBoards() sdkgo.Query[ListBoardsInput, BoardsPage] {
+	return operations.client.ListBoards()
+}
+func (operations clientOperations) ListBoardItems() sdkgo.Query[ListBoardItemsInput, BoardItemsPage] {
+	return operations.client.ListBoardItems()
+}
+func (operations clientOperations) GetBoardItem() sdkgo.Query[GetBoardItemInput, BoardItemMetadata] {
+	return operations.client.GetBoardItem()
+}
+func (operations clientOperations) ListBoardMembers() sdkgo.Query[ListBoardMembersInput, BoardMembersPage] {
+	return operations.client.ListBoardMembers()
+}
 func (operations clientOperations) GetBoard() sdkgo.Query[GetBoardInput, BoardMetadata] {
 	return operations.client.GetBoard()
 }
@@ -184,6 +200,308 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const ListBoardsBranchListed sdkgo.BranchID = "listed"
+const ListBoardsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListBoardsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListBoardsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListBoardsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listBoards"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListBoardsBranchListed, Description: "Miro returned a page of boards."},
+		{ID: ListBoardsBranchProviderRejected, Description: "Miro conclusively rejected the lookup.", Optional: true},
+		{ID: ListBoardsBranchInvalidResponse, Description: "Miro returned malformed or oversized JSON.", Optional: true},
+		{ID: ListBoardsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListBoardsResult = sdkgo.QueryResult[BoardsPage]
+
+type ListBoardsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=miro"`
+	operationID                    struct{}                                      `connector:"operationId=listBoards"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListBoardsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListBoardsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListBoardsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListBoardsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListBoardsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[BoardsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListBoardsStep[IN any](config ListBoardsStepConfig[IN]) sdkgo.QueryStep[IN, ListBoardsInput, BoardsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("miro connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListBoardsInput, BoardsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListBoards(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListBoardsResult] {
+			branches := make([]sdkgo.BranchTarget[ListBoardsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListBoardsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListBoardsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListBoardsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListBoardsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListBoardItemsBranchListed sdkgo.BranchID = "listed"
+const ListBoardItemsBranchNotFound sdkgo.BranchID = "notFound"
+const ListBoardItemsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListBoardItemsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListBoardItemsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListBoardItemsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listBoardItems"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListBoardItemsBranchListed, Description: "Miro returned a page of board items."},
+		{ID: ListBoardItemsBranchNotFound, Description: "The board was absent or inaccessible.", Optional: true},
+		{ID: ListBoardItemsBranchProviderRejected, Description: "Miro conclusively rejected the lookup.", Optional: true},
+		{ID: ListBoardItemsBranchInvalidResponse, Description: "Miro returned malformed or oversized JSON.", Optional: true},
+		{ID: ListBoardItemsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListBoardItemsResult = sdkgo.QueryResult[BoardItemsPage]
+
+type ListBoardItemsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=miro"`
+	operationID                    struct{}                                          `connector:"operationId=listBoardItems"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListBoardItemsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListBoardItemsResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListBoardItemsResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListBoardItemsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListBoardItemsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListBoardItemsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[BoardItemsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewListBoardItemsStep[IN any](config ListBoardItemsStepConfig[IN]) sdkgo.QueryStep[IN, ListBoardItemsInput, BoardItemsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("miro connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListBoardItemsInput, BoardItemsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListBoardItems(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListBoardItemsResult] {
+			branches := make([]sdkgo.BranchTarget[ListBoardItemsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListBoardItemsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListBoardItemsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListBoardItemsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListBoardItemsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListBoardItemsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetBoardItemBranchFound sdkgo.BranchID = "found"
+const GetBoardItemBranchNotFound sdkgo.BranchID = "notFound"
+const GetBoardItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetBoardItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetBoardItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetBoardItemDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getBoardItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetBoardItemBranchFound, Description: "Miro returned the board item."},
+		{ID: GetBoardItemBranchNotFound, Description: "The item was absent or inaccessible.", Optional: true},
+		{ID: GetBoardItemBranchProviderRejected, Description: "Miro conclusively rejected the lookup.", Optional: true},
+		{ID: GetBoardItemBranchInvalidResponse, Description: "Miro returned malformed or oversized JSON.", Optional: true},
+		{ID: GetBoardItemBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetBoardItemResult = sdkgo.QueryResult[BoardItemMetadata]
+
+type GetBoardItemStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=miro"`
+	operationID                    struct{}                                             `connector:"operationId=getBoardItem"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetBoardItemInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetBoardItemResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetBoardItemResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetBoardItemResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetBoardItemResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetBoardItemResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[BoardItemMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewGetBoardItemStep[IN any](config GetBoardItemStepConfig[IN]) sdkgo.QueryStep[IN, GetBoardItemInput, BoardItemMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("miro connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetBoardItemInput, BoardItemMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetBoardItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetBoardItemResult] {
+			branches := make([]sdkgo.BranchTarget[GetBoardItemResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetBoardItemBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetBoardItemBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetBoardItemBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetBoardItemBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetBoardItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListBoardMembersBranchListed sdkgo.BranchID = "listed"
+const ListBoardMembersBranchNotFound sdkgo.BranchID = "notFound"
+const ListBoardMembersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListBoardMembersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListBoardMembersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListBoardMembersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listBoardMembers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListBoardMembersBranchListed, Description: "Miro returned a page of board members."},
+		{ID: ListBoardMembersBranchNotFound, Description: "The board was absent or inaccessible.", Optional: true},
+		{ID: ListBoardMembersBranchProviderRejected, Description: "Miro conclusively rejected the lookup.", Optional: true},
+		{ID: ListBoardMembersBranchInvalidResponse, Description: "Miro returned malformed or oversized JSON.", Optional: true},
+		{ID: ListBoardMembersBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListBoardMembersResult = sdkgo.QueryResult[BoardMembersPage]
+
+type ListBoardMembersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=miro"`
+	operationID                    struct{}                                            `connector:"operationId=listBoardMembers"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListBoardMembersInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListBoardMembersResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListBoardMembersResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListBoardMembersResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListBoardMembersResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListBoardMembersResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[BoardMembersPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewListBoardMembersStep[IN any](config ListBoardMembersStepConfig[IN]) sdkgo.QueryStep[IN, ListBoardMembersInput, BoardMembersPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("miro connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListBoardMembersInput, BoardMembersPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListBoardMembers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListBoardMembersResult] {
+			branches := make([]sdkgo.BranchTarget[ListBoardMembersResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListBoardMembersBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListBoardMembersBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListBoardMembersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListBoardMembersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListBoardMembersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetBoardBranchFound sdkgo.BranchID = "found"

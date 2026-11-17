@@ -14,7 +14,7 @@ import (
 
 func TestBothFlowDefinitionsRegister(t *testing.T) {
 	mock := todomock.New(t, listinspection.ConnectionName)
-	registry, err := dex.NewRegistry([]dex.Flow{listinspection.NewListFlow(mock.Connection()), taskinspection.NewTaskFlow(mock.Connection())})
+	registry, err := dex.NewRegistry([]dex.Flow{listinspection.NewListFlow(mock.Connection()), taskinspection.NewTaskFlow(mock.Connection()), taskinspection.NewGetTaskFlow(mock.Connection())})
 	require.NoError(t, err)
 	require.NotNil(t, registry)
 }
