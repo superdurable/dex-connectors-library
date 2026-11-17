@@ -41,6 +41,8 @@ export interface ExchangeFailure {
   retryAfterMs: number;
   /** Correlation receipt after a provider attempt. */
   receipt: ReceiptDraft;
+  /** HTTP status of the provider answer, or undefined when no status arrived. */
+  status?: number;
 }
 
 /** Successful bounded response or classified failure. */
@@ -128,11 +130,11 @@ export class AirtableClient {
         timeoutMs: requestTimeoutMs, signal: call.context.cancellationSignal,
       });
     } catch (error) {
-      if (error instanceof BodyTooLargeError) return { outcome: this.failure('invalidResponse', operation, 'RESPONSE_TOO_LARGE', 'Airtable response exceeds the configured size limit', receipt) };
+      if (error instanceof BodyTooLargeError) return { outcome: { ...this.failure('invalidResponse', operation, 'RESPONSE_TOO_LARGE', 'Airtable response exceeds the configured size limit', receipt), ...(error.status !== undefined ? { status: error.status } : {}) } };
       return { outcome: this.failure('retry', operation, 'TRANSPORT', 'Airtable did not return a complete response', receipt) };
     }
     if (response.status >= 200 && response.status < 300) return { response };
-    return { outcome: this.classifyResponse(operation, baseId, response, receipt) };
+    return { outcome: { ...this.classifyResponse(operation, baseId, response, receipt), status: response.status } };
   }
 
   private reserveRequestSlot(baseId: string): number {

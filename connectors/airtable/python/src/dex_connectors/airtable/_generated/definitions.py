@@ -78,8 +78,7 @@ UPSERT_RECORDS_DEFINITION = MutationDefinition(
         1,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
-    repeat_on_unknown=RepeatOnUnknown.LIMITED,
-    max_sends=3,
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 UPDATE_RECORDS_DEFINITION = MutationDefinition(
@@ -96,8 +95,7 @@ UPDATE_RECORDS_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
-    repeat_on_unknown=RepeatOnUnknown.LIMITED,
-    max_sends=3,
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 RECORD_CHANGED_TRIGGER_DEFINITION = TriggerDefinition(

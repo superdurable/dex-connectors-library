@@ -120,7 +120,7 @@ func (operation UpsertRecordsOperation) Invoke(call sdkgo.Call, input UpsertReco
 		method: http.MethodPatch, path: recordPath(input.BaseID, input.TableIDOrName), baseID: input.BaseID, body: encoded,
 	}, objectID)
 	if outcome != nil {
-		return mutationAttemptForOutcome[UpsertedRecords](*outcome, upsertRecordsBranches)
+		return mutationAttemptForOutcome[UpsertedRecords](*outcome, response, upsertRecordsBranches)
 	}
 	receipt := operation.client.receipt(call, objectID)
 	upserted, err := decodeUpsertedRecords(response.body, len(input.Records))

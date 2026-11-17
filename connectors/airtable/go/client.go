@@ -383,13 +383,28 @@ func queryAttemptForOutcome[T any](outcome providerOutcome, branches operationBr
 	return sdkgo.NewQueryBranch(branches.branchFor(outcome.disposition), zero, &outcome.failure, outcome.receipt)
 }
 
-// mutationAttemptForOutcome maps an unsuccessful exchange to Retry or a branch; both writes are repeat-safe.
-func mutationAttemptForOutcome[T any](outcome providerOutcome, branches operationBranches) sdkgo.MutationAttempt[T] {
+// mutationAttemptForOutcome maps an unsuccessful write exchange to Retry or a branch. Both writes are
+// repeat-safe, so any HTTP status that does not prove a refusal, such as 409, 501, or a redirect, and
+// an oversized error body are retried.
+func mutationAttemptForOutcome[T any](outcome providerOutcome, response providerResponse, branches operationBranches) sdkgo.MutationAttempt[T] {
 	var zero T
-	if outcome.disposition == outcomeRetry {
+	isHTTPOutcome := response.statusCode != 0
+	isUnknownStatus := isHTTPOutcome && (response.statusCode < 200 || response.statusCode >= 300) && !isDefiniteRefusalStatus(response.statusCode)
+	if outcome.disposition == outcomeRetry || isUnknownStatus {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(branches.branchFor(outcome.disposition), zero, &outcome.failure, outcome.receipt)
+}
+
+// isDefiniteRefusalStatus reports a status that proves Airtable refused a write.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func (branches operationBranches) branchFor(disposition outcomeDisposition) sdkgo.BranchID {
