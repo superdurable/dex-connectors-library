@@ -24,7 +24,8 @@ import (
 func TestUserSearchUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := amplitudemock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	trackFlow := NewTrackFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, trackFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -58,4 +59,14 @@ func TestUserSearchUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, []string{"example-user"}, output.UserIDs)
 	require.Equal(t, "match_user_or_device_id", output.MatchType)
 	require.Len(t, mock.SearchUsers().Calls(), 1)
+	trackID := "amplitude-track-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, trackFlow, trackID, amplitude.TrackEventInput{UserID: "example-user", EventType: "purchase", EventProperties: map[string]string{"plan": "pro"}}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	trackResult, err := client.WaitForFlow(ctx, trackID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, trackResult.Status, trackResult.ErrorMessage)
+	var tracked amplitude.TrackedEvent
+	require.NoError(t, trackResult.DecodeSingleOutput(&tracked))
+	require.Equal(t, "example-insert-id", tracked.InsertID)
+	require.Len(t, mock.TrackEvent().Calls(), 1)
 }

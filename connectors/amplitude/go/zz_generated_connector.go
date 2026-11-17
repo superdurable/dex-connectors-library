@@ -41,11 +41,19 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	TrackEvent() sdkgo.Mutation[TrackEventInput, TrackedEvent]
+	IdentifyUser() sdkgo.Mutation[IdentifyUserInput, IdentifiedUser]
 	SearchUsers() sdkgo.Query[SearchUsersInput, UserSearchPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) TrackEvent() sdkgo.Mutation[TrackEventInput, TrackedEvent] {
+	return operations.client.TrackEvent()
+}
+func (operations clientOperations) IdentifyUser() sdkgo.Mutation[IdentifyUserInput, IdentifiedUser] {
+	return operations.client.IdentifyUser()
+}
 func (operations clientOperations) SearchUsers() sdkgo.Query[SearchUsersInput, UserSearchPage] {
 	return operations.client.SearchUsers()
 }
@@ -190,6 +198,136 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential secretKey is required")
 	}
 	return nil
+}
+
+const TrackEventBranchTracked sdkgo.BranchID = "tracked"
+const TrackEventBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const TrackEventBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var TrackEventDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "trackEvent"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: TrackEventBranchTracked, Description: "Amplitude ingested the event."},
+		{ID: TrackEventBranchProviderRejected, Description: "Amplitude conclusively rejected the event.", Optional: true},
+		{ID: TrackEventBranchDefect, Description: "The event or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type TrackEventResult = sdkgo.MutationResult[TrackedEvent]
+
+type TrackEventStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=amplitude"`
+	operationID                       struct{}                                           `connector:"operationId=trackEvent"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) TrackEventInput                           `connector:"mapToOperationInput"`
+	Tracked                           sdkgo.Target[TrackEventResult]                     `connector:"branch=tracked"`
+	ProviderRejected                  sdkgo.Target[TrackEventResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[TrackEventResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TrackedEvent]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewTrackEventStep[IN any](config TrackEventStepConfig[IN]) sdkgo.MutationStep[IN, TrackEventInput, TrackedEvent] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amplitude connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TrackEventInput, TrackedEvent]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.TrackEvent(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[TrackEventResult] {
+			branches := make([]sdkgo.BranchTarget[TrackEventResult], 0, 3)
+			if config.Tracked.HasStep() {
+				branches = append(branches, config.Tracked.BranchTarget(TrackEventBranchTracked))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(TrackEventBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(TrackEventBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const IdentifyUserBranchIdentified sdkgo.BranchID = "identified"
+const IdentifyUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const IdentifyUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var IdentifyUserDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "identifyUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: IdentifyUserBranchIdentified, Description: "Amplitude accepted the property replacement."},
+		{ID: IdentifyUserBranchProviderRejected, Description: "Amplitude conclusively rejected the property update.", Optional: true},
+		{ID: IdentifyUserBranchDefect, Description: "The user, property, or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type IdentifyUserResult = sdkgo.MutationResult[IdentifiedUser]
+
+type IdentifyUserStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=amplitude"`
+	operationID                       struct{}                                             `connector:"operationId=identifyUser"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) IdentifyUserInput                           `connector:"mapToOperationInput"`
+	Identified                        sdkgo.Target[IdentifyUserResult]                     `connector:"branch=identified"`
+	ProviderRejected                  sdkgo.Target[IdentifyUserResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[IdentifyUserResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[IdentifiedUser]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewIdentifyUserStep[IN any](config IdentifyUserStepConfig[IN]) sdkgo.MutationStep[IN, IdentifyUserInput, IdentifiedUser] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amplitude connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, IdentifyUserInput, IdentifiedUser]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.IdentifyUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[IdentifyUserResult] {
+			branches := make([]sdkgo.BranchTarget[IdentifyUserResult], 0, 3)
+			if config.Identified.HasStep() {
+				branches = append(branches, config.Identified.BranchTarget(IdentifyUserBranchIdentified))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(IdentifyUserBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(IdentifyUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const SearchUsersBranchSearched sdkgo.BranchID = "searched"

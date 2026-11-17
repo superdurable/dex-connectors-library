@@ -2,6 +2,703 @@
   "connector": "amplitude",
   "scenarios": [
     {
+      "callId": "1734cffc-5461-555f-8202-4900a59cee41",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"events_ingested\":1,\"payload_size_bytes\":100,\"server_upload_time\":1396381378123}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/httpapi",
+          "requestBody": {
+            "api_key": "sample-amplitude-api-key",
+            "events": [
+              {
+                "event_properties": {
+                  "plan": "pro"
+                },
+                "event_type": "purchase",
+                "insert_id": "1734cffc-5461-555f-8202-4900a59cee41",
+                "user_id": "example-user"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "tracked",
+        "failureKind": "",
+        "output": {
+          "eventType": "purchase",
+          "insertID": "1734cffc-5461-555f-8202-4900a59cee41",
+          "userID": "example-user"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1734cffc-5461-555f-8202-4900a59cee41",
+      "input": {
+        "eventProperties": {
+          "plan": "pro"
+        },
+        "eventType": "purchase",
+        "userID": "example-user"
+      },
+      "name": "trackEvent-success",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "1734cffc-5461-555f-8202-4900a59cee41",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/httpapi",
+          "requestBody": {
+            "api_key": "sample-amplitude-api-key",
+            "events": [
+              {
+                "event_properties": {
+                  "plan": "pro"
+                },
+                "event_type": "purchase",
+                "insert_id": "1734cffc-5461-555f-8202-4900a59cee41",
+                "user_id": "example-user"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "eventType": "",
+          "insertID": "",
+          "userID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1734cffc-5461-555f-8202-4900a59cee41",
+      "input": {
+        "eventProperties": {
+          "plan": "pro"
+        },
+        "eventType": "purchase",
+        "userID": "example-user"
+      },
+      "name": "trackEvent-rejected",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "1734cffc-5461-555f-8202-4900a59cee41",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "eventType": "",
+          "insertID": "",
+          "userID": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1734cffc-5461-555f-8202-4900a59cee41",
+      "input": {
+        "eventProperties": {},
+        "eventType": "",
+        "userID": ""
+      },
+      "name": "trackEvent-defect",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "1734cffc-5461-555f-8202-4900a59cee41",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"events_ingested\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/httpapi",
+          "requestBody": {
+            "api_key": "sample-amplitude-api-key",
+            "events": [
+              {
+                "event_properties": {
+                  "plan": "pro"
+                },
+                "event_type": "purchase",
+                "insert_id": "1734cffc-5461-555f-8202-4900a59cee41",
+                "user_id": "example-user"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1734cffc-5461-555f-8202-4900a59cee41",
+      "input": {
+        "eventProperties": {
+          "plan": "pro"
+        },
+        "eventType": "purchase",
+        "userID": "example-user"
+      },
+      "name": "trackEvent-malformed",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "1734cffc-5461-555f-8202-4900a59cee41",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/httpapi",
+          "requestBody": {
+            "api_key": "sample-amplitude-api-key",
+            "events": [
+              {
+                "event_properties": {
+                  "plan": "pro"
+                },
+                "event_type": "purchase",
+                "insert_id": "1734cffc-5461-555f-8202-4900a59cee41",
+                "user_id": "example-user"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1734cffc-5461-555f-8202-4900a59cee41",
+      "input": {
+        "eventProperties": {
+          "plan": "pro"
+        },
+        "eventType": "purchase",
+        "userID": "example-user"
+      },
+      "name": "trackEvent-rate-limit",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "1734cffc-5461-555f-8202-4900a59cee41",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/httpapi",
+          "requestBody": {
+            "api_key": "sample-amplitude-api-key",
+            "events": [
+              {
+                "event_properties": {
+                  "plan": "pro"
+                },
+                "event_type": "purchase",
+                "insert_id": "1734cffc-5461-555f-8202-4900a59cee41",
+                "user_id": "example-user"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1734cffc-5461-555f-8202-4900a59cee41",
+      "input": {
+        "eventProperties": {
+          "plan": "pro"
+        },
+        "eventType": "purchase",
+        "userID": "example-user"
+      },
+      "name": "trackEvent-service-unavailable",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "1734cffc-5461-555f-8202-4900a59cee41",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"failure\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/httpapi",
+          "requestBody": {
+            "api_key": "sample-amplitude-api-key",
+            "events": [
+              {
+                "event_properties": {
+                  "plan": "pro"
+                },
+                "event_type": "purchase",
+                "insert_id": "1734cffc-5461-555f-8202-4900a59cee41",
+                "user_id": "example-user"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1734cffc-5461-555f-8202-4900a59cee41",
+      "input": {
+        "eventProperties": {
+          "plan": "pro"
+        },
+        "eventType": "purchase",
+        "userID": "example-user"
+      },
+      "name": "trackEvent-server-failure",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "1734cffc-5461-555f-8202-4900a59cee41",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/httpapi",
+          "requestBody": {
+            "api_key": "sample-amplitude-api-key",
+            "events": [
+              {
+                "event_properties": {
+                  "plan": "pro"
+                },
+                "event_type": "purchase",
+                "insert_id": "1734cffc-5461-555f-8202-4900a59cee41",
+                "user_id": "example-user"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1734cffc-5461-555f-8202-4900a59cee41",
+      "input": {
+        "eventProperties": {
+          "plan": "pro"
+        },
+        "eventType": "purchase",
+        "userID": "example-user"
+      },
+      "name": "trackEvent-transport",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "bc7ba9b7-b568-59fb-aba2-de145b948983",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "api_key": [
+              "sample-amplitude-api-key"
+            ],
+            "identification": [
+              "{\"user_id\":\"example-user\",\"user_properties\":{\"$set\":{\"plan\":\"pro\"}}}"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/identify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "identified",
+        "failureKind": "",
+        "output": {
+          "propertyName": "plan",
+          "userID": "example-user"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc7ba9b7-b568-59fb-aba2-de145b948983",
+      "input": {
+        "propertyName": "plan",
+        "propertyValue": "pro",
+        "userID": "example-user"
+      },
+      "name": "identifyUser-success",
+      "operation": "identifyUser"
+    },
+    {
+      "callId": "bc7ba9b7-b568-59fb-aba2-de145b948983",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"denied\"}",
+          "form": {
+            "api_key": [
+              "sample-amplitude-api-key"
+            ],
+            "identification": [
+              "{\"user_id\":\"example-user\",\"user_properties\":{\"$set\":{\"plan\":\"pro\"}}}"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/identify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "propertyName": "",
+          "userID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc7ba9b7-b568-59fb-aba2-de145b948983",
+      "input": {
+        "propertyName": "plan",
+        "propertyValue": "pro",
+        "userID": "example-user"
+      },
+      "name": "identifyUser-rejected",
+      "operation": "identifyUser"
+    },
+    {
+      "callId": "bc7ba9b7-b568-59fb-aba2-de145b948983",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "propertyName": "",
+          "userID": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc7ba9b7-b568-59fb-aba2-de145b948983",
+      "input": {
+        "propertyName": "",
+        "propertyValue": "",
+        "userID": ""
+      },
+      "name": "identifyUser-defect",
+      "operation": "identifyUser"
+    },
+    {
+      "callId": "bc7ba9b7-b568-59fb-aba2-de145b948983",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "form": {
+            "api_key": [
+              "sample-amplitude-api-key"
+            ],
+            "identification": [
+              "{\"user_id\":\"example-user\",\"user_properties\":{\"$set\":{\"plan\":\"pro\"}}}"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/identify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc7ba9b7-b568-59fb-aba2-de145b948983",
+      "input": {
+        "propertyName": "plan",
+        "propertyValue": "pro",
+        "userID": "example-user"
+      },
+      "name": "identifyUser-rate-limit",
+      "operation": "identifyUser"
+    },
+    {
+      "callId": "bc7ba9b7-b568-59fb-aba2-de145b948983",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "form": {
+            "api_key": [
+              "sample-amplitude-api-key"
+            ],
+            "identification": [
+              "{\"user_id\":\"example-user\",\"user_properties\":{\"$set\":{\"plan\":\"pro\"}}}"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/identify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc7ba9b7-b568-59fb-aba2-de145b948983",
+      "input": {
+        "propertyName": "plan",
+        "propertyValue": "pro",
+        "userID": "example-user"
+      },
+      "name": "identifyUser-service-unavailable",
+      "operation": "identifyUser"
+    },
+    {
+      "callId": "bc7ba9b7-b568-59fb-aba2-de145b948983",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"failure\"}",
+          "form": {
+            "api_key": [
+              "sample-amplitude-api-key"
+            ],
+            "identification": [
+              "{\"user_id\":\"example-user\",\"user_properties\":{\"$set\":{\"plan\":\"pro\"}}}"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/identify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc7ba9b7-b568-59fb-aba2-de145b948983",
+      "input": {
+        "propertyName": "plan",
+        "propertyValue": "pro",
+        "userID": "example-user"
+      },
+      "name": "identifyUser-server-failure",
+      "operation": "identifyUser"
+    },
+    {
+      "callId": "bc7ba9b7-b568-59fb-aba2-de145b948983",
+      "exchanges": [
+        {
+          "form": {
+            "api_key": [
+              "sample-amplitude-api-key"
+            ],
+            "identification": [
+              "{\"user_id\":\"example-user\",\"user_properties\":{\"$set\":{\"plan\":\"pro\"}}}"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/identify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc7ba9b7-b568-59fb-aba2-de145b948983",
+      "input": {
+        "propertyName": "plan",
+        "propertyValue": "pro",
+        "userID": "example-user"
+      },
+      "name": "identifyUser-transport",
+      "operation": "identifyUser"
+    },
+    {
       "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
       "exchanges": [
         {

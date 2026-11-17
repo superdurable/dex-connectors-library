@@ -1,10 +1,11 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package amplitude searches Amplitude project users in Dex Flows.
+// Package amplitude searches users and sends analytics data in Dex Flows.
 package amplitude
 
 import (
+	"bytes"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -30,6 +31,7 @@ func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{ht
 // Client holds immutable provider settings and resolves credentials per call.
 type Client struct {
 	baseURL          string
+	ingestionURL     string
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
@@ -48,7 +50,14 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Amplitude API URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	ingestionURL := strings.TrimRight(baseURL, "/")
+	switch ingestionURL {
+	case "https://amplitude.com":
+		ingestionURL = "https://api2.amplitude.com"
+	case "https://analytics.eu.amplitude.com":
+		ingestionURL = "https://api.eu.amplitude.com"
+	}
+	client := &Client{baseURL: baseURL, ingestionURL: ingestionURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Amplitude client option is required")
@@ -94,4 +103,21 @@ func (client *Client) get(call sdkgo.Call, user string) providerResponse {
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+}
+
+func (client *Client) post(call sdkgo.Call, path string, contentType string, body []byte) providerResponse {
+	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.ingestionURL+path, bytes.NewReader(body))
+	if err != nil {
+		return providerResponse{err: errRequest}
+	}
+	request.Header.Set("Content-Type", contentType)
+	request.Header.Set("Accept", "application/json")
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return providerResponse{err: errRequest}
+	}
+	defer func() { _ = response.Body.Close() }()
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	return providerResponse{body: responseBody, status: response.StatusCode, retryAfter: retryAfter, err: err}
 }

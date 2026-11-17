@@ -1,6 +1,6 @@
 # Amplitude user search Flow
 
-This runnable Flow calls `searchUsers` through the static `amplitude` connection. It persists the matched user IDs in an Attribute and exposes them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Worker registers `searchUsers` and `trackEvent` Flows through the static `amplitude` connection. Each persists its result in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -8,6 +8,7 @@ From `connectors/amplitude/go`, run:
 
 ```bash
 dexcli visualize ./examples/user-search/flow/workflow.go --schema-version 2.0 --json --out /tmp/amplitude-user-search-fdg
+dexcli visualize ./examples/user-search/flow/track_event_flow.go --schema-version 2.0 --lint app --json --out /tmp/amplitude-track-event-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.
@@ -22,6 +23,6 @@ With the project's `DEX_PROJECT_*` environment set, run from `connectors/amplitu
 GOWORK=off go run ./examples/user-search
 ```
 
-Start `AmplitudeUserSearch` with a unique Flow ID and input `{"user":"example-user"}`. Replace the sample with a user ID or prefix from Amplitude User Lookup. The Worker connects to Dex Server without an inbound listener.
+Start `AmplitudeUserSearch` with a unique Flow ID and input `{"user":"example-user"}`. Replace the sample with a user ID or prefix from Amplitude User Lookup. Start `AmplitudeTrackEvent` with `{"userID":"example-user","eventType":"purchase","eventProperties":{"plan":"pro"}}`, replacing the sample user and event. The Worker connects to Dex Server without an inbound listener.
 
 CI runs the fixture-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real Amplitude authorization and user search remain unverified.
