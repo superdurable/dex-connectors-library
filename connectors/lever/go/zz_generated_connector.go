@@ -54,6 +54,11 @@ type Operations interface {
 	CreateNote() sdkgo.Mutation[CreateNoteInput, NoteIdentity]
 	UpdateNote() sdkgo.Mutation[UpdateNoteInput, NoteIdentity]
 	DeleteNote() sdkgo.Mutation[DeleteNoteInput, NoteIdentity]
+	GetInterview() sdkgo.Query[GetInterviewInput, InterviewSummary]
+	ListInterviews() sdkgo.Query[ListInterviewsInput, InterviewsPage]
+	CreateInterview() sdkgo.Mutation[CreateInterviewInput, InterviewSummary]
+	UpdateInterview() sdkgo.Mutation[UpdateInterviewInput, InterviewSummary]
+	DeleteInterview() sdkgo.Mutation[DeleteInterviewInput, InterviewIdentity]
 }
 
 type clientOperations struct{ client *Client }
@@ -99,6 +104,21 @@ func (operations clientOperations) UpdateNote() sdkgo.Mutation[UpdateNoteInput, 
 }
 func (operations clientOperations) DeleteNote() sdkgo.Mutation[DeleteNoteInput, NoteIdentity] {
 	return operations.client.DeleteNote()
+}
+func (operations clientOperations) GetInterview() sdkgo.Query[GetInterviewInput, InterviewSummary] {
+	return operations.client.GetInterview()
+}
+func (operations clientOperations) ListInterviews() sdkgo.Query[ListInterviewsInput, InterviewsPage] {
+	return operations.client.ListInterviews()
+}
+func (operations clientOperations) CreateInterview() sdkgo.Mutation[CreateInterviewInput, InterviewSummary] {
+	return operations.client.CreateInterview()
+}
+func (operations clientOperations) UpdateInterview() sdkgo.Mutation[UpdateInterviewInput, InterviewSummary] {
+	return operations.client.UpdateInterview()
+}
+func (operations clientOperations) DeleteInterview() sdkgo.Mutation[DeleteInterviewInput, InterviewIdentity] {
+	return operations.client.DeleteInterview()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1268,6 +1288,368 @@ func NewDeleteNoteStep[IN any](config DeleteNoteStepConfig[IN]) sdkgo.MutationSt
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteNoteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetInterviewBranchFound sdkgo.BranchID = "found"
+const GetInterviewBranchNotFound sdkgo.BranchID = "notFound"
+const GetInterviewBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetInterviewBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetInterviewBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetInterviewDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getInterview"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetInterviewBranchFound, Description: "Lever returned the interview."},
+		{ID: GetInterviewBranchNotFound, Description: "Lever did not expose the interview.", Optional: true},
+		{ID: GetInterviewBranchProviderRejected, Description: "Lever rejected the read.", Optional: true},
+		{ID: GetInterviewBranchInvalidResponse, Description: "Lever returned invalid interview JSON.", Optional: true},
+		{ID: GetInterviewBranchDefect, Description: "Interview or opportunity ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetInterviewResult = sdkgo.QueryResult[InterviewSummary]
+
+type GetInterviewStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=lever"`
+	operationID                    struct{}                                            `connector:"operationId=getInterview"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetInterviewInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetInterviewResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetInterviewResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetInterviewResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetInterviewResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetInterviewResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InterviewSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewGetInterviewStep[IN any](config GetInterviewStepConfig[IN]) sdkgo.QueryStep[IN, GetInterviewInput, InterviewSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetInterviewInput, InterviewSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetInterview(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetInterviewResult] {
+			branches := make([]sdkgo.BranchTarget[GetInterviewResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetInterviewBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetInterviewBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetInterviewBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetInterviewBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetInterviewBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListInterviewsBranchListed sdkgo.BranchID = "listed"
+const ListInterviewsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListInterviewsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListInterviewsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListInterviewsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listInterviews"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListInterviewsBranchListed, Description: "Lever returned the interviews."},
+		{ID: ListInterviewsBranchProviderRejected, Description: "Lever rejected the read.", Optional: true},
+		{ID: ListInterviewsBranchInvalidResponse, Description: "Lever returned invalid interviews JSON.", Optional: true},
+		{ID: ListInterviewsBranchDefect, Description: "Opportunity ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListInterviewsResult = sdkgo.QueryResult[InterviewsPage]
+
+type ListInterviewsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=lever"`
+	operationID                    struct{}                                          `connector:"operationId=listInterviews"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListInterviewsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListInterviewsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListInterviewsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListInterviewsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListInterviewsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InterviewsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewListInterviewsStep[IN any](config ListInterviewsStepConfig[IN]) sdkgo.QueryStep[IN, ListInterviewsInput, InterviewsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListInterviewsInput, InterviewsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListInterviews(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListInterviewsResult] {
+			branches := make([]sdkgo.BranchTarget[ListInterviewsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListInterviewsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListInterviewsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListInterviewsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListInterviewsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateInterviewBranchCreated sdkgo.BranchID = "created"
+const CreateInterviewBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateInterviewBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateInterviewBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateInterviewDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createInterview"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateInterviewBranchCreated, Description: "Lever confirmed the interview ID."},
+		{ID: CreateInterviewBranchProviderRejected, Description: "Lever rejected scheduling.", Optional: true},
+		{ID: CreateInterviewBranchUncertain, Description: "The interview may exist but its ID was not confirmed at the send cap.", Optional: true},
+		{ID: CreateInterviewBranchDefect, Description: "Input or dispatch checkpoint is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateInterviewResult = sdkgo.MutationResult[InterviewSummary]
+
+type CreateInterviewStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=lever"`
+	operationID                       struct{}                                               `connector:"operationId=createInterview"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateInterviewInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateInterviewResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateInterviewResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateInterviewResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateInterviewResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InterviewSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateInterviewStep[IN any](config CreateInterviewStepConfig[IN]) sdkgo.MutationStep[IN, CreateInterviewInput, InterviewSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateInterviewInput, InterviewSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateInterview(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateInterviewResult] {
+			branches := make([]sdkgo.BranchTarget[CreateInterviewResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateInterviewBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateInterviewBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateInterviewBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateInterviewBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateInterviewBranchUpdated sdkgo.BranchID = "updated"
+const UpdateInterviewBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateInterviewBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateInterviewBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateInterviewDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateInterview"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateInterviewBranchUpdated, Description: "Lever confirmed the replacement."},
+		{ID: UpdateInterviewBranchNotFound, Description: "Lever did not expose the interview.", Optional: true},
+		{ID: UpdateInterviewBranchProviderRejected, Description: "Lever rejected the replacement.", Optional: true},
+		{ID: UpdateInterviewBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateInterviewResult = sdkgo.MutationResult[InterviewSummary]
+
+type UpdateInterviewStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=lever"`
+	operationID                       struct{}                                               `connector:"operationId=updateInterview"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateInterviewInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateInterviewResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateInterviewResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateInterviewResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateInterviewResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InterviewSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateInterviewStep[IN any](config UpdateInterviewStepConfig[IN]) sdkgo.MutationStep[IN, UpdateInterviewInput, InterviewSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateInterviewInput, InterviewSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateInterview(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateInterviewResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateInterviewResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateInterviewBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateInterviewBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateInterviewBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateInterviewBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteInterviewBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteInterviewBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteInterviewBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteInterviewDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteInterview"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteInterviewBranchDeleted, Description: "The interview is absent."},
+		{ID: DeleteInterviewBranchProviderRejected, Description: "Lever rejected deletion.", Optional: true},
+		{ID: DeleteInterviewBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteInterviewResult = sdkgo.MutationResult[InterviewIdentity]
+
+type DeleteInterviewStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=lever"`
+	operationID                       struct{}                                                `connector:"operationId=deleteInterview"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteInterviewInput                           `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteInterviewResult]                     `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteInterviewResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteInterviewResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InterviewIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteInterviewStep[IN any](config DeleteInterviewStepConfig[IN]) sdkgo.MutationStep[IN, DeleteInterviewInput, InterviewIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteInterviewInput, InterviewIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteInterview(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteInterviewResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteInterviewResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteInterviewBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteInterviewBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteInterviewBranchDefect))
 			}
 			return branches
 		}(),

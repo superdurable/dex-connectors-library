@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{opportunityinspection.NewFlow(connection), opportunityinspection.NewPostingListFlow(connection), opportunityinspection.NewNoteListFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{opportunityinspection.NewFlow(connection), opportunityinspection.NewPostingListFlow(connection), opportunityinspection.NewNoteListFlow(connection), opportunityinspection.NewInterviewListFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Lever opportunity inspection Flow: %w", err)
 	}

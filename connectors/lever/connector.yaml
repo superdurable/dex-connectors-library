@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: lever
   displayName: Lever
-  description: Read and manage Lever opportunities, postings, and notes through the Data API.
+  description: Read and manage Lever opportunities, postings, notes, and interviews through the Data API.
   company: Lever
   categories: [hr-recruiting]
   version: v0.2.0
@@ -52,8 +52,8 @@ spec:
     guide:
       startURL: https://hire.lever.co
       steps:
-        - In Lever, open Settings > Integrations and API > API Credentials, create an API key with read access to opportunities, postings, and notes and write access if using Go mutations, then copy the opaque secret into Dex Web api_key. Blank is invalid; revoke or rotate it on the same page.
-        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret opportunity, posting, or note UID in Lever or the respective list operation and pass it as the relevant ID; blank is invalid. Confidential records require corresponding account access.
+        - In Lever, open Settings > Integrations and API > API Credentials, create an API key with read access to opportunities, postings, notes, and interviews and write access if using Go mutations, then copy the opaque secret into Dex Web api_key. Blank is invalid; revoke or rotate it on the same page.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret opportunity, posting, note, or interview UID in Lever or the respective list operation and pass it as the relevant ID; blank is invalid. Confidential records require corresponding account access.
   operations:
     - name: listOpportunities
       goName: ListOpportunities
@@ -344,3 +344,103 @@ spec:
           default: true
           description: The note is absent.
           output: {id: b1dbbcfe-281c-46a0-8f51-57049158d3f3}
+    - name: getInterview
+      goName: GetInterview
+      inputType: GetInterviewInput
+      outputType: InterviewSummary
+      kind: query
+      description: Read schedule metadata for one interview.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Lever returned the interview.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the interview., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned invalid interview JSON., optional: true}
+        - {id: defect, goName: Defect, description: Interview or opportunity ID is invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One interview is visible.
+          output: {id: 6ff55c8e-fe04-4eb4-835a-630b1c0da421, panelId: fdb313e8-13c5-47de-9e51-6a21a4d76ff6, date: 1794906000000, durationMinutes: 30}
+    - name: listInterviews
+      goName: ListInterviews
+      inputType: ListInterviewsInput
+      outputType: InterviewsPage
+      kind: query
+      description: List interview schedule metadata for one opportunity.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Lever returned the interviews.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned invalid interviews JSON., optional: true}
+        - {id: defect, goName: Defect, description: Opportunity ID is invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One interview is visible.
+          output: {interviews: [{id: 6ff55c8e-fe04-4eb4-835a-630b1c0da421, panelId: fdb313e8-13c5-47de-9e51-6a21a4d76ff6, date: 1794906000000, durationMinutes: 30}]}
+    - name: createInterview
+      goName: CreateInterview
+      inputType: CreateInterviewInput
+      outputType: InterviewSummary
+      kind: mutation
+      description: Schedule an interview on an externally managed panel.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Lever confirmed the interview ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected scheduling., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The interview may exist but its ID was not confirmed at the send cap., optional: true}
+        - {id: defect, goName: Defect, description: Input or dispatch checkpoint is invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Lever scheduled one interview.
+          output: {id: 6ff55c8e-fe04-4eb4-835a-630b1c0da421, panelId: fdb313e8-13c5-47de-9e51-6a21a4d76ff6, date: 1794906000000, durationMinutes: 30}
+    - name: updateInterview
+      goName: UpdateInterview
+      inputType: UpdateInterviewInput
+      outputType: InterviewSummary
+      kind: mutation
+      description: Replace the schedule and metadata of an externally managed interview.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Lever confirmed the replacement.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the interview., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the replacement., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Lever replaced one interview.
+          output: {id: 6ff55c8e-fe04-4eb4-835a-630b1c0da421, panelId: fdb313e8-13c5-47de-9e51-6a21a4d76ff6, date: 1794906000000, durationMinutes: 30}
+    - name: deleteInterview
+      goName: DeleteInterview
+      inputType: DeleteInterviewInput
+      outputType: InterviewIdentity
+      kind: mutation
+      description: Delete an interview from an externally managed panel.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The interview is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: The interview is absent.
+          output: {id: 6ff55c8e-fe04-4eb4-835a-630b1c0da421}

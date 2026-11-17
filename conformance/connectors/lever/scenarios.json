@@ -4627,6 +4627,1805 @@
       },
       "name": "deleteNote-transportFailure",
       "operation": "deleteNote"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"6ff55c8e-fe04-4eb4-835a-630b1c0da421\",\"panel\":\"fdb313e8-13c5-47de-9e51-6a21a4d76ff6\",\"date\":1794906000000,\"duration\":30}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "date": 1794906000000,
+          "durationMinutes": 30,
+          "id": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "getInterview-found",
+      "operation": "getInterview"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "date": 0,
+          "durationMinutes": 0,
+          "id": "",
+          "panelId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "getInterview-notFound",
+      "operation": "getInterview"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "date": 0,
+          "durationMinutes": 0,
+          "id": "",
+          "panelId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "getInterview-providerRejected",
+      "operation": "getInterview"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"bad\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "date": 0,
+          "durationMinutes": 0,
+          "id": "",
+          "panelId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "getInterview-invalidResponse",
+      "operation": "getInterview"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "date": 0,
+          "durationMinutes": 0,
+          "id": "",
+          "panelId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "opportunityId": "bad"
+      },
+      "name": "getInterview-defect",
+      "operation": "getInterview"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "getInterview-final429",
+      "operation": "getInterview"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "getInterview-final503",
+      "operation": "getInterview"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "getInterview-transportFailure",
+      "operation": "getInterview"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"6ff55c8e-fe04-4eb4-835a-630b1c0da421\",\"panel\":\"fdb313e8-13c5-47de-9e51-6a21a4d76ff6\",\"date\":1794906000000,\"duration\":30}],\"hasNext\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "interviews": [
+            {
+              "date": 1794906000000,
+              "durationMinutes": 30,
+              "id": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+              "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "listInterviews-listed",
+      "operation": "listInterviews"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "interviews": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "listInterviews-providerRejected",
+      "operation": "listInterviews"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "interviews": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "listInterviews-invalidResponse",
+      "operation": "listInterviews"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "interviews": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "bad"
+      },
+      "name": "listInterviews-defect",
+      "operation": "listInterviews"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "listInterviews-final429",
+      "operation": "listInterviews"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "listInterviews-final503",
+      "operation": "listInterviews"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "listInterviews-transportFailure",
+      "operation": "listInterviews"
+    },
+    {
+      "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"data\":[{\"id\":\"6ff55c8e-fe04-4eb4-835a-630b1c0da421\",\"panel\":\"fdb313e8-13c5-47de-9e51-6a21a4d76ff6\",\"date\":1794906000000,\"duration\":30}],\"hasNext\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+          "providerId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "date": 1794906000000,
+          "durationMinutes": 30,
+          "id": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "createInterview-created",
+      "operation": "createInterview"
+    },
+    {
+      "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "date": 0,
+          "durationMinutes": 0,
+          "id": "",
+          "panelId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "createInterview-providerRejected",
+      "operation": "createInterview"
+    },
+    {
+      "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "date": 0,
+          "durationMinutes": 0,
+          "id": "",
+          "panelId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "bad",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "createInterview-defect",
+      "operation": "createInterview"
+    },
+    {
+      "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "createInterview-final429",
+      "operation": "createInterview"
+    },
+    {
+      "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "createInterview-final503",
+      "operation": "createInterview"
+    },
+    {
+      "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "createInterview-transportFailure",
+      "operation": "createInterview"
+    },
+    {
+      "attempts": 3,
+      "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "date": 0,
+          "durationMinutes": 0,
+          "id": "",
+          "panelId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createInterview-uncertain",
+      "operation": "createInterview"
+    },
+    {
+      "callId": "e2e0fced-1b2b-5003-9d28-3d7833ada6b3",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"data\":[{\"id\":\"6ff55c8e-fe04-4eb4-835a-630b1c0da421\",\"panel\":\"fdb313e8-13c5-47de-9e51-6a21a4d76ff6\",\"date\":1794906000000,\"duration\":30}],\"hasNext\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "date": 1794906000000,
+          "durationMinutes": 30,
+          "id": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e2e0fced-1b2b-5003-9d28-3d7833ada6b3",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "updateInterview-updated",
+      "operation": "updateInterview"
+    },
+    {
+      "callId": "e2e0fced-1b2b-5003-9d28-3d7833ada6b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "date": 0,
+          "durationMinutes": 0,
+          "id": "",
+          "panelId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e2e0fced-1b2b-5003-9d28-3d7833ada6b3",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "updateInterview-notFound",
+      "operation": "updateInterview"
+    },
+    {
+      "callId": "e2e0fced-1b2b-5003-9d28-3d7833ada6b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "date": 0,
+          "durationMinutes": 0,
+          "id": "",
+          "panelId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e2e0fced-1b2b-5003-9d28-3d7833ada6b3",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "updateInterview-providerRejected",
+      "operation": "updateInterview"
+    },
+    {
+      "callId": "e2e0fced-1b2b-5003-9d28-3d7833ada6b3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "date": 0,
+          "durationMinutes": 0,
+          "id": "",
+          "panelId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e2e0fced-1b2b-5003-9d28-3d7833ada6b3",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "bad",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "updateInterview-defect",
+      "operation": "updateInterview"
+    },
+    {
+      "callId": "e2e0fced-1b2b-5003-9d28-3d7833ada6b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e2e0fced-1b2b-5003-9d28-3d7833ada6b3",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "updateInterview-final429",
+      "operation": "updateInterview"
+    },
+    {
+      "callId": "e2e0fced-1b2b-5003-9d28-3d7833ada6b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e2e0fced-1b2b-5003-9d28-3d7833ada6b3",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "updateInterview-final503",
+      "operation": "updateInterview"
+    },
+    {
+      "callId": "e2e0fced-1b2b-5003-9d28-3d7833ada6b3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e2e0fced-1b2b-5003-9d28-3d7833ada6b3",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "updateInterview-transportFailure",
+      "operation": "updateInterview"
+    },
+    {
+      "callId": "14b366c5-cef7-52a1-a693-357fec98b277",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "6ff55c8e-fe04-4eb4-835a-630b1c0da421"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14b366c5-cef7-52a1-a693-357fec98b277",
+      "input": {
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+      },
+      "name": "deleteInterview-deleted",
+      "operation": "deleteInterview"
+    },
+    {
+      "callId": "14b366c5-cef7-52a1-a693-357fec98b277",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14b366c5-cef7-52a1-a693-357fec98b277",
+      "input": {
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+      },
+      "name": "deleteInterview-providerRejected",
+      "operation": "deleteInterview"
+    },
+    {
+      "callId": "14b366c5-cef7-52a1-a693-357fec98b277",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14b366c5-cef7-52a1-a693-357fec98b277",
+      "input": {
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "opportunityId": "bad",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+      },
+      "name": "deleteInterview-defect",
+      "operation": "deleteInterview"
+    },
+    {
+      "callId": "14b366c5-cef7-52a1-a693-357fec98b277",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14b366c5-cef7-52a1-a693-357fec98b277",
+      "input": {
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+      },
+      "name": "deleteInterview-final429",
+      "operation": "deleteInterview"
+    },
+    {
+      "callId": "14b366c5-cef7-52a1-a693-357fec98b277",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14b366c5-cef7-52a1-a693-357fec98b277",
+      "input": {
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+      },
+      "name": "deleteInterview-final503",
+      "operation": "deleteInterview"
+    },
+    {
+      "callId": "14b366c5-cef7-52a1-a693-357fec98b277",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews/6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14b366c5-cef7-52a1-a693-357fec98b277",
+      "input": {
+        "interviewId": "6ff55c8e-fe04-4eb4-835a-630b1c0da421",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+      },
+      "name": "deleteInterview-transportFailure",
+      "operation": "deleteInterview"
     }
   ],
   "schemaVersion": 1

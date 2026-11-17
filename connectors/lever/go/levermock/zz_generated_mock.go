@@ -32,6 +32,11 @@ type Mock struct {
 	createNote                 *connectormock.Mutation[lever.CreateNoteInput, lever.NoteIdentity]
 	updateNote                 *connectormock.Mutation[lever.UpdateNoteInput, lever.NoteIdentity]
 	deleteNote                 *connectormock.Mutation[lever.DeleteNoteInput, lever.NoteIdentity]
+	getInterview               *connectormock.Query[lever.GetInterviewInput, lever.InterviewSummary]
+	listInterviews             *connectormock.Query[lever.ListInterviewsInput, lever.InterviewsPage]
+	createInterview            *connectormock.Mutation[lever.CreateInterviewInput, lever.InterviewSummary]
+	updateInterview            *connectormock.Mutation[lever.UpdateInterviewInput, lever.InterviewSummary]
+	deleteInterview            *connectormock.Mutation[lever.DeleteInterviewInput, lever.InterviewIdentity]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -53,6 +58,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		createNote:                 connectormock.NewMutation[lever.CreateNoteInput, lever.NoteIdentity](t, lever.CreateNoteDefinition),
 		updateNote:                 connectormock.NewMutation[lever.UpdateNoteInput, lever.NoteIdentity](t, lever.UpdateNoteDefinition),
 		deleteNote:                 connectormock.NewMutation[lever.DeleteNoteInput, lever.NoteIdentity](t, lever.DeleteNoteDefinition),
+		getInterview:               connectormock.NewQuery[lever.GetInterviewInput, lever.InterviewSummary](t, lever.GetInterviewDefinition),
+		listInterviews:             connectormock.NewQuery[lever.ListInterviewsInput, lever.InterviewsPage](t, lever.ListInterviewsDefinition),
+		createInterview:            connectormock.NewMutation[lever.CreateInterviewInput, lever.InterviewSummary](t, lever.CreateInterviewDefinition),
+		updateInterview:            connectormock.NewMutation[lever.UpdateInterviewInput, lever.InterviewSummary](t, lever.UpdateInterviewDefinition),
+		deleteInterview:            connectormock.NewMutation[lever.DeleteInterviewInput, lever.InterviewIdentity](t, lever.DeleteInterviewDefinition),
 	}
 	mock.listOpportunities.Default(ListOpportunitiesDefault())
 	mock.getOpportunity.Default(GetOpportunityDefault())
@@ -68,6 +78,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createNote.Default(CreateNoteDefault())
 	mock.updateNote.Default(UpdateNoteDefault())
 	mock.deleteNote.Default(DeleteNoteDefault())
+	mock.getInterview.Default(GetInterviewDefault())
+	mock.listInterviews.Default(ListInterviewsDefault())
+	mock.createInterview.Default(CreateInterviewDefault())
+	mock.updateInterview.Default(UpdateInterviewDefault())
+	mock.deleteInterview.Default(DeleteInterviewDefault())
 	connection, err := lever.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "lever", Name: connectionName})
 	if err != nil {
 		t.Fatalf("lever mock connection: %v", err)
@@ -149,6 +164,31 @@ func (mock *Mock) DeleteNote() *connectormock.Mutation[lever.DeleteNoteInput, le
 	return mock.deleteNote
 }
 
+// GetInterview returns the getInterview script.
+func (mock *Mock) GetInterview() *connectormock.Query[lever.GetInterviewInput, lever.InterviewSummary] {
+	return mock.getInterview
+}
+
+// ListInterviews returns the listInterviews script.
+func (mock *Mock) ListInterviews() *connectormock.Query[lever.ListInterviewsInput, lever.InterviewsPage] {
+	return mock.listInterviews
+}
+
+// CreateInterview returns the createInterview script.
+func (mock *Mock) CreateInterview() *connectormock.Mutation[lever.CreateInterviewInput, lever.InterviewSummary] {
+	return mock.createInterview
+}
+
+// UpdateInterview returns the updateInterview script.
+func (mock *Mock) UpdateInterview() *connectormock.Mutation[lever.UpdateInterviewInput, lever.InterviewSummary] {
+	return mock.updateInterview
+}
+
+// DeleteInterview returns the deleteInterview script.
+func (mock *Mock) DeleteInterview() *connectormock.Mutation[lever.DeleteInterviewInput, lever.InterviewIdentity] {
+	return mock.deleteInterview
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOpportunities() sdkgo.Query[lever.ListOpportunitiesInput, lever.OpportunitiesPage] {
@@ -192,6 +232,21 @@ func (operations mockOperations) UpdateNote() sdkgo.Mutation[lever.UpdateNoteInp
 }
 func (operations mockOperations) DeleteNote() sdkgo.Mutation[lever.DeleteNoteInput, lever.NoteIdentity] {
 	return operations.mock.deleteNote
+}
+func (operations mockOperations) GetInterview() sdkgo.Query[lever.GetInterviewInput, lever.InterviewSummary] {
+	return operations.mock.getInterview
+}
+func (operations mockOperations) ListInterviews() sdkgo.Query[lever.ListInterviewsInput, lever.InterviewsPage] {
+	return operations.mock.listInterviews
+}
+func (operations mockOperations) CreateInterview() sdkgo.Mutation[lever.CreateInterviewInput, lever.InterviewSummary] {
+	return operations.mock.createInterview
+}
+func (operations mockOperations) UpdateInterview() sdkgo.Mutation[lever.UpdateInterviewInput, lever.InterviewSummary] {
+	return operations.mock.updateInterview
+}
+func (operations mockOperations) DeleteInterview() sdkgo.Mutation[lever.DeleteInterviewInput, lever.InterviewIdentity] {
+	return operations.mock.deleteInterview
 }
 
 // ListOpportunitiesListed selects the listed branch: Lever returned the opportunity page.
@@ -699,3 +754,183 @@ func DeleteNoteDeletedDefault() connectormock.Case[lever.NoteIdentity] {
 
 // DeleteNoteDefault is the manifest default, deletedDefault, which New installs.
 func DeleteNoteDefault() connectormock.Case[lever.NoteIdentity] { return DeleteNoteDeletedDefault() }
+
+// GetInterviewFound selects the found branch: Lever returned the interview.
+func GetInterviewFound(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.GetInterviewBranchFound, value, failure)
+}
+
+// GetInterviewNotFound selects the notFound branch: Lever did not expose the interview.
+func GetInterviewNotFound(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.GetInterviewBranchNotFound, value, failure)
+}
+
+// GetInterviewProviderRejected selects the providerRejected branch: Lever rejected the read.
+func GetInterviewProviderRejected(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.GetInterviewBranchProviderRejected, value, failure)
+}
+
+// GetInterviewInvalidResponse selects the invalidResponse branch: Lever returned invalid interview JSON.
+func GetInterviewInvalidResponse(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.GetInterviewBranchInvalidResponse, value, failure)
+}
+
+// GetInterviewDefect selects the defect branch: Interview or opportunity ID is invalid.
+func GetInterviewDefect(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.GetInterviewBranchDefect, value, failure)
+}
+
+// GetInterviewRetry asks Dex to retry the getInterview Step, after the delay when it is positive.
+func GetInterviewRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Retry[lever.InterviewSummary](failure, after)
+}
+
+// GetInterviewFoundDefault is the manifest mock foundDefault: One interview is visible.
+func GetInterviewFoundDefault() connectormock.Case[lever.InterviewSummary] {
+	value := connectormock.MustDecodeOutput[lever.InterviewSummary](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}`)
+	return connectormock.Branch(lever.GetInterviewBranchFound, value, nil)
+}
+
+// GetInterviewDefault is the manifest default, foundDefault, which New installs.
+func GetInterviewDefault() connectormock.Case[lever.InterviewSummary] {
+	return GetInterviewFoundDefault()
+}
+
+// ListInterviewsListed selects the listed branch: Lever returned the interviews.
+func ListInterviewsListed(value lever.InterviewsPage, failure *sdkgo.Failure) connectormock.Case[lever.InterviewsPage] {
+	return connectormock.Branch(lever.ListInterviewsBranchListed, value, failure)
+}
+
+// ListInterviewsProviderRejected selects the providerRejected branch: Lever rejected the read.
+func ListInterviewsProviderRejected(value lever.InterviewsPage, failure *sdkgo.Failure) connectormock.Case[lever.InterviewsPage] {
+	return connectormock.Branch(lever.ListInterviewsBranchProviderRejected, value, failure)
+}
+
+// ListInterviewsInvalidResponse selects the invalidResponse branch: Lever returned invalid interviews JSON.
+func ListInterviewsInvalidResponse(value lever.InterviewsPage, failure *sdkgo.Failure) connectormock.Case[lever.InterviewsPage] {
+	return connectormock.Branch(lever.ListInterviewsBranchInvalidResponse, value, failure)
+}
+
+// ListInterviewsDefect selects the defect branch: Opportunity ID is invalid.
+func ListInterviewsDefect(value lever.InterviewsPage, failure *sdkgo.Failure) connectormock.Case[lever.InterviewsPage] {
+	return connectormock.Branch(lever.ListInterviewsBranchDefect, value, failure)
+}
+
+// ListInterviewsRetry asks Dex to retry the listInterviews Step, after the delay when it is positive.
+func ListInterviewsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.InterviewsPage] {
+	return connectormock.Retry[lever.InterviewsPage](failure, after)
+}
+
+// ListInterviewsListedDefault is the manifest mock listedDefault: One interview is visible.
+func ListInterviewsListedDefault() connectormock.Case[lever.InterviewsPage] {
+	value := connectormock.MustDecodeOutput[lever.InterviewsPage](`{"interviews":[{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}]}`)
+	return connectormock.Branch(lever.ListInterviewsBranchListed, value, nil)
+}
+
+// ListInterviewsDefault is the manifest default, listedDefault, which New installs.
+func ListInterviewsDefault() connectormock.Case[lever.InterviewsPage] {
+	return ListInterviewsListedDefault()
+}
+
+// CreateInterviewCreated selects the created branch: Lever confirmed the interview ID.
+func CreateInterviewCreated(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.CreateInterviewBranchCreated, value, failure)
+}
+
+// CreateInterviewProviderRejected selects the providerRejected branch: Lever rejected scheduling.
+func CreateInterviewProviderRejected(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.CreateInterviewBranchProviderRejected, value, failure)
+}
+
+// CreateInterviewUncertain returns an uncertain createInterview outcome.
+func CreateInterviewUncertain(value lever.InterviewSummary, failure sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateInterviewDefect selects the defect branch: Input or dispatch checkpoint is invalid.
+func CreateInterviewDefect(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.CreateInterviewBranchDefect, value, failure)
+}
+
+// CreateInterviewRetry asks Dex to retry the createInterview Step, after the delay when it is positive.
+func CreateInterviewRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Retry[lever.InterviewSummary](failure, after)
+}
+
+// CreateInterviewCreatedDefault is the manifest mock createdDefault: Lever scheduled one interview.
+func CreateInterviewCreatedDefault() connectormock.Case[lever.InterviewSummary] {
+	value := connectormock.MustDecodeOutput[lever.InterviewSummary](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}`)
+	return connectormock.Branch(lever.CreateInterviewBranchCreated, value, nil)
+}
+
+// CreateInterviewDefault is the manifest default, createdDefault, which New installs.
+func CreateInterviewDefault() connectormock.Case[lever.InterviewSummary] {
+	return CreateInterviewCreatedDefault()
+}
+
+// UpdateInterviewUpdated selects the updated branch: Lever confirmed the replacement.
+func UpdateInterviewUpdated(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.UpdateInterviewBranchUpdated, value, failure)
+}
+
+// UpdateInterviewNotFound selects the notFound branch: Lever did not expose the interview.
+func UpdateInterviewNotFound(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.UpdateInterviewBranchNotFound, value, failure)
+}
+
+// UpdateInterviewProviderRejected selects the providerRejected branch: Lever rejected the replacement.
+func UpdateInterviewProviderRejected(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.UpdateInterviewBranchProviderRejected, value, failure)
+}
+
+// UpdateInterviewDefect selects the defect branch: Input or credentials are invalid.
+func UpdateInterviewDefect(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.UpdateInterviewBranchDefect, value, failure)
+}
+
+// UpdateInterviewRetry asks Dex to retry the updateInterview Step, after the delay when it is positive.
+func UpdateInterviewRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Retry[lever.InterviewSummary](failure, after)
+}
+
+// UpdateInterviewUpdatedDefault is the manifest mock updatedDefault: Lever replaced one interview.
+func UpdateInterviewUpdatedDefault() connectormock.Case[lever.InterviewSummary] {
+	value := connectormock.MustDecodeOutput[lever.InterviewSummary](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}`)
+	return connectormock.Branch(lever.UpdateInterviewBranchUpdated, value, nil)
+}
+
+// UpdateInterviewDefault is the manifest default, updatedDefault, which New installs.
+func UpdateInterviewDefault() connectormock.Case[lever.InterviewSummary] {
+	return UpdateInterviewUpdatedDefault()
+}
+
+// DeleteInterviewDeleted selects the deleted branch: The interview is absent.
+func DeleteInterviewDeleted(value lever.InterviewIdentity, failure *sdkgo.Failure) connectormock.Case[lever.InterviewIdentity] {
+	return connectormock.Branch(lever.DeleteInterviewBranchDeleted, value, failure)
+}
+
+// DeleteInterviewProviderRejected selects the providerRejected branch: Lever rejected deletion.
+func DeleteInterviewProviderRejected(value lever.InterviewIdentity, failure *sdkgo.Failure) connectormock.Case[lever.InterviewIdentity] {
+	return connectormock.Branch(lever.DeleteInterviewBranchProviderRejected, value, failure)
+}
+
+// DeleteInterviewDefect selects the defect branch: Input or credentials are invalid.
+func DeleteInterviewDefect(value lever.InterviewIdentity, failure *sdkgo.Failure) connectormock.Case[lever.InterviewIdentity] {
+	return connectormock.Branch(lever.DeleteInterviewBranchDefect, value, failure)
+}
+
+// DeleteInterviewRetry asks Dex to retry the deleteInterview Step, after the delay when it is positive.
+func DeleteInterviewRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.InterviewIdentity] {
+	return connectormock.Retry[lever.InterviewIdentity](failure, after)
+}
+
+// DeleteInterviewDeletedDefault is the manifest mock deletedDefault: The interview is absent.
+func DeleteInterviewDeletedDefault() connectormock.Case[lever.InterviewIdentity] {
+	value := connectormock.MustDecodeOutput[lever.InterviewIdentity](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421"}`)
+	return connectormock.Branch(lever.DeleteInterviewBranchDeleted, value, nil)
+}
+
+// DeleteInterviewDefault is the manifest default, deletedDefault, which New installs.
+func DeleteInterviewDefault() connectormock.Case[lever.InterviewIdentity] {
+	return DeleteInterviewDeletedDefault()
+}

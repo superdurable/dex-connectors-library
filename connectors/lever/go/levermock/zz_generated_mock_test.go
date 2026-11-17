@@ -72,6 +72,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[lever.NoteIdentity](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3"}`)
 			return err
 		}},
+		{name: "getInterview/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.InterviewSummary](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}`)
+			return err
+		}},
+		{name: "listInterviews/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.InterviewsPage](`{"interviews":[{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}]}`)
+			return err
+		}},
+		{name: "createInterview/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.InterviewSummary](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}`)
+			return err
+		}},
+		{name: "updateInterview/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.InterviewSummary](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}`)
+			return err
+		}},
+		{name: "deleteInterview/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.InterviewIdentity](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -123,5 +143,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteNote().Definition().Operation.OperationID != "deleteNote" {
 		t.Errorf("deleteNote mock has another definition")
+	}
+	if mock.GetInterview().Definition().Operation.OperationID != "getInterview" {
+		t.Errorf("getInterview mock has another definition")
+	}
+	if mock.ListInterviews().Definition().Operation.OperationID != "listInterviews" {
+		t.Errorf("listInterviews mock has another definition")
+	}
+	if mock.CreateInterview().Definition().Operation.OperationID != "createInterview" {
+		t.Errorf("createInterview mock has another definition")
+	}
+	if mock.UpdateInterview().Definition().Operation.OperationID != "updateInterview" {
+		t.Errorf("updateInterview mock has another definition")
+	}
+	if mock.DeleteInterview().Definition().Operation.OperationID != "deleteInterview" {
+		t.Errorf("deleteInterview mock has another definition")
 	}
 }
