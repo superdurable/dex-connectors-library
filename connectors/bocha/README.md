@@ -5,3 +5,5 @@ This connector searches public web pages through [Bocha's official Web Search AP
 Create an API Key at the [Bocha Open Platform](https://open.bochaai.com/api-keys), save it in Dex Web Connections, and start `SearchWeb` with a nonblank `query`. This is a read-only search that may consume provider credit. Retry is limited to one additional attempt because a successful response lost in transit may lead to a duplicate billed call. The connector disables redirects and bounds provider responses.
 
 Run the [example Flow](go/examples/search-web/) using its generated mock or a user-controlled connection. Live search and billing behavior are unverified without a user-controlled Key.
+
+The [Python package](python/README.md) implements the same `searchWeb` Query with Go-recorded provider conformance scenarios and a runnable Dex Flow.
