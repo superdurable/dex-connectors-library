@@ -1,7 +1,6 @@
 # Amazon SQS queue-consumer example
 
-This example runs one operation-only Flow from Dex Web **Start Flow** and uses
-every Amazon SQS operation:
+This example registers two operation-only Flows from Dex Web **Start Flow**. The consumer Flow uses the receive, delete, and visibility operations:
 
 1. `RecordQueueConsumerRequest` records the requested queue;
 2. `ReceiveOrderEvent` calls `sqs.NewReceiveMessagesStep` for one message,
@@ -23,6 +22,8 @@ because SQS may deliver the message again. Rejected, invalid, and defect
 outcomes fail without acknowledging, and the message reappears when its
 visibility timeout ends.
 
+The send Flow calls `sqs.NewSendMessageStep` with `SendMessageInput {queueUrl, body, messageGroupId}` and stores the accepted `SentMessage`. Leave `queueUrl` blank to use the connection's `defaultQueueUrl`. For a FIFO queue, supply a nonempty `messageGroupId`; the connector derives a stable deduplication ID from the Dex call ID. A standard queue may receive duplicate messages after an unknown send outcome, so the connector allows at most three possible sends and then selects `uncertain`.
+
 ## Configure
 
 Follow the [Amazon SQS Connector setup](../../../README.md), then configure the
@@ -39,6 +40,8 @@ dexcli release:
 mkdir -p build
 dexcli visualize ./examples/queue-consumer/flow/workflow.go \
   --schema-version 2.0 --json --out ./build/amazon-sqs-queue-consumer
+dexcli visualize ./examples/queue-consumer/flow/send_message_flow.go \
+  --schema-version 2.0 --lint app --json --out ./build/amazon-sqs-send-message
 ```
 
 Run `dexcli dev` with that build directory. Dex Web or Superverse Studio writes

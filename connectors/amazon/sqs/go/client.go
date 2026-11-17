@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package sqs consumes messages from Amazon SQS standard and FIFO queues, and from SQS-compatible servers
+// Package sqs sends and consumes messages from Amazon SQS standard and FIFO queues, and from SQS-compatible servers
 // such as ElasticMQ, as Dex connector Steps.
 //
 // A consuming Flow receives a batch with ReceiveMessages, processes each message, and then acknowledges it
@@ -14,15 +14,16 @@
 // configured Region. The connector sends each request itself, so it reads every response within its own
 // limits, never follows a redirect, and leaves retries to Dex.
 //
-// Every operation is safe to repeat. A repeated receive of a standard queue may hide further messages,
+// Receive, delete, and visibility operations are safe to repeat. A repeated receive of a standard queue may hide further messages,
 // which reappear when their visibility timeout ends; a repeated receive of a FIFO queue sends the same
 // ReceiveRequestAttemptId and gets the same batch back. A repeated deletion leaves the message deleted, though
 // a server that forgets the handle, such as ElasticMQ, answers the repeat with receiptHandleInvalid. Setting a
-// visibility timeout again restarts the timeout from the later attempt.
+// visibility timeout again restarts the timeout from the later attempt. Sending to a standard queue is limited
+// to three possible sends because a repeated send may deliver a duplicate.
 //
 // Applications use the generated operation-specific Step factories, such as NewReceiveMessagesStep and
 // NewDeleteMessageStep, with a Connection built by NewProjectConnection or NewConnection. The runnable
-// example in examples/queue-consumer uses every operation in one Flow.
+// example in examples/queue-consumer registers a consumer Flow and a send Flow.
 package sqs
 
 import (

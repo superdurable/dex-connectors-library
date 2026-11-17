@@ -18,6 +18,7 @@ import (
 // Mock is a scripted amazon-sqs connection. Script each operation through its accessor.
 type Mock struct {
 	connection              sqs.Connection
+	sendMessage             *connectormock.Mutation[sqs.SendMessageInput, sqs.SentMessage]
 	receiveMessages         *connectormock.Mutation[sqs.ReceiveMessagesInput, sqs.ReceivedMessages]
 	deleteMessage           *connectormock.Mutation[sqs.DeleteMessageInput, sqs.DeletedMessage]
 	changeMessageVisibility *connectormock.Mutation[sqs.ChangeMessageVisibilityInput, sqs.ChangedMessageVisibility]
@@ -28,10 +29,12 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		sendMessage:             connectormock.NewMutation[sqs.SendMessageInput, sqs.SentMessage](t, sqs.SendMessageDefinition),
 		receiveMessages:         connectormock.NewMutation[sqs.ReceiveMessagesInput, sqs.ReceivedMessages](t, sqs.ReceiveMessagesDefinition),
 		deleteMessage:           connectormock.NewMutation[sqs.DeleteMessageInput, sqs.DeletedMessage](t, sqs.DeleteMessageDefinition),
 		changeMessageVisibility: connectormock.NewMutation[sqs.ChangeMessageVisibilityInput, sqs.ChangedMessageVisibility](t, sqs.ChangeMessageVisibilityDefinition),
 	}
+	mock.sendMessage.Default(SendMessageDefault())
 	mock.receiveMessages.Default(ReceiveMessagesDefault())
 	mock.deleteMessage.Default(DeleteMessageDefault())
 	mock.changeMessageVisibility.Default(ChangeMessageVisibilityDefault())
@@ -45,6 +48,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() sqs.Connection { return mock.connection }
+
+// SendMessage returns the sendMessage script.
+func (mock *Mock) SendMessage() *connectormock.Mutation[sqs.SendMessageInput, sqs.SentMessage] {
+	return mock.sendMessage
+}
 
 // ReceiveMessages returns the receiveMessages script.
 func (mock *Mock) ReceiveMessages() *connectormock.Mutation[sqs.ReceiveMessagesInput, sqs.ReceivedMessages] {
@@ -63,6 +71,9 @@ func (mock *Mock) ChangeMessageVisibility() *connectormock.Mutation[sqs.ChangeMe
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) SendMessage() sdkgo.Mutation[sqs.SendMessageInput, sqs.SentMessage] {
+	return operations.mock.sendMessage
+}
 func (operations mockOperations) ReceiveMessages() sdkgo.Mutation[sqs.ReceiveMessagesInput, sqs.ReceivedMessages] {
 	return operations.mock.receiveMessages
 }
@@ -72,6 +83,40 @@ func (operations mockOperations) DeleteMessage() sdkgo.Mutation[sqs.DeleteMessag
 func (operations mockOperations) ChangeMessageVisibility() sdkgo.Mutation[sqs.ChangeMessageVisibilityInput, sqs.ChangedMessageVisibility] {
 	return operations.mock.changeMessageVisibility
 }
+
+// SendMessageSent selects the sent branch: SQS accepted the message and returned its message ID.
+func SendMessageSent(value sqs.SentMessage, failure *sdkgo.Failure) connectormock.Case[sqs.SentMessage] {
+	return connectormock.Branch(sqs.SendMessageBranchSent, value, failure)
+}
+
+// SendMessageProviderRejected selects the providerRejected branch: SQS conclusively rejected the queue or message.
+func SendMessageProviderRejected(value sqs.SentMessage, failure *sdkgo.Failure) connectormock.Case[sqs.SentMessage] {
+	return connectormock.Branch(sqs.SendMessageBranchProviderRejected, value, failure)
+}
+
+// SendMessageUncertain returns an uncertain sendMessage outcome.
+func SendMessageUncertain(value sqs.SentMessage, failure sdkgo.Failure) connectormock.Case[sqs.SentMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendMessageDefect selects the defect branch: The queue URL, message, or connection is invalid.
+func SendMessageDefect(value sqs.SentMessage, failure *sdkgo.Failure) connectormock.Case[sqs.SentMessage] {
+	return connectormock.Branch(sqs.SendMessageBranchDefect, value, failure)
+}
+
+// SendMessageRetry asks Dex to retry the sendMessage Step, after the delay when it is positive.
+func SendMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sqs.SentMessage] {
+	return connectormock.Retry[sqs.SentMessage](failure, after)
+}
+
+// SendMessageSentOrder is the manifest mock sentOrder: The order event was accepted by SQS.
+func SendMessageSentOrder() connectormock.Case[sqs.SentMessage] {
+	value := connectormock.MustDecodeOutput[sqs.SentMessage](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders","messageId":"order-1042","md5OfBody":"457ba27172a5858e4fed7600ec948c39"}`)
+	return connectormock.Branch(sqs.SendMessageBranchSent, value, nil)
+}
+
+// SendMessageDefault is the manifest default, sentOrder, which New installs.
+func SendMessageDefault() connectormock.Case[sqs.SentMessage] { return SendMessageSentOrder() }
 
 // ReceiveMessagesReceived selects the received branch: SQS returned at least one message.
 func ReceiveMessagesReceived(value sqs.ReceivedMessages, failure *sdkgo.Failure) connectormock.Case[sqs.ReceivedMessages] {

@@ -38,6 +38,22 @@ func TestQueueConsumerProcessesMockPaidOrderWithRealDex(t *testing.T) {
 	require.Empty(t, mock.ChangeMessageVisibility().Calls())
 }
 
+func TestSendMessageUsesDefaultMockWithRealDex(t *testing.T) {
+	mock := sqsmock.New(t, ConnectionName)
+	_, harness := newQueueConsumerHarnessWithConnection(t, mock.Connection())
+	ctx := integrationContext(t)
+	flowID := "mock-send-" + uniqueSuffix()
+	_, err := harness.client.StartFlow(ctx, harness.sendFlow, flowID, sqs.SendMessageInput{QueueURL: "https://sqs.eu-west-1.amazonaws.com/123456789012/orders", Body: "paid"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var sent sqs.SentMessage
+	require.NoError(t, result.DecodeSingleOutput(&sent))
+	require.Equal(t, "order-1042", sent.MessageID)
+	require.Len(t, mock.SendMessage().Calls(), 1)
+}
+
 func TestQueueConsumerReleasesMockInvalidOrderWithRealDex(t *testing.T) {
 	mock := sqsmock.New(t, ConnectionName)
 	mock.ReceiveMessages().Respond(sqsmock.ReceiveMessagesReceived(sqs.ReceivedMessages{

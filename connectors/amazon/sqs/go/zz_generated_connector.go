@@ -45,6 +45,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	SendMessage() sdkgo.Mutation[SendMessageInput, SentMessage]
 	ReceiveMessages() sdkgo.Mutation[ReceiveMessagesInput, ReceivedMessages]
 	DeleteMessage() sdkgo.Mutation[DeleteMessageInput, DeletedMessage]
 	ChangeMessageVisibility() sdkgo.Mutation[ChangeMessageVisibilityInput, ChangedMessageVisibility]
@@ -52,6 +53,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) SendMessage() sdkgo.Mutation[SendMessageInput, SentMessage] {
+	return operations.client.SendMessage()
+}
 func (operations clientOperations) ReceiveMessages() sdkgo.Mutation[ReceiveMessagesInput, ReceivedMessages] {
 	return operations.client.ReceiveMessages()
 }
@@ -219,6 +223,82 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+const SendMessageBranchSent sdkgo.BranchID = "sent"
+const SendMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendMessageBranchSent, Description: "SQS accepted the message and returned its message ID."},
+		{ID: SendMessageBranchProviderRejected, Description: "SQS conclusively rejected the queue or message.", Optional: true},
+		{ID: SendMessageBranchUncertain, Description: "SQS may have accepted the message but did not return a usable response before the send cap.", Optional: true},
+		{ID: SendMessageBranchDefect, Description: "The queue URL, message, or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendMessageResult = sdkgo.MutationResult[SentMessage]
+
+type SendMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=amazon-sqs"`
+	operationID                       struct{}                                          `connector:"operationId=sendMessage"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendMessageInput                         `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendMessageResult]                   `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendMessageResult]                   `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendMessageResult]                   `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendMessageResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendMessageInput, SentMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sqs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendMessageInput, SentMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendMessageResult] {
+			branches := make([]sdkgo.BranchTarget[SendMessageResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendMessageBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
 const ReceiveMessagesBranchReceived sdkgo.BranchID = "received"
 const ReceiveMessagesBranchEmpty sdkgo.BranchID = "empty"
 const ReceiveMessagesBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -239,6 +319,8 @@ var ReceiveMessagesDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type ReceiveMessagesResult = sdkgo.MutationResult[ReceivedMessages]
@@ -259,6 +341,8 @@ type ReceiveMessagesStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ReceiveMessagesResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ReceivedMessages]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewReceiveMessagesStep[IN any](config ReceiveMessagesStepConfig[IN]) sdkgo.MutationStep[IN, ReceiveMessagesInput, ReceivedMessages] {
@@ -293,6 +377,7 @@ func NewReceiveMessagesStep[IN any](config ReceiveMessagesStepConfig[IN]) sdkgo.
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -314,6 +399,8 @@ var DeleteMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type DeleteMessageResult = sdkgo.MutationResult[DeletedMessage]
@@ -333,6 +420,8 @@ type DeleteMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[DeleteMessageResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedMessage]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewDeleteMessageStep[IN any](config DeleteMessageStepConfig[IN]) sdkgo.MutationStep[IN, DeleteMessageInput, DeletedMessage] {
@@ -364,6 +453,7 @@ func NewDeleteMessageStep[IN any](config DeleteMessageStepConfig[IN]) sdkgo.Muta
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -385,6 +475,8 @@ var ChangeMessageVisibilityDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type ChangeMessageVisibilityResult = sdkgo.MutationResult[ChangedMessageVisibility]
@@ -404,6 +496,8 @@ type ChangeMessageVisibilityStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ChangeMessageVisibilityResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ChangedMessageVisibility]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewChangeMessageVisibilityStep[IN any](config ChangeMessageVisibilityStepConfig[IN]) sdkgo.MutationStep[IN, ChangeMessageVisibilityInput, ChangedMessageVisibility] {
@@ -435,5 +529,6 @@ func NewChangeMessageVisibilityStep[IN any](config ChangeMessageVisibilityStepCo
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

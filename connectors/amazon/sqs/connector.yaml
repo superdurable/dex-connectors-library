@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: amazon-sqs
   displayName: Amazon SQS
-  description: Consume messages from an Amazon SQS standard or FIFO queue, or an SQS-compatible queue such as ElasticMQ, with long-polling receive, acknowledgement by delete, and visibility changes that release or extend a message.
+  description: Send and consume messages from an Amazon SQS standard or FIFO queue, or an SQS-compatible queue such as ElasticMQ, with long-polling receive, acknowledgement by delete, and visibility changes.
   company: Amazon
   categories: [developer-tools]
-  version: v0.3.0
+  version: v0.4.0
 spec:
   provider: amazon-sqs
   languages:
@@ -80,13 +80,33 @@ spec:
     guide:
       startURL: https://console.aws.amazon.com/iam
       steps:
-        - "Open IAM > Users > Create user and create a user only for Dex; do not use the account's root user. On Permissions, attach an inline policy that allows sqs:ReceiveMessage, sqs:DeleteMessage, and sqs:ChangeMessageVisibility on the queue's ARN, such as arn:aws:sqs:eu-west-1:123456789012:orders, so the key reaches nothing else. A queue encrypted with a customer managed AWS KMS key also needs kms:Decrypt on that key; a queue with SQS-managed encryption (SSE-SQS) needs nothing more."
+        - "Open IAM > Users > Create user and create a user only for Dex; do not use the account's root user. On Permissions, attach an inline policy that allows the actions you use, including sqs:SendMessage, sqs:ReceiveMessage, sqs:DeleteMessage, and sqs:ChangeMessageVisibility on the queue's ARN, such as arn:aws:sqs:eu-west-1:123456789012:orders, so the key reaches nothing else. A queue encrypted with a customer managed AWS KMS key also needs kms:GenerateDataKey for sending or kms:Decrypt for receiving on that key; a queue with SQS-managed encryption (SSE-SQS) needs nothing more."
         - "Open the user > Security credentials > Access keys > Create access key, choose Other > Next, then Create access key. On the Retrieve access keys page choose Show, paste the Access key into access_key_id and the Secret access key into secret_access_key; AWS never shows the secret again. Leave session_token blank for these long-term keys."
         - "Open https://console.aws.amazon.com/sqs/v3/home > Queues in the queue's Region, choose the queue, and copy URL from its Details panel. Set region to the Region in that URL, leave endpoint blank, and optionally set defaultQueueUrl to the URL so operations can leave queueUrl blank."
         - "Set the queue's Visibility timeout (queue > Edit > Configuration) longer than the Flow needs between receiveMessages and deleteMessage, or pass visibilityTimeoutSeconds on receive. Configure a Dead-letter queue redrive policy (queue > Edit > Dead-letter queue) so a message that keeps failing stops returning after its maximum receives."
         - "ElasticMQ or LocalStack: set endpoint to the server's address, such as http://127.0.0.1:9324, set region to the server's Region, and save any non-blank access key ID and secret access key."
         - "To rotate, create a second access key, save it here, run a Flow, then open Actions > Deactivate and Actions > Delete on the old key. This release does not use IAM roles, instance profiles, or SSO; temporary credentials pasted with session_token stop working when they expire."
   operations:
+    - name: sendMessage
+      goName: SendMessage
+      inputType: SendMessageInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send one UTF-8 message to a standard or FIFO queue; a standard queue may receive duplicates after an unknown outcome, so the connector caps possible sends at three.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: sent, goName: Sent, description: SQS accepted the message and returned its message ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: SQS conclusively rejected the queue or message., optional: true}
+        - {id: uncertain, goName: Uncertain, description: SQS may have accepted the message but did not return a usable response before the send cap., optional: true}
+        - {id: defect, goName: Defect, description: "The queue URL, message, or connection is invalid.", optional: true}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
+      mocks:
+        - name: sentOrder
+          branch: sent
+          default: true
+          description: The order event was accepted by SQS.
+          output: {queueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789012/orders', messageId: 'order-1042', md5OfBody: '457ba27172a5858e4fed7600ec948c39'}
     - name: receiveMessages
       goName: ReceiveMessages
       inputType: ReceiveMessagesInput

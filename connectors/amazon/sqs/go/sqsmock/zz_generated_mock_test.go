@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "sendMessage/sentOrder/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sqs.SentMessage](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders","messageId":"order-1042","md5OfBody":"457ba27172a5858e4fed7600ec948c39"}`)
+			return err
+		}},
 		{name: "receiveMessages/paidOrder/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[sqs.ReceivedMessages](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders","messages":[{"messageId":"order-1042","receiptHandle":"receipt-order-1042","body":"{\"orderId\":\"1042\",\"event\":\"paid\"}","md5OfBody":"457ba27172a5858e4fed7600ec948c39","sentAt":"2026-10-25T09:00:00Z","firstReceivedAt":"2026-10-25T09:00:01Z","receiveCount":1}]}`)
 			return err
@@ -46,6 +50,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.SendMessage().Definition().Operation.OperationID != "sendMessage" {
+		t.Errorf("sendMessage mock has another definition")
+	}
 	if mock.ReceiveMessages().Definition().Operation.OperationID != "receiveMessages" {
 		t.Errorf("receiveMessages mock has another definition")
 	}

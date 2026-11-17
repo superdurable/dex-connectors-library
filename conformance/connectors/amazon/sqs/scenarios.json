@@ -2,6 +2,514 @@
   "connector": "amazon-sqs",
   "scenarios": [
     {
+      "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "exchanges": [
+        {
+          "body": "{\"MessageId\":\"message-123\",\"MD5OfMessageBody\":\"76e084771e78c194efd0e2d5b8920bea\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "MessageBody": "paid",
+            "MessageGroupId": "orders",
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=8f4b47a3e73fee19aee7b2e4b4050287086a1382b7e4dec82e5852c1489b9de6"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.SendMessage"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "md5OfBody": "76e084771e78c194efd0e2d5b8920bea",
+          "messageId": "message-123",
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "input": {
+        "body": "paid",
+        "messageGroupId": "orders",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "sendMessage-sent",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "exchanges": [
+        {
+          "body": "{\"MessageId\":\"message-123\",\"MD5OfMessageBody\":\"76e084771e78c194efd0e2d5b8920bea\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "MessageBody": "paid",
+            "MessageDeduplicationId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+            "MessageGroupId": "orders",
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders.fifo"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=1d6642a12eb6bf5dcd99721ac2570e509fbe9dccfed518efd3465291234bb4ee"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.SendMessage"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "md5OfBody": "76e084771e78c194efd0e2d5b8920bea",
+          "messageId": "message-123",
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders.fifo"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "input": {
+        "body": "paid",
+        "messageGroupId": "orders",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders.fifo"
+      },
+      "name": "sendMessage-fifo",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"AccessDenied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "MessageBody": "paid",
+            "MessageGroupId": "orders",
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=8f4b47a3e73fee19aee7b2e4b4050287086a1382b7e4dec82e5852c1489b9de6"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.SendMessage"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "md5OfBody": "",
+          "messageId": "",
+          "queueUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "input": {
+        "body": "paid",
+        "messageGroupId": "orders",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "sendMessage-rejected",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "md5OfBody": "",
+          "messageId": "",
+          "queueUrl": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "input": {
+        "body": "",
+        "messageGroupId": "",
+        "queueUrl": ""
+      },
+      "name": "sendMessage-defect",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "MessageBody": "paid",
+            "MessageGroupId": "orders",
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=8f4b47a3e73fee19aee7b2e4b4050287086a1382b7e4dec82e5852c1489b9de6"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.SendMessage"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "md5OfBody": "",
+          "messageId": "",
+          "queueUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "input": {
+        "body": "paid",
+        "messageGroupId": "orders",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "sendMessage-uncertain-response",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"RequestThrottled\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "MessageBody": "paid",
+            "MessageGroupId": "orders",
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=8f4b47a3e73fee19aee7b2e4b4050287086a1382b7e4dec82e5852c1489b9de6"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.SendMessage"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "input": {
+        "body": "paid",
+        "messageGroupId": "orders",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "sendMessage-rate-limit",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"InternalError\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "MessageBody": "paid",
+            "MessageGroupId": "orders",
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=8f4b47a3e73fee19aee7b2e4b4050287086a1382b7e4dec82e5852c1489b9de6"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.SendMessage"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "input": {
+        "body": "paid",
+        "messageGroupId": "orders",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "sendMessage-service-unavailable",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"InternalError\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "MessageBody": "paid",
+            "MessageGroupId": "orders",
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=8f4b47a3e73fee19aee7b2e4b4050287086a1382b7e4dec82e5852c1489b9de6"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.SendMessage"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "input": {
+        "body": "paid",
+        "messageGroupId": "orders",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "sendMessage-server-failure",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "MessageBody": "paid",
+            "MessageGroupId": "orders",
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=8f4b47a3e73fee19aee7b2e4b4050287086a1382b7e4dec82e5852c1489b9de6"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.SendMessage"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "input": {
+        "body": "paid",
+        "messageGroupId": "orders",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "sendMessage-transport",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "md5OfBody": "",
+          "messageId": "",
+          "queueUrl": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+      "input": {
+        "body": "paid",
+        "messageGroupId": "orders",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "sendMessage-uncertain-cap",
+      "operation": "sendMessage",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
       "callId": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
       "exchanges": [
         {

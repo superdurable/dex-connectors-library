@@ -50,6 +50,7 @@ func integrationContext(t *testing.T) context.Context {
 }
 
 type queueConsumerHarness struct {
+	sendFlow      *SendFlow
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -69,12 +70,13 @@ func newQueueConsumerHarness(t *testing.T, providerClient *sqs.Client) (*Flow, *
 func newQueueConsumerHarnessWithConnection(t *testing.T, connection sqs.Connection) (*Flow, *queueConsumerHarness) {
 	t.Helper()
 	flow := NewFlow(connection)
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	sendFlow := NewSendFlow(connection)
+	registry, err := dex.NewRegistry([]dex.Flow{flow, sendFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
 	serverAddress := environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")
-	harness := &queueConsumerHarness{cache: cache, registry: registry, serverAddress: serverAddress}
+	harness := &queueConsumerHarness{sendFlow: sendFlow, cache: cache, registry: registry, serverAddress: serverAddress}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
 		FlowServiceAddress: serverAddress,
 	})

@@ -1,6 +1,6 @@
 # Amazon SQS Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go@v0.3.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go@v0.4.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/amazon/sqs`.
 
@@ -20,6 +20,7 @@ factories:
 
 | Operation | Kind | SQS action | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- | --- |
+| `sendMessage` (Go) | Mutation | `SendMessage` | sync | `sent` | `providerRejected`, `uncertain`, `defect` |
 | `receiveMessages` | Mutation | `ReceiveMessage` | sync | `received` | `empty`, `providerRejected`, `invalidResponse`, `defect` |
 | `deleteMessage` | Mutation | `DeleteMessage` | async | `deleted` | `receiptHandleInvalid`, `providerRejected`, `defect` |
 | `changeMessageVisibility` | Mutation | `ChangeMessageVisibility` | async | `changed` | `receiptHandleInvalid`, `providerRejected`, `defect` |
@@ -31,8 +32,10 @@ acknowledges reappears on the queue when its visibility timeout ends, so a
 failed Flow leaves its message for another consumer or for the queue's
 dead-letter redrive policy. Acknowledging only after processing makes the
 consumer at-least-once: processing must tolerate a message delivered again,
-which `ReceiveCount` above 1 reveals. This release sends no messages, has no
+which `ReceiveCount` above 1 reveals. This release sends individual messages, has no
 Trigger, and has no Studio pickers; see [Not in this release](#not-in-this-release).
+
+`sendMessage` takes a full `queueUrl` from [SQS Console > Queues > selected queue](https://console.aws.amazon.com/sqs/v3/home), or blank to use `defaultQueueUrl`; a blank URL without that default is invalid. `body` is nonempty UTF-8 text up to 256 KiB, matching the default queue limit. `messageGroupId` is required for a `.fifo` queue and optional for a standard queue; blank omits it on a standard queue. The connector derives a stable FIFO `MessageDeduplicationId` from the Dex call ID. SQS deduplicates FIFO sends for five minutes; a standard queue has no deduplication, so an unknown send may produce duplicates. The connector fences dispatches and caps possible sends at three, then selects `uncertain` if no accepted message ID can be confirmed. It verifies SQS's returned body MD5 before reporting success. Grant `sqs:SendMessage` and, for a customer managed KMS key, `kms:GenerateDataKey` on the relevant resources. This Go operation has no Python or TypeScript implementation yet.
 
 ## Mocks
 
@@ -211,7 +214,7 @@ entering Flow state.
   that polls, inboxes, and extends visibility while the Flow runs, and a choice
   of whether the source or the Flow acknowledges. This release lets the Flow
   own receiving and acknowledging through Steps.
-- **Sending**: `SendMessage` and batch sends.
+- **Batch sending**: `SendMessageBatch`, whose partial failures need per-entry decisions.
 - **Batch acknowledgement**: `DeleteMessageBatch` and
   `ChangeMessageVisibilityBatch`, whose partial failures need per-entry
   branches.
