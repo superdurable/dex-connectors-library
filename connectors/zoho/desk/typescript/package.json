@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-zoho-desk",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MIT",
   "description": "Zoho Desk ticket operations and the ticket change Trigger for Dex Flows",
   "repository": {

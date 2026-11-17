@@ -98,15 +98,17 @@ func TestUnauthorizedRequestRefreshesOnceAndResendsWithTheReplacement(t *testing
 			return
 		}
 		require.Equal(t, "Zoho-oauthtoken 1000.replacement-token", request.Header.Get("Authorization"))
-		writeValue(t, response, http.StatusOK, ticketJSON("1892000000099001", "Open", "Open"))
+		writeValue(t, response, http.StatusOK, ticketJSON(testTicketID, "Open", "Open"))
 	})
 	credentials := &rejectionRefreshingCredentialProvider{}
 	client, err := desk.New(desk.Config{OrgID: testOrganizationID}, credentials, desk.WithAPIBaseURL(provider.URL+"/api/v1"))
 	require.NoError(t, err)
 
-	result, err := sdkgo.RunMutation(newDeskDexContext("refresh-once"), client.CreateTicket(), deskConnection, validCreateTicketInput())
+	result, err := sdkgo.RunMutation(newDeskDexContext("refresh-once"), client.UpdateTicket(), deskConnection,
+		desk.UpdateTicketInput{TicketID: testTicketID, Status: desk.TicketStatusOpen})
 	require.NoError(t, err)
-	require.Equal(t, desk.CreateTicketBranchCreated, result.Branch, "a 401 proves Zoho Desk created nothing, so one resend is safe")
+	require.Equal(t, desk.UpdateTicketBranchUpdated, result.Branch, "a 401 proves Zoho Desk read nothing, so one resend is safe")
+	require.True(t, result.Value.WasAlreadyApplied)
 	require.Equal(t, 2, provider.requestCount())
 	require.Equal(t, 1, credentials.forcedRefreshes)
 }

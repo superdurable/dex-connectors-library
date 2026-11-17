@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -275,3 +276,12 @@ func (context *deskDexContext) GetLastHeartbeatValue(target any) (bool, error) {
 }
 
 var _ dex.Context = (*deskDexContext)(nil)
+
+// recordedMarker decodes the last fence checkpoint this attempt recorded.
+func recordedMarker(t *testing.T, ctx *deskDexContext) singledispatch.Marker {
+	t.Helper()
+	require.NotEmpty(t, ctx.recordedHeartbeat, "the fence recorded a checkpoint")
+	var marker singledispatch.Marker
+	require.NoError(t, json.Unmarshal(ctx.recordedHeartbeat, &marker))
+	return marker
+}

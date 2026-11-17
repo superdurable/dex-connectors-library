@@ -652,7 +652,7 @@ var CreateTicketDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTicketBranchCreated, Description: "Zoho Desk created the ticket and returned it."},
 		{ID: CreateTicketBranchProviderRejected, Description: "Zoho Desk conclusively rejected the ticket, such as an unknown department, status, or assignee; no ticket was created.", Optional: true},
-		{ID: CreateTicketBranchUncertain, Description: "The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it.", Optional: true},
+		{ID: CreateTicketBranchUncertain, Description: "The ticket may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, a later attempt was refused after an earlier possible send, or Zoho Desk returned the ticket ID with an invalid ticket. The Step does not send it again.", Optional: true},
 		{ID: CreateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -732,7 +732,7 @@ var UpdateTicketDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateTicketBranchUpdated, Description: "Zoho Desk accepted the requested values now or already held them; the returned ticket shows any change its automations made."},
 		{ID: UpdateTicketBranchNotFound, Description: "The ticket does not exist or is not visible to the connection's agent.", Optional: true},
 		{ID: UpdateTicketBranchProviderRejected, Description: "Zoho Desk conclusively rejected the change, such as an unknown status, an assignee outside the department, or a blueprint that forbids the transition.", Optional: true},
-		{ID: UpdateTicketBranchInvalidResponse, Description: "Zoho Desk returned an invalid or oversized ticket, so the change may have been applied.", Optional: true},
+		{ID: UpdateTicketBranchInvalidResponse, Description: "The ticket read before the change was invalid or oversized, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead.", Optional: true},
 		{ID: UpdateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -740,8 +740,7 @@ var UpdateTicketDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
-	MaxSends:        3,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateTicketResult = sdkgo.MutationResult[UpdateTicketOutput]
@@ -763,8 +762,6 @@ type UpdateTicketStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateTicketResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateTicketOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
-	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
-	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateTicketStep[IN any](config UpdateTicketStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTicketInput, UpdateTicketOutput] {
@@ -800,7 +797,6 @@ func NewUpdateTicketStep[IN any](config UpdateTicketStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
-		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -816,7 +812,7 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		{ID: AddCommentBranchAdded, Description: "Zoho Desk added the comment and returned it."},
 		{ID: AddCommentBranchNotFound, Description: "The ticket does not exist or is not visible to the connection's agent; nothing was added.", Optional: true},
 		{ID: AddCommentBranchProviderRejected, Description: "Zoho Desk conclusively rejected the comment; nothing was added.", Optional: true},
-		{ID: AddCommentBranchUncertain, Description: "The request was sent but its outcome cannot be confirmed, so the comment may exist; the connector never resends it.", Optional: true},
+		{ID: AddCommentBranchUncertain, Description: "The comment may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, a later attempt was refused after an earlier possible send, or Zoho Desk returned the comment ID with an invalid comment or another visibility. The Step does not send it again.", Optional: true},
 		{ID: AddCommentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

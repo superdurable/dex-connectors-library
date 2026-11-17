@@ -44,10 +44,6 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[desk.UpdateTicketOutput](`{"ticket":{"id":"1892000000099001","ticketNumber":"101","subject":"Billing question","descriptionHtml":"\u003cdiv\u003ePlease check my invoice.\u003c/div\u003e","status":"On Hold","statusType":"On Hold","priority":"Low","channel":"Web","departmentId":"1892000000006907","contactId":"1892000000042032","email":"jane@example.test","commentCount":1,"createdAt":"2026-01-28T09:00:00Z","modifiedAt":"2026-01-28T09:03:00Z"}}`)
 			return err
 		}},
-		{name: "updateTicket/invalidUpdatedTicket/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[desk.UpdateTicketOutput](`{"ticket":{"id":"1892000000099001","ticketNumber":"101","subject":"Billing question","descriptionHtml":"\u003cdiv\u003ePlease check my invoice.\u003c/div\u003e","status":"On Hold","statusType":"On Hold","priority":"Low","channel":"Web","departmentId":"1892000000006907","contactId":"1892000000042032","email":"jane@example.test","commentCount":1,"createdAt":"2026-01-28T09:00:00Z","modifiedAt":"2026-01-28T09:03:00Z"}}`)
-			return err
-		}},
 		{name: "addComment/privateTriageComment/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[desk.AddCommentOutput](`{"comment":{"id":"1892000000099002","isPublic":false,"content":"Dex triage: opened with priority High; the contact had no open or on-hold ticket in this department.","contentType":"plainText","commenterId":"1892000000056007","commentedAt":"2026-01-28T09:02:00Z"}}`)
 			return err

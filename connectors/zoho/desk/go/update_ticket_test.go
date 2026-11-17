@@ -113,17 +113,40 @@ func TestUpdateTicketSelectsNotFoundRejectedAndInvalidResponse(t *testing.T) {
 	require.Equal(t, desk.TicketStatusOpen, result.Value.Ticket.Status, "the rejection carries the ticket as read")
 	requireNoSentinel(t, result)
 
-	malformed := newRecordingDesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
-		if request.Method == http.MethodGet {
-			writeJSON(t, response, http.StatusOK, ticketBodyJSON(testTicketID, "Open", "Open"))
-			return
-		}
+	malformedRead := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusOK, `{"id":"`+testTicketID+`"}`)
 	})
-	result, err = sdkgo.RunMutation(newDeskDexContext("update-malformed"), newDeskClient(t, malformed.URL).UpdateTicket(), deskConnection,
+	result, err = sdkgo.RunMutation(newDeskDexContext("update-malformed-read"), newDeskClient(t, malformedRead.URL).UpdateTicket(), deskConnection,
 		desk.UpdateTicketInput{TicketID: testTicketID, Status: desk.TicketStatusClosed})
 	require.NoError(t, err)
-	require.Equal(t, desk.UpdateTicketBranchInvalidResponse, result.Branch, "the change may have been applied")
+	require.Equal(t, desk.UpdateTicketBranchInvalidResponse, result.Branch, "the read before the change was invalid")
+	require.Equal(t, 1, malformedRead.requestCount(), "no change was sent")
+}
+
+func TestUpdateTicketRetriesAnUnknownAnswerToTheChange(t *testing.T) {
+	for name, reply := range map[string]func(http.ResponseWriter){
+		"malformed ticket": func(response http.ResponseWriter) { writeJSON(t, response, http.StatusOK, `{"id":"`+testTicketID+`"}`) },
+		"conflict":         func(response http.ResponseWriter) { writeJSON(t, response, http.StatusConflict, `{"errorCode":"CONFLICT"}`) },
+		"reflected token": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"id":"`+testTicketID+`","subject":"`+testAccessToken+`"}`)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingDesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				if request.Method == http.MethodGet {
+					writeJSON(t, response, http.StatusOK, ticketBodyJSON(testTicketID, "Open", "Open"))
+					return
+				}
+				reply(response)
+			})
+			_, err := sdkgo.RunMutation(newDeskDexContext("update-unknown-"+name), newDeskClient(t, provider.URL).UpdateTicket(), deskConnection,
+				desk.UpdateTicketInput{TicketID: testTicketID, Status: desk.TicketStatusClosed})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "the absolute change is safe to repeat")
+			require.NotContains(t, retry.Failure.Message, testAccessToken)
+			require.Equal(t, 2, provider.requestCount())
+		})
+	}
 }
 
 func TestUpdateTicketRejectsInvalidInputBeforeAnyRequest(t *testing.T) {

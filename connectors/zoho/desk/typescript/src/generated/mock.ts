@@ -198,8 +198,8 @@ export function updateTicketInvalidStatus(): Case<UpdateTicketOutput> {
 }
 /** Manifest scenario invalidUpdatedTicket for updateTicket. */
 export function updateTicketInvalidUpdatedTicket(): Case<UpdateTicketOutput> {
-  const value = UpdateTicketOutputSchema.parse({"ticket":{"channel":"Web","commentCount":1,"contactId":"1892000000042032","createdAt":"2026-01-28T09:00:00Z","departmentId":"1892000000006907","descriptionHtml":"\u003cdiv\u003ePlease check my invoice.\u003c/div\u003e","email":"jane@example.test","id":"1892000000099001","modifiedAt":"2026-01-28T09:03:00Z","priority":"Low","status":"On Hold","statusType":"On Hold","subject":"Billing question","ticketNumber":"101"}});
-  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "updateTicket", message: "Zoho Desk returned an invalid updated ticket." });
+  const value = emptyUpdateTicketOutput;
+  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "updateTicket", message: "Zoho Desk returned an invalid ticket." });
 }
 
 /** Script the added branch. */
