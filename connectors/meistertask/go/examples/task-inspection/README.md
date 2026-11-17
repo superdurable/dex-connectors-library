@@ -1,6 +1,6 @@
 # MeisterTask task inspection Flow
 
-This runnable Flow calls `getTask` through the static `meistertask` connection. It persists the selected task status in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable example offers `MeisterTaskTaskInspection` with `getTask` and `MeisterTaskTaskListing` with `listTasks` through the static `meistertask` connection. Each Flow persists its provider result in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -23,5 +23,7 @@ GOWORK=off go run ./examples/task-inspection
 ```
 
 Start `MeisterTaskTaskInspection` with a unique Flow ID and input `{"taskId":"15"}`. Replace the sample with a task ID returned by MeisterTask. The Worker connects to Dex Server without an inbound listener.
+
+To list tasks, start `MeisterTaskTaskListing` with a unique Flow ID and input `{"page":1,"items":10,"status":"open"}`. Blank `status` includes every status; positive `page` and `items` select one page.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real MeisterTask authorization and retrieval remain unverified.

@@ -16,7 +16,19 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listTasks/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.TasksPage](`{"tasks":[{"id":"15","status":"1","name":"Task Name"}],"page":1}`)
+			return err
+		}},
 		{name: "getTask/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.TaskSummary](`{"id":"15","status":"1","name":"Task Name"}`)
+			return err
+		}},
+		{name: "updateTask/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.TaskSummary](`{"id":"15","status":"1","name":"Updated Task Name"}`)
+			return err
+		}},
+		{name: "createTask/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[meistertask.TaskSummary](`{"id":"15","status":"1","name":"Task Name"}`)
 			return err
 		}},
@@ -30,7 +42,16 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListTasks().Definition().Operation.OperationID != "listTasks" {
+		t.Errorf("listTasks mock has another definition")
+	}
 	if mock.GetTask().Definition().Operation.OperationID != "getTask" {
 		t.Errorf("getTask mock has another definition")
+	}
+	if mock.UpdateTask().Definition().Operation.OperationID != "updateTask" {
+		t.Errorf("updateTask mock has another definition")
+	}
+	if mock.CreateTask().Definition().Operation.OperationID != "createTask" {
+		t.Errorf("createTask mock has another definition")
 	}
 }

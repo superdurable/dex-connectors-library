@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: meistertask
   displayName: MeisterTask
-  description: Read a task's name and status from MeisterTask.
+  description: Read and manage MeisterTask tasks and project work.
   company: MeisterTask
   categories: [project-management]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: meistertask
   languages:
@@ -55,6 +55,26 @@ spec:
         - Sign in at MindMeister API page > Add personal access token, select userinfo.profile, userinfo.email, and meistertask scopes, and copy the secret opaque token into Dex Web api_token. Blank is invalid. Revoke it on the same page. A MindMeister Basic account and team-admin approval may be required to access that page.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret positive numeric task ID in MeisterTask task details or GET /tasks and pass it as taskId; blank is invalid. The token owner needs access to the task.
   operations:
+    - name: listTasks
+      goName: ListTasks
+      inputType: ListTasksInput
+      outputType: TasksPage
+      kind: query
+      description: List available tasks with optional status and page filters.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: MeisterTask returned a page of tasks.}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One task is available.
+          output: {tasks: [{id: "15", status: "1", name: Task Name}], page: 1}
     - name: getTask
       goName: GetTask
       inputType: GetTaskInput
@@ -63,7 +83,7 @@ spec:
       description: Read one task's ID, status code, and name.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: MeisterTask returned the task.}
         - {id: notFound, goName: NotFound, description: MeisterTask did not expose the task., optional: true}
@@ -75,4 +95,45 @@ spec:
           branch: found
           default: true
           description: One sample task is returned.
+          output: {id: "15", status: "1", name: Task Name}
+    - name: updateTask
+      goName: UpdateTask
+      inputType: UpdateTaskInput
+      outputType: TaskSummary
+      kind: mutation
+      description: Set a task's name, notes, or status to absolute values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: MeisterTask returned the updated task.}
+        - {id: notFound, goName: NotFound, description: MeisterTask did not expose the task., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One task name is updated.
+          output: {id: "15", status: "1", name: Updated Task Name}
+    - name: createTask
+      goName: CreateTask
+      inputType: CreateTaskInput
+      outputType: TaskSummary
+      kind: mutation
+      description: Create a named task in a project section.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: MeisterTask returned the created task.}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded; inspect the section before manual retry., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One task is created in a section.
           output: {id: "15", status: "1", name: Task Name}

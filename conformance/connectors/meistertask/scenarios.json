@@ -2,6 +2,1100 @@
   "connector": "meistertask",
   "scenarios": [
     {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "[{\"id\":15,\"status\":1,\"name\":\"Task Name\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "status": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "page": 2,
+          "tasks": [
+            {
+              "id": "15",
+              "name": "Task Name",
+              "status": "1"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 2,
+        "status": "open"
+      },
+      "name": "listTasks-listed",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111112",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "status": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "page": 0,
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 2,
+        "status": "open"
+      },
+      "name": "listTasks-providerRejected",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111113",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "status": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 2,
+        "status": "open"
+      },
+      "name": "listTasks-invalidResponse",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111114",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 0,
+          "tasks": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": -1,
+        "status": "open"
+      },
+      "name": "listTasks-defect",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111115",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "status": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 2,
+        "status": "open"
+      },
+      "name": "listTasks-rateLimit",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111116",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "status": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 2,
+        "status": "open"
+      },
+      "name": "listTasks-serverUnavailable",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111117",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "status": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 2,
+        "status": "open"
+      },
+      "name": "listTasks-transportFailure",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "exchanges": [
+        {
+          "body": "{\"id\":15,\"status\":2,\"name\":\"Updated Task Name\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/15",
+          "requestBody": {
+            "name": "Updated Task Name",
+            "notes": "New notes",
+            "status": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "15",
+          "name": "Updated Task Name",
+          "status": "2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "input": {
+        "name": "Updated Task Name",
+        "notes": "New notes",
+        "status": 2,
+        "taskId": "15"
+      },
+      "name": "updateTask-updated",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/15",
+          "requestBody": {
+            "name": "Updated Task Name",
+            "notes": "New notes",
+            "status": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "input": {
+        "name": "Updated Task Name",
+        "notes": "New notes",
+        "status": 2,
+        "taskId": "15"
+      },
+      "name": "updateTask-notFound",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/15",
+          "requestBody": {
+            "name": "Updated Task Name",
+            "notes": "New notes",
+            "status": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "input": {
+        "name": "Updated Task Name",
+        "notes": "New notes",
+        "status": 2,
+        "taskId": "15"
+      },
+      "name": "updateTask-providerRejected",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/15",
+          "requestBody": {
+            "name": "Updated Task Name",
+            "notes": "New notes",
+            "status": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "input": {
+        "name": "Updated Task Name",
+        "notes": "New notes",
+        "status": 2,
+        "taskId": "15"
+      },
+      "name": "updateTask-invalidResponse",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "input": {
+        "name": "Updated Task Name",
+        "notes": "New notes",
+        "status": 2,
+        "taskId": "invalid"
+      },
+      "name": "updateTask-defect",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/15",
+          "requestBody": {
+            "name": "Updated Task Name",
+            "notes": "New notes",
+            "status": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "input": {
+        "name": "Updated Task Name",
+        "notes": "New notes",
+        "status": 2,
+        "taskId": "15"
+      },
+      "name": "updateTask-rateLimit",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/15",
+          "requestBody": {
+            "name": "Updated Task Name",
+            "notes": "New notes",
+            "status": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "input": {
+        "name": "Updated Task Name",
+        "notes": "New notes",
+        "status": 2,
+        "taskId": "15"
+      },
+      "name": "updateTask-serverUnavailable",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/15",
+          "requestBody": {
+            "name": "Updated Task Name",
+            "notes": "New notes",
+            "status": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "137b79e3-55a6-5209-8113-65a24b6140ed",
+      "input": {
+        "name": "Updated Task Name",
+        "notes": "New notes",
+        "status": 2,
+        "taskId": "15"
+      },
+      "name": "updateTask-transportFailure",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{\"id\":15,\"status\":1,\"name\":\"Task Name\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+          "providerId": "15",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "15",
+          "name": "Task Name",
+          "status": "1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "input": {
+        "name": "Task Name",
+        "notes": "Details",
+        "sectionId": "7"
+      },
+      "name": "createTask-created",
+      "operation": "createTask"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "input": {
+        "name": "Task Name",
+        "notes": "Details",
+        "sectionId": "7"
+      },
+      "name": "createTask-providerRejected",
+      "operation": "createTask"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "input": {
+        "name": "Task Name",
+        "notes": "Details",
+        "sectionId": "invalid"
+      },
+      "name": "createTask-defect",
+      "operation": "createTask"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "input": {
+        "name": "Task Name",
+        "notes": "Details",
+        "sectionId": "7"
+      },
+      "name": "createTask-rateLimit",
+      "operation": "createTask"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "input": {
+        "name": "Task Name",
+        "notes": "Details",
+        "sectionId": "7"
+      },
+      "name": "createTask-serverUnavailable",
+      "operation": "createTask"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "input": {
+        "name": "Task Name",
+        "notes": "Details",
+        "sectionId": "7"
+      },
+      "name": "createTask-transportFailure",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 3,
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "input": {
+        "name": "Task Name",
+        "notes": "Details",
+        "sectionId": "7"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTask-uncertain",
+      "operation": "createTask"
+    },
+    {
       "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
       "exchanges": [
         {
