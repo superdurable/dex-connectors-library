@@ -43,13 +43,57 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateTopic() sdkgo.Mutation[CreateTopicInput, TopicIdentity]
+	DeleteTopic() sdkgo.Mutation[TopicARNInput, TopicIdentity]
+	SetTopicAttribute() sdkgo.Mutation[SetTopicAttributeInput, TopicIdentity]
+	GetTopicAttributes() sdkgo.Query[TopicARNInput, TopicAttributes]
+	PublishMessage() sdkgo.Mutation[PublishMessageInput, PublishedMessage]
 	ListTopics() sdkgo.Query[ListTopicsInput, TopicPage]
+	SubscribeEndpoint() sdkgo.Mutation[SubscribeEndpointInput, SubscriptionIdentity]
+	ListSubscriptionsByTopic() sdkgo.Query[ListSubscriptionsByTopicInput, SubscriptionPage]
+	ListSubscriptions() sdkgo.Query[ListSubscriptionsInput, SubscriptionPage]
+	GetSubscriptionAttributes() sdkgo.Query[SubscriptionARNInput, SubscriptionAttributes]
+	SetSubscriptionAttribute() sdkgo.Mutation[SetSubscriptionAttributeInput, SubscriptionIdentity]
+	UnsubscribeEndpoint() sdkgo.Mutation[SubscriptionARNInput, SubscriptionIdentity]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateTopic() sdkgo.Mutation[CreateTopicInput, TopicIdentity] {
+	return operations.client.CreateTopic()
+}
+func (operations clientOperations) DeleteTopic() sdkgo.Mutation[TopicARNInput, TopicIdentity] {
+	return operations.client.DeleteTopic()
+}
+func (operations clientOperations) SetTopicAttribute() sdkgo.Mutation[SetTopicAttributeInput, TopicIdentity] {
+	return operations.client.SetTopicAttribute()
+}
+func (operations clientOperations) GetTopicAttributes() sdkgo.Query[TopicARNInput, TopicAttributes] {
+	return operations.client.GetTopicAttributes()
+}
+func (operations clientOperations) PublishMessage() sdkgo.Mutation[PublishMessageInput, PublishedMessage] {
+	return operations.client.PublishMessage()
+}
 func (operations clientOperations) ListTopics() sdkgo.Query[ListTopicsInput, TopicPage] {
 	return operations.client.ListTopics()
+}
+func (operations clientOperations) SubscribeEndpoint() sdkgo.Mutation[SubscribeEndpointInput, SubscriptionIdentity] {
+	return operations.client.SubscribeEndpoint()
+}
+func (operations clientOperations) ListSubscriptionsByTopic() sdkgo.Query[ListSubscriptionsByTopicInput, SubscriptionPage] {
+	return operations.client.ListSubscriptionsByTopic()
+}
+func (operations clientOperations) ListSubscriptions() sdkgo.Query[ListSubscriptionsInput, SubscriptionPage] {
+	return operations.client.ListSubscriptions()
+}
+func (operations clientOperations) GetSubscriptionAttributes() sdkgo.Query[SubscriptionARNInput, SubscriptionAttributes] {
+	return operations.client.GetSubscriptionAttributes()
+}
+func (operations clientOperations) SetSubscriptionAttribute() sdkgo.Mutation[SetSubscriptionAttributeInput, SubscriptionIdentity] {
+	return operations.client.SetSubscriptionAttribute()
+}
+func (operations clientOperations) UnsubscribeEndpoint() sdkgo.Mutation[SubscriptionARNInput, SubscriptionIdentity] {
+	return operations.client.UnsubscribeEndpoint()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -196,6 +240,401 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+var NotificationReceivedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "notificationReceived"},
+	Description: "Receive RSA signature-verified SNS notifications for one topic over HTTPS and deliver each provider message ID at least once.",
+}
+
+type NotificationReceivedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{} `connector:"connectorId=amazon-sns"`
+	triggerName                             struct{} `connector:"triggerName=notificationReceived"`
+	ConnectionName                          string   `connector:"connectionName"`
+	BindingName                             string   `connector:"bindingName"`
+}
+
+func DefineNotificationReceivedTriggerBinding(config NotificationReceivedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: NotificationReceivedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+	})
+}
+
+type NotificationReceivedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                                 `connector:"connectorId=amazon-sns"`
+	triggerName                      struct{}                                 `connector:"triggerName=notificationReceived"`
+	Connection                       Connection                               `connector:"connection"`
+	ConnectionName                   string                                   `connector:"connectionName"`
+	BindingName                      string                                   `connector:"bindingName"`
+	Configuration                    NotificationReceivedTriggerConfiguration `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[SNSNotification]     `connector:"triggerTarget"`
+}
+
+func NewNotificationReceivedTrigger(config NotificationReceivedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sns connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: NotificationReceivedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[SNSNotification]{
+		Definition: NotificationReceivedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.notificationReceivedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
+const CreateTopicBranchCreated sdkgo.BranchID = "created"
+const CreateTopicBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateTopicBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateTopicDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTopic"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateTopicBranchCreated, Description: "AWS created or found the named topic."},
+		{ID: CreateTopicBranchProviderRejected, Description: "AWS conclusively rejected the topic name or permissions.", Optional: true},
+		{ID: CreateTopicBranchDefect, Description: "The topic name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CreateTopicResult = sdkgo.MutationResult[TopicIdentity]
+
+type CreateTopicStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=amazon-sns"`
+	operationID                       struct{}                                            `connector:"operationId=createTopic"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateTopicInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateTopicResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateTopicResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateTopicResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TopicIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewCreateTopicStep[IN any](config CreateTopicStepConfig[IN]) sdkgo.MutationStep[IN, CreateTopicInput, TopicIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sns connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTopicInput, TopicIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateTopic(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateTopicResult] {
+			branches := make([]sdkgo.BranchTarget[CreateTopicResult], 0, 3)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateTopicBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTopicBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateTopicBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteTopicBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteTopicBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteTopicBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteTopicDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteTopic"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteTopicBranchDeleted, Description: "AWS deleted the topic or it was already absent."},
+		{ID: DeleteTopicBranchProviderRejected, Description: "AWS conclusively rejected the deletion.", Optional: true},
+		{ID: DeleteTopicBranchDefect, Description: "The topic ARN or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteTopicResult = sdkgo.MutationResult[TopicIdentity]
+
+type DeleteTopicStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=amazon-sns"`
+	operationID                       struct{}                                            `connector:"operationId=deleteTopic"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) TopicARNInput                              `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteTopicResult]                     `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteTopicResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteTopicResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TopicIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteTopicStep[IN any](config DeleteTopicStepConfig[IN]) sdkgo.MutationStep[IN, TopicARNInput, TopicIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sns connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TopicARNInput, TopicIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteTopic(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteTopicResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteTopicResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteTopicBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteTopicBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteTopicBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SetTopicAttributeBranchUpdated sdkgo.BranchID = "updated"
+const SetTopicAttributeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SetTopicAttributeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SetTopicAttributeDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "setTopicAttribute"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SetTopicAttributeBranchUpdated, Description: "AWS replaced the attribute."},
+		{ID: SetTopicAttributeBranchProviderRejected, Description: "AWS conclusively rejected the attribute update.", Optional: true},
+		{ID: SetTopicAttributeBranchDefect, Description: "The topic ARN, attribute, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type SetTopicAttributeResult = sdkgo.MutationResult[TopicIdentity]
+
+type SetTopicAttributeStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=amazon-sns"`
+	operationID                       struct{}                                            `connector:"operationId=setTopicAttribute"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetTopicAttributeInput                     `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[SetTopicAttributeResult]               `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[SetTopicAttributeResult]               `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[SetTopicAttributeResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TopicIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewSetTopicAttributeStep[IN any](config SetTopicAttributeStepConfig[IN]) sdkgo.MutationStep[IN, SetTopicAttributeInput, TopicIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sns connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetTopicAttributeInput, TopicIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SetTopicAttribute(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SetTopicAttributeResult] {
+			branches := make([]sdkgo.BranchTarget[SetTopicAttributeResult], 0, 3)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(SetTopicAttributeBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SetTopicAttributeBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SetTopicAttributeBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTopicAttributesBranchFound sdkgo.BranchID = "found"
+const GetTopicAttributesBranchMissing sdkgo.BranchID = "missing"
+const GetTopicAttributesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTopicAttributesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTopicAttributesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTopicAttributesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTopicAttributes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTopicAttributesBranchFound, Description: "SNS returned the topic's attributes."},
+		{ID: GetTopicAttributesBranchMissing, Description: "The topic is absent.", Optional: true},
+		{ID: GetTopicAttributesBranchProviderRejected, Description: "SNS refused the read.", Optional: true},
+		{ID: GetTopicAttributesBranchInvalidResponse, Description: "SNS returned invalid attribute XML.", Optional: true},
+		{ID: GetTopicAttributesBranchDefect, Description: "The topic ARN or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTopicAttributesResult = sdkgo.QueryResult[TopicAttributes]
+
+type GetTopicAttributesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=amazon-sns"`
+	operationID                    struct{}                                           `connector:"operationId=getTopicAttributes"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) TopicARNInput                             `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTopicAttributesResult]             `connector:"branch=found"`
+	Missing                        sdkgo.Target[GetTopicAttributesResult]             `connector:"branch=missing,optional"`
+	ProviderRejected               sdkgo.Target[GetTopicAttributesResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTopicAttributesResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTopicAttributesResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TopicAttributes]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetTopicAttributesStep[IN any](config GetTopicAttributesStepConfig[IN]) sdkgo.QueryStep[IN, TopicARNInput, TopicAttributes] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sns connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, TopicARNInput, TopicAttributes]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTopicAttributes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTopicAttributesResult] {
+			branches := make([]sdkgo.BranchTarget[GetTopicAttributesResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTopicAttributesBranchFound))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(GetTopicAttributesBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTopicAttributesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTopicAttributesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTopicAttributesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const PublishMessageBranchPublished sdkgo.BranchID = "published"
+const PublishMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PublishMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const PublishMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PublishMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "publishMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PublishMessageBranchPublished, Description: "AWS accepted the message."},
+		{ID: PublishMessageBranchProviderRejected, Description: "AWS conclusively rejected the message.", Optional: true},
+		{ID: PublishMessageBranchUncertain, Description: "AWS may have accepted the message but did not return a usable ID.", Optional: true},
+		{ID: PublishMessageBranchDefect, Description: "The topic ARN, message, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type PublishMessageResult = sdkgo.MutationResult[PublishedMessage]
+
+type PublishMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=amazon-sns"`
+	operationID                       struct{}                                               `connector:"operationId=publishMessage"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) PublishMessageInput                           `connector:"mapToOperationInput"`
+	Published                         sdkgo.Target[PublishMessageResult]                     `connector:"branch=published"`
+	ProviderRejected                  sdkgo.Target[PublishMessageResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[PublishMessageResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[PublishMessageResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PublishedMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewPublishMessageStep[IN any](config PublishMessageStepConfig[IN]) sdkgo.MutationStep[IN, PublishMessageInput, PublishedMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sns connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PublishMessageInput, PublishedMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PublishMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PublishMessageResult] {
+			branches := make([]sdkgo.BranchTarget[PublishMessageResult], 0, 4)
+			if config.Published.HasStep() {
+				branches = append(branches, config.Published.BranchTarget(PublishMessageBranchPublished))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PublishMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(PublishMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PublishMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
 const ListTopicsBranchPage sdkgo.BranchID = "page"
 const ListTopicsBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const ListTopicsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
@@ -259,6 +698,433 @@ func NewListTopicsStep[IN any](config ListTopicsStepConfig[IN]) sdkgo.QueryStep[
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListTopicsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SubscribeEndpointBranchSubscribed sdkgo.BranchID = "subscribed"
+const SubscribeEndpointBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SubscribeEndpointBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SubscribeEndpointBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SubscribeEndpointDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "subscribeEndpoint"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SubscribeEndpointBranchSubscribed, Description: "SNS accepted or read-back confirmed the subscription."},
+		{ID: SubscribeEndpointBranchProviderRejected, Description: "SNS conclusively rejected the endpoint or topic.", Optional: true},
+		{ID: SubscribeEndpointBranchUncertain, Description: "The subscription may exist but read-back could not confirm it.", Optional: true},
+		{ID: SubscribeEndpointBranchDefect, Description: "The topic, protocol, endpoint, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SubscribeEndpointResult = sdkgo.MutationResult[SubscriptionIdentity]
+
+type SubscribeEndpointStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=amazon-sns"`
+	operationID                       struct{}                                                   `connector:"operationId=subscribeEndpoint"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) SubscribeEndpointInput                            `connector:"mapToOperationInput"`
+	Subscribed                        sdkgo.Target[SubscribeEndpointResult]                      `connector:"branch=subscribed"`
+	ProviderRejected                  sdkgo.Target[SubscribeEndpointResult]                      `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SubscribeEndpointResult]                      `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SubscribeEndpointResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SubscriptionIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSubscribeEndpointStep[IN any](config SubscribeEndpointStepConfig[IN]) sdkgo.MutationStep[IN, SubscribeEndpointInput, SubscriptionIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sns connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SubscribeEndpointInput, SubscriptionIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SubscribeEndpoint(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SubscribeEndpointResult] {
+			branches := make([]sdkgo.BranchTarget[SubscribeEndpointResult], 0, 4)
+			if config.Subscribed.HasStep() {
+				branches = append(branches, config.Subscribed.BranchTarget(SubscribeEndpointBranchSubscribed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SubscribeEndpointBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SubscribeEndpointBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SubscribeEndpointBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const ListSubscriptionsByTopicBranchPage sdkgo.BranchID = "page"
+const ListSubscriptionsByTopicBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSubscriptionsByTopicBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSubscriptionsByTopicBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSubscriptionsByTopicDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSubscriptionsByTopic"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSubscriptionsByTopicBranchPage, Description: "SNS returned one page of subscriptions."},
+		{ID: ListSubscriptionsByTopicBranchProviderRejected, Description: "SNS refused the listing.", Optional: true},
+		{ID: ListSubscriptionsByTopicBranchInvalidResponse, Description: "SNS returned malformed subscription XML.", Optional: true},
+		{ID: ListSubscriptionsByTopicBranchDefect, Description: "The topic ARN or token is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSubscriptionsByTopicResult = sdkgo.QueryResult[SubscriptionPage]
+
+type ListSubscriptionsByTopicStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=amazon-sns"`
+	operationID                    struct{}                                            `connector:"operationId=listSubscriptionsByTopic"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSubscriptionsByTopicInput              `connector:"mapToOperationInput"`
+	Page                           sdkgo.Target[ListSubscriptionsByTopicResult]        `connector:"branch=page"`
+	ProviderRejected               sdkgo.Target[ListSubscriptionsByTopicResult]        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSubscriptionsByTopicResult]        `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSubscriptionsByTopicResult]        `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubscriptionPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewListSubscriptionsByTopicStep[IN any](config ListSubscriptionsByTopicStepConfig[IN]) sdkgo.QueryStep[IN, ListSubscriptionsByTopicInput, SubscriptionPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sns connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSubscriptionsByTopicInput, SubscriptionPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSubscriptionsByTopic(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSubscriptionsByTopicResult] {
+			branches := make([]sdkgo.BranchTarget[ListSubscriptionsByTopicResult], 0, 4)
+			if config.Page.HasStep() {
+				branches = append(branches, config.Page.BranchTarget(ListSubscriptionsByTopicBranchPage))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSubscriptionsByTopicBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSubscriptionsByTopicBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSubscriptionsByTopicBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSubscriptionsBranchPage sdkgo.BranchID = "page"
+const ListSubscriptionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSubscriptionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSubscriptionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSubscriptionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSubscriptions"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSubscriptionsBranchPage, Description: "SNS returned one page of account subscriptions."},
+		{ID: ListSubscriptionsBranchProviderRejected, Description: "SNS refused the listing.", Optional: true},
+		{ID: ListSubscriptionsBranchInvalidResponse, Description: "SNS returned malformed subscription XML.", Optional: true},
+		{ID: ListSubscriptionsBranchDefect, Description: "The token or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSubscriptionsResult = sdkgo.QueryResult[SubscriptionPage]
+
+type ListSubscriptionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=amazon-sns"`
+	operationID                    struct{}                                            `connector:"operationId=listSubscriptions"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSubscriptionsInput                     `connector:"mapToOperationInput"`
+	Page                           sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=page"`
+	ProviderRejected               sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubscriptionPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewListSubscriptionsStep[IN any](config ListSubscriptionsStepConfig[IN]) sdkgo.QueryStep[IN, ListSubscriptionsInput, SubscriptionPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sns connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSubscriptionsInput, SubscriptionPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSubscriptions(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSubscriptionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListSubscriptionsResult], 0, 4)
+			if config.Page.HasStep() {
+				branches = append(branches, config.Page.BranchTarget(ListSubscriptionsBranchPage))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSubscriptionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSubscriptionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSubscriptionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSubscriptionAttributesBranchFound sdkgo.BranchID = "found"
+const GetSubscriptionAttributesBranchMissing sdkgo.BranchID = "missing"
+const GetSubscriptionAttributesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSubscriptionAttributesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSubscriptionAttributesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSubscriptionAttributesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSubscriptionAttributes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSubscriptionAttributesBranchFound, Description: "SNS returned subscription attributes."},
+		{ID: GetSubscriptionAttributesBranchMissing, Description: "The subscription is absent.", Optional: true},
+		{ID: GetSubscriptionAttributesBranchProviderRejected, Description: "SNS refused the read.", Optional: true},
+		{ID: GetSubscriptionAttributesBranchInvalidResponse, Description: "SNS returned invalid attributes.", Optional: true},
+		{ID: GetSubscriptionAttributesBranchDefect, Description: "The subscription ARN or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSubscriptionAttributesResult = sdkgo.QueryResult[SubscriptionAttributes]
+
+type GetSubscriptionAttributesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                  `connector:"connectorId=amazon-sns"`
+	operationID                    struct{}                                                  `connector:"operationId=getSubscriptionAttributes"`
+	StepType                       string                                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                     Connection                                                `connector:"connection"`
+	ConnectionName                 string                                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) SubscriptionARNInput                             `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSubscriptionAttributesResult]             `connector:"branch=found"`
+	Missing                        sdkgo.Target[GetSubscriptionAttributesResult]             `connector:"branch=missing,optional"`
+	ProviderRejected               sdkgo.Target[GetSubscriptionAttributesResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSubscriptionAttributesResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSubscriptionAttributesResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubscriptionAttributes]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewGetSubscriptionAttributesStep[IN any](config GetSubscriptionAttributesStepConfig[IN]) sdkgo.QueryStep[IN, SubscriptionARNInput, SubscriptionAttributes] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sns connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SubscriptionARNInput, SubscriptionAttributes]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSubscriptionAttributes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSubscriptionAttributesResult] {
+			branches := make([]sdkgo.BranchTarget[GetSubscriptionAttributesResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSubscriptionAttributesBranchFound))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(GetSubscriptionAttributesBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSubscriptionAttributesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSubscriptionAttributesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSubscriptionAttributesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SetSubscriptionAttributeBranchUpdated sdkgo.BranchID = "updated"
+const SetSubscriptionAttributeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SetSubscriptionAttributeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SetSubscriptionAttributeDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "setSubscriptionAttribute"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SetSubscriptionAttributeBranchUpdated, Description: "SNS accepted the absolute replacement."},
+		{ID: SetSubscriptionAttributeBranchProviderRejected, Description: "SNS refused the update.", Optional: true},
+		{ID: SetSubscriptionAttributeBranchDefect, Description: "The subscription ARN or attribute is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type SetSubscriptionAttributeResult = sdkgo.MutationResult[SubscriptionIdentity]
+
+type SetSubscriptionAttributeStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=amazon-sns"`
+	operationID                       struct{}                                                   `connector:"operationId=setSubscriptionAttribute"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetSubscriptionAttributeInput                     `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[SetSubscriptionAttributeResult]               `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[SetSubscriptionAttributeResult]               `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[SetSubscriptionAttributeResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SubscriptionIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewSetSubscriptionAttributeStep[IN any](config SetSubscriptionAttributeStepConfig[IN]) sdkgo.MutationStep[IN, SetSubscriptionAttributeInput, SubscriptionIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sns connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetSubscriptionAttributeInput, SubscriptionIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SetSubscriptionAttribute(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SetSubscriptionAttributeResult] {
+			branches := make([]sdkgo.BranchTarget[SetSubscriptionAttributeResult], 0, 3)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(SetSubscriptionAttributeBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SetSubscriptionAttributeBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SetSubscriptionAttributeBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UnsubscribeEndpointBranchUnsubscribed sdkgo.BranchID = "unsubscribed"
+const UnsubscribeEndpointBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UnsubscribeEndpointBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UnsubscribeEndpointDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "unsubscribeEndpoint"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UnsubscribeEndpointBranchUnsubscribed, Description: "The subscription is absent."},
+		{ID: UnsubscribeEndpointBranchProviderRejected, Description: "SNS refused the deletion.", Optional: true},
+		{ID: UnsubscribeEndpointBranchDefect, Description: "The subscription ARN is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UnsubscribeEndpointResult = sdkgo.MutationResult[SubscriptionIdentity]
+
+type UnsubscribeEndpointStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=amazon-sns"`
+	operationID                       struct{}                                                   `connector:"operationId=unsubscribeEndpoint"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) SubscriptionARNInput                              `connector:"mapToOperationInput"`
+	Unsubscribed                      sdkgo.Target[UnsubscribeEndpointResult]                    `connector:"branch=unsubscribed"`
+	ProviderRejected                  sdkgo.Target[UnsubscribeEndpointResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UnsubscribeEndpointResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SubscriptionIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewUnsubscribeEndpointStep[IN any](config UnsubscribeEndpointStepConfig[IN]) sdkgo.MutationStep[IN, SubscriptionARNInput, SubscriptionIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sns connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SubscriptionARNInput, SubscriptionIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UnsubscribeEndpoint(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UnsubscribeEndpointResult] {
+			branches := make([]sdkgo.BranchTarget[UnsubscribeEndpointResult], 0, 3)
+			if config.Unsubscribed.HasStep() {
+				branches = append(branches, config.Unsubscribed.BranchTarget(UnsubscribeEndpointBranchUnsubscribed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UnsubscribeEndpointBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UnsubscribeEndpointBranchDefect))
 			}
 			return branches
 		}(),

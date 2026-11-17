@@ -18,9 +18,11 @@ const (
 	// ConnectionName is the static Dex Web connection used by this example.
 	ConnectionName    = "amazon-ses"
 	operationStepType = "CallGetEmailIdentity"
+	listStepType      = "CallListEmailIdentities"
 )
 
 var identityAttribute = dex.DefineAttribute[ses.EmailIdentityDetails]("ses-identity-lookup")
+var requestAttribute = dex.DefineAttribute[ses.GetEmailIdentityInput]("ses-identity-request")
 
 // Flow runs GetEmailIdentity once and completes with its typed output.
 type Flow struct {
@@ -34,12 +36,19 @@ func NewFlow(connection ses.Connection) *Flow { return &Flow{connection: connect
 func (*Flow) GetFlowType() string { return FlowType }
 
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{identityAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{identityAttribute, requestAttribute}}
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(startRequest{}),
+		dex.DefineStep(ses.NewListEmailIdentitiesStep(ses.ListEmailIdentitiesStepConfig[ses.GetEmailIdentityInput]{
+			StepType: listStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Amazon SES", Explanation: "List the first page of regional SES identities before looking up the requested identity."},
+			Connection:  flow.connection, MapToOperationInput: MapToListEmailIdentitiesInput,
+			Page: sdkgo.GoTo(continueIdentityLookup{}),
+		})),
+		dex.DefineStep(continueIdentityLookup{}),
 		dex.DefineStep(ses.NewGetEmailIdentityStep(ses.GetEmailIdentityStepConfig[ses.GetEmailIdentityInput]{
 			StepType: operationStepType, ConnectionName: ConnectionName,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Amazon SES", Explanation: "Read one SES email identity verification status."},
@@ -90,6 +99,11 @@ func MapToOperationInput(input ses.GetEmailIdentityInput) ses.GetEmailIdentityIn
 	return input
 }
 
+// MapToListEmailIdentitiesInput requests one small page before the specific lookup.
+func MapToListEmailIdentitiesInput(_ ses.GetEmailIdentityInput) ses.ListEmailIdentitiesInput {
+	return ses.ListEmailIdentitiesInput{PageSize: 10}
+}
+
 // dex:group group-id:request group-label:"Request"
 // dex:explanation text:"Pass the typed start input to the provider Step."
 type startRequest struct{ dex.StepDefaults }
@@ -98,7 +112,25 @@ func (startRequest) GetStepType() string { return "StartGetEmailIdentity" }
 func (startRequest) WaitFor(dex.Context, ses.GetEmailIdentityInput) (*dex.Wait, error) {
 	return dex.SkipWaitImmediately(), nil
 }
-func (startRequest) Execute(_ dex.Context, input ses.GetEmailIdentityInput) (*dex.StepDecision, error) {
+func (startRequest) Execute(ctx dex.Context, input ses.GetEmailIdentityInput) (*dex.StepDecision, error) {
+	if err := requestAttribute.Set(ctx, input); err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[ses.GetEmailIdentityInput](listStepType), input), nil
+}
+
+// dex:group group-id:request group-label:"Request"
+// dex:explanation text:"Continue the specific identity lookup after the regional listing."
+type continueIdentityLookup struct {
+	dex.StepDefaultsNoWaitFor[ses.ListEmailIdentitiesResult]
+}
+
+func (continueIdentityLookup) GetStepType() string { return "ContinueGetEmailIdentity" }
+func (continueIdentityLookup) Execute(ctx dex.Context, _ ses.ListEmailIdentitiesResult) (*dex.StepDecision, error) {
+	input, err := requestAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return dex.GoTo(sdkgo.StepRef[ses.GetEmailIdentityInput](operationStepType), input), nil
 }
 

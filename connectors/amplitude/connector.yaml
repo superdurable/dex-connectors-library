@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: amplitude
   displayName: Amplitude
-  description: Search project users by Amplitude ID, device ID, user ID, or user ID prefix.
+  description: Search project users, inspect activity and dashboard metrics, upload analytics events, and set or remove user properties.
   company: Amplitude
   categories: [analytics]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: amplitude
   languages:
@@ -33,12 +33,12 @@ spec:
       - name: timeout
         goName: Timeout
         type: duration
-        description: Maximum duration of one user search as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
+        description: Maximum duration of one Amplitude API request as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete user-search JSON response in bytes as a positive integer. Blank uses the displayed default; increase if a project returns many matches.
+        description: Maximum complete Amplitude API response in bytes as a positive integer. Blank uses the displayed default; increase if a project returns many matches.
         default: 1048576
   auth:
     type: apiKey
@@ -58,8 +58,111 @@ spec:
       startURL: https://amplitude.com
       steps:
         - In Amplitude open Organization settings > API Keys and select the project. A Manager or Admin can generate an API key and secret key. Copy the API key into apiKey and the secret key itself, not its Key ID, into secretKey. Both are secrets and blank prevents calls. Select keys for the same project.
-        - Leave baseUrl blank for the US region, or use https://analytics.eu.amplitude.com for an EU project. Leave timeout and maxResponseBytes blank for their displayed defaults. Find a non-secret user ID in Amplitude's User Lookup and pass the full ID or prefix as user; blank is invalid.
+        - Leave baseUrl blank for the US region, or use https://analytics.eu.amplitude.com for an EU project; event and Identify requests use the matching ingestion region automatically. Leave timeout and maxResponseBytes blank for their displayed defaults. Find a non-secret user ID or Amplitude ID in Amplitude's User Lookup; searchUsers accepts the full user ID or prefix, while getUserActivity requires the numeric Amplitude ID. Blank is invalid.
   operations:
+    - name: queryChart
+      goName: QueryChart
+      inputType: QueryChartInput
+      outputType: ChartResult
+      kind: query
+      description: Read a saved chart's bounded JSON results by chart ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Amplitude returned chart results.}
+        - {id: missing, goName: Missing, description: The saved chart does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Amplitude refused the chart query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Amplitude returned invalid chart JSON., optional: true}
+        - {id: defect, goName: Defect, description: The chart ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: chartDefault, branch: found, default: true, description: Amplitude returned one chart series., output: {chartID: abc123, dataJSON: '{"series":[[1,2]],"xValues":["2026-11-01","2026-11-02"]}'}}
+    - name: getActiveUserCounts
+      goName: GetActiveUserCounts
+      inputType: ActiveUserCountsInput
+      outputType: ActiveUserCounts
+      kind: query
+      description: Read daily, weekly, or monthly active or new user counts for a date range.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: counted, goName: Counted, description: Amplitude returned user count series.}
+        - {id: providerRejected, goName: ProviderRejected, description: Amplitude refused the metric query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Amplitude returned invalid metric JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Dates, metric, interval, or credentials are invalid.", optional: true}
+      mocks:
+        - {name: countsDefault, branch: counted, default: true, description: Amplitude returned two daily counts., output: {startDate: '20261101', endDate: '20261102', metric: active, intervalDays: 1, dates: ['2026-11-01','2026-11-02'], series: [[42,51]]}}
+    - name: getUserActivity
+      goName: GetUserActivity
+      inputType: GetUserActivityInput
+      outputType: UserActivity
+      kind: query
+      description: Read one Amplitude user's event and session counts with a bounded event page.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Amplitude returned the user's activity summary.}
+        - {id: missing, goName: Missing, description: Amplitude has no activity for this user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Amplitude refused the activity read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Amplitude returned invalid activity JSON., optional: true}
+        - {id: defect, goName: Defect, description: The Amplitude ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: userActivityDefault, branch: found, default: true, description: Amplitude returned one user's counts., output: {amplitudeID: '12345', userID: example-user, eventCount: 142, sessionCount: 23, returnedEvents: 2}}
+    - name: unsetUserProperty
+      goName: UnsetUserProperty
+      inputType: UnsetUserPropertyInput
+      outputType: IdentifiedUser
+      kind: mutation
+      description: Remove one user property from future events with an absolute Identify $unset.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: unset, goName: Unset, description: Amplitude accepted the property removal.}
+        - {id: providerRejected, goName: ProviderRejected, description: Amplitude conclusively refused the removal., optional: true}
+        - {id: defect, goName: Defect, description: "The user, property, or connection is invalid.", optional: true}
+      mocks:
+        - {name: unsetDefault, branch: unset, default: true, description: The obsolete plan property was removed., output: {userID: example-user, propertyName: oldPlan}}
+    - name: trackEvent
+      goName: TrackEvent
+      inputType: TrackEventInput
+      outputType: TrackedEvent
+      kind: mutation
+      description: Upload one analytics event with a stable Dex-derived insert ID; Amplitude deduplicates repeats for seven days.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: tracked, goName: Tracked, description: Amplitude ingested the event.}
+        - {id: providerRejected, goName: ProviderRejected, description: Amplitude conclusively rejected the event., optional: true}
+        - {id: defect, goName: Defect, description: The event or connection is invalid., optional: true}
+      mocks:
+        - name: trackedDefault
+          branch: tracked
+          default: true
+          description: One purchase event was ingested.
+          output: {userID: example-user, eventType: purchase, insertID: example-insert-id}
+    - name: identifyUser
+      goName: IdentifyUser
+      inputType: IdentifyUserInput
+      outputType: IdentifiedUser
+      kind: mutation
+      description: Absolutely set one user property through Amplitude Identify API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: identified, goName: Identified, description: Amplitude accepted the property replacement.}
+        - {id: providerRejected, goName: ProviderRejected, description: Amplitude conclusively rejected the property update., optional: true}
+        - {id: defect, goName: Defect, description: "The user, property, or connection is invalid.", optional: true}
+      mocks:
+        - name: identifiedDefault
+          branch: identified
+          default: true
+          description: The plan property was set for a user.
+          output: {userID: example-user, propertyName: plan}
     - name: searchUsers
       goName: SearchUsers
       inputType: SearchUsersInput

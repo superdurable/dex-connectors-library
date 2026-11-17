@@ -24,7 +24,11 @@ import (
 func TestIdentityLookupUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := sesmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	sendFlow := NewSendFlow(mock.Connection())
+	createFlow := NewCreateFlow(mock.Connection())
+	templatedSendFlow := NewTemplatedSendFlow(mock.Connection())
+	customVerificationFlow := NewCustomVerificationFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, sendFlow, createFlow, templatedSendFlow, customVerificationFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -55,5 +59,45 @@ func TestIdentityLookupUsesDefaultMockWithRealDex(t *testing.T) {
 	var output ses.EmailIdentityDetails
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "example.com", output.Name)
+	require.Len(t, mock.ListEmailIdentities().Calls(), 1)
+	require.Equal(t, ses.ListEmailIdentitiesInput{PageSize: 10}, mock.ListEmailIdentities().Calls()[0].Input)
 	require.Len(t, mock.GetEmailIdentity().Calls(), 1)
+	sendFlowID := "ses-email-send-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, sendFlow, sendFlowID, ses.SendEmailInput{
+		FromEmailAddress: "sender@example.com", ToEmailAddress: "reader@example.net", Subject: "Report ready", TextBody: "The report is ready.",
+	}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	sendResult, err := client.WaitForFlow(ctx, sendFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, sendResult.Status, sendResult.ErrorMessage)
+	require.Len(t, mock.SendEmail().Calls(), 1)
+	createID := "ses-create-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, createFlow, createID, ses.CreateEmailIdentityInput{EmailIdentity: "example.com"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	createResult, err := client.WaitForFlow(ctx, createID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, createResult.Status, createResult.ErrorMessage)
+	var created ses.CreatedEmailIdentity
+	require.NoError(t, createResult.DecodeSingleOutput(&created))
+	require.Equal(t, "example.com", created.Name)
+	require.Len(t, mock.CreateEmailIdentity().Calls(), 1)
+	templatedSendID := "ses-template-send-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, templatedSendFlow, templatedSendID, ses.SendTemplatedEmailInput{
+		FromEmailAddress: "sender@example.com", ToEmailAddress: "reader@example.net",
+		TemplateName: "weekly-report", TemplateData: map[string]string{"name": "Ada"},
+	}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	templatedResult, err := client.WaitForFlow(ctx, templatedSendID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, templatedResult.Status, templatedResult.ErrorMessage)
+	require.Len(t, mock.SendTemplatedEmail().Calls(), 1)
+	customSendID := "ses-custom-verification-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, customVerificationFlow, customSendID, ses.SendCustomVerificationEmailInput{
+		EmailAddress: "reader@example.net", TemplateName: "verify-customer",
+	}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	customResult, err := client.WaitForFlow(ctx, customSendID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, customResult.Status, customResult.ErrorMessage)
+	require.Len(t, mock.SendCustomVerificationEmail().Calls(), 1)
 }

@@ -45,13 +45,23 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	SendMessage() sdkgo.Mutation[SendMessageInput, SentMessage]
 	ReceiveMessages() sdkgo.Mutation[ReceiveMessagesInput, ReceivedMessages]
 	DeleteMessage() sdkgo.Mutation[DeleteMessageInput, DeletedMessage]
 	ChangeMessageVisibility() sdkgo.Mutation[ChangeMessageVisibilityInput, ChangedMessageVisibility]
+	ListQueues() sdkgo.Query[ListQueuesInput, QueuePage]
+	CreateQueue() sdkgo.Mutation[CreateQueueInput, QueueIdentity]
+	GetQueueURL() sdkgo.Query[QueueNameInput, QueueIdentity]
+	GetQueueAttributes() sdkgo.Query[QueueURLInput, QueueAttributes]
+	SetQueueAttribute() sdkgo.Mutation[SetQueueAttributeInput, QueueIdentity]
+	DeleteQueue() sdkgo.Mutation[QueueURLInput, QueueIdentity]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) SendMessage() sdkgo.Mutation[SendMessageInput, SentMessage] {
+	return operations.client.SendMessage()
+}
 func (operations clientOperations) ReceiveMessages() sdkgo.Mutation[ReceiveMessagesInput, ReceivedMessages] {
 	return operations.client.ReceiveMessages()
 }
@@ -60,6 +70,24 @@ func (operations clientOperations) DeleteMessage() sdkgo.Mutation[DeleteMessageI
 }
 func (operations clientOperations) ChangeMessageVisibility() sdkgo.Mutation[ChangeMessageVisibilityInput, ChangedMessageVisibility] {
 	return operations.client.ChangeMessageVisibility()
+}
+func (operations clientOperations) ListQueues() sdkgo.Query[ListQueuesInput, QueuePage] {
+	return operations.client.ListQueues()
+}
+func (operations clientOperations) CreateQueue() sdkgo.Mutation[CreateQueueInput, QueueIdentity] {
+	return operations.client.CreateQueue()
+}
+func (operations clientOperations) GetQueueURL() sdkgo.Query[QueueNameInput, QueueIdentity] {
+	return operations.client.GetQueueURL()
+}
+func (operations clientOperations) GetQueueAttributes() sdkgo.Query[QueueURLInput, QueueAttributes] {
+	return operations.client.GetQueueAttributes()
+}
+func (operations clientOperations) SetQueueAttribute() sdkgo.Mutation[SetQueueAttributeInput, QueueIdentity] {
+	return operations.client.SetQueueAttribute()
+}
+func (operations clientOperations) DeleteQueue() sdkgo.Mutation[QueueURLInput, QueueIdentity] {
+	return operations.client.DeleteQueue()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -219,6 +247,82 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+const SendMessageBranchSent sdkgo.BranchID = "sent"
+const SendMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendMessageBranchSent, Description: "SQS accepted the message and returned its message ID."},
+		{ID: SendMessageBranchProviderRejected, Description: "SQS conclusively rejected the queue or message.", Optional: true},
+		{ID: SendMessageBranchUncertain, Description: "SQS may have accepted the message but did not return a usable response before the send cap.", Optional: true},
+		{ID: SendMessageBranchDefect, Description: "The queue URL, message, or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendMessageResult = sdkgo.MutationResult[SentMessage]
+
+type SendMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=amazon-sqs"`
+	operationID                       struct{}                                          `connector:"operationId=sendMessage"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendMessageInput                         `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendMessageResult]                   `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendMessageResult]                   `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendMessageResult]                   `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendMessageResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendMessageInput, SentMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sqs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendMessageInput, SentMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendMessageResult] {
+			branches := make([]sdkgo.BranchTarget[SendMessageResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendMessageBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
 const ReceiveMessagesBranchReceived sdkgo.BranchID = "received"
 const ReceiveMessagesBranchEmpty sdkgo.BranchID = "empty"
 const ReceiveMessagesBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -239,6 +343,8 @@ var ReceiveMessagesDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type ReceiveMessagesResult = sdkgo.MutationResult[ReceivedMessages]
@@ -259,6 +365,8 @@ type ReceiveMessagesStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ReceiveMessagesResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ReceivedMessages]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewReceiveMessagesStep[IN any](config ReceiveMessagesStepConfig[IN]) sdkgo.MutationStep[IN, ReceiveMessagesInput, ReceivedMessages] {
@@ -293,6 +401,7 @@ func NewReceiveMessagesStep[IN any](config ReceiveMessagesStepConfig[IN]) sdkgo.
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -314,6 +423,8 @@ var DeleteMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type DeleteMessageResult = sdkgo.MutationResult[DeletedMessage]
@@ -333,6 +444,8 @@ type DeleteMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[DeleteMessageResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedMessage]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewDeleteMessageStep[IN any](config DeleteMessageStepConfig[IN]) sdkgo.MutationStep[IN, DeleteMessageInput, DeletedMessage] {
@@ -364,6 +477,7 @@ func NewDeleteMessageStep[IN any](config DeleteMessageStepConfig[IN]) sdkgo.Muta
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -385,6 +499,8 @@ var ChangeMessageVisibilityDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type ChangeMessageVisibilityResult = sdkgo.MutationResult[ChangedMessageVisibility]
@@ -404,6 +520,8 @@ type ChangeMessageVisibilityStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ChangeMessageVisibilityResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ChangedMessageVisibility]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewChangeMessageVisibilityStep[IN any](config ChangeMessageVisibilityStepConfig[IN]) sdkgo.MutationStep[IN, ChangeMessageVisibilityInput, ChangedMessageVisibility] {
@@ -430,6 +548,436 @@ func NewChangeMessageVisibilityStep[IN any](config ChangeMessageVisibilityStepCo
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ChangeMessageVisibilityBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const ListQueuesBranchPage sdkgo.BranchID = "page"
+const ListQueuesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListQueuesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListQueuesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListQueuesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listQueues"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListQueuesBranchPage, Description: "SQS returned a page of queue URLs."},
+		{ID: ListQueuesBranchProviderRejected, Description: "SQS refused the list.", Optional: true},
+		{ID: ListQueuesBranchInvalidResponse, Description: "SQS returned invalid queue data.", Optional: true},
+		{ID: ListQueuesBranchDefect, Description: "Queue filter or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListQueuesResult = sdkgo.QueryResult[QueuePage]
+
+type ListQueuesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=amazon-sqs"`
+	operationID                    struct{}                                     `connector:"operationId=listQueues"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListQueuesInput                     `connector:"mapToOperationInput"`
+	Page                           sdkgo.Target[ListQueuesResult]               `connector:"branch=page"`
+	ProviderRejected               sdkgo.Target[ListQueuesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListQueuesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListQueuesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[QueuePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListQueuesStep[IN any](config ListQueuesStepConfig[IN]) sdkgo.QueryStep[IN, ListQueuesInput, QueuePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sqs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListQueuesInput, QueuePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListQueues(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListQueuesResult] {
+			branches := make([]sdkgo.BranchTarget[ListQueuesResult], 0, 4)
+			if config.Page.HasStep() {
+				branches = append(branches, config.Page.BranchTarget(ListQueuesBranchPage))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListQueuesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListQueuesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListQueuesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateQueueBranchCreated sdkgo.BranchID = "created"
+const CreateQueueBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateQueueBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateQueueBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateQueueDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createQueue"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateQueueBranchCreated, Description: "SQS returned the queue URL."},
+		{ID: CreateQueueBranchProviderRejected, Description: "SQS refused the creation or the name already has different attributes.", Optional: true},
+		{ID: CreateQueueBranchInvalidResponse, Description: "SQS returned an invalid queue URL.", Optional: true},
+		{ID: CreateQueueBranchDefect, Description: "Queue name, attributes, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CreateQueueResult = sdkgo.MutationResult[QueueIdentity]
+
+type CreateQueueStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=amazon-sqs"`
+	operationID                       struct{}                                            `connector:"operationId=createQueue"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateQueueInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateQueueResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateQueueResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateQueueResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateQueueResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[QueueIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewCreateQueueStep[IN any](config CreateQueueStepConfig[IN]) sdkgo.MutationStep[IN, CreateQueueInput, QueueIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sqs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateQueueInput, QueueIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateQueue(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateQueueResult] {
+			branches := make([]sdkgo.BranchTarget[CreateQueueResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateQueueBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateQueueBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateQueueBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateQueueBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetQueueURLBranchFound sdkgo.BranchID = "found"
+const GetQueueURLBranchMissing sdkgo.BranchID = "missing"
+const GetQueueURLBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetQueueURLBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetQueueURLBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetQueueURLDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getQueueURL"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetQueueURLBranchFound, Description: "SQS returned the queue URL."},
+		{ID: GetQueueURLBranchMissing, Description: "The queue does not exist.", Optional: true},
+		{ID: GetQueueURLBranchProviderRejected, Description: "SQS refused the lookup.", Optional: true},
+		{ID: GetQueueURLBranchInvalidResponse, Description: "SQS returned an invalid queue URL.", Optional: true},
+		{ID: GetQueueURLBranchDefect, Description: "Queue name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetQueueURLResult = sdkgo.QueryResult[QueueIdentity]
+
+type GetQueueURLStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=amazon-sqs"`
+	operationID                    struct{}                                         `connector:"operationId=getQueueURL"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) QueueNameInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetQueueURLResult]                  `connector:"branch=found"`
+	Missing                        sdkgo.Target[GetQueueURLResult]                  `connector:"branch=missing,optional"`
+	ProviderRejected               sdkgo.Target[GetQueueURLResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetQueueURLResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetQueueURLResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[QueueIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetQueueURLStep[IN any](config GetQueueURLStepConfig[IN]) sdkgo.QueryStep[IN, QueueNameInput, QueueIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sqs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, QueueNameInput, QueueIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetQueueURL(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetQueueURLResult] {
+			branches := make([]sdkgo.BranchTarget[GetQueueURLResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetQueueURLBranchFound))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(GetQueueURLBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetQueueURLBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetQueueURLBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetQueueURLBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetQueueAttributesBranchFound sdkgo.BranchID = "found"
+const GetQueueAttributesBranchMissing sdkgo.BranchID = "missing"
+const GetQueueAttributesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetQueueAttributesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetQueueAttributesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetQueueAttributesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getQueueAttributes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetQueueAttributesBranchFound, Description: "SQS returned queue attributes."},
+		{ID: GetQueueAttributesBranchMissing, Description: "The queue does not exist.", Optional: true},
+		{ID: GetQueueAttributesBranchProviderRejected, Description: "SQS refused the read.", Optional: true},
+		{ID: GetQueueAttributesBranchInvalidResponse, Description: "SQS returned invalid attributes.", Optional: true},
+		{ID: GetQueueAttributesBranchDefect, Description: "Queue URL or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetQueueAttributesResult = sdkgo.QueryResult[QueueAttributes]
+
+type GetQueueAttributesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=amazon-sqs"`
+	operationID                    struct{}                                           `connector:"operationId=getQueueAttributes"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) QueueURLInput                             `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetQueueAttributesResult]             `connector:"branch=found"`
+	Missing                        sdkgo.Target[GetQueueAttributesResult]             `connector:"branch=missing,optional"`
+	ProviderRejected               sdkgo.Target[GetQueueAttributesResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetQueueAttributesResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetQueueAttributesResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[QueueAttributes]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetQueueAttributesStep[IN any](config GetQueueAttributesStepConfig[IN]) sdkgo.QueryStep[IN, QueueURLInput, QueueAttributes] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sqs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, QueueURLInput, QueueAttributes]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetQueueAttributes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetQueueAttributesResult] {
+			branches := make([]sdkgo.BranchTarget[GetQueueAttributesResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetQueueAttributesBranchFound))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(GetQueueAttributesBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetQueueAttributesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetQueueAttributesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetQueueAttributesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SetQueueAttributeBranchUpdated sdkgo.BranchID = "updated"
+const SetQueueAttributeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SetQueueAttributeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SetQueueAttributeDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "setQueueAttribute"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SetQueueAttributeBranchUpdated, Description: "SQS accepted the new setting."},
+		{ID: SetQueueAttributeBranchProviderRejected, Description: "SQS refused the setting.", Optional: true},
+		{ID: SetQueueAttributeBranchDefect, Description: "Queue URL, setting, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type SetQueueAttributeResult = sdkgo.MutationResult[QueueIdentity]
+
+type SetQueueAttributeStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=amazon-sqs"`
+	operationID                       struct{}                                            `connector:"operationId=setQueueAttribute"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetQueueAttributeInput                     `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[SetQueueAttributeResult]               `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[SetQueueAttributeResult]               `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[SetQueueAttributeResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[QueueIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewSetQueueAttributeStep[IN any](config SetQueueAttributeStepConfig[IN]) sdkgo.MutationStep[IN, SetQueueAttributeInput, QueueIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sqs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetQueueAttributeInput, QueueIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SetQueueAttribute(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SetQueueAttributeResult] {
+			branches := make([]sdkgo.BranchTarget[SetQueueAttributeResult], 0, 3)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(SetQueueAttributeBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SetQueueAttributeBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SetQueueAttributeBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteQueueBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteQueueBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteQueueBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteQueueDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteQueue"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteQueueBranchDeleted, Description: "SQS accepted queue deletion."},
+		{ID: DeleteQueueBranchProviderRejected, Description: "SQS refused queue deletion.", Optional: true},
+		{ID: DeleteQueueBranchDefect, Description: "Queue URL or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteQueueResult = sdkgo.MutationResult[QueueIdentity]
+
+type DeleteQueueStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=amazon-sqs"`
+	operationID                       struct{}                                            `connector:"operationId=deleteQueue"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) QueueURLInput                              `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteQueueResult]                     `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteQueueResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteQueueResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[QueueIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteQueueStep[IN any](config DeleteQueueStepConfig[IN]) sdkgo.MutationStep[IN, QueueURLInput, QueueIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sqs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, QueueURLInput, QueueIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteQueue(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteQueueResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteQueueResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteQueueBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteQueueBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteQueueBranchDefect))
 			}
 			return branches
 		}(),

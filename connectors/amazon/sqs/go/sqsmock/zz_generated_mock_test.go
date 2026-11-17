@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "sendMessage/sentOrder/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sqs.SentMessage](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders","messageId":"order-1042","md5OfBody":"457ba27172a5858e4fed7600ec948c39"}`)
+			return err
+		}},
 		{name: "receiveMessages/paidOrder/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[sqs.ReceivedMessages](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders","messages":[{"messageId":"order-1042","receiptHandle":"receipt-order-1042","body":"{\"orderId\":\"1042\",\"event\":\"paid\"}","md5OfBody":"457ba27172a5858e4fed7600ec948c39","sentAt":"2026-10-25T09:00:00Z","firstReceivedAt":"2026-10-25T09:00:01Z","receiveCount":1}]}`)
 			return err
@@ -36,6 +40,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[sqs.ChangedMessageVisibility](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders","messageId":"order-1042","visibilityTimeoutSeconds":0,"visibleAfter":"2026-10-25T09:00:02Z"}`)
 			return err
 		}},
+		{name: "listQueues/queuesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sqs.QueuePage](`{"queueUrls":["https://sqs.eu-west-1.amazonaws.com/123456789012/orders"],"nextToken":""}`)
+			return err
+		}},
+		{name: "createQueue/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sqs.QueueIdentity](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders"}`)
+			return err
+		}},
+		{name: "getQueueURL/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sqs.QueueIdentity](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders"}`)
+			return err
+		}},
+		{name: "getQueueAttributes/attributesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sqs.QueueAttributes](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders","attributes":{"VisibilityTimeout":"30"}}`)
+			return err
+		}},
+		{name: "setQueueAttribute/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sqs.QueueIdentity](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders"}`)
+			return err
+		}},
+		{name: "deleteQueue/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sqs.QueueIdentity](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -46,6 +74,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.SendMessage().Definition().Operation.OperationID != "sendMessage" {
+		t.Errorf("sendMessage mock has another definition")
+	}
 	if mock.ReceiveMessages().Definition().Operation.OperationID != "receiveMessages" {
 		t.Errorf("receiveMessages mock has another definition")
 	}
@@ -54,5 +85,23 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ChangeMessageVisibility().Definition().Operation.OperationID != "changeMessageVisibility" {
 		t.Errorf("changeMessageVisibility mock has another definition")
+	}
+	if mock.ListQueues().Definition().Operation.OperationID != "listQueues" {
+		t.Errorf("listQueues mock has another definition")
+	}
+	if mock.CreateQueue().Definition().Operation.OperationID != "createQueue" {
+		t.Errorf("createQueue mock has another definition")
+	}
+	if mock.GetQueueURL().Definition().Operation.OperationID != "getQueueURL" {
+		t.Errorf("getQueueURL mock has another definition")
+	}
+	if mock.GetQueueAttributes().Definition().Operation.OperationID != "getQueueAttributes" {
+		t.Errorf("getQueueAttributes mock has another definition")
+	}
+	if mock.SetQueueAttribute().Definition().Operation.OperationID != "setQueueAttribute" {
+		t.Errorf("setQueueAttribute mock has another definition")
+	}
+	if mock.DeleteQueue().Definition().Operation.OperationID != "deleteQueue" {
+		t.Errorf("deleteQueue mock has another definition")
 	}
 }
