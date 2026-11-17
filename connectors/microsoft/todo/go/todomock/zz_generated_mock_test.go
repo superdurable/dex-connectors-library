@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getTaskList/retrievedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[todo.TaskList](`{"id":"sample-list-1","displayName":"Tasks"}`)
+			return err
+		}},
+		{name: "getTask/retrievedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[todo.Task](`{"id":"sample-task-1","title":"Review request","status":"notStarted"}`)
+			return err
+		}},
+		{name: "listLinkedResources/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[todo.LinkedResourcesPage](`{"resources":[{"id":"sample-resource-1","displayName":"Source item","applicationName":"Example","externalId":"item-1","webUrl":"https://example.com/item-1"}]}`)
+			return err
+		}},
+		{name: "getLinkedResource/retrievedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[todo.LinkedResource](`{"id":"sample-resource-1","displayName":"Source item","applicationName":"Example","externalId":"item-1","webUrl":"https://example.com/item-1"}`)
+			return err
+		}},
 		{name: "listTaskLists/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[todo.TaskListsPage](`{"lists":[{"id":"sample-list-1","displayName":"Tasks"}]}`)
 			return err
@@ -34,6 +50,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetTaskList().Definition().Operation.OperationID != "getTaskList" {
+		t.Errorf("getTaskList mock has another definition")
+	}
+	if mock.GetTask().Definition().Operation.OperationID != "getTask" {
+		t.Errorf("getTask mock has another definition")
+	}
+	if mock.ListLinkedResources().Definition().Operation.OperationID != "listLinkedResources" {
+		t.Errorf("listLinkedResources mock has another definition")
+	}
+	if mock.GetLinkedResource().Definition().Operation.OperationID != "getLinkedResource" {
+		t.Errorf("getLinkedResource mock has another definition")
+	}
 	if mock.ListTaskLists().Definition().Operation.OperationID != "listTaskLists" {
 		t.Errorf("listTaskLists mock has another definition")
 	}
