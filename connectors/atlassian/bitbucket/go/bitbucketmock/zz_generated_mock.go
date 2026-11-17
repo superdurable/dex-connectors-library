@@ -17,18 +17,25 @@ import (
 
 // Mock is a scripted bitbucket connection. Script each operation through its accessor.
 type Mock struct {
-	connection             bitbucket.Connection
-	createPullRequest      *connectormock.Mutation[bitbucket.CreatePullRequestInput, bitbucket.PullRequest]
-	mergePullRequest       *connectormock.Mutation[bitbucket.PullRequestActionInput, bitbucket.PullRequest]
-	declinePullRequest     *connectormock.Mutation[bitbucket.PullRequestActionInput, bitbucket.PullRequest]
-	createRepository       *connectormock.Mutation[bitbucket.CreateRepositoryInput, bitbucket.Repository]
-	updateRepository       *connectormock.Mutation[bitbucket.UpdateRepositoryInput, bitbucket.Repository]
-	deleteRepository       *connectormock.Mutation[bitbucket.DeleteRepositoryInput, bitbucket.DeletedRepository]
-	getRepository          *connectormock.Query[bitbucket.GetRepositoryInput, bitbucket.Repository]
-	getPullRequest         *connectormock.Query[bitbucket.GetPullRequestInput, bitbucket.PullRequest]
-	updatePullRequestTitle *connectormock.Mutation[bitbucket.UpdatePullRequestTitleInput, bitbucket.PullRequest]
-	listRepositories       *connectormock.Query[bitbucket.ListRepositoriesInput, bitbucket.RepositoryPage]
-	listPullRequests       *connectormock.Query[bitbucket.ListPullRequestsInput, bitbucket.PullRequestPage]
+	connection                  bitbucket.Connection
+	listPullRequestComments     *connectormock.Query[bitbucket.PullRequestActionInput, bitbucket.PullRequestCommentPage]
+	getPullRequestComment       *connectormock.Query[bitbucket.PullRequestCommentIDInput, bitbucket.PullRequestComment]
+	createPullRequestComment    *connectormock.Mutation[bitbucket.CreatePullRequestCommentInput, bitbucket.PullRequestComment]
+	updatePullRequestComment    *connectormock.Mutation[bitbucket.UpdatePullRequestCommentInput, bitbucket.PullRequestComment]
+	deletePullRequestComment    *connectormock.Mutation[bitbucket.PullRequestCommentIDInput, bitbucket.DeletedPullRequestComment]
+	resolvePullRequestComment   *connectormock.Mutation[bitbucket.PullRequestCommentIDInput, bitbucket.PullRequestComment]
+	unresolvePullRequestComment *connectormock.Mutation[bitbucket.PullRequestCommentIDInput, bitbucket.PullRequestComment]
+	createPullRequest           *connectormock.Mutation[bitbucket.CreatePullRequestInput, bitbucket.PullRequest]
+	mergePullRequest            *connectormock.Mutation[bitbucket.PullRequestActionInput, bitbucket.PullRequest]
+	declinePullRequest          *connectormock.Mutation[bitbucket.PullRequestActionInput, bitbucket.PullRequest]
+	createRepository            *connectormock.Mutation[bitbucket.CreateRepositoryInput, bitbucket.Repository]
+	updateRepository            *connectormock.Mutation[bitbucket.UpdateRepositoryInput, bitbucket.Repository]
+	deleteRepository            *connectormock.Mutation[bitbucket.DeleteRepositoryInput, bitbucket.DeletedRepository]
+	getRepository               *connectormock.Query[bitbucket.GetRepositoryInput, bitbucket.Repository]
+	getPullRequest              *connectormock.Query[bitbucket.GetPullRequestInput, bitbucket.PullRequest]
+	updatePullRequestTitle      *connectormock.Mutation[bitbucket.UpdatePullRequestTitleInput, bitbucket.PullRequest]
+	listRepositories            *connectormock.Query[bitbucket.ListRepositoriesInput, bitbucket.RepositoryPage]
+	listPullRequests            *connectormock.Query[bitbucket.ListPullRequestsInput, bitbucket.PullRequestPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -36,18 +43,32 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createPullRequest:      connectormock.NewMutation[bitbucket.CreatePullRequestInput, bitbucket.PullRequest](t, bitbucket.CreatePullRequestDefinition),
-		mergePullRequest:       connectormock.NewMutation[bitbucket.PullRequestActionInput, bitbucket.PullRequest](t, bitbucket.MergePullRequestDefinition),
-		declinePullRequest:     connectormock.NewMutation[bitbucket.PullRequestActionInput, bitbucket.PullRequest](t, bitbucket.DeclinePullRequestDefinition),
-		createRepository:       connectormock.NewMutation[bitbucket.CreateRepositoryInput, bitbucket.Repository](t, bitbucket.CreateRepositoryDefinition),
-		updateRepository:       connectormock.NewMutation[bitbucket.UpdateRepositoryInput, bitbucket.Repository](t, bitbucket.UpdateRepositoryDefinition),
-		deleteRepository:       connectormock.NewMutation[bitbucket.DeleteRepositoryInput, bitbucket.DeletedRepository](t, bitbucket.DeleteRepositoryDefinition),
-		getRepository:          connectormock.NewQuery[bitbucket.GetRepositoryInput, bitbucket.Repository](t, bitbucket.GetRepositoryDefinition),
-		getPullRequest:         connectormock.NewQuery[bitbucket.GetPullRequestInput, bitbucket.PullRequest](t, bitbucket.GetPullRequestDefinition),
-		updatePullRequestTitle: connectormock.NewMutation[bitbucket.UpdatePullRequestTitleInput, bitbucket.PullRequest](t, bitbucket.UpdatePullRequestTitleDefinition),
-		listRepositories:       connectormock.NewQuery[bitbucket.ListRepositoriesInput, bitbucket.RepositoryPage](t, bitbucket.ListRepositoriesDefinition),
-		listPullRequests:       connectormock.NewQuery[bitbucket.ListPullRequestsInput, bitbucket.PullRequestPage](t, bitbucket.ListPullRequestsDefinition),
+		listPullRequestComments:     connectormock.NewQuery[bitbucket.PullRequestActionInput, bitbucket.PullRequestCommentPage](t, bitbucket.ListPullRequestCommentsDefinition),
+		getPullRequestComment:       connectormock.NewQuery[bitbucket.PullRequestCommentIDInput, bitbucket.PullRequestComment](t, bitbucket.GetPullRequestCommentDefinition),
+		createPullRequestComment:    connectormock.NewMutation[bitbucket.CreatePullRequestCommentInput, bitbucket.PullRequestComment](t, bitbucket.CreatePullRequestCommentDefinition),
+		updatePullRequestComment:    connectormock.NewMutation[bitbucket.UpdatePullRequestCommentInput, bitbucket.PullRequestComment](t, bitbucket.UpdatePullRequestCommentDefinition),
+		deletePullRequestComment:    connectormock.NewMutation[bitbucket.PullRequestCommentIDInput, bitbucket.DeletedPullRequestComment](t, bitbucket.DeletePullRequestCommentDefinition),
+		resolvePullRequestComment:   connectormock.NewMutation[bitbucket.PullRequestCommentIDInput, bitbucket.PullRequestComment](t, bitbucket.ResolvePullRequestCommentDefinition),
+		unresolvePullRequestComment: connectormock.NewMutation[bitbucket.PullRequestCommentIDInput, bitbucket.PullRequestComment](t, bitbucket.UnresolvePullRequestCommentDefinition),
+		createPullRequest:           connectormock.NewMutation[bitbucket.CreatePullRequestInput, bitbucket.PullRequest](t, bitbucket.CreatePullRequestDefinition),
+		mergePullRequest:            connectormock.NewMutation[bitbucket.PullRequestActionInput, bitbucket.PullRequest](t, bitbucket.MergePullRequestDefinition),
+		declinePullRequest:          connectormock.NewMutation[bitbucket.PullRequestActionInput, bitbucket.PullRequest](t, bitbucket.DeclinePullRequestDefinition),
+		createRepository:            connectormock.NewMutation[bitbucket.CreateRepositoryInput, bitbucket.Repository](t, bitbucket.CreateRepositoryDefinition),
+		updateRepository:            connectormock.NewMutation[bitbucket.UpdateRepositoryInput, bitbucket.Repository](t, bitbucket.UpdateRepositoryDefinition),
+		deleteRepository:            connectormock.NewMutation[bitbucket.DeleteRepositoryInput, bitbucket.DeletedRepository](t, bitbucket.DeleteRepositoryDefinition),
+		getRepository:               connectormock.NewQuery[bitbucket.GetRepositoryInput, bitbucket.Repository](t, bitbucket.GetRepositoryDefinition),
+		getPullRequest:              connectormock.NewQuery[bitbucket.GetPullRequestInput, bitbucket.PullRequest](t, bitbucket.GetPullRequestDefinition),
+		updatePullRequestTitle:      connectormock.NewMutation[bitbucket.UpdatePullRequestTitleInput, bitbucket.PullRequest](t, bitbucket.UpdatePullRequestTitleDefinition),
+		listRepositories:            connectormock.NewQuery[bitbucket.ListRepositoriesInput, bitbucket.RepositoryPage](t, bitbucket.ListRepositoriesDefinition),
+		listPullRequests:            connectormock.NewQuery[bitbucket.ListPullRequestsInput, bitbucket.PullRequestPage](t, bitbucket.ListPullRequestsDefinition),
 	}
+	mock.listPullRequestComments.Default(ListPullRequestCommentsDefault())
+	mock.getPullRequestComment.Default(GetPullRequestCommentDefault())
+	mock.createPullRequestComment.Default(CreatePullRequestCommentDefault())
+	mock.updatePullRequestComment.Default(UpdatePullRequestCommentDefault())
+	mock.deletePullRequestComment.Default(DeletePullRequestCommentDefault())
+	mock.resolvePullRequestComment.Default(ResolvePullRequestCommentDefault())
+	mock.unresolvePullRequestComment.Default(UnresolvePullRequestCommentDefault())
 	mock.createPullRequest.Default(CreatePullRequestDefault())
 	mock.mergePullRequest.Default(MergePullRequestDefault())
 	mock.declinePullRequest.Default(DeclinePullRequestDefault())
@@ -69,6 +90,41 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() bitbucket.Connection { return mock.connection }
+
+// ListPullRequestComments returns the listPullRequestComments script.
+func (mock *Mock) ListPullRequestComments() *connectormock.Query[bitbucket.PullRequestActionInput, bitbucket.PullRequestCommentPage] {
+	return mock.listPullRequestComments
+}
+
+// GetPullRequestComment returns the getPullRequestComment script.
+func (mock *Mock) GetPullRequestComment() *connectormock.Query[bitbucket.PullRequestCommentIDInput, bitbucket.PullRequestComment] {
+	return mock.getPullRequestComment
+}
+
+// CreatePullRequestComment returns the createPullRequestComment script.
+func (mock *Mock) CreatePullRequestComment() *connectormock.Mutation[bitbucket.CreatePullRequestCommentInput, bitbucket.PullRequestComment] {
+	return mock.createPullRequestComment
+}
+
+// UpdatePullRequestComment returns the updatePullRequestComment script.
+func (mock *Mock) UpdatePullRequestComment() *connectormock.Mutation[bitbucket.UpdatePullRequestCommentInput, bitbucket.PullRequestComment] {
+	return mock.updatePullRequestComment
+}
+
+// DeletePullRequestComment returns the deletePullRequestComment script.
+func (mock *Mock) DeletePullRequestComment() *connectormock.Mutation[bitbucket.PullRequestCommentIDInput, bitbucket.DeletedPullRequestComment] {
+	return mock.deletePullRequestComment
+}
+
+// ResolvePullRequestComment returns the resolvePullRequestComment script.
+func (mock *Mock) ResolvePullRequestComment() *connectormock.Mutation[bitbucket.PullRequestCommentIDInput, bitbucket.PullRequestComment] {
+	return mock.resolvePullRequestComment
+}
+
+// UnresolvePullRequestComment returns the unresolvePullRequestComment script.
+func (mock *Mock) UnresolvePullRequestComment() *connectormock.Mutation[bitbucket.PullRequestCommentIDInput, bitbucket.PullRequestComment] {
+	return mock.unresolvePullRequestComment
+}
 
 // CreatePullRequest returns the createPullRequest script.
 func (mock *Mock) CreatePullRequest() *connectormock.Mutation[bitbucket.CreatePullRequestInput, bitbucket.PullRequest] {
@@ -127,6 +183,27 @@ func (mock *Mock) ListPullRequests() *connectormock.Query[bitbucket.ListPullRequ
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListPullRequestComments() sdkgo.Query[bitbucket.PullRequestActionInput, bitbucket.PullRequestCommentPage] {
+	return operations.mock.listPullRequestComments
+}
+func (operations mockOperations) GetPullRequestComment() sdkgo.Query[bitbucket.PullRequestCommentIDInput, bitbucket.PullRequestComment] {
+	return operations.mock.getPullRequestComment
+}
+func (operations mockOperations) CreatePullRequestComment() sdkgo.Mutation[bitbucket.CreatePullRequestCommentInput, bitbucket.PullRequestComment] {
+	return operations.mock.createPullRequestComment
+}
+func (operations mockOperations) UpdatePullRequestComment() sdkgo.Mutation[bitbucket.UpdatePullRequestCommentInput, bitbucket.PullRequestComment] {
+	return operations.mock.updatePullRequestComment
+}
+func (operations mockOperations) DeletePullRequestComment() sdkgo.Mutation[bitbucket.PullRequestCommentIDInput, bitbucket.DeletedPullRequestComment] {
+	return operations.mock.deletePullRequestComment
+}
+func (operations mockOperations) ResolvePullRequestComment() sdkgo.Mutation[bitbucket.PullRequestCommentIDInput, bitbucket.PullRequestComment] {
+	return operations.mock.resolvePullRequestComment
+}
+func (operations mockOperations) UnresolvePullRequestComment() sdkgo.Mutation[bitbucket.PullRequestCommentIDInput, bitbucket.PullRequestComment] {
+	return operations.mock.unresolvePullRequestComment
+}
 func (operations mockOperations) CreatePullRequest() sdkgo.Mutation[bitbucket.CreatePullRequestInput, bitbucket.PullRequest] {
 	return operations.mock.createPullRequest
 }
@@ -159,6 +236,283 @@ func (operations mockOperations) ListRepositories() sdkgo.Query[bitbucket.ListRe
 }
 func (operations mockOperations) ListPullRequests() sdkgo.Query[bitbucket.ListPullRequestsInput, bitbucket.PullRequestPage] {
 	return operations.mock.listPullRequests
+}
+
+// ListPullRequestCommentsListed selects the listed branch: Bitbucket returned the requested comment state.
+func ListPullRequestCommentsListed(value bitbucket.PullRequestCommentPage, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestCommentPage] {
+	return connectormock.Branch(bitbucket.ListPullRequestCommentsBranchListed, value, failure)
+}
+
+// ListPullRequestCommentsNotFound selects the notFound branch: The pull request or comment was not found.
+func ListPullRequestCommentsNotFound(value bitbucket.PullRequestCommentPage, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestCommentPage] {
+	return connectormock.Branch(bitbucket.ListPullRequestCommentsBranchNotFound, value, failure)
+}
+
+// ListPullRequestCommentsProviderRejected selects the providerRejected branch: Bitbucket rejected the comment request.
+func ListPullRequestCommentsProviderRejected(value bitbucket.PullRequestCommentPage, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestCommentPage] {
+	return connectormock.Branch(bitbucket.ListPullRequestCommentsBranchProviderRejected, value, failure)
+}
+
+// ListPullRequestCommentsInvalidResponse selects the invalidResponse branch: Bitbucket returned malformed or oversized JSON.
+func ListPullRequestCommentsInvalidResponse(value bitbucket.PullRequestCommentPage, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestCommentPage] {
+	return connectormock.Branch(bitbucket.ListPullRequestCommentsBranchInvalidResponse, value, failure)
+}
+
+// ListPullRequestCommentsDefect selects the defect branch: Local input or credentials are invalid.
+func ListPullRequestCommentsDefect(value bitbucket.PullRequestCommentPage, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestCommentPage] {
+	return connectormock.Branch(bitbucket.ListPullRequestCommentsBranchDefect, value, failure)
+}
+
+// ListPullRequestCommentsRetry asks Dex to retry the listPullRequestComments Step, after the delay when it is positive.
+func ListPullRequestCommentsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bitbucket.PullRequestCommentPage] {
+	return connectormock.Retry[bitbucket.PullRequestCommentPage](failure, after)
+}
+
+// ListPullRequestCommentsListedDefault is the manifest mock listedDefault: A sample comment outcome is returned.
+func ListPullRequestCommentsListedDefault() connectormock.Case[bitbucket.PullRequestCommentPage] {
+	value := connectormock.MustDecodeOutput[bitbucket.PullRequestCommentPage](`{"values":[{"id":3,"content":{"raw":"Looks good"},"deleted":false}],"page":1,"pagelen":10}`)
+	return connectormock.Branch(bitbucket.ListPullRequestCommentsBranchListed, value, nil)
+}
+
+// ListPullRequestCommentsDefault is the manifest default, listedDefault, which New installs.
+func ListPullRequestCommentsDefault() connectormock.Case[bitbucket.PullRequestCommentPage] {
+	return ListPullRequestCommentsListedDefault()
+}
+
+// GetPullRequestCommentFound selects the found branch: Bitbucket returned the requested comment state.
+func GetPullRequestCommentFound(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.GetPullRequestCommentBranchFound, value, failure)
+}
+
+// GetPullRequestCommentNotFound selects the notFound branch: The pull request or comment was not found.
+func GetPullRequestCommentNotFound(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.GetPullRequestCommentBranchNotFound, value, failure)
+}
+
+// GetPullRequestCommentProviderRejected selects the providerRejected branch: Bitbucket rejected the comment request.
+func GetPullRequestCommentProviderRejected(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.GetPullRequestCommentBranchProviderRejected, value, failure)
+}
+
+// GetPullRequestCommentInvalidResponse selects the invalidResponse branch: Bitbucket returned malformed or oversized JSON.
+func GetPullRequestCommentInvalidResponse(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.GetPullRequestCommentBranchInvalidResponse, value, failure)
+}
+
+// GetPullRequestCommentDefect selects the defect branch: Local input or credentials are invalid.
+func GetPullRequestCommentDefect(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.GetPullRequestCommentBranchDefect, value, failure)
+}
+
+// GetPullRequestCommentRetry asks Dex to retry the getPullRequestComment Step, after the delay when it is positive.
+func GetPullRequestCommentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Retry[bitbucket.PullRequestComment](failure, after)
+}
+
+// GetPullRequestCommentFoundDefault is the manifest mock foundDefault: A sample comment outcome is returned.
+func GetPullRequestCommentFoundDefault() connectormock.Case[bitbucket.PullRequestComment] {
+	value := connectormock.MustDecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false}`)
+	return connectormock.Branch(bitbucket.GetPullRequestCommentBranchFound, value, nil)
+}
+
+// GetPullRequestCommentDefault is the manifest default, foundDefault, which New installs.
+func GetPullRequestCommentDefault() connectormock.Case[bitbucket.PullRequestComment] {
+	return GetPullRequestCommentFoundDefault()
+}
+
+// CreatePullRequestCommentCreated selects the created branch: Bitbucket returned the requested comment state.
+func CreatePullRequestCommentCreated(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.CreatePullRequestCommentBranchCreated, value, failure)
+}
+
+// CreatePullRequestCommentProviderRejected selects the providerRejected branch: Bitbucket rejected the comment request.
+func CreatePullRequestCommentProviderRejected(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.CreatePullRequestCommentBranchProviderRejected, value, failure)
+}
+
+// CreatePullRequestCommentDefect selects the defect branch: Local input or credentials are invalid.
+func CreatePullRequestCommentDefect(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.CreatePullRequestCommentBranchDefect, value, failure)
+}
+
+// CreatePullRequestCommentUncertain returns an uncertain createPullRequestComment outcome.
+func CreatePullRequestCommentUncertain(value bitbucket.PullRequestComment, failure sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreatePullRequestCommentRetry asks Dex to retry the createPullRequestComment Step, after the delay when it is positive.
+func CreatePullRequestCommentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Retry[bitbucket.PullRequestComment](failure, after)
+}
+
+// CreatePullRequestCommentCreatedDefault is the manifest mock createdDefault: A sample comment outcome is returned.
+func CreatePullRequestCommentCreatedDefault() connectormock.Case[bitbucket.PullRequestComment] {
+	value := connectormock.MustDecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false}`)
+	return connectormock.Branch(bitbucket.CreatePullRequestCommentBranchCreated, value, nil)
+}
+
+// CreatePullRequestCommentDefault is the manifest default, createdDefault, which New installs.
+func CreatePullRequestCommentDefault() connectormock.Case[bitbucket.PullRequestComment] {
+	return CreatePullRequestCommentCreatedDefault()
+}
+
+// UpdatePullRequestCommentUpdated selects the updated branch: Bitbucket returned the requested comment state.
+func UpdatePullRequestCommentUpdated(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.UpdatePullRequestCommentBranchUpdated, value, failure)
+}
+
+// UpdatePullRequestCommentNotFound selects the notFound branch: The pull request or comment was not found.
+func UpdatePullRequestCommentNotFound(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.UpdatePullRequestCommentBranchNotFound, value, failure)
+}
+
+// UpdatePullRequestCommentProviderRejected selects the providerRejected branch: Bitbucket rejected the comment request.
+func UpdatePullRequestCommentProviderRejected(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.UpdatePullRequestCommentBranchProviderRejected, value, failure)
+}
+
+// UpdatePullRequestCommentInvalidResponse selects the invalidResponse branch: Bitbucket returned malformed or oversized JSON.
+func UpdatePullRequestCommentInvalidResponse(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.UpdatePullRequestCommentBranchInvalidResponse, value, failure)
+}
+
+// UpdatePullRequestCommentDefect selects the defect branch: Local input or credentials are invalid.
+func UpdatePullRequestCommentDefect(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.UpdatePullRequestCommentBranchDefect, value, failure)
+}
+
+// UpdatePullRequestCommentRetry asks Dex to retry the updatePullRequestComment Step, after the delay when it is positive.
+func UpdatePullRequestCommentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Retry[bitbucket.PullRequestComment](failure, after)
+}
+
+// UpdatePullRequestCommentUpdatedDefault is the manifest mock updatedDefault: A sample comment outcome is returned.
+func UpdatePullRequestCommentUpdatedDefault() connectormock.Case[bitbucket.PullRequestComment] {
+	value := connectormock.MustDecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false}`)
+	return connectormock.Branch(bitbucket.UpdatePullRequestCommentBranchUpdated, value, nil)
+}
+
+// UpdatePullRequestCommentDefault is the manifest default, updatedDefault, which New installs.
+func UpdatePullRequestCommentDefault() connectormock.Case[bitbucket.PullRequestComment] {
+	return UpdatePullRequestCommentUpdatedDefault()
+}
+
+// DeletePullRequestCommentDeleted selects the deleted branch: Bitbucket returned the requested comment state.
+func DeletePullRequestCommentDeleted(value bitbucket.DeletedPullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.DeletedPullRequestComment] {
+	return connectormock.Branch(bitbucket.DeletePullRequestCommentBranchDeleted, value, failure)
+}
+
+// DeletePullRequestCommentNotFound selects the notFound branch: The pull request or comment was not found.
+func DeletePullRequestCommentNotFound(value bitbucket.DeletedPullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.DeletedPullRequestComment] {
+	return connectormock.Branch(bitbucket.DeletePullRequestCommentBranchNotFound, value, failure)
+}
+
+// DeletePullRequestCommentProviderRejected selects the providerRejected branch: Bitbucket rejected the comment request.
+func DeletePullRequestCommentProviderRejected(value bitbucket.DeletedPullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.DeletedPullRequestComment] {
+	return connectormock.Branch(bitbucket.DeletePullRequestCommentBranchProviderRejected, value, failure)
+}
+
+// DeletePullRequestCommentDefect selects the defect branch: Local input or credentials are invalid.
+func DeletePullRequestCommentDefect(value bitbucket.DeletedPullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.DeletedPullRequestComment] {
+	return connectormock.Branch(bitbucket.DeletePullRequestCommentBranchDefect, value, failure)
+}
+
+// DeletePullRequestCommentRetry asks Dex to retry the deletePullRequestComment Step, after the delay when it is positive.
+func DeletePullRequestCommentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bitbucket.DeletedPullRequestComment] {
+	return connectormock.Retry[bitbucket.DeletedPullRequestComment](failure, after)
+}
+
+// DeletePullRequestCommentDeletedDefault is the manifest mock deletedDefault: A sample comment outcome is returned.
+func DeletePullRequestCommentDeletedDefault() connectormock.Case[bitbucket.DeletedPullRequestComment] {
+	value := connectormock.MustDecodeOutput[bitbucket.DeletedPullRequestComment](`{"workspace":"meridian","repository":"api","pullRequestId":7,"commentId":3}`)
+	return connectormock.Branch(bitbucket.DeletePullRequestCommentBranchDeleted, value, nil)
+}
+
+// DeletePullRequestCommentDefault is the manifest default, deletedDefault, which New installs.
+func DeletePullRequestCommentDefault() connectormock.Case[bitbucket.DeletedPullRequestComment] {
+	return DeletePullRequestCommentDeletedDefault()
+}
+
+// ResolvePullRequestCommentResolved selects the resolved branch: Bitbucket returned the requested comment state.
+func ResolvePullRequestCommentResolved(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.ResolvePullRequestCommentBranchResolved, value, failure)
+}
+
+// ResolvePullRequestCommentNotFound selects the notFound branch: The pull request or comment was not found.
+func ResolvePullRequestCommentNotFound(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.ResolvePullRequestCommentBranchNotFound, value, failure)
+}
+
+// ResolvePullRequestCommentProviderRejected selects the providerRejected branch: Bitbucket rejected the comment request.
+func ResolvePullRequestCommentProviderRejected(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.ResolvePullRequestCommentBranchProviderRejected, value, failure)
+}
+
+// ResolvePullRequestCommentInvalidResponse selects the invalidResponse branch: Bitbucket returned malformed or oversized JSON.
+func ResolvePullRequestCommentInvalidResponse(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.ResolvePullRequestCommentBranchInvalidResponse, value, failure)
+}
+
+// ResolvePullRequestCommentDefect selects the defect branch: Local input or credentials are invalid.
+func ResolvePullRequestCommentDefect(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.ResolvePullRequestCommentBranchDefect, value, failure)
+}
+
+// ResolvePullRequestCommentRetry asks Dex to retry the resolvePullRequestComment Step, after the delay when it is positive.
+func ResolvePullRequestCommentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Retry[bitbucket.PullRequestComment](failure, after)
+}
+
+// ResolvePullRequestCommentResolvedDefault is the manifest mock resolvedDefault: A sample comment outcome is returned.
+func ResolvePullRequestCommentResolvedDefault() connectormock.Case[bitbucket.PullRequestComment] {
+	value := connectormock.MustDecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false,"resolution":{"created_on":"2026-01-01T00:00:00Z"}}`)
+	return connectormock.Branch(bitbucket.ResolvePullRequestCommentBranchResolved, value, nil)
+}
+
+// ResolvePullRequestCommentDefault is the manifest default, resolvedDefault, which New installs.
+func ResolvePullRequestCommentDefault() connectormock.Case[bitbucket.PullRequestComment] {
+	return ResolvePullRequestCommentResolvedDefault()
+}
+
+// UnresolvePullRequestCommentUnresolved selects the unresolved branch: Bitbucket returned the requested comment state.
+func UnresolvePullRequestCommentUnresolved(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.UnresolvePullRequestCommentBranchUnresolved, value, failure)
+}
+
+// UnresolvePullRequestCommentNotFound selects the notFound branch: The pull request or comment was not found.
+func UnresolvePullRequestCommentNotFound(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.UnresolvePullRequestCommentBranchNotFound, value, failure)
+}
+
+// UnresolvePullRequestCommentProviderRejected selects the providerRejected branch: Bitbucket rejected the comment request.
+func UnresolvePullRequestCommentProviderRejected(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.UnresolvePullRequestCommentBranchProviderRejected, value, failure)
+}
+
+// UnresolvePullRequestCommentInvalidResponse selects the invalidResponse branch: Bitbucket returned malformed or oversized JSON.
+func UnresolvePullRequestCommentInvalidResponse(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.UnresolvePullRequestCommentBranchInvalidResponse, value, failure)
+}
+
+// UnresolvePullRequestCommentDefect selects the defect branch: Local input or credentials are invalid.
+func UnresolvePullRequestCommentDefect(value bitbucket.PullRequestComment, failure *sdkgo.Failure) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Branch(bitbucket.UnresolvePullRequestCommentBranchDefect, value, failure)
+}
+
+// UnresolvePullRequestCommentRetry asks Dex to retry the unresolvePullRequestComment Step, after the delay when it is positive.
+func UnresolvePullRequestCommentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bitbucket.PullRequestComment] {
+	return connectormock.Retry[bitbucket.PullRequestComment](failure, after)
+}
+
+// UnresolvePullRequestCommentUnresolvedDefault is the manifest mock unresolvedDefault: A sample comment outcome is returned.
+func UnresolvePullRequestCommentUnresolvedDefault() connectormock.Case[bitbucket.PullRequestComment] {
+	value := connectormock.MustDecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false}`)
+	return connectormock.Branch(bitbucket.UnresolvePullRequestCommentBranchUnresolved, value, nil)
+}
+
+// UnresolvePullRequestCommentDefault is the manifest default, unresolvedDefault, which New installs.
+func UnresolvePullRequestCommentDefault() connectormock.Case[bitbucket.PullRequestComment] {
+	return UnresolvePullRequestCommentUnresolvedDefault()
 }
 
 // CreatePullRequestCreated selects the created branch: Bitbucket created the pull request.

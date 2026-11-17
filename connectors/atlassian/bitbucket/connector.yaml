@@ -55,7 +55,153 @@ spec:
         - "Set baseUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
         - "Find the workspace slug in the Bitbucket workspace URL and repository slug in the repository URL. For creation, choose a unique non-secret slug, a display name, and an explicit private/public setting; blank slugs or names are invalid. Bitbucket uses git and assigns its oldest workspace project when none is selected. Repository delete needs the Repositories Delete token permission."
         - "For pull requests, open https://bitbucket.org > workspace > repository > Branches to find source and destination branch names; supply both non-secret names and a non-blank title. Find the positive pull request ID at repository > Pull requests > selected pull request, in its URL. Blank branch names or IDs are invalid. Pull requests Write permits creation, merge, and decline."
+        - "For comments, open https://bitbucket.org > workspace > repository > Pull requests > selected request > Comments. Use Markdown text in raw; blank is invalid, and the text is not a credential. Find commentId in the selected comment's URL anchor or the Bitbucket comment API response. Pull requests Write permits comment create, update, delete, resolve, and reopen."
   operations:
+    - name: listPullRequestComments
+      goName: ListPullRequestComments
+      inputType: PullRequestActionInput
+      outputType: PullRequestCommentPage
+      kind: query
+      description: List comments on a pull request.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Bitbucket returned the requested comment state.}
+        - {id: notFound, goName: NotFound, description: The pull request or comment was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample comment outcome is returned.
+          output: {values: [{id: 3, content: {raw: Looks good}, deleted: false}], page: 1, pagelen: 10}
+    - name: getPullRequestComment
+      goName: GetPullRequestComment
+      inputType: PullRequestCommentIDInput
+      outputType: PullRequestComment
+      kind: query
+      description: Read one pull request comment.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Bitbucket returned the requested comment state.}
+        - {id: notFound, goName: NotFound, description: The pull request or comment was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample comment outcome is returned.
+          output: {id: 3, content: {raw: Looks good}, deleted: false}
+    - name: createPullRequestComment
+      goName: CreatePullRequestComment
+      inputType: CreatePullRequestCommentInput
+      outputType: PullRequestComment
+      kind: mutation
+      description: Create a pull request comment.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Bitbucket returned the requested comment state.}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: An earlier comment create could not be confirmed., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample comment outcome is returned.
+          output: {id: 3, content: {raw: Looks good}, deleted: false}
+    - name: updatePullRequestComment
+      goName: UpdatePullRequestComment
+      inputType: UpdatePullRequestCommentInput
+      outputType: PullRequestComment
+      kind: mutation
+      description: Replace pull request comment text.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Bitbucket returned the requested comment state.}
+        - {id: notFound, goName: NotFound, description: The pull request or comment was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample comment outcome is returned.
+          output: {id: 3, content: {raw: Looks good}, deleted: false}
+    - name: deletePullRequestComment
+      goName: DeletePullRequestComment
+      inputType: PullRequestCommentIDInput
+      outputType: DeletedPullRequestComment
+      kind: mutation
+      description: Delete a pull request comment.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Bitbucket returned the requested comment state.}
+        - {id: notFound, goName: NotFound, description: The pull request or comment was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample comment outcome is returned.
+          output: {workspace: meridian, repository: api, pullRequestId: 7, commentId: 3}
+    - name: resolvePullRequestComment
+      goName: ResolvePullRequestComment
+      inputType: PullRequestCommentIDInput
+      outputType: PullRequestComment
+      kind: mutation
+      description: Resolve a pull request comment.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: resolved, goName: Resolved, description: Bitbucket returned the requested comment state.}
+        - {id: notFound, goName: NotFound, description: The pull request or comment was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: resolvedDefault
+          branch: resolved
+          default: true
+          description: A sample comment outcome is returned.
+          output: {id: 3, content: {raw: Looks good}, deleted: false, resolution: {created_on: '2026-01-01T00:00:00Z'}}
+    - name: unresolvePullRequestComment
+      goName: UnresolvePullRequestComment
+      inputType: PullRequestCommentIDInput
+      outputType: PullRequestComment
+      kind: mutation
+      description: Reopen a resolved pull request comment.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: unresolved, goName: Unresolved, description: Bitbucket returned the requested comment state.}
+        - {id: notFound, goName: NotFound, description: The pull request or comment was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: unresolvedDefault
+          branch: unresolved
+          default: true
+          description: A sample comment outcome is returned.
+          output: {id: 3, content: {raw: Looks good}, deleted: false}
     - name: createPullRequest
       goName: CreatePullRequest
       inputType: CreatePullRequestInput

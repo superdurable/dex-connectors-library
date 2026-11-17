@@ -2,6 +2,2509 @@
   "connector": "bitbucket",
   "scenarios": [
     {
+      "callId": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "{\"id\":3,\"content\":{\"raw\":\"Looks good\"},\"deleted\":false,\"resolution\":{\"created_on\":\"2026-01-01T00:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "resolved",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "raw": "Looks good"
+          },
+          "deleted": false,
+          "id": 3,
+          "resolution": {
+            "created_on": "2026-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "resolvePullRequestComment-noContentConfirmed",
+      "operation": "resolvePullRequestComment"
+    },
+    {
+      "callId": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "{\"id\":3,\"content\":{\"raw\":\"Looks good\"},\"deleted\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unresolved",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "raw": "Looks good"
+          },
+          "deleted": false,
+          "id": 3
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "unresolvePullRequestComment-noContentConfirmed",
+      "operation": "unresolvePullRequestComment"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listPullRequestComments-rateLimited",
+      "operation": "listPullRequestComments"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listPullRequestComments-unavailable",
+      "operation": "listPullRequestComments"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listPullRequestComments-transportFailure",
+      "operation": "listPullRequestComments"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "next": "",
+          "page": 0,
+          "pagelen": 0,
+          "values": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listPullRequestComments-rejected",
+      "operation": "listPullRequestComments"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "next": "",
+          "page": 0,
+          "pagelen": 0,
+          "values": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listPullRequestComments-notFound",
+      "operation": "listPullRequestComments"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "next": "",
+          "page": 0,
+          "pagelen": 0,
+          "values": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listPullRequestComments-invalidResponse",
+      "operation": "listPullRequestComments"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "next": "",
+          "page": 0,
+          "pagelen": 0,
+          "values": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pullRequestId": 0,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listPullRequestComments-defect",
+      "operation": "listPullRequestComments"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getPullRequestComment-rateLimited",
+      "operation": "getPullRequestComment"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getPullRequestComment-unavailable",
+      "operation": "getPullRequestComment"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getPullRequestComment-transportFailure",
+      "operation": "getPullRequestComment"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getPullRequestComment-rejected",
+      "operation": "getPullRequestComment"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getPullRequestComment-notFound",
+      "operation": "getPullRequestComment"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getPullRequestComment-invalidResponse",
+      "operation": "getPullRequestComment"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": 0,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getPullRequestComment-defect",
+      "operation": "getPullRequestComment"
+    },
+    {
+      "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments",
+          "requestBody": {
+            "content": {
+              "raw": "Looks good"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "505db72d-58a9-5eb5-a5d0-afd666136526",
+      "input": {
+        "pullRequestId": 7,
+        "raw": "Looks good",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createPullRequestComment-rateLimited",
+      "operation": "createPullRequestComment"
+    },
+    {
+      "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments",
+          "requestBody": {
+            "content": {
+              "raw": "Looks good"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "505db72d-58a9-5eb5-a5d0-afd666136526",
+      "input": {
+        "pullRequestId": 7,
+        "raw": "Looks good",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createPullRequestComment-unavailable",
+      "operation": "createPullRequestComment"
+    },
+    {
+      "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments",
+          "requestBody": {
+            "content": {
+              "raw": "Looks good"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "505db72d-58a9-5eb5-a5d0-afd666136526",
+      "input": {
+        "pullRequestId": 7,
+        "raw": "Looks good",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createPullRequestComment-transportFailure",
+      "operation": "createPullRequestComment"
+    },
+    {
+      "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments",
+          "requestBody": {
+            "content": {
+              "raw": "Looks good"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "505db72d-58a9-5eb5-a5d0-afd666136526",
+      "input": {
+        "pullRequestId": 7,
+        "raw": "Looks good",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createPullRequestComment-rejected",
+      "operation": "createPullRequestComment"
+    },
+    {
+      "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "505db72d-58a9-5eb5-a5d0-afd666136526",
+      "input": {
+        "pullRequestId": 7,
+        "raw": " ",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createPullRequestComment-defect",
+      "operation": "createPullRequestComment"
+    },
+    {
+      "callId": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestBody": {
+            "content": {
+              "raw": "Looks good"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "raw": "Looks good",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updatePullRequestComment-rateLimited",
+      "operation": "updatePullRequestComment"
+    },
+    {
+      "callId": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestBody": {
+            "content": {
+              "raw": "Looks good"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "raw": "Looks good",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updatePullRequestComment-unavailable",
+      "operation": "updatePullRequestComment"
+    },
+    {
+      "callId": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestBody": {
+            "content": {
+              "raw": "Looks good"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "raw": "Looks good",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updatePullRequestComment-transportFailure",
+      "operation": "updatePullRequestComment"
+    },
+    {
+      "callId": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestBody": {
+            "content": {
+              "raw": "Looks good"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "raw": "Looks good",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updatePullRequestComment-rejected",
+      "operation": "updatePullRequestComment"
+    },
+    {
+      "callId": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestBody": {
+            "content": {
+              "raw": "Looks good"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "raw": "Looks good",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updatePullRequestComment-notFound",
+      "operation": "updatePullRequestComment"
+    },
+    {
+      "callId": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestBody": {
+            "content": {
+              "raw": "Looks good"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "raw": "Looks good",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updatePullRequestComment-invalidResponse",
+      "operation": "updatePullRequestComment"
+    },
+    {
+      "callId": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "raw": " ",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updatePullRequestComment-defect",
+      "operation": "updatePullRequestComment"
+    },
+    {
+      "callId": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deletePullRequestComment-rateLimited",
+      "operation": "deletePullRequestComment"
+    },
+    {
+      "callId": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deletePullRequestComment-unavailable",
+      "operation": "deletePullRequestComment"
+    },
+    {
+      "callId": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deletePullRequestComment-transportFailure",
+      "operation": "deletePullRequestComment"
+    },
+    {
+      "callId": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "commentId": 0,
+          "pullRequestId": 0,
+          "repository": "",
+          "workspace": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deletePullRequestComment-rejected",
+      "operation": "deletePullRequestComment"
+    },
+    {
+      "callId": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "commentId": 0,
+          "pullRequestId": 0,
+          "repository": "",
+          "workspace": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deletePullRequestComment-notFound",
+      "operation": "deletePullRequestComment"
+    },
+    {
+      "callId": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "commentId": 0,
+          "pullRequestId": 0,
+          "repository": "",
+          "workspace": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
+      "input": {
+        "commentId": 0,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deletePullRequestComment-defect",
+      "operation": "deletePullRequestComment"
+    },
+    {
+      "callId": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "resolvePullRequestComment-rateLimited",
+      "operation": "resolvePullRequestComment"
+    },
+    {
+      "callId": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "resolvePullRequestComment-unavailable",
+      "operation": "resolvePullRequestComment"
+    },
+    {
+      "callId": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "resolvePullRequestComment-transportFailure",
+      "operation": "resolvePullRequestComment"
+    },
+    {
+      "callId": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "resolvePullRequestComment-rejected",
+      "operation": "resolvePullRequestComment"
+    },
+    {
+      "callId": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "resolvePullRequestComment-notFound",
+      "operation": "resolvePullRequestComment"
+    },
+    {
+      "callId": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "resolvePullRequestComment-invalidResponse",
+      "operation": "resolvePullRequestComment"
+    },
+    {
+      "callId": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "input": {
+        "commentId": 0,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "resolvePullRequestComment-defect",
+      "operation": "resolvePullRequestComment"
+    },
+    {
+      "callId": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "unresolvePullRequestComment-rateLimited",
+      "operation": "unresolvePullRequestComment"
+    },
+    {
+      "callId": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "unresolvePullRequestComment-unavailable",
+      "operation": "unresolvePullRequestComment"
+    },
+    {
+      "callId": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "unresolvePullRequestComment-transportFailure",
+      "operation": "unresolvePullRequestComment"
+    },
+    {
+      "callId": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "unresolvePullRequestComment-rejected",
+      "operation": "unresolvePullRequestComment"
+    },
+    {
+      "callId": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "unresolvePullRequestComment-notFound",
+      "operation": "unresolvePullRequestComment"
+    },
+    {
+      "callId": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "unresolvePullRequestComment-invalidResponse",
+      "operation": "unresolvePullRequestComment"
+    },
+    {
+      "callId": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "input": {
+        "commentId": 0,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "unresolvePullRequestComment-defect",
+      "operation": "unresolvePullRequestComment"
+    },
+    {
+      "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "content": {
+            "raw": ""
+          },
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "505db72d-58a9-5eb5-a5d0-afd666136526",
+      "input": {
+        "pullRequestId": 7,
+        "raw": "Looks good",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createPullRequestComment-uncertain",
+      "operation": "createPullRequestComment",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":3,\"content\":{\"raw\":\"Looks good\"},\"deleted\":false,\"resolution\":{\"created_on\":\"2026-01-01T00:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "resolved",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "raw": "Looks good"
+          },
+          "deleted": false,
+          "id": 3,
+          "resolution": {
+            "created_on": "2026-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "resolvePullRequestComment-conflictConfirmed",
+      "operation": "resolvePullRequestComment"
+    },
+    {
+      "callId": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":3,\"content\":{\"raw\":\"Looks good\"},\"deleted\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unresolved",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "raw": "Looks good"
+          },
+          "deleted": false,
+          "id": 3
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "unresolvePullRequestComment-conflictConfirmed",
+      "operation": "unresolvePullRequestComment"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"values\":[{\"id\":3,\"content\":{\"raw\":\"Looks good\"},\"deleted\":false}],\"page\":1,\"pagelen\":10}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "next": "",
+          "page": 1,
+          "pagelen": 10,
+          "values": [
+            {
+              "content": {
+                "raw": "Looks good"
+              },
+              "deleted": false,
+              "id": 3
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listPullRequestComments-listed",
+      "operation": "listPullRequestComments"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"id\":3,\"content\":{\"raw\":\"Looks good\"},\"deleted\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "raw": "Looks good"
+          },
+          "deleted": false,
+          "id": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getPullRequestComment-found",
+      "operation": "getPullRequestComment"
+    },
+    {
+      "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
+      "exchanges": [
+        {
+          "body": "{\"id\":3,\"content\":{\"raw\":\"Looks good\"},\"deleted\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments",
+          "requestBody": {
+            "content": {
+              "raw": "Looks good"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "content": {
+            "raw": "Looks good"
+          },
+          "deleted": false,
+          "id": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "505db72d-58a9-5eb5-a5d0-afd666136526",
+      "input": {
+        "pullRequestId": 7,
+        "raw": "Looks good",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createPullRequestComment-created",
+      "operation": "createPullRequestComment"
+    },
+    {
+      "callId": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "exchanges": [
+        {
+          "body": "{\"id\":3,\"content\":{\"raw\":\"Looks good\"},\"deleted\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestBody": {
+            "content": {
+              "raw": "Looks good"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "raw": "Looks good"
+          },
+          "deleted": false,
+          "id": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2d630d2f-da21-5e15-82ed-aab830761e39",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "raw": "Looks good",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updatePullRequestComment-updated",
+      "operation": "updatePullRequestComment"
+    },
+    {
+      "callId": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "commentId": 3,
+          "pullRequestId": 7,
+          "repository": "api",
+          "workspace": "meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deletePullRequestComment-deleted",
+      "operation": "deletePullRequestComment"
+    },
+    {
+      "callId": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "exchanges": [
+        {
+          "body": "{\"id\":3,\"content\":{\"raw\":\"Looks good\"},\"deleted\":false,\"resolution\":{\"created_on\":\"2026-01-01T00:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "resolved",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "raw": "Looks good"
+          },
+          "deleted": false,
+          "id": 3,
+          "resolution": {
+            "created_on": "2026-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "053af6d7-f498-531d-b903-52fa00fc52aa",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "resolvePullRequestComment-resolved",
+      "operation": "resolvePullRequestComment"
+    },
+    {
+      "callId": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "exchanges": [
+        {
+          "body": "{\"id\":3,\"content\":{\"raw\":\"Looks good\"},\"deleted\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/comments/3/resolve",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unresolved",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "raw": "Looks good"
+          },
+          "deleted": false,
+          "id": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b27f3605-6337-54db-8e97-b1ee695082d6",
+      "input": {
+        "commentId": 3,
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "unresolvePullRequestComment-unresolved",
+      "operation": "unresolvePullRequestComment"
+    },
+    {
       "callId": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
       "exchanges": [
         {

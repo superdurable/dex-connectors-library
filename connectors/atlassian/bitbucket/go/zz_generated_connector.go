@@ -40,6 +40,13 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListPullRequestComments() sdkgo.Query[PullRequestActionInput, PullRequestCommentPage]
+	GetPullRequestComment() sdkgo.Query[PullRequestCommentIDInput, PullRequestComment]
+	CreatePullRequestComment() sdkgo.Mutation[CreatePullRequestCommentInput, PullRequestComment]
+	UpdatePullRequestComment() sdkgo.Mutation[UpdatePullRequestCommentInput, PullRequestComment]
+	DeletePullRequestComment() sdkgo.Mutation[PullRequestCommentIDInput, DeletedPullRequestComment]
+	ResolvePullRequestComment() sdkgo.Mutation[PullRequestCommentIDInput, PullRequestComment]
+	UnresolvePullRequestComment() sdkgo.Mutation[PullRequestCommentIDInput, PullRequestComment]
 	CreatePullRequest() sdkgo.Mutation[CreatePullRequestInput, PullRequest]
 	MergePullRequest() sdkgo.Mutation[PullRequestActionInput, PullRequest]
 	DeclinePullRequest() sdkgo.Mutation[PullRequestActionInput, PullRequest]
@@ -55,6 +62,27 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListPullRequestComments() sdkgo.Query[PullRequestActionInput, PullRequestCommentPage] {
+	return operations.client.ListPullRequestComments()
+}
+func (operations clientOperations) GetPullRequestComment() sdkgo.Query[PullRequestCommentIDInput, PullRequestComment] {
+	return operations.client.GetPullRequestComment()
+}
+func (operations clientOperations) CreatePullRequestComment() sdkgo.Mutation[CreatePullRequestCommentInput, PullRequestComment] {
+	return operations.client.CreatePullRequestComment()
+}
+func (operations clientOperations) UpdatePullRequestComment() sdkgo.Mutation[UpdatePullRequestCommentInput, PullRequestComment] {
+	return operations.client.UpdatePullRequestComment()
+}
+func (operations clientOperations) DeletePullRequestComment() sdkgo.Mutation[PullRequestCommentIDInput, DeletedPullRequestComment] {
+	return operations.client.DeletePullRequestComment()
+}
+func (operations clientOperations) ResolvePullRequestComment() sdkgo.Mutation[PullRequestCommentIDInput, PullRequestComment] {
+	return operations.client.ResolvePullRequestComment()
+}
+func (operations clientOperations) UnresolvePullRequestComment() sdkgo.Mutation[PullRequestCommentIDInput, PullRequestComment] {
+	return operations.client.UnresolvePullRequestComment()
+}
 func (operations clientOperations) CreatePullRequest() sdkgo.Mutation[CreatePullRequestInput, PullRequest] {
 	return operations.client.CreatePullRequest()
 }
@@ -224,6 +252,542 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const ListPullRequestCommentsBranchListed sdkgo.BranchID = "listed"
+const ListPullRequestCommentsBranchNotFound sdkgo.BranchID = "notFound"
+const ListPullRequestCommentsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPullRequestCommentsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPullRequestCommentsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPullRequestCommentsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPullRequestComments"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPullRequestCommentsBranchListed, Description: "Bitbucket returned the requested comment state."},
+		{ID: ListPullRequestCommentsBranchNotFound, Description: "The pull request or comment was not found.", Optional: true},
+		{ID: ListPullRequestCommentsBranchProviderRejected, Description: "Bitbucket rejected the comment request.", Optional: true},
+		{ID: ListPullRequestCommentsBranchInvalidResponse, Description: "Bitbucket returned malformed or oversized JSON.", Optional: true},
+		{ID: ListPullRequestCommentsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPullRequestCommentsResult = sdkgo.QueryResult[PullRequestCommentPage]
+
+type ListPullRequestCommentsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                  `connector:"connectorId=bitbucket"`
+	operationID                    struct{}                                                  `connector:"operationId=listPullRequestComments"`
+	StepType                       string                                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                     Connection                                                `connector:"connection"`
+	ConnectionName                 string                                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) PullRequestActionInput                           `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPullRequestCommentsResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListPullRequestCommentsResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListPullRequestCommentsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPullRequestCommentsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPullRequestCommentsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PullRequestCommentPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewListPullRequestCommentsStep[IN any](config ListPullRequestCommentsStepConfig[IN]) sdkgo.QueryStep[IN, PullRequestActionInput, PullRequestCommentPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, PullRequestActionInput, PullRequestCommentPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListPullRequestComments(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPullRequestCommentsResult] {
+			branches := make([]sdkgo.BranchTarget[ListPullRequestCommentsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPullRequestCommentsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListPullRequestCommentsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPullRequestCommentsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPullRequestCommentsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPullRequestCommentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetPullRequestCommentBranchFound sdkgo.BranchID = "found"
+const GetPullRequestCommentBranchNotFound sdkgo.BranchID = "notFound"
+const GetPullRequestCommentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPullRequestCommentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPullRequestCommentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPullRequestCommentDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPullRequestComment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPullRequestCommentBranchFound, Description: "Bitbucket returned the requested comment state."},
+		{ID: GetPullRequestCommentBranchNotFound, Description: "The pull request or comment was not found.", Optional: true},
+		{ID: GetPullRequestCommentBranchProviderRejected, Description: "Bitbucket rejected the comment request.", Optional: true},
+		{ID: GetPullRequestCommentBranchInvalidResponse, Description: "Bitbucket returned malformed or oversized JSON.", Optional: true},
+		{ID: GetPullRequestCommentBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPullRequestCommentResult = sdkgo.QueryResult[PullRequestComment]
+
+type GetPullRequestCommentStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=bitbucket"`
+	operationID                    struct{}                                              `connector:"operationId=getPullRequestComment"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) PullRequestCommentIDInput                    `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPullRequestCommentResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPullRequestCommentResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetPullRequestCommentResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPullRequestCommentResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPullRequestCommentResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PullRequestComment]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetPullRequestCommentStep[IN any](config GetPullRequestCommentStepConfig[IN]) sdkgo.QueryStep[IN, PullRequestCommentIDInput, PullRequestComment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, PullRequestCommentIDInput, PullRequestComment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPullRequestComment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPullRequestCommentResult] {
+			branches := make([]sdkgo.BranchTarget[GetPullRequestCommentResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPullRequestCommentBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPullRequestCommentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPullRequestCommentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPullRequestCommentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPullRequestCommentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreatePullRequestCommentBranchCreated sdkgo.BranchID = "created"
+const CreatePullRequestCommentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreatePullRequestCommentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreatePullRequestCommentBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreatePullRequestCommentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createPullRequestComment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreatePullRequestCommentBranchCreated, Description: "Bitbucket returned the requested comment state."},
+		{ID: CreatePullRequestCommentBranchProviderRejected, Description: "Bitbucket rejected the comment request.", Optional: true},
+		{ID: CreatePullRequestCommentBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreatePullRequestCommentBranchUncertain, Description: "An earlier comment create could not be confirmed.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreatePullRequestCommentResult = sdkgo.MutationResult[PullRequestComment]
+
+type CreatePullRequestCommentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=bitbucket"`
+	operationID                       struct{}                                                 `connector:"operationId=createPullRequestComment"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreatePullRequestCommentInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreatePullRequestCommentResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreatePullRequestCommentResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreatePullRequestCommentResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreatePullRequestCommentResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PullRequestComment]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreatePullRequestCommentStep[IN any](config CreatePullRequestCommentStepConfig[IN]) sdkgo.MutationStep[IN, CreatePullRequestCommentInput, PullRequestComment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreatePullRequestCommentInput, PullRequestComment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreatePullRequestComment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreatePullRequestCommentResult] {
+			branches := make([]sdkgo.BranchTarget[CreatePullRequestCommentResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreatePullRequestCommentBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreatePullRequestCommentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreatePullRequestCommentBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreatePullRequestCommentBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdatePullRequestCommentBranchUpdated sdkgo.BranchID = "updated"
+const UpdatePullRequestCommentBranchNotFound sdkgo.BranchID = "notFound"
+const UpdatePullRequestCommentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdatePullRequestCommentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdatePullRequestCommentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdatePullRequestCommentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updatePullRequestComment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdatePullRequestCommentBranchUpdated, Description: "Bitbucket returned the requested comment state."},
+		{ID: UpdatePullRequestCommentBranchNotFound, Description: "The pull request or comment was not found.", Optional: true},
+		{ID: UpdatePullRequestCommentBranchProviderRejected, Description: "Bitbucket rejected the comment request.", Optional: true},
+		{ID: UpdatePullRequestCommentBranchInvalidResponse, Description: "Bitbucket returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdatePullRequestCommentBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdatePullRequestCommentResult = sdkgo.MutationResult[PullRequestComment]
+
+type UpdatePullRequestCommentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=bitbucket"`
+	operationID                       struct{}                                                 `connector:"operationId=updatePullRequestComment"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdatePullRequestCommentInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdatePullRequestCommentResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdatePullRequestCommentResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdatePullRequestCommentResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdatePullRequestCommentResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdatePullRequestCommentResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PullRequestComment]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewUpdatePullRequestCommentStep[IN any](config UpdatePullRequestCommentStepConfig[IN]) sdkgo.MutationStep[IN, UpdatePullRequestCommentInput, PullRequestComment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdatePullRequestCommentInput, PullRequestComment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdatePullRequestComment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdatePullRequestCommentResult] {
+			branches := make([]sdkgo.BranchTarget[UpdatePullRequestCommentResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdatePullRequestCommentBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdatePullRequestCommentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdatePullRequestCommentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdatePullRequestCommentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdatePullRequestCommentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeletePullRequestCommentBranchDeleted sdkgo.BranchID = "deleted"
+const DeletePullRequestCommentBranchNotFound sdkgo.BranchID = "notFound"
+const DeletePullRequestCommentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeletePullRequestCommentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeletePullRequestCommentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deletePullRequestComment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeletePullRequestCommentBranchDeleted, Description: "Bitbucket returned the requested comment state."},
+		{ID: DeletePullRequestCommentBranchNotFound, Description: "The pull request or comment was not found.", Optional: true},
+		{ID: DeletePullRequestCommentBranchProviderRejected, Description: "Bitbucket rejected the comment request.", Optional: true},
+		{ID: DeletePullRequestCommentBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeletePullRequestCommentResult = sdkgo.MutationResult[DeletedPullRequestComment]
+
+type DeletePullRequestCommentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                        `connector:"connectorId=bitbucket"`
+	operationID                       struct{}                                                        `connector:"operationId=deletePullRequestComment"`
+	StepType                          string                                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                           `connector:"annotations"`
+	Connection                        Connection                                                      `connector:"connection"`
+	ConnectionName                    string                                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) PullRequestCommentIDInput                              `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeletePullRequestCommentResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeletePullRequestCommentResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeletePullRequestCommentResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeletePullRequestCommentResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedPullRequestComment]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+}
+
+func NewDeletePullRequestCommentStep[IN any](config DeletePullRequestCommentStepConfig[IN]) sdkgo.MutationStep[IN, PullRequestCommentIDInput, DeletedPullRequestComment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PullRequestCommentIDInput, DeletedPullRequestComment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeletePullRequestComment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeletePullRequestCommentResult] {
+			branches := make([]sdkgo.BranchTarget[DeletePullRequestCommentResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeletePullRequestCommentBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeletePullRequestCommentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeletePullRequestCommentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeletePullRequestCommentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ResolvePullRequestCommentBranchResolved sdkgo.BranchID = "resolved"
+const ResolvePullRequestCommentBranchNotFound sdkgo.BranchID = "notFound"
+const ResolvePullRequestCommentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ResolvePullRequestCommentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ResolvePullRequestCommentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ResolvePullRequestCommentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "resolvePullRequestComment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ResolvePullRequestCommentBranchResolved, Description: "Bitbucket returned the requested comment state."},
+		{ID: ResolvePullRequestCommentBranchNotFound, Description: "The pull request or comment was not found.", Optional: true},
+		{ID: ResolvePullRequestCommentBranchProviderRejected, Description: "Bitbucket rejected the comment request.", Optional: true},
+		{ID: ResolvePullRequestCommentBranchInvalidResponse, Description: "Bitbucket returned malformed or oversized JSON.", Optional: true},
+		{ID: ResolvePullRequestCommentBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ResolvePullRequestCommentResult = sdkgo.MutationResult[PullRequestComment]
+
+type ResolvePullRequestCommentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=bitbucket"`
+	operationID                       struct{}                                                 `connector:"operationId=resolvePullRequestComment"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) PullRequestCommentIDInput                       `connector:"mapToOperationInput"`
+	Resolved                          sdkgo.Target[ResolvePullRequestCommentResult]            `connector:"branch=resolved"`
+	NotFound                          sdkgo.Target[ResolvePullRequestCommentResult]            `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ResolvePullRequestCommentResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ResolvePullRequestCommentResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ResolvePullRequestCommentResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PullRequestComment]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewResolvePullRequestCommentStep[IN any](config ResolvePullRequestCommentStepConfig[IN]) sdkgo.MutationStep[IN, PullRequestCommentIDInput, PullRequestComment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PullRequestCommentIDInput, PullRequestComment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ResolvePullRequestComment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ResolvePullRequestCommentResult] {
+			branches := make([]sdkgo.BranchTarget[ResolvePullRequestCommentResult], 0, 5)
+			if config.Resolved.HasStep() {
+				branches = append(branches, config.Resolved.BranchTarget(ResolvePullRequestCommentBranchResolved))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ResolvePullRequestCommentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ResolvePullRequestCommentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ResolvePullRequestCommentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ResolvePullRequestCommentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UnresolvePullRequestCommentBranchUnresolved sdkgo.BranchID = "unresolved"
+const UnresolvePullRequestCommentBranchNotFound sdkgo.BranchID = "notFound"
+const UnresolvePullRequestCommentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UnresolvePullRequestCommentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UnresolvePullRequestCommentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UnresolvePullRequestCommentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "unresolvePullRequestComment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UnresolvePullRequestCommentBranchUnresolved, Description: "Bitbucket returned the requested comment state."},
+		{ID: UnresolvePullRequestCommentBranchNotFound, Description: "The pull request or comment was not found.", Optional: true},
+		{ID: UnresolvePullRequestCommentBranchProviderRejected, Description: "Bitbucket rejected the comment request.", Optional: true},
+		{ID: UnresolvePullRequestCommentBranchInvalidResponse, Description: "Bitbucket returned malformed or oversized JSON.", Optional: true},
+		{ID: UnresolvePullRequestCommentBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UnresolvePullRequestCommentResult = sdkgo.MutationResult[PullRequestComment]
+
+type UnresolvePullRequestCommentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=bitbucket"`
+	operationID                       struct{}                                                 `connector:"operationId=unresolvePullRequestComment"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) PullRequestCommentIDInput                       `connector:"mapToOperationInput"`
+	Unresolved                        sdkgo.Target[UnresolvePullRequestCommentResult]          `connector:"branch=unresolved"`
+	NotFound                          sdkgo.Target[UnresolvePullRequestCommentResult]          `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UnresolvePullRequestCommentResult]          `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UnresolvePullRequestCommentResult]          `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UnresolvePullRequestCommentResult]          `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PullRequestComment]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewUnresolvePullRequestCommentStep[IN any](config UnresolvePullRequestCommentStepConfig[IN]) sdkgo.MutationStep[IN, PullRequestCommentIDInput, PullRequestComment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PullRequestCommentIDInput, PullRequestComment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UnresolvePullRequestComment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UnresolvePullRequestCommentResult] {
+			branches := make([]sdkgo.BranchTarget[UnresolvePullRequestCommentResult], 0, 5)
+			if config.Unresolved.HasStep() {
+				branches = append(branches, config.Unresolved.BranchTarget(UnresolvePullRequestCommentBranchUnresolved))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UnresolvePullRequestCommentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UnresolvePullRequestCommentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UnresolvePullRequestCommentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UnresolvePullRequestCommentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const CreatePullRequestBranchCreated sdkgo.BranchID = "created"

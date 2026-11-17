@@ -16,6 +16,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listPullRequestComments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequestCommentPage](`{"values":[{"id":3,"content":{"raw":"Looks good"},"deleted":false}],"page":1,"pagelen":10}`)
+			return err
+		}},
+		{name: "getPullRequestComment/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false}`)
+			return err
+		}},
+		{name: "createPullRequestComment/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false}`)
+			return err
+		}},
+		{name: "updatePullRequestComment/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false}`)
+			return err
+		}},
+		{name: "deletePullRequestComment/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.DeletedPullRequestComment](`{"workspace":"meridian","repository":"api","pullRequestId":7,"commentId":3}`)
+			return err
+		}},
+		{name: "resolvePullRequestComment/resolvedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false,"resolution":{"created_on":"2026-01-01T00:00:00Z"}}`)
+			return err
+		}},
+		{name: "unresolvePullRequestComment/unresolvedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequestComment](`{"id":3,"content":{"raw":"Looks good"},"deleted":false}`)
+			return err
+		}},
 		{name: "createPullRequest/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[bitbucket.PullRequest](`{"id":8,"title":"Add client tests","state":"OPEN"}`)
 			return err
@@ -70,6 +98,27 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListPullRequestComments().Definition().Operation.OperationID != "listPullRequestComments" {
+		t.Errorf("listPullRequestComments mock has another definition")
+	}
+	if mock.GetPullRequestComment().Definition().Operation.OperationID != "getPullRequestComment" {
+		t.Errorf("getPullRequestComment mock has another definition")
+	}
+	if mock.CreatePullRequestComment().Definition().Operation.OperationID != "createPullRequestComment" {
+		t.Errorf("createPullRequestComment mock has another definition")
+	}
+	if mock.UpdatePullRequestComment().Definition().Operation.OperationID != "updatePullRequestComment" {
+		t.Errorf("updatePullRequestComment mock has another definition")
+	}
+	if mock.DeletePullRequestComment().Definition().Operation.OperationID != "deletePullRequestComment" {
+		t.Errorf("deletePullRequestComment mock has another definition")
+	}
+	if mock.ResolvePullRequestComment().Definition().Operation.OperationID != "resolvePullRequestComment" {
+		t.Errorf("resolvePullRequestComment mock has another definition")
+	}
+	if mock.UnresolvePullRequestComment().Definition().Operation.OperationID != "unresolvePullRequestComment" {
+		t.Errorf("unresolvePullRequestComment mock has another definition")
+	}
 	if mock.CreatePullRequest().Definition().Operation.OperationID != "createPullRequest" {
 		t.Errorf("createPullRequest mock has another definition")
 	}

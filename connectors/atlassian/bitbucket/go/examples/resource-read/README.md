@@ -1,10 +1,10 @@
 # Bitbucket resource-read example
 
-This example registers four Flows on the static `bitbucket` connection: `BitbucketResourceRead` lists repositories, `BitbucketPullRequestTitleUpdate` replaces one pull request title, `BitbucketRepositoryCreate` creates a repository, and `BitbucketPullRequestCreate` creates a pull request. Optional error branches are unwired and fail the Flow.
+This example registers five Flows on the static `bitbucket` connection: `BitbucketResourceRead` lists repositories, `BitbucketPullRequestTitleUpdate` replaces one pull request title, `BitbucketRepositoryCreate` creates a repository, `BitbucketPullRequestCreate` creates a pull request, and `BitbucketPullRequestCommentCreate` adds a Markdown comment. Optional error branches are unwired and fail the Flow.
 
 ## Generate strict FDG 2.0
 
-From `connectors/atlassian/bitbucket`:
+From `connectors/atlassian/bitbucket/go`:
 
 ```sh
 mkdir -p build
@@ -12,6 +12,7 @@ dexcli visualize ./examples/resource-read/flow/workflow.go --schema-version 2.0 
 dexcli visualize ./examples/resource-read/flow/title_workflow.go --schema-version 2.0 --json --out ./build/title-update
 dexcli visualize ./examples/resource-read/flow/repository_workflow.go --schema-version 2.0 --json --out ./build/repository-create
 dexcli visualize ./examples/resource-read/flow/pull_request_create_workflow.go --schema-version 2.0 --json --out ./build/pull-request-create
+dexcli visualize ./examples/resource-read/flow/pull_request_comment_workflow.go --schema-version 2.0 --json --out ./build/pull-request-comment-create
 ```
 
 The command should report `valid: true`. A local unpublished module can produce a release metadata warning.
@@ -45,4 +46,6 @@ To create a repository, start `BitbucketRepositoryCreate` with a unique Flow ID 
 
 To create a pull request, start `BitbucketPullRequestCreate` with a unique Flow ID and `{"workspace":"meridian","repository":"api","title":"Add client tests","sourceBranch":"feature/tests","destinationBranch":"main"}`. Find the workspace and repository slugs in the repository URL and the branch names under **Repository > Branches** in Bitbucket. Grant Pull requests Write. The create operation can send at most three times after an unknown outcome; when Bitbucket cannot prove which send succeeded, the Flow selects `uncertain`.
 
-The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs the manifest defaults through a real Dex Worker in CI. Locally, run `DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:9210 GOWORK=off go test -tags=integration ./examples/resource-read/flow -run '^TestPullRequestCreateUsesManifestMockWithRealDex$' -count=1 -v` while the dedicated Dex stack is running.
+To add a comment, start `BitbucketPullRequestCommentCreate` with a unique Flow ID and `{"workspace":"meridian","repository":"api","pullRequestId":7,"raw":"Looks good"}`. Find the numeric PR ID in its URL, enter Markdown text in `raw`, and grant Pull requests Write. Blank text is invalid. The comment create also uses the limited three-send tier and selects `uncertain` when the outcome remains unconfirmed.
+
+The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs the manifest defaults through a real Dex Worker in CI. Locally, run `DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:9210 GOWORK=off go test -tags=integration ./examples/resource-read/flow -run '^TestPullRequestCommentCreateUsesManifestMockWithRealDex$' -count=1 -v` while the dedicated Dex stack is running.

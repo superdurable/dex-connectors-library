@@ -26,12 +26,21 @@ The TypeScript package is [`@superdurable/connector-atlassian-bitbucket`](typesc
 | `CreatePullRequest` | `CreatePullRequestInput` | `PullRequest` | `created` |
 | `MergePullRequest` | `PullRequestActionInput` | `PullRequest` | `merged` |
 | `DeclinePullRequest` | `PullRequestActionInput` | `PullRequest` | `declined` |
+| `ListPullRequestComments` | `PullRequestActionInput` | `PullRequestCommentPage` | `listed` |
+| `GetPullRequestComment` | `PullRequestCommentIDInput` | `PullRequestComment` | `found` |
+| `CreatePullRequestComment` | `CreatePullRequestCommentInput` | `PullRequestComment` | `created` |
+| `UpdatePullRequestComment` | `UpdatePullRequestCommentInput` | `PullRequestComment` | `updated` |
+| `DeletePullRequestComment` | `PullRequestCommentIDInput` | `DeletedPullRequestComment` | `deleted` |
+| `ResolvePullRequestComment` | `PullRequestCommentIDInput` | `PullRequestComment` | `resolved` |
+| `UnresolvePullRequestComment` | `PullRequestCommentIDInput` | `PullRequestComment` | `unresolved` |
 
-Operations expose their applicable optional `notFound`, `providerRejected`, `invalidResponse`, `defect`, and `uncertain` branches. Unwired optional branches fail the Flow. `CreatePullRequest` uses sync durability and a three-send limited tier; other new operations use async durability and the safe tier. Python and TypeScript implement only the two list operations; the remaining operations are Go-only.
+Operations expose their applicable optional `notFound`, `providerRejected`, `invalidResponse`, `defect`, and `uncertain` branches. Unwired optional branches fail the Flow. Pull request and comment creates use sync durability and a three-send limited tier; other new operations use async durability and the safe tier. Python and TypeScript implement only the two original list operations; the remaining operations are Go-only.
 
 Go repository writes use a stable `workspace/repository` slug path. `CreateRepository` creates a Git repository with an explicit display name and private/public value; a 409 conflict is read back and accepted only when the existing repository matches. `UpdateRepository` replaces name and visibility. `DeleteRepository` removes the repository and returns its workspace and slug. These operations use the safe repeat tier because the target path or replacement state is absolute. Find both slugs in the Bitbucket workspace and repository URLs; blank slugs are invalid. Creating and updating need **Repositories Write/Admin** access; deleting needs **Repositories Delete**. See [Bitbucket repository API](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-repositories/).
 
 `CreatePullRequest` sends a title, source branch, and destination branch for the same repository. Bitbucket offers no request idempotency key; after an unknown outcome, the connector caps possible sends at three and selects `uncertain` if it cannot confirm creation. A title and branch pair is not a unique readback key, so an existing matching PR cannot safely prove which request created it. `MergePullRequest` and `DeclinePullRequest` are absolute state transitions; a conflict is read back and accepted only when the PR has the requested state. Find branch names under **Repository > Branches** and the numeric PR ID in the pull request URL. See [Bitbucket pull requests API](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/).
+
+Pull request comments support one-page list, single-comment read, Markdown create and replacement, delete, resolve, and reopen. `CreatePullRequestComment` uses the limited three-send tier because duplicate comments are possible. Comment text is not a unique readback key; a previously existing identical comment cannot prove the write succeeded. All other comment writes use the safe tier. Find a comment ID in the comment URL anchor or API response and supply non-blank Markdown in `raw`; blank text is invalid. Resolve and reopen use Bitbucket's `/resolve` action and confirm conflicts with a comment read.
 
 Workspace access tokens require Bitbucket Premium; grant Repositories > Read/Write/Admin/Delete for repository actions and Pull requests > Read/Write for PR actions. [Atlassian explains token creation](https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/) and [workspace token permissions](https://support.atlassian.com/bitbucket-cloud/docs/workspace-access-token-permissions/).
 
