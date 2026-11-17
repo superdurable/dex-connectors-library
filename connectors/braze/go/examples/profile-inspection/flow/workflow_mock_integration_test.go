@@ -47,7 +47,7 @@ func TestProfileInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	defer cancel()
 	require.NoError(t, worker.WaitPullRegistered(ctx))
 	flowID := "braze-profileinspection-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	_, err = client.StartFlow(ctx, flow, flowID, braze.GetUserProfileInput{ExternalID: "sample-user-1"}, dex.StartFlowOptions{})
+	_, err = client.StartFlow(ctx, flow, flowID, Request{ExternalID: "sample-user-1", CampaignID: "sample-campaign-1", CanvasID: "sample-canvas-1"}, dex.StartFlowOptions{})
 	require.NoError(t, err)
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
@@ -57,4 +57,6 @@ func TestProfileInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "sample-user-1", output.ExternalID)
 	require.Len(t, mock.GetUserProfile().Calls(), 1)
 	require.Len(t, mock.ListCampaigns().Calls(), 1)
+	require.Len(t, mock.TriggerCampaignSend().Calls(), 1)
+	require.Len(t, mock.TriggerCanvasSend().Calls(), 1)
 }

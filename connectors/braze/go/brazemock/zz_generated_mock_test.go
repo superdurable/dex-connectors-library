@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "triggerCampaignSend/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braze.TargetedSendResult](`{"dispatchId":"sample-dispatch-1"}`)
+			return err
+		}},
+		{name: "triggerCanvasSend/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braze.TargetedSendResult](`{"dispatchId":"sample-dispatch-2"}`)
+			return err
+		}},
 		{name: "updateUserProfile/acceptedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[braze.UserWriteResult](`{"externalId":"sample-user-1"}`)
 			return err
@@ -50,6 +58,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.TriggerCampaignSend().Definition().Operation.OperationID != "triggerCampaignSend" {
+		t.Errorf("triggerCampaignSend mock has another definition")
+	}
+	if mock.TriggerCanvasSend().Definition().Operation.OperationID != "triggerCanvasSend" {
+		t.Errorf("triggerCanvasSend mock has another definition")
+	}
 	if mock.UpdateUserProfile().Definition().Operation.OperationID != "updateUserProfile" {
 		t.Errorf("updateUserProfile mock has another definition")
 	}

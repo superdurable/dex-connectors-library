@@ -17,13 +17,15 @@ import (
 
 // Mock is a scripted braze connection. Script each operation through its accessor.
 type Mock struct {
-	connection        braze.Connection
-	updateUserProfile *connectormock.Mutation[braze.UpdateUserProfileInput, braze.UserWriteResult]
-	deleteUserProfile *connectormock.Mutation[braze.DeleteUserProfileInput, braze.UserDeleteResult]
-	listCampaigns     *connectormock.Query[braze.ListCampaignsInput, braze.CampaignsList]
-	listCanvases      *connectormock.Query[braze.ListCanvasesInput, braze.CanvasesList]
-	listSegments      *connectormock.Query[braze.ListSegmentsInput, braze.SegmentsList]
-	getUserProfile    *connectormock.Query[braze.GetUserProfileInput, braze.UserProfile]
+	connection          braze.Connection
+	triggerCampaignSend *connectormock.Mutation[braze.TriggerCampaignSendInput, braze.TargetedSendResult]
+	triggerCanvasSend   *connectormock.Mutation[braze.TriggerCanvasSendInput, braze.TargetedSendResult]
+	updateUserProfile   *connectormock.Mutation[braze.UpdateUserProfileInput, braze.UserWriteResult]
+	deleteUserProfile   *connectormock.Mutation[braze.DeleteUserProfileInput, braze.UserDeleteResult]
+	listCampaigns       *connectormock.Query[braze.ListCampaignsInput, braze.CampaignsList]
+	listCanvases        *connectormock.Query[braze.ListCanvasesInput, braze.CanvasesList]
+	listSegments        *connectormock.Query[braze.ListSegmentsInput, braze.SegmentsList]
+	getUserProfile      *connectormock.Query[braze.GetUserProfileInput, braze.UserProfile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -31,13 +33,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		updateUserProfile: connectormock.NewMutation[braze.UpdateUserProfileInput, braze.UserWriteResult](t, braze.UpdateUserProfileDefinition),
-		deleteUserProfile: connectormock.NewMutation[braze.DeleteUserProfileInput, braze.UserDeleteResult](t, braze.DeleteUserProfileDefinition),
-		listCampaigns:     connectormock.NewQuery[braze.ListCampaignsInput, braze.CampaignsList](t, braze.ListCampaignsDefinition),
-		listCanvases:      connectormock.NewQuery[braze.ListCanvasesInput, braze.CanvasesList](t, braze.ListCanvasesDefinition),
-		listSegments:      connectormock.NewQuery[braze.ListSegmentsInput, braze.SegmentsList](t, braze.ListSegmentsDefinition),
-		getUserProfile:    connectormock.NewQuery[braze.GetUserProfileInput, braze.UserProfile](t, braze.GetUserProfileDefinition),
+		triggerCampaignSend: connectormock.NewMutation[braze.TriggerCampaignSendInput, braze.TargetedSendResult](t, braze.TriggerCampaignSendDefinition),
+		triggerCanvasSend:   connectormock.NewMutation[braze.TriggerCanvasSendInput, braze.TargetedSendResult](t, braze.TriggerCanvasSendDefinition),
+		updateUserProfile:   connectormock.NewMutation[braze.UpdateUserProfileInput, braze.UserWriteResult](t, braze.UpdateUserProfileDefinition),
+		deleteUserProfile:   connectormock.NewMutation[braze.DeleteUserProfileInput, braze.UserDeleteResult](t, braze.DeleteUserProfileDefinition),
+		listCampaigns:       connectormock.NewQuery[braze.ListCampaignsInput, braze.CampaignsList](t, braze.ListCampaignsDefinition),
+		listCanvases:        connectormock.NewQuery[braze.ListCanvasesInput, braze.CanvasesList](t, braze.ListCanvasesDefinition),
+		listSegments:        connectormock.NewQuery[braze.ListSegmentsInput, braze.SegmentsList](t, braze.ListSegmentsDefinition),
+		getUserProfile:      connectormock.NewQuery[braze.GetUserProfileInput, braze.UserProfile](t, braze.GetUserProfileDefinition),
 	}
+	mock.triggerCampaignSend.Default(TriggerCampaignSendDefault())
+	mock.triggerCanvasSend.Default(TriggerCanvasSendDefault())
 	mock.updateUserProfile.Default(UpdateUserProfileDefault())
 	mock.deleteUserProfile.Default(DeleteUserProfileDefault())
 	mock.listCampaigns.Default(ListCampaignsDefault())
@@ -54,6 +60,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() braze.Connection { return mock.connection }
+
+// TriggerCampaignSend returns the triggerCampaignSend script.
+func (mock *Mock) TriggerCampaignSend() *connectormock.Mutation[braze.TriggerCampaignSendInput, braze.TargetedSendResult] {
+	return mock.triggerCampaignSend
+}
+
+// TriggerCanvasSend returns the triggerCanvasSend script.
+func (mock *Mock) TriggerCanvasSend() *connectormock.Mutation[braze.TriggerCanvasSendInput, braze.TargetedSendResult] {
+	return mock.triggerCanvasSend
+}
 
 // UpdateUserProfile returns the updateUserProfile script.
 func (mock *Mock) UpdateUserProfile() *connectormock.Mutation[braze.UpdateUserProfileInput, braze.UserWriteResult] {
@@ -87,6 +103,12 @@ func (mock *Mock) GetUserProfile() *connectormock.Query[braze.GetUserProfileInpu
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) TriggerCampaignSend() sdkgo.Mutation[braze.TriggerCampaignSendInput, braze.TargetedSendResult] {
+	return operations.mock.triggerCampaignSend
+}
+func (operations mockOperations) TriggerCanvasSend() sdkgo.Mutation[braze.TriggerCanvasSendInput, braze.TargetedSendResult] {
+	return operations.mock.triggerCanvasSend
+}
 func (operations mockOperations) UpdateUserProfile() sdkgo.Mutation[braze.UpdateUserProfileInput, braze.UserWriteResult] {
 	return operations.mock.updateUserProfile
 }
@@ -104,6 +126,78 @@ func (operations mockOperations) ListSegments() sdkgo.Query[braze.ListSegmentsIn
 }
 func (operations mockOperations) GetUserProfile() sdkgo.Query[braze.GetUserProfileInput, braze.UserProfile] {
 	return operations.mock.getUserProfile
+}
+
+// TriggerCampaignSendSent selects the sent branch: Braze accepted the targeted campaign dispatch.
+func TriggerCampaignSendSent(value braze.TargetedSendResult, failure *sdkgo.Failure) connectormock.Case[braze.TargetedSendResult] {
+	return connectormock.Branch(braze.TriggerCampaignSendBranchSent, value, failure)
+}
+
+// TriggerCampaignSendProviderRejected selects the providerRejected branch: Braze conclusively rejected the dispatch.
+func TriggerCampaignSendProviderRejected(value braze.TargetedSendResult, failure *sdkgo.Failure) connectormock.Case[braze.TargetedSendResult] {
+	return connectormock.Branch(braze.TriggerCampaignSendBranchProviderRejected, value, failure)
+}
+
+// TriggerCampaignSendDefect selects the defect branch: Local input or connection credentials are invalid.
+func TriggerCampaignSendDefect(value braze.TargetedSendResult, failure *sdkgo.Failure) connectormock.Case[braze.TargetedSendResult] {
+	return connectormock.Branch(braze.TriggerCampaignSendBranchDefect, value, failure)
+}
+
+// TriggerCampaignSendUncertain returns an uncertain triggerCampaignSend outcome.
+func TriggerCampaignSendUncertain(value braze.TargetedSendResult, failure sdkgo.Failure) connectormock.Case[braze.TargetedSendResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// TriggerCampaignSendRetry asks Dex to retry the triggerCampaignSend Step, after the delay when it is positive.
+func TriggerCampaignSendRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braze.TargetedSendResult] {
+	return connectormock.Retry[braze.TargetedSendResult](failure, after)
+}
+
+// TriggerCampaignSendSentDefault is the manifest mock sentDefault: Sample campaign dispatch.
+func TriggerCampaignSendSentDefault() connectormock.Case[braze.TargetedSendResult] {
+	value := connectormock.MustDecodeOutput[braze.TargetedSendResult](`{"dispatchId":"sample-dispatch-1"}`)
+	return connectormock.Branch(braze.TriggerCampaignSendBranchSent, value, nil)
+}
+
+// TriggerCampaignSendDefault is the manifest default, sentDefault, which New installs.
+func TriggerCampaignSendDefault() connectormock.Case[braze.TargetedSendResult] {
+	return TriggerCampaignSendSentDefault()
+}
+
+// TriggerCanvasSendSent selects the sent branch: Braze accepted the targeted Canvas dispatch.
+func TriggerCanvasSendSent(value braze.TargetedSendResult, failure *sdkgo.Failure) connectormock.Case[braze.TargetedSendResult] {
+	return connectormock.Branch(braze.TriggerCanvasSendBranchSent, value, failure)
+}
+
+// TriggerCanvasSendProviderRejected selects the providerRejected branch: Braze conclusively rejected the dispatch.
+func TriggerCanvasSendProviderRejected(value braze.TargetedSendResult, failure *sdkgo.Failure) connectormock.Case[braze.TargetedSendResult] {
+	return connectormock.Branch(braze.TriggerCanvasSendBranchProviderRejected, value, failure)
+}
+
+// TriggerCanvasSendDefect selects the defect branch: Local input or connection credentials are invalid.
+func TriggerCanvasSendDefect(value braze.TargetedSendResult, failure *sdkgo.Failure) connectormock.Case[braze.TargetedSendResult] {
+	return connectormock.Branch(braze.TriggerCanvasSendBranchDefect, value, failure)
+}
+
+// TriggerCanvasSendUncertain returns an uncertain triggerCanvasSend outcome.
+func TriggerCanvasSendUncertain(value braze.TargetedSendResult, failure sdkgo.Failure) connectormock.Case[braze.TargetedSendResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// TriggerCanvasSendRetry asks Dex to retry the triggerCanvasSend Step, after the delay when it is positive.
+func TriggerCanvasSendRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braze.TargetedSendResult] {
+	return connectormock.Retry[braze.TargetedSendResult](failure, after)
+}
+
+// TriggerCanvasSendSentDefault is the manifest mock sentDefault: Sample Canvas dispatch.
+func TriggerCanvasSendSentDefault() connectormock.Case[braze.TargetedSendResult] {
+	value := connectormock.MustDecodeOutput[braze.TargetedSendResult](`{"dispatchId":"sample-dispatch-2"}`)
+	return connectormock.Branch(braze.TriggerCanvasSendBranchSent, value, nil)
+}
+
+// TriggerCanvasSendDefault is the manifest default, sentDefault, which New installs.
+func TriggerCanvasSendDefault() connectormock.Case[braze.TargetedSendResult] {
+	return TriggerCanvasSendSentDefault()
 }
 
 // UpdateUserProfileAccepted selects the accepted branch: Braze queued the profile update.

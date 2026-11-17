@@ -18,10 +18,24 @@ const (
 	ConnectionName        = "braze"
 	operationStepType     = "CallGetUserProfile"
 	listCampaignsStepType = "CallListCampaigns"
+	campaignSendStepType  = "CallTriggerCampaignSend"
+	canvasSendStepType    = "CallTriggerCanvasSend"
 )
 
 var profileAttribute = dex.DefineAttribute[braze.UserProfile]("braze-profile")
 var externalIDAttribute = dex.DefineAttribute[string]("braze-external-id")
+var campaignIDAttribute = dex.DefineAttribute[string]("braze-campaign-id")
+var canvasIDAttribute = dex.DefineAttribute[string]("braze-canvas-id")
+
+// Request selects a profile and optional targeted campaign or Canvas sends.
+type Request struct {
+	// ExternalID identifies the existing Braze user.
+	ExternalID string `json:"externalId"`
+	// CampaignID optionally triggers an API-enabled campaign for that user.
+	CampaignID string `json:"campaignId,omitempty"`
+	// CanvasID optionally triggers an API-enabled Canvas for that user.
+	CanvasID string `json:"canvasId,omitempty"`
+}
 
 // Flow runs GetUserProfile once and completes with its typed output.
 type Flow struct {
@@ -35,17 +49,17 @@ func NewFlow(connection braze.Connection) *Flow { return &Flow{connection: conne
 func (*Flow) GetFlowType() string { return FlowType }
 
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{profileAttribute, externalIDAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{profileAttribute, externalIDAttribute, campaignIDAttribute, canvasIDAttribute}}
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(startRequest{}),
-		dex.DefineStep(braze.NewListCampaignsStep(braze.ListCampaignsStepConfig[braze.GetUserProfileInput]{
+		dex.DefineStep(braze.NewListCampaignsStep(braze.ListCampaignsStepConfig[Request]{
 			StepType: listCampaignsStepType, ConnectionName: ConnectionName,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Braze", Explanation: "List campaign identities from Braze."},
 			Connection:          flow.connection,
-			MapToOperationInput: func(braze.GetUserProfileInput) braze.ListCampaignsInput { return braze.ListCampaignsInput{Page: 0} },
+			MapToOperationInput: func(Request) braze.ListCampaignsInput { return braze.ListCampaignsInput{Page: 0} },
 			Listed:              sdkgo.GoTo(continueAfterCampaigns{}),
 		})),
 		dex.DefineStep(continueAfterCampaigns{}),
@@ -57,6 +71,20 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Found:               sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
+		dex.DefineStep(braze.NewTriggerCampaignSendStep(braze.TriggerCampaignSendStepConfig[braze.TriggerCampaignSendInput]{
+			StepType: campaignSendStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Braze", Explanation: "Trigger the selected campaign for the inspected user."},
+			MapToOperationInput: func(input braze.TriggerCampaignSendInput) braze.TriggerCampaignSendInput { return input },
+			Sent:                sdkgo.GoTo(completeAfterCampaignSend{}),
+		})),
+		dex.DefineStep(completeAfterCampaignSend{}),
+		dex.DefineStep(braze.NewTriggerCanvasSendStep(braze.TriggerCanvasSendStepConfig[braze.TriggerCanvasSendInput]{
+			StepType: canvasSendStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Braze", Explanation: "Trigger the selected Canvas for the inspected user."},
+			MapToOperationInput: func(input braze.TriggerCanvasSendInput) braze.TriggerCanvasSendInput { return input },
+			Sent:                sdkgo.GoTo(completeAfterCanvasSend{}),
+		})),
+		dex.DefineStep(completeAfterCanvasSend{}),
 	}
 }
 
@@ -104,14 +132,24 @@ func MapToOperationInput(input braze.GetUserProfileInput) braze.GetUserProfileIn
 type startRequest struct{ dex.StepDefaults }
 
 func (startRequest) GetStepType() string { return "StartGetUserProfile" }
-func (startRequest) WaitFor(dex.Context, braze.GetUserProfileInput) (*dex.Wait, error) {
+func (startRequest) WaitFor(dex.Context, Request) (*dex.Wait, error) {
 	return dex.SkipWaitImmediately(), nil
 }
-func (startRequest) Execute(ctx dex.Context, input braze.GetUserProfileInput) (*dex.StepDecision, error) {
+func (startRequest) Execute(ctx dex.Context, input Request) (*dex.StepDecision, error) {
 	if err := externalIDAttribute.Set(ctx, input.ExternalID); err != nil {
 		return nil, err
 	}
-	return dex.GoTo(sdkgo.StepRef[braze.GetUserProfileInput](listCampaignsStepType), input), nil
+	if input.CampaignID != "" {
+		if err := campaignIDAttribute.Set(ctx, input.CampaignID); err != nil {
+			return nil, err
+		}
+	}
+	if input.CanvasID != "" {
+		if err := canvasIDAttribute.Set(ctx, input.CanvasID); err != nil {
+			return nil, err
+		}
+	}
+	return dex.GoTo(sdkgo.StepRef[Request](listCampaignsStepType), input), nil
 }
 
 // dex:group group-id:provider group-label:"Braze"
@@ -139,7 +177,62 @@ func (completeResult) Execute(ctx dex.Context, result braze.GetUserProfileResult
 	if err := profileAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}
+	var missing *dex.AttributeNotFoundError
+	campaignID, err := campaignIDAttribute.Get(ctx)
+	if err == nil {
+		return dex.GoTo(sdkgo.StepRef[braze.TriggerCampaignSendInput](campaignSendStepType), braze.TriggerCampaignSendInput{CampaignID: campaignID, ExternalID: result.Value.ExternalID}), nil
+	}
+	if !errors.As(err, &missing) {
+		return nil, err
+	}
+	canvasID, err := canvasIDAttribute.Get(ctx)
+	if err == nil {
+		return dex.GoTo(sdkgo.StepRef[braze.TriggerCanvasSendInput](canvasSendStepType), braze.TriggerCanvasSendInput{CanvasID: canvasID, ExternalID: result.Value.ExternalID}), nil
+	}
+	if !errors.As(err, &missing) {
+		return nil, err
+	}
 	return dex.GracefulComplete(result.Value), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Continue to a selected Canvas after campaign dispatch."
+type completeAfterCampaignSend struct {
+	dex.StepDefaultsNoWaitFor[braze.TriggerCampaignSendResult]
+}
+
+func (completeAfterCampaignSend) Execute(ctx dex.Context, _ braze.TriggerCampaignSendResult) (*dex.StepDecision, error) {
+	var missing *dex.AttributeNotFoundError
+	canvasID, err := canvasIDAttribute.Get(ctx)
+	if err == nil {
+		externalID, err := externalIDAttribute.Get(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return dex.GoTo(sdkgo.StepRef[braze.TriggerCanvasSendInput](canvasSendStepType), braze.TriggerCanvasSendInput{CanvasID: canvasID, ExternalID: externalID}), nil
+	}
+	if !errors.As(err, &missing) {
+		return nil, err
+	}
+	profile, err := profileAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(profile), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete after the selected Canvas dispatch."
+type completeAfterCanvasSend struct {
+	dex.StepDefaultsNoWaitFor[braze.TriggerCanvasSendResult]
+}
+
+func (completeAfterCanvasSend) Execute(ctx dex.Context, _ braze.TriggerCanvasSendResult) (*dex.StepDecision, error) {
+	profile, err := profileAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(profile), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

@@ -1854,6 +1854,758 @@
       },
       "name": "listSegments-transportFailure",
       "operation": "listSegments"
+    },
+    {
+      "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"success\",\"dispatch_id\":\"dispatch-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/trigger/send",
+          "requestBody": {
+            "campaign_id": "campaign-1",
+            "recipients": [
+              {
+                "external_user_id": "user-1",
+                "send_to_existing_only": true
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "dispatchId": "dispatch-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "input": {
+        "campaignId": "campaign-1",
+        "externalId": "user-1"
+      },
+      "name": "triggerCampaignSend-success",
+      "operation": "triggerCampaignSend"
+    },
+    {
+      "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/trigger/send",
+          "requestBody": {
+            "campaign_id": "campaign-1",
+            "recipients": [
+              {
+                "external_user_id": "user-1",
+                "send_to_existing_only": true
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "dispatchId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "input": {
+        "campaignId": "campaign-1",
+        "externalId": "user-1"
+      },
+      "name": "triggerCampaignSend-providerRejected",
+      "operation": "triggerCampaignSend"
+    },
+    {
+      "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "dispatchId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "input": {
+        "campaignId": "",
+        "externalId": "user-1"
+      },
+      "name": "triggerCampaignSend-defect",
+      "operation": "triggerCampaignSend"
+    },
+    {
+      "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/trigger/send",
+          "requestBody": {
+            "campaign_id": "campaign-1",
+            "recipients": [
+              {
+                "external_user_id": "user-1",
+                "send_to_existing_only": true
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "input": {
+        "campaignId": "campaign-1",
+        "externalId": "user-1"
+      },
+      "name": "triggerCampaignSend-429",
+      "operation": "triggerCampaignSend"
+    },
+    {
+      "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/trigger/send",
+          "requestBody": {
+            "campaign_id": "campaign-1",
+            "recipients": [
+              {
+                "external_user_id": "user-1",
+                "send_to_existing_only": true
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "input": {
+        "campaignId": "campaign-1",
+        "externalId": "user-1"
+      },
+      "name": "triggerCampaignSend-503",
+      "operation": "triggerCampaignSend"
+    },
+    {
+      "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/trigger/send",
+          "requestBody": {
+            "campaign_id": "campaign-1",
+            "recipients": [
+              {
+                "external_user_id": "user-1",
+                "send_to_existing_only": true
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "input": {
+        "campaignId": "campaign-1",
+        "externalId": "user-1"
+      },
+      "name": "triggerCampaignSend-500",
+      "operation": "triggerCampaignSend"
+    },
+    {
+      "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/trigger/send",
+          "requestBody": {
+            "campaign_id": "campaign-1",
+            "recipients": [
+              {
+                "external_user_id": "user-1",
+                "send_to_existing_only": true
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "input": {
+        "campaignId": "campaign-1",
+        "externalId": "user-1"
+      },
+      "name": "triggerCampaignSend-transportFailure",
+      "operation": "triggerCampaignSend"
+    },
+    {
+      "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "dispatchId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0deb905b-6733-5742-9485-1f19fa759b63",
+      "input": {
+        "campaignId": "campaign-1",
+        "externalId": "user-1"
+      },
+      "name": "triggerCampaignSend-uncertainAfterSendCap",
+      "operation": "triggerCampaignSend",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"success\",\"dispatch_id\":\"dispatch-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/canvas/trigger/send",
+          "requestBody": {
+            "canvas_id": "canvas-1",
+            "recipients": [
+              {
+                "external_user_id": "user-1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "dispatchId": "dispatch-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "input": {
+        "canvasId": "canvas-1",
+        "externalId": "user-1"
+      },
+      "name": "triggerCanvasSend-success",
+      "operation": "triggerCanvasSend"
+    },
+    {
+      "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/canvas/trigger/send",
+          "requestBody": {
+            "canvas_id": "canvas-1",
+            "recipients": [
+              {
+                "external_user_id": "user-1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "dispatchId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "input": {
+        "canvasId": "canvas-1",
+        "externalId": "user-1"
+      },
+      "name": "triggerCanvasSend-providerRejected",
+      "operation": "triggerCanvasSend"
+    },
+    {
+      "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "dispatchId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "input": {
+        "canvasId": "",
+        "externalId": "user-1"
+      },
+      "name": "triggerCanvasSend-defect",
+      "operation": "triggerCanvasSend"
+    },
+    {
+      "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/canvas/trigger/send",
+          "requestBody": {
+            "canvas_id": "canvas-1",
+            "recipients": [
+              {
+                "external_user_id": "user-1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "input": {
+        "canvasId": "canvas-1",
+        "externalId": "user-1"
+      },
+      "name": "triggerCanvasSend-429",
+      "operation": "triggerCanvasSend"
+    },
+    {
+      "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/canvas/trigger/send",
+          "requestBody": {
+            "canvas_id": "canvas-1",
+            "recipients": [
+              {
+                "external_user_id": "user-1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "input": {
+        "canvasId": "canvas-1",
+        "externalId": "user-1"
+      },
+      "name": "triggerCanvasSend-503",
+      "operation": "triggerCanvasSend"
+    },
+    {
+      "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/canvas/trigger/send",
+          "requestBody": {
+            "canvas_id": "canvas-1",
+            "recipients": [
+              {
+                "external_user_id": "user-1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "input": {
+        "canvasId": "canvas-1",
+        "externalId": "user-1"
+      },
+      "name": "triggerCanvasSend-500",
+      "operation": "triggerCanvasSend"
+    },
+    {
+      "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/canvas/trigger/send",
+          "requestBody": {
+            "canvas_id": "canvas-1",
+            "recipients": [
+              {
+                "external_user_id": "user-1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "input": {
+        "canvasId": "canvas-1",
+        "externalId": "user-1"
+      },
+      "name": "triggerCanvasSend-transportFailure",
+      "operation": "triggerCanvasSend"
+    },
+    {
+      "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "dispatchId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+      "input": {
+        "canvasId": "canvas-1",
+        "externalId": "user-1"
+      },
+      "name": "triggerCanvasSend-uncertainAfterSendCap",
+      "operation": "triggerCanvasSend",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

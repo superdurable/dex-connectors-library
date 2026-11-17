@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: braze
   displayName: Braze
-  description: Read and manage Braze users and discover campaigns, Canvases, and segments.
+  description: Manage Braze users, discover marketing objects, and trigger targeted campaign or Canvas sends.
   company: Braze
   categories: [marketing]
   version: v0.2.0
@@ -48,14 +48,54 @@ spec:
         goName: RESTAPIKey
         type: secretString
         required: true
-        description: Secret REST API key from Braze Dashboard > Settings > APIs and Identifiers > API Keys. Select permissions users.export.ids, users.track, users.delete, campaigns.list, canvas.list, and segments.list for the operations you use; blank prevents calls. Dex sends it only as a Bearer token.
+        description: Secret REST API key from Braze Dashboard > Settings > APIs and Identifiers > API Keys. Select permissions for the operations you use; targeted sends also require campaigns.trigger.send or canvas.trigger.send. Blank prevents calls. Dex sends it only as a Bearer token.
     guide:
       startURL: https://www.braze.com/docs/api/basics
       steps:
-        - Sign in to your Braze Dashboard and open Settings > APIs and Identifiers > API Keys. Create or select a REST API key with users.export.ids, users.track, users.delete, campaigns.list, canvas.list, and segments.list permissions for the operations you use; copy its secret value into rest_api_key. Restrict and revoke it on that page.
+        - Sign in to your Braze Dashboard and open Settings > APIs and Identifiers > API Keys. Create or select a REST API key with users.export.ids, users.track, users.delete, campaigns.list, canvas.list, segments.list, campaigns.trigger.send, or canvas.trigger.send permissions for the operations you use; copy its secret value into rest_api_key. Restrict and revoke it on that page.
         - On the same API Keys page, find the account REST Endpoint and enter its complete HTTPS URL in baseUrl. Each Braze account has its own endpoint. Leave timeout and maxResponseBytes blank for their displayed defaults.
         - Find an external user ID in Braze Dashboard > Audience > Search Users or your application's user ID records. Enter that non-secret ID as externalId; blank is invalid. The query exports only external_id, braze_id, first_name, last_name, and email.
   operations:
+    - name: triggerCampaignSend
+      goName: TriggerCampaignSend
+      inputType: TriggerCampaignSendInput
+      outputType: TargetedSendResult
+      kind: mutation
+      description: Trigger an API-enabled campaign for one existing external user ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Braze accepted the targeted campaign dispatch.}
+        - {id: providerRejected, goName: ProviderRejected, description: Braze conclusively rejected the dispatch., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The campaign may have been dispatched after the send cap., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Sample campaign dispatch.
+          output: {dispatchId: sample-dispatch-1}
+    - name: triggerCanvasSend
+      goName: TriggerCanvasSend
+      inputType: TriggerCanvasSendInput
+      outputType: TargetedSendResult
+      kind: mutation
+      description: Trigger an API-enabled Canvas for one existing external user ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Braze accepted the targeted Canvas dispatch.}
+        - {id: providerRejected, goName: ProviderRejected, description: Braze conclusively rejected the dispatch., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The Canvas may have been dispatched after the send cap., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Sample Canvas dispatch.
+          output: {dispatchId: sample-dispatch-2}
     - name: updateUserProfile
       goName: UpdateUserProfile
       inputType: UpdateUserProfileInput
