@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listConnections/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ConnectionsPage](`{"connections":[{"id":"1","service":"fooCommerce","externalId":"store-1","name":"Store"}],"total":1}`)
+			return err
+		}},
+		{name: "getConnection/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ConnectionMetadata](`{"id":"1","service":"fooCommerce","externalId":"store-1","name":"Store"}`)
+			return err
+		}},
+		{name: "createConnection/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ConnectionMetadata](`{"id":"1","service":"fooCommerce","externalId":"store-1","name":"Store"}`)
+			return err
+		}},
+		{name: "updateConnection/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ConnectionMetadata](`{"id":"1","service":"fooCommerce","externalId":"store-1","name":"Store"}`)
+			return err
+		}},
+		{name: "deleteConnection/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ConnectionDeletion](`{"connectionId":"1","deleted":true}`)
+			return err
+		}},
 		{name: "listAccountContacts/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[activecampaign.AccountContactsPage](`{"associations":[{"id":"17","accountId":"2","contactId":"3","jobTitle":"Manager"}],"offset":0,"limit":20,"total":1}`)
 			return err
@@ -170,6 +190,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListConnections().Definition().Operation.OperationID != "listConnections" {
+		t.Errorf("listConnections mock has another definition")
+	}
+	if mock.GetConnection().Definition().Operation.OperationID != "getConnection" {
+		t.Errorf("getConnection mock has another definition")
+	}
+	if mock.CreateConnection().Definition().Operation.OperationID != "createConnection" {
+		t.Errorf("createConnection mock has another definition")
+	}
+	if mock.UpdateConnection().Definition().Operation.OperationID != "updateConnection" {
+		t.Errorf("updateConnection mock has another definition")
+	}
+	if mock.DeleteConnection().Definition().Operation.OperationID != "deleteConnection" {
+		t.Errorf("deleteConnection mock has another definition")
+	}
 	if mock.ListAccountContacts().Definition().Operation.OperationID != "listAccountContacts" {
 		t.Errorf("listAccountContacts mock has another definition")
 	}

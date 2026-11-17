@@ -53,8 +53,110 @@ spec:
       steps:
         - Sign in to the ActiveCampaign account at https://www.activecampaign.com/login, click Settings (gear), then Developer.
         - Copy the account's full API URL into non-secret baseUrl; it ends in /api/3 and is unique to the account. Copy the current user's API Key into secret api_key and save the connection.
-        - Ensure this API user can view and edit the intended contacts and lists; list subscriptions need contact edit permission and resubscribing an unsubscribed contact needs resubscribe permission. Existing contact-tag assignment needs contact edit permission, tag-definition writes need tag management permission, deal operations need Deals and pipeline management permission, and CRM account writes need account management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - Ensure this API user can view and edit the intended contacts and lists; list subscriptions need contact edit permission and resubscribing an unsubscribed contact needs resubscribe permission. Existing contact-tag assignment needs contact edit permission, tag-definition writes need tag management permission, deal operations need Deals and pipeline management permission, CRM account writes need account management permission, and ecommerce connection writes need integration management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: listConnections
+      goName: ListConnections
+      inputType: ListConnectionsInput
+      outputType: ConnectionsPage
+      kind: query
+      description: List Deep Data ecommerce connections.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the ecommerce connection operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample ecommerce connection result.
+          output: {connections: [{id: '1', service: fooCommerce, externalId: store-1, name: Store}], total: 1}
+    - name: getConnection
+      goName: GetConnection
+      inputType: GetConnectionInput
+      outputType: ConnectionMetadata
+      kind: query
+      description: Read one ecommerce connection.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign completed the ecommerce connection operation.}
+        - {id: notFound, goName: NotFound, description: No connection exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample ecommerce connection result.
+          output: {id: '1', service: fooCommerce, externalId: store-1, name: Store}
+    - name: createConnection
+      goName: CreateConnection
+      inputType: CreateConnectionInput
+      outputType: ConnectionMetadata
+      kind: mutation
+      description: Create one ecommerce connection with bounded sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: ActiveCampaign completed the ecommerce connection operation.}
+        - {id: uncertain, goName: Uncertain, description: Bounded connection creation could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample ecommerce connection result.
+          output: {id: '1', service: fooCommerce, externalId: store-1, name: Store}
+    - name: updateConnection
+      goName: UpdateConnection
+      inputType: UpdateConnectionInput
+      outputType: ConnectionMetadata
+      kind: mutation
+      description: Replace selected ecommerce connection fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign completed the ecommerce connection operation.}
+        - {id: notFound, goName: NotFound, description: No connection exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample ecommerce connection result.
+          output: {id: '1', service: fooCommerce, externalId: store-1, name: Store}
+    - name: deleteConnection
+      goName: DeleteConnection
+      inputType: DeleteConnectionInput
+      outputType: ConnectionDeletion
+      kind: mutation
+      description: Delete one ecommerce connection.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: ActiveCampaign completed the ecommerce connection operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample ecommerce connection result.
+          output: {connectionId: '1', deleted: true}
     - name: listAccountContacts
       goName: ListAccountContacts
       inputType: ListAccountContactsInput

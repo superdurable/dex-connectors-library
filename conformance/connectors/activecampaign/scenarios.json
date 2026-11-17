@@ -12341,6 +12341,1612 @@
       },
       "name": "deleteAccountContact-transportFailure",
       "operation": "deleteAccountContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"connections\":[{\"id\":\"1\",\"service\":\"fooCommerce\",\"externalid\":\"store-1\",\"name\":\"Store\",\"listId\":\"2\"}],\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/connections",
+          "query": {
+            "filters[externalid]": [
+              "store-1"
+            ],
+            "filters[service]": [
+              "fooCommerce"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "connections": [
+            {
+              "externalId": "store-1",
+              "id": "1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "store-1",
+        "service": "fooCommerce"
+      },
+      "name": "listConnections-success",
+      "operation": "listConnections"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/connections",
+          "query": {
+            "filters[externalid]": [
+              "store-1"
+            ],
+            "filters[service]": [
+              "fooCommerce"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "connections": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "store-1",
+        "service": "fooCommerce"
+      },
+      "name": "listConnections-providerRejected",
+      "operation": "listConnections"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"connections\":{},\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/connections",
+          "query": {
+            "filters[externalid]": [
+              "store-1"
+            ],
+            "filters[service]": [
+              "fooCommerce"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "connections": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "store-1",
+        "service": "fooCommerce"
+      },
+      "name": "listConnections-invalidResponse",
+      "operation": "listConnections"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "connections": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "store-1",
+        "service": "x\n"
+      },
+      "name": "listConnections-defect",
+      "operation": "listConnections"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/connections",
+          "query": {
+            "filters[externalid]": [
+              "store-1"
+            ],
+            "filters[service]": [
+              "fooCommerce"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "store-1",
+        "service": "fooCommerce"
+      },
+      "name": "listConnections-rateLimit",
+      "operation": "listConnections"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/connections",
+          "query": {
+            "filters[externalid]": [
+              "store-1"
+            ],
+            "filters[service]": [
+              "fooCommerce"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "store-1",
+        "service": "fooCommerce"
+      },
+      "name": "listConnections-serverUnavailable",
+      "operation": "listConnections"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/connections",
+          "query": {
+            "filters[externalid]": [
+              "store-1"
+            ],
+            "filters[service]": [
+              "fooCommerce"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "store-1",
+        "service": "fooCommerce"
+      },
+      "name": "listConnections-transportFailure",
+      "operation": "listConnections"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"connection\":{\"id\":\"1\",\"service\":\"fooCommerce\",\"externalid\":\"store-1\",\"name\":\"Store\",\"listId\":\"2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/connections/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "externalId": "store-1",
+          "id": "1",
+          "listId": "2",
+          "name": "Store",
+          "service": "fooCommerce"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "1"
+      },
+      "name": "getConnection-success",
+      "operation": "getConnection"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/connections/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "externalId": "",
+          "id": "",
+          "listId": "",
+          "name": "",
+          "service": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "1"
+      },
+      "name": "getConnection-providerRejected",
+      "operation": "getConnection"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/connections/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "externalId": "",
+          "id": "",
+          "listId": "",
+          "name": "",
+          "service": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "1"
+      },
+      "name": "getConnection-invalidResponse",
+      "operation": "getConnection"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/connections/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "externalId": "",
+          "id": "",
+          "listId": "",
+          "name": "",
+          "service": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "1"
+      },
+      "name": "getConnection-notFound",
+      "operation": "getConnection"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "externalId": "",
+          "id": "",
+          "listId": "",
+          "name": "",
+          "service": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "bad"
+      },
+      "name": "getConnection-defect",
+      "operation": "getConnection"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/connections/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "1"
+      },
+      "name": "getConnection-rateLimit",
+      "operation": "getConnection"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/connections/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "1"
+      },
+      "name": "getConnection-serverUnavailable",
+      "operation": "getConnection"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/connections/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "1"
+      },
+      "name": "getConnection-transportFailure",
+      "operation": "getConnection"
+    },
+    {
+      "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "exchanges": [
+        {
+          "body": "{\"connection\":{\"id\":\"1\",\"service\":\"fooCommerce\",\"externalid\":\"store-1\",\"name\":\"Store\",\"listId\":\"2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/connections",
+          "requestBody": {
+            "connection": {
+              "externalid": "store-1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+          "providerId": "1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "externalId": "store-1",
+          "id": "1",
+          "listId": "2",
+          "name": "Store",
+          "service": "fooCommerce"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "input": {
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": "fooCommerce"
+      },
+      "name": "createConnection-success",
+      "operation": "createConnection"
+    },
+    {
+      "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/connections",
+          "requestBody": {
+            "connection": {
+              "externalid": "store-1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "externalId": "",
+          "id": "",
+          "listId": "",
+          "name": "",
+          "service": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "input": {
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": "fooCommerce"
+      },
+      "name": "createConnection-providerRejected",
+      "operation": "createConnection"
+    },
+    {
+      "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/connections",
+          "requestBody": {
+            "connection": {
+              "externalid": "store-1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "externalId": "",
+          "id": "",
+          "listId": "",
+          "name": "",
+          "service": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "input": {
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": "fooCommerce"
+      },
+      "name": "createConnection-uncertain",
+      "operation": "createConnection"
+    },
+    {
+      "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "externalId": "",
+          "id": "",
+          "listId": "",
+          "name": "",
+          "service": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "input": {
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": ""
+      },
+      "name": "createConnection-defect",
+      "operation": "createConnection"
+    },
+    {
+      "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/connections",
+          "requestBody": {
+            "connection": {
+              "externalid": "store-1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "input": {
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": "fooCommerce"
+      },
+      "name": "createConnection-rateLimit",
+      "operation": "createConnection"
+    },
+    {
+      "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/connections",
+          "requestBody": {
+            "connection": {
+              "externalid": "store-1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "input": {
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": "fooCommerce"
+      },
+      "name": "createConnection-serverUnavailable",
+      "operation": "createConnection"
+    },
+    {
+      "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/connections",
+          "requestBody": {
+            "connection": {
+              "externalid": "store-1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "input": {
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": "fooCommerce"
+      },
+      "name": "createConnection-transportFailure",
+      "operation": "createConnection"
+    },
+    {
+      "callId": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "exchanges": [
+        {
+          "body": "{\"connection\":{\"id\":\"1\",\"service\":\"fooCommerce\",\"externalid\":\"store-1\",\"name\":\"Store\",\"listId\":\"2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/connections/1",
+          "requestBody": {
+            "connection": {
+              "externalid": "store-1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "externalId": "store-1",
+          "id": "1",
+          "listId": "2",
+          "name": "Store",
+          "service": "fooCommerce"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "input": {
+        "connectionId": "1",
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": "fooCommerce"
+      },
+      "name": "updateConnection-success",
+      "operation": "updateConnection"
+    },
+    {
+      "callId": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/connections/1",
+          "requestBody": {
+            "connection": {
+              "externalid": "store-1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "externalId": "",
+          "id": "",
+          "listId": "",
+          "name": "",
+          "service": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "input": {
+        "connectionId": "1",
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": "fooCommerce"
+      },
+      "name": "updateConnection-providerRejected",
+      "operation": "updateConnection"
+    },
+    {
+      "callId": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/connections/1",
+          "requestBody": {
+            "connection": {
+              "externalid": "store-1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "externalId": "",
+          "id": "",
+          "listId": "",
+          "name": "",
+          "service": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "input": {
+        "connectionId": "1",
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": "fooCommerce"
+      },
+      "name": "updateConnection-invalidResponse",
+      "operation": "updateConnection"
+    },
+    {
+      "callId": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/connections/1",
+          "requestBody": {
+            "connection": {
+              "externalid": "store-1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "externalId": "",
+          "id": "",
+          "listId": "",
+          "name": "",
+          "service": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "input": {
+        "connectionId": "1",
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": "fooCommerce"
+      },
+      "name": "updateConnection-notFound",
+      "operation": "updateConnection"
+    },
+    {
+      "callId": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "externalId": "",
+          "id": "",
+          "listId": "",
+          "name": "",
+          "service": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "input": {
+        "connectionId": "bad",
+        "name": "Store"
+      },
+      "name": "updateConnection-defect",
+      "operation": "updateConnection"
+    },
+    {
+      "callId": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/connections/1",
+          "requestBody": {
+            "connection": {
+              "externalid": "store-1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "input": {
+        "connectionId": "1",
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": "fooCommerce"
+      },
+      "name": "updateConnection-rateLimit",
+      "operation": "updateConnection"
+    },
+    {
+      "callId": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/connections/1",
+          "requestBody": {
+            "connection": {
+              "externalid": "store-1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "input": {
+        "connectionId": "1",
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": "fooCommerce"
+      },
+      "name": "updateConnection-serverUnavailable",
+      "operation": "updateConnection"
+    },
+    {
+      "callId": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/connections/1",
+          "requestBody": {
+            "connection": {
+              "externalid": "store-1",
+              "listId": "2",
+              "name": "Store",
+              "service": "fooCommerce"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a19a9d62-854d-579f-a382-1e81bf117679",
+      "input": {
+        "connectionId": "1",
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": "fooCommerce"
+      },
+      "name": "updateConnection-transportFailure",
+      "operation": "updateConnection"
+    },
+    {
+      "callId": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/connections/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "connectionId": "1",
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
+      "input": {
+        "connectionId": "1"
+      },
+      "name": "deleteConnection-success",
+      "operation": "deleteConnection"
+    },
+    {
+      "callId": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/connections/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "connectionId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
+      "input": {
+        "connectionId": "1"
+      },
+      "name": "deleteConnection-providerRejected",
+      "operation": "deleteConnection"
+    },
+    {
+      "callId": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/connections/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "connectionId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
+      "input": {
+        "connectionId": "1"
+      },
+      "name": "deleteConnection-invalidResponse",
+      "operation": "deleteConnection"
+    },
+    {
+      "callId": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "connectionId": "",
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
+      "input": {
+        "connectionId": "bad"
+      },
+      "name": "deleteConnection-defect",
+      "operation": "deleteConnection"
+    },
+    {
+      "callId": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/connections/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
+      "input": {
+        "connectionId": "1"
+      },
+      "name": "deleteConnection-rateLimit",
+      "operation": "deleteConnection"
+    },
+    {
+      "callId": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/connections/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
+      "input": {
+        "connectionId": "1"
+      },
+      "name": "deleteConnection-serverUnavailable",
+      "operation": "deleteConnection"
+    },
+    {
+      "callId": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/connections/1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
+      "input": {
+        "connectionId": "1"
+      },
+      "name": "deleteConnection-transportFailure",
+      "operation": "deleteConnection"
     }
   ],
   "schemaVersion": 1
