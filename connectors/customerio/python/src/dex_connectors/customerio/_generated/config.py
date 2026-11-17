@@ -13,7 +13,6 @@ class Config:
     base_url: str = "https://api.customer.io"
     timeout_seconds: float = 15
     max_response_bytes: int = 1048576
-    tracking_base_url: str = "https://track.customer.io"
 
 setattr(Config, '__module__', 'dex_connectors.customerio.client')
 
@@ -22,7 +21,5 @@ setattr(Config, '__module__', 'dex_connectors.customerio.client')
 class Credentials:
 
     private_key: SecretString
-    tracking_site_id: str
-    tracking_api_key: SecretString
 
 setattr(Credentials, '__module__', 'dex_connectors.customerio.client')
