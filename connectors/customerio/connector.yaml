@@ -6,7 +6,7 @@ metadata:
   description: Look up customers and campaigns through the App API, and manage customers, events, and manual segments through the Track API.
   company: Customer.io
   categories: [marketing]
-  version: v0.2.0
+  version: v1.0.0
 spec:
   provider: customerio
   languages:
