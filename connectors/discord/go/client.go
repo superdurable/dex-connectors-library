@@ -181,6 +181,41 @@ func (client *Client) DeleteChannel() DeleteChannelOperation {
 	return DeleteChannelOperation{client: client}
 }
 
+// ListGuildMembers returns the server member listing Query bound to this client.
+func (client *Client) ListGuildMembers() ListGuildMembersOperation {
+	return ListGuildMembersOperation{client: client}
+}
+
+// BanGuildMember returns the member ban Mutation bound to this client.
+func (client *Client) BanGuildMember() BanGuildMemberOperation {
+	return BanGuildMemberOperation{client: client}
+}
+
+// KickGuildMember returns the member removal Mutation bound to this client.
+func (client *Client) KickGuildMember() KickGuildMemberOperation {
+	return KickGuildMemberOperation{client: client}
+}
+
+// AddGuildMemberRole returns the role add Mutation bound to this client.
+func (client *Client) AddGuildMemberRole() AddGuildMemberRoleOperation {
+	return AddGuildMemberRoleOperation{client: client}
+}
+
+// RemoveGuildMemberRole returns the role removal Mutation bound to this client.
+func (client *Client) RemoveGuildMemberRole() RemoveGuildMemberRoleOperation {
+	return RemoveGuildMemberRoleOperation{client: client}
+}
+
+// TimeoutGuildMember returns the absolute member timeout Mutation bound to this client.
+func (client *Client) TimeoutGuildMember() TimeoutGuildMemberOperation {
+	return TimeoutGuildMemberOperation{client: client}
+}
+
+// UnbanGuildMember returns the ban removal Mutation bound to this client.
+func (client *Client) UnbanGuildMember() UnbanGuildMemberOperation {
+	return UnbanGuildMemberOperation{client: client}
+}
+
 // GetMessage returns the single-message Query bound to this client.
 func (client *Client) GetMessage() GetMessageOperation { return GetMessageOperation{client: client} }
 

@@ -72,3 +72,29 @@ func TestChannelLifecycleRunsOnMockDefaultsWithRealDex(t *testing.T) {
 	require.Len(t, mock.ListGuildChannels().Calls(), 1)
 	require.Len(t, mock.DeleteChannel().Calls(), 1)
 }
+
+func TestMemberModerationRunsOnMockDefaultsWithRealDex(t *testing.T) {
+	mock := discordmock.New(t, ConnectionName)
+	_, harness := newAnnouncementIntegrationHarnessWithConnection(t, mock.Connection())
+	flow := NewMemberModerationFlow(mock.Connection())
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	flowID := "discord-member-moderation-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	request := MemberModerationRequest{GuildID: "200000000000000001", UserID: "400000000000000001", RoleID: "500000000000000001", TimeoutUntil: "2026-11-18T12:00:00Z"}
+	_, err := harness.client.StartFlow(ctx, flow, flowID, request, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var changed discord.GuildMemberChange
+	require.NoError(t, result.DecodeSingleOutput(&changed))
+	require.Equal(t, request.UserID, changed.UserID)
+	require.Len(t, mock.ListGuildMembers().Calls(), 1)
+	require.Len(t, mock.AddGuildMemberRole().Calls(), 1)
+	require.Len(t, mock.RemoveGuildMemberRole().Calls(), 1)
+	require.Len(t, mock.TimeoutGuildMember().Calls(), 1)
+	require.Len(t, mock.KickGuildMember().Calls(), 1)
+	require.Len(t, mock.BanGuildMember().Calls(), 1)
+	require.Len(t, mock.UnbanGuildMember().Calls(), 1)
+}

@@ -17,17 +17,24 @@ import (
 
 // Mock is a scripted discord connection. Script each operation through its accessor.
 type Mock struct {
-	connection          discord.Connection
-	listGuildChannels   *connectormock.Query[discord.ListGuildChannelsInput, discord.GuildChannels]
-	createGuildChannel  *connectormock.Mutation[discord.CreateGuildChannelInput, discord.Channel]
-	updateChannel       *connectormock.Mutation[discord.UpdateChannelInput, discord.Channel]
-	deleteChannel       *connectormock.Mutation[discord.DeleteChannelInput, discord.Channel]
-	getMessage          *connectormock.Query[discord.GetMessageInput, discord.Message]
-	deleteMessage       *connectormock.Mutation[discord.DeleteMessageInput, discord.DeletedMessage]
-	getChannel          *connectormock.Query[discord.GetChannelInput, discord.Channel]
-	listChannelMessages *connectormock.Query[discord.ListChannelMessagesInput, discord.MessagePage]
-	createMessage       *connectormock.Mutation[discord.CreateMessageInput, discord.Message]
-	addReaction         *connectormock.Mutation[discord.AddReactionInput, discord.AddedReaction]
+	connection            discord.Connection
+	listGuildMembers      *connectormock.Query[discord.ListGuildMembersInput, discord.GuildMemberPage]
+	banGuildMember        *connectormock.Mutation[discord.BanGuildMemberInput, discord.GuildMemberChange]
+	kickGuildMember       *connectormock.Mutation[discord.KickGuildMemberInput, discord.GuildMemberChange]
+	addGuildMemberRole    *connectormock.Mutation[discord.GuildMemberRoleInput, discord.GuildMemberChange]
+	removeGuildMemberRole *connectormock.Mutation[discord.GuildMemberRoleInput, discord.GuildMemberChange]
+	timeoutGuildMember    *connectormock.Mutation[discord.TimeoutGuildMemberInput, discord.GuildMemberChange]
+	unbanGuildMember      *connectormock.Mutation[discord.UnbanGuildMemberInput, discord.GuildMemberChange]
+	listGuildChannels     *connectormock.Query[discord.ListGuildChannelsInput, discord.GuildChannels]
+	createGuildChannel    *connectormock.Mutation[discord.CreateGuildChannelInput, discord.Channel]
+	updateChannel         *connectormock.Mutation[discord.UpdateChannelInput, discord.Channel]
+	deleteChannel         *connectormock.Mutation[discord.DeleteChannelInput, discord.Channel]
+	getMessage            *connectormock.Query[discord.GetMessageInput, discord.Message]
+	deleteMessage         *connectormock.Mutation[discord.DeleteMessageInput, discord.DeletedMessage]
+	getChannel            *connectormock.Query[discord.GetChannelInput, discord.Channel]
+	listChannelMessages   *connectormock.Query[discord.ListChannelMessagesInput, discord.MessagePage]
+	createMessage         *connectormock.Mutation[discord.CreateMessageInput, discord.Message]
+	addReaction           *connectormock.Mutation[discord.AddReactionInput, discord.AddedReaction]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -35,17 +42,31 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listGuildChannels:   connectormock.NewQuery[discord.ListGuildChannelsInput, discord.GuildChannels](t, discord.ListGuildChannelsDefinition),
-		createGuildChannel:  connectormock.NewMutation[discord.CreateGuildChannelInput, discord.Channel](t, discord.CreateGuildChannelDefinition),
-		updateChannel:       connectormock.NewMutation[discord.UpdateChannelInput, discord.Channel](t, discord.UpdateChannelDefinition),
-		deleteChannel:       connectormock.NewMutation[discord.DeleteChannelInput, discord.Channel](t, discord.DeleteChannelDefinition),
-		getMessage:          connectormock.NewQuery[discord.GetMessageInput, discord.Message](t, discord.GetMessageDefinition),
-		deleteMessage:       connectormock.NewMutation[discord.DeleteMessageInput, discord.DeletedMessage](t, discord.DeleteMessageDefinition),
-		getChannel:          connectormock.NewQuery[discord.GetChannelInput, discord.Channel](t, discord.GetChannelDefinition),
-		listChannelMessages: connectormock.NewQuery[discord.ListChannelMessagesInput, discord.MessagePage](t, discord.ListChannelMessagesDefinition),
-		createMessage:       connectormock.NewMutation[discord.CreateMessageInput, discord.Message](t, discord.CreateMessageDefinition),
-		addReaction:         connectormock.NewMutation[discord.AddReactionInput, discord.AddedReaction](t, discord.AddReactionDefinition),
+		listGuildMembers:      connectormock.NewQuery[discord.ListGuildMembersInput, discord.GuildMemberPage](t, discord.ListGuildMembersDefinition),
+		banGuildMember:        connectormock.NewMutation[discord.BanGuildMemberInput, discord.GuildMemberChange](t, discord.BanGuildMemberDefinition),
+		kickGuildMember:       connectormock.NewMutation[discord.KickGuildMemberInput, discord.GuildMemberChange](t, discord.KickGuildMemberDefinition),
+		addGuildMemberRole:    connectormock.NewMutation[discord.GuildMemberRoleInput, discord.GuildMemberChange](t, discord.AddGuildMemberRoleDefinition),
+		removeGuildMemberRole: connectormock.NewMutation[discord.GuildMemberRoleInput, discord.GuildMemberChange](t, discord.RemoveGuildMemberRoleDefinition),
+		timeoutGuildMember:    connectormock.NewMutation[discord.TimeoutGuildMemberInput, discord.GuildMemberChange](t, discord.TimeoutGuildMemberDefinition),
+		unbanGuildMember:      connectormock.NewMutation[discord.UnbanGuildMemberInput, discord.GuildMemberChange](t, discord.UnbanGuildMemberDefinition),
+		listGuildChannels:     connectormock.NewQuery[discord.ListGuildChannelsInput, discord.GuildChannels](t, discord.ListGuildChannelsDefinition),
+		createGuildChannel:    connectormock.NewMutation[discord.CreateGuildChannelInput, discord.Channel](t, discord.CreateGuildChannelDefinition),
+		updateChannel:         connectormock.NewMutation[discord.UpdateChannelInput, discord.Channel](t, discord.UpdateChannelDefinition),
+		deleteChannel:         connectormock.NewMutation[discord.DeleteChannelInput, discord.Channel](t, discord.DeleteChannelDefinition),
+		getMessage:            connectormock.NewQuery[discord.GetMessageInput, discord.Message](t, discord.GetMessageDefinition),
+		deleteMessage:         connectormock.NewMutation[discord.DeleteMessageInput, discord.DeletedMessage](t, discord.DeleteMessageDefinition),
+		getChannel:            connectormock.NewQuery[discord.GetChannelInput, discord.Channel](t, discord.GetChannelDefinition),
+		listChannelMessages:   connectormock.NewQuery[discord.ListChannelMessagesInput, discord.MessagePage](t, discord.ListChannelMessagesDefinition),
+		createMessage:         connectormock.NewMutation[discord.CreateMessageInput, discord.Message](t, discord.CreateMessageDefinition),
+		addReaction:           connectormock.NewMutation[discord.AddReactionInput, discord.AddedReaction](t, discord.AddReactionDefinition),
 	}
+	mock.listGuildMembers.Default(ListGuildMembersDefault())
+	mock.banGuildMember.Default(BanGuildMemberDefault())
+	mock.kickGuildMember.Default(KickGuildMemberDefault())
+	mock.addGuildMemberRole.Default(AddGuildMemberRoleDefault())
+	mock.removeGuildMemberRole.Default(RemoveGuildMemberRoleDefault())
+	mock.timeoutGuildMember.Default(TimeoutGuildMemberDefault())
+	mock.unbanGuildMember.Default(UnbanGuildMemberDefault())
 	mock.listGuildChannels.Default(ListGuildChannelsDefault())
 	mock.createGuildChannel.Default(CreateGuildChannelDefault())
 	mock.updateChannel.Default(UpdateChannelDefault())
@@ -66,6 +87,41 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() discord.Connection { return mock.connection }
+
+// ListGuildMembers returns the listGuildMembers script.
+func (mock *Mock) ListGuildMembers() *connectormock.Query[discord.ListGuildMembersInput, discord.GuildMemberPage] {
+	return mock.listGuildMembers
+}
+
+// BanGuildMember returns the banGuildMember script.
+func (mock *Mock) BanGuildMember() *connectormock.Mutation[discord.BanGuildMemberInput, discord.GuildMemberChange] {
+	return mock.banGuildMember
+}
+
+// KickGuildMember returns the kickGuildMember script.
+func (mock *Mock) KickGuildMember() *connectormock.Mutation[discord.KickGuildMemberInput, discord.GuildMemberChange] {
+	return mock.kickGuildMember
+}
+
+// AddGuildMemberRole returns the addGuildMemberRole script.
+func (mock *Mock) AddGuildMemberRole() *connectormock.Mutation[discord.GuildMemberRoleInput, discord.GuildMemberChange] {
+	return mock.addGuildMemberRole
+}
+
+// RemoveGuildMemberRole returns the removeGuildMemberRole script.
+func (mock *Mock) RemoveGuildMemberRole() *connectormock.Mutation[discord.GuildMemberRoleInput, discord.GuildMemberChange] {
+	return mock.removeGuildMemberRole
+}
+
+// TimeoutGuildMember returns the timeoutGuildMember script.
+func (mock *Mock) TimeoutGuildMember() *connectormock.Mutation[discord.TimeoutGuildMemberInput, discord.GuildMemberChange] {
+	return mock.timeoutGuildMember
+}
+
+// UnbanGuildMember returns the unbanGuildMember script.
+func (mock *Mock) UnbanGuildMember() *connectormock.Mutation[discord.UnbanGuildMemberInput, discord.GuildMemberChange] {
+	return mock.unbanGuildMember
+}
 
 // ListGuildChannels returns the listGuildChannels script.
 func (mock *Mock) ListGuildChannels() *connectormock.Query[discord.ListGuildChannelsInput, discord.GuildChannels] {
@@ -119,6 +175,27 @@ func (mock *Mock) AddReaction() *connectormock.Mutation[discord.AddReactionInput
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListGuildMembers() sdkgo.Query[discord.ListGuildMembersInput, discord.GuildMemberPage] {
+	return operations.mock.listGuildMembers
+}
+func (operations mockOperations) BanGuildMember() sdkgo.Mutation[discord.BanGuildMemberInput, discord.GuildMemberChange] {
+	return operations.mock.banGuildMember
+}
+func (operations mockOperations) KickGuildMember() sdkgo.Mutation[discord.KickGuildMemberInput, discord.GuildMemberChange] {
+	return operations.mock.kickGuildMember
+}
+func (operations mockOperations) AddGuildMemberRole() sdkgo.Mutation[discord.GuildMemberRoleInput, discord.GuildMemberChange] {
+	return operations.mock.addGuildMemberRole
+}
+func (operations mockOperations) RemoveGuildMemberRole() sdkgo.Mutation[discord.GuildMemberRoleInput, discord.GuildMemberChange] {
+	return operations.mock.removeGuildMemberRole
+}
+func (operations mockOperations) TimeoutGuildMember() sdkgo.Mutation[discord.TimeoutGuildMemberInput, discord.GuildMemberChange] {
+	return operations.mock.timeoutGuildMember
+}
+func (operations mockOperations) UnbanGuildMember() sdkgo.Mutation[discord.UnbanGuildMemberInput, discord.GuildMemberChange] {
+	return operations.mock.unbanGuildMember
+}
 func (operations mockOperations) ListGuildChannels() sdkgo.Query[discord.ListGuildChannelsInput, discord.GuildChannels] {
 	return operations.mock.listGuildChannels
 }
@@ -148,6 +225,263 @@ func (operations mockOperations) CreateMessage() sdkgo.Mutation[discord.CreateMe
 }
 func (operations mockOperations) AddReaction() sdkgo.Mutation[discord.AddReactionInput, discord.AddedReaction] {
 	return operations.mock.addReaction
+}
+
+// ListGuildMembersListed selects the listed branch: Discord returned one page of members.
+func ListGuildMembersListed(value discord.GuildMemberPage, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberPage] {
+	return connectormock.Branch(discord.ListGuildMembersBranchListed, value, failure)
+}
+
+// ListGuildMembersNotFound selects the notFound branch: Discord found no server or target member.
+func ListGuildMembersNotFound(value discord.GuildMemberPage, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberPage] {
+	return connectormock.Branch(discord.ListGuildMembersBranchNotFound, value, failure)
+}
+
+// ListGuildMembersProviderRejected selects the providerRejected branch: Discord denied the member operation.
+func ListGuildMembersProviderRejected(value discord.GuildMemberPage, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberPage] {
+	return connectormock.Branch(discord.ListGuildMembersBranchProviderRejected, value, failure)
+}
+
+// ListGuildMembersInvalidResponse selects the invalidResponse branch: Discord returned invalid or oversized member data.
+func ListGuildMembersInvalidResponse(value discord.GuildMemberPage, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberPage] {
+	return connectormock.Branch(discord.ListGuildMembersBranchInvalidResponse, value, failure)
+}
+
+// ListGuildMembersDefect selects the defect branch: Local input or credentials are invalid.
+func ListGuildMembersDefect(value discord.GuildMemberPage, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberPage] {
+	return connectormock.Branch(discord.ListGuildMembersBranchDefect, value, failure)
+}
+
+// ListGuildMembersRetry asks Dex to retry the listGuildMembers Step, after the delay when it is positive.
+func ListGuildMembersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[discord.GuildMemberPage] {
+	return connectormock.Retry[discord.GuildMemberPage](failure, after)
+}
+
+// ListGuildMembersListGuildMembersDefault is the manifest mock listGuildMembersDefault: Example member response.
+func ListGuildMembersListGuildMembersDefault() connectormock.Case[discord.GuildMemberPage] {
+	value := connectormock.MustDecodeOutput[discord.GuildMemberPage](`{"members":[{"userId":"400000000000000001","nickname":"releasebot","roleIds":[]}]}`)
+	return connectormock.Branch(discord.ListGuildMembersBranchListed, value, nil)
+}
+
+// ListGuildMembersDefault is the manifest default, listGuildMembersDefault, which New installs.
+func ListGuildMembersDefault() connectormock.Case[discord.GuildMemberPage] {
+	return ListGuildMembersListGuildMembersDefault()
+}
+
+// BanGuildMemberBanned selects the banned branch: Discord banned the member.
+func BanGuildMemberBanned(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.BanGuildMemberBranchBanned, value, failure)
+}
+
+// BanGuildMemberNotFound selects the notFound branch: Discord found no server or target member.
+func BanGuildMemberNotFound(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.BanGuildMemberBranchNotFound, value, failure)
+}
+
+// BanGuildMemberProviderRejected selects the providerRejected branch: Discord denied the member operation.
+func BanGuildMemberProviderRejected(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.BanGuildMemberBranchProviderRejected, value, failure)
+}
+
+// BanGuildMemberDefect selects the defect branch: Local input or credentials are invalid.
+func BanGuildMemberDefect(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.BanGuildMemberBranchDefect, value, failure)
+}
+
+// BanGuildMemberRetry asks Dex to retry the banGuildMember Step, after the delay when it is positive.
+func BanGuildMemberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Retry[discord.GuildMemberChange](failure, after)
+}
+
+// BanGuildMemberBanGuildMemberDefault is the manifest mock banGuildMemberDefault: Example member response.
+func BanGuildMemberBanGuildMemberDefault() connectormock.Case[discord.GuildMemberChange] {
+	value := connectormock.MustDecodeOutput[discord.GuildMemberChange](`{"guildId":"200000000000000001","userId":"400000000000000001"}`)
+	return connectormock.Branch(discord.BanGuildMemberBranchBanned, value, nil)
+}
+
+// BanGuildMemberDefault is the manifest default, banGuildMemberDefault, which New installs.
+func BanGuildMemberDefault() connectormock.Case[discord.GuildMemberChange] {
+	return BanGuildMemberBanGuildMemberDefault()
+}
+
+// KickGuildMemberKicked selects the kicked branch: Discord removed the member.
+func KickGuildMemberKicked(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.KickGuildMemberBranchKicked, value, failure)
+}
+
+// KickGuildMemberNotFound selects the notFound branch: Discord found no server or target member.
+func KickGuildMemberNotFound(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.KickGuildMemberBranchNotFound, value, failure)
+}
+
+// KickGuildMemberProviderRejected selects the providerRejected branch: Discord denied the member operation.
+func KickGuildMemberProviderRejected(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.KickGuildMemberBranchProviderRejected, value, failure)
+}
+
+// KickGuildMemberDefect selects the defect branch: Local input or credentials are invalid.
+func KickGuildMemberDefect(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.KickGuildMemberBranchDefect, value, failure)
+}
+
+// KickGuildMemberRetry asks Dex to retry the kickGuildMember Step, after the delay when it is positive.
+func KickGuildMemberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Retry[discord.GuildMemberChange](failure, after)
+}
+
+// KickGuildMemberKickGuildMemberDefault is the manifest mock kickGuildMemberDefault: Example member response.
+func KickGuildMemberKickGuildMemberDefault() connectormock.Case[discord.GuildMemberChange] {
+	value := connectormock.MustDecodeOutput[discord.GuildMemberChange](`{"guildId":"200000000000000001","userId":"400000000000000001"}`)
+	return connectormock.Branch(discord.KickGuildMemberBranchKicked, value, nil)
+}
+
+// KickGuildMemberDefault is the manifest default, kickGuildMemberDefault, which New installs.
+func KickGuildMemberDefault() connectormock.Case[discord.GuildMemberChange] {
+	return KickGuildMemberKickGuildMemberDefault()
+}
+
+// AddGuildMemberRoleAdded selects the added branch: Discord added the role.
+func AddGuildMemberRoleAdded(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.AddGuildMemberRoleBranchAdded, value, failure)
+}
+
+// AddGuildMemberRoleNotFound selects the notFound branch: Discord found no server or target member.
+func AddGuildMemberRoleNotFound(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.AddGuildMemberRoleBranchNotFound, value, failure)
+}
+
+// AddGuildMemberRoleProviderRejected selects the providerRejected branch: Discord denied the member operation.
+func AddGuildMemberRoleProviderRejected(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.AddGuildMemberRoleBranchProviderRejected, value, failure)
+}
+
+// AddGuildMemberRoleDefect selects the defect branch: Local input or credentials are invalid.
+func AddGuildMemberRoleDefect(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.AddGuildMemberRoleBranchDefect, value, failure)
+}
+
+// AddGuildMemberRoleRetry asks Dex to retry the addGuildMemberRole Step, after the delay when it is positive.
+func AddGuildMemberRoleRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Retry[discord.GuildMemberChange](failure, after)
+}
+
+// AddGuildMemberRoleAddGuildMemberRoleDefault is the manifest mock addGuildMemberRoleDefault: Example member response.
+func AddGuildMemberRoleAddGuildMemberRoleDefault() connectormock.Case[discord.GuildMemberChange] {
+	value := connectormock.MustDecodeOutput[discord.GuildMemberChange](`{"guildId":"200000000000000001","userId":"400000000000000001","roleId":"500000000000000001"}`)
+	return connectormock.Branch(discord.AddGuildMemberRoleBranchAdded, value, nil)
+}
+
+// AddGuildMemberRoleDefault is the manifest default, addGuildMemberRoleDefault, which New installs.
+func AddGuildMemberRoleDefault() connectormock.Case[discord.GuildMemberChange] {
+	return AddGuildMemberRoleAddGuildMemberRoleDefault()
+}
+
+// RemoveGuildMemberRoleRemoved selects the removed branch: Discord removed the role.
+func RemoveGuildMemberRoleRemoved(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.RemoveGuildMemberRoleBranchRemoved, value, failure)
+}
+
+// RemoveGuildMemberRoleNotFound selects the notFound branch: Discord found no server or target member.
+func RemoveGuildMemberRoleNotFound(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.RemoveGuildMemberRoleBranchNotFound, value, failure)
+}
+
+// RemoveGuildMemberRoleProviderRejected selects the providerRejected branch: Discord denied the member operation.
+func RemoveGuildMemberRoleProviderRejected(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.RemoveGuildMemberRoleBranchProviderRejected, value, failure)
+}
+
+// RemoveGuildMemberRoleDefect selects the defect branch: Local input or credentials are invalid.
+func RemoveGuildMemberRoleDefect(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.RemoveGuildMemberRoleBranchDefect, value, failure)
+}
+
+// RemoveGuildMemberRoleRetry asks Dex to retry the removeGuildMemberRole Step, after the delay when it is positive.
+func RemoveGuildMemberRoleRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Retry[discord.GuildMemberChange](failure, after)
+}
+
+// RemoveGuildMemberRoleRemoveGuildMemberRoleDefault is the manifest mock removeGuildMemberRoleDefault: Example member response.
+func RemoveGuildMemberRoleRemoveGuildMemberRoleDefault() connectormock.Case[discord.GuildMemberChange] {
+	value := connectormock.MustDecodeOutput[discord.GuildMemberChange](`{"guildId":"200000000000000001","userId":"400000000000000001","roleId":"500000000000000001"}`)
+	return connectormock.Branch(discord.RemoveGuildMemberRoleBranchRemoved, value, nil)
+}
+
+// RemoveGuildMemberRoleDefault is the manifest default, removeGuildMemberRoleDefault, which New installs.
+func RemoveGuildMemberRoleDefault() connectormock.Case[discord.GuildMemberChange] {
+	return RemoveGuildMemberRoleRemoveGuildMemberRoleDefault()
+}
+
+// TimeoutGuildMemberTimedOut selects the timedOut branch: Discord set the absolute timeout.
+func TimeoutGuildMemberTimedOut(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.TimeoutGuildMemberBranchTimedOut, value, failure)
+}
+
+// TimeoutGuildMemberNotFound selects the notFound branch: Discord found no server or target member.
+func TimeoutGuildMemberNotFound(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.TimeoutGuildMemberBranchNotFound, value, failure)
+}
+
+// TimeoutGuildMemberProviderRejected selects the providerRejected branch: Discord denied the member operation.
+func TimeoutGuildMemberProviderRejected(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.TimeoutGuildMemberBranchProviderRejected, value, failure)
+}
+
+// TimeoutGuildMemberDefect selects the defect branch: Local input or credentials are invalid.
+func TimeoutGuildMemberDefect(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.TimeoutGuildMemberBranchDefect, value, failure)
+}
+
+// TimeoutGuildMemberRetry asks Dex to retry the timeoutGuildMember Step, after the delay when it is positive.
+func TimeoutGuildMemberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Retry[discord.GuildMemberChange](failure, after)
+}
+
+// TimeoutGuildMemberTimeoutGuildMemberDefault is the manifest mock timeoutGuildMemberDefault: Example member response.
+func TimeoutGuildMemberTimeoutGuildMemberDefault() connectormock.Case[discord.GuildMemberChange] {
+	value := connectormock.MustDecodeOutput[discord.GuildMemberChange](`{"guildId":"200000000000000001","userId":"400000000000000001","timeoutUntil":"2026-11-18T12:00:00Z"}`)
+	return connectormock.Branch(discord.TimeoutGuildMemberBranchTimedOut, value, nil)
+}
+
+// TimeoutGuildMemberDefault is the manifest default, timeoutGuildMemberDefault, which New installs.
+func TimeoutGuildMemberDefault() connectormock.Case[discord.GuildMemberChange] {
+	return TimeoutGuildMemberTimeoutGuildMemberDefault()
+}
+
+// UnbanGuildMemberUnbanned selects the unbanned branch: Discord removed the ban.
+func UnbanGuildMemberUnbanned(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.UnbanGuildMemberBranchUnbanned, value, failure)
+}
+
+// UnbanGuildMemberNotFound selects the notFound branch: Discord found no server or target member.
+func UnbanGuildMemberNotFound(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.UnbanGuildMemberBranchNotFound, value, failure)
+}
+
+// UnbanGuildMemberProviderRejected selects the providerRejected branch: Discord denied the member operation.
+func UnbanGuildMemberProviderRejected(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.UnbanGuildMemberBranchProviderRejected, value, failure)
+}
+
+// UnbanGuildMemberDefect selects the defect branch: Local input or credentials are invalid.
+func UnbanGuildMemberDefect(value discord.GuildMemberChange, failure *sdkgo.Failure) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Branch(discord.UnbanGuildMemberBranchDefect, value, failure)
+}
+
+// UnbanGuildMemberRetry asks Dex to retry the unbanGuildMember Step, after the delay when it is positive.
+func UnbanGuildMemberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[discord.GuildMemberChange] {
+	return connectormock.Retry[discord.GuildMemberChange](failure, after)
+}
+
+// UnbanGuildMemberUnbanGuildMemberDefault is the manifest mock unbanGuildMemberDefault: Example member response.
+func UnbanGuildMemberUnbanGuildMemberDefault() connectormock.Case[discord.GuildMemberChange] {
+	value := connectormock.MustDecodeOutput[discord.GuildMemberChange](`{"guildId":"200000000000000001","userId":"400000000000000001"}`)
+	return connectormock.Branch(discord.UnbanGuildMemberBranchUnbanned, value, nil)
+}
+
+// UnbanGuildMemberDefault is the manifest default, unbanGuildMemberDefault, which New installs.
+func UnbanGuildMemberDefault() connectormock.Case[discord.GuildMemberChange] {
+	return UnbanGuildMemberUnbanGuildMemberDefault()
 }
 
 // ListGuildChannelsListed selects the listed branch: Discord returned the visible guild channels.
