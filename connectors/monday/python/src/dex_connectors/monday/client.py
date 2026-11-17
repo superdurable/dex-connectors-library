@@ -109,7 +109,12 @@ class Exchange:
     replayed: bool = False
     problem: Failure | None = None
     retry_after: float = 0
-    confirmed_not_processed: bool = False
+    proven_not_processed: bool = False
+    """A rate limit, 503, or unsent request that monday.com never processed."""
+    definite_refusal: bool = False
+    """A listed refusal status or error code, or a request never sent."""
+    credential_reflected: bool = False
+    """The response echoed the connection credential."""
 
 
 class Client:
@@ -196,6 +201,7 @@ class Client:
                 problem=failure(
                     operation, FailureKind.AUTHENTICATION, "monday.com authorization must be renewed"
                 ),
+                definite_refusal=True,
             )
         except (RetryError, RefreshFailedError):
             return None, Exchange(
@@ -205,6 +211,7 @@ class Client:
                     FailureKind.AVAILABILITY,
                     "monday.com OAuth token refresh is temporarily unavailable",
                 ),
+                proven_not_processed=True,
             )
         except (ValueError, LookupError, OSError):
             return None, Exchange(
@@ -212,6 +219,7 @@ class Client:
                 problem=failure(
                     operation, FailureKind.AUTHENTICATION, "monday.com connection credentials are unavailable"
                 ),
+                definite_refusal=True,
             )
         method = credentials.auth_method_id
         token = credentials.access_token if method == "monday-oauth" else credentials.api_token
@@ -225,6 +233,7 @@ class Client:
                 problem=failure(
                     operation, FailureKind.AUTHENTICATION, "monday.com connection credentials are unavailable"
                 ),
+                definite_refusal=True,
             )
         return credentials, None
 
@@ -237,11 +246,29 @@ class Client:
         *,
         mutation: bool = False,
     ) -> Exchange:
-        """Resolve credentials and classify one provider request, refreshing once after OAuth 401."""
+        """Resolve credentials and classify one unfenced provider request."""
         credentials, resolution = await self.resolve(call, operation)
         if resolution is not None:
             return resolution
         assert credentials is not None
+        return await self.send_with_rejection_refresh(
+            call, operation, document, variables, credentials, mutation
+        )
+
+    async def send_with_rejection_refresh(
+        self,
+        call: Call,
+        operation: str,
+        document: str,
+        variables: dict[str, Any],
+        credentials: Credentials,
+        mutation: bool,
+        write_deadline: datetime | None = None,
+    ) -> Exchange:
+        """Send once and resend once after monday.com rejects an OAuth token.
+
+        A fenced write passes its `write_deadline`, and resends only when it still fits a request.
+        """
         result = await self._send(call, operation, document, variables, credentials, mutation)
         if result.status == 401 and credentials.auth_method_id == "monday-oauth":
             refresh = getattr(self.credentials, "resolve_after_rejection", None)
@@ -250,6 +277,19 @@ class Client:
                     replacement = await refresh(call)
                     token = replacement.access_token
                     if token is not None and is_header_safe_credential(token.reveal()):
+                        if write_deadline is not None and write_deadline - datetime.now(UTC) < timedelta(
+                            seconds=6
+                        ):
+                            # HTTP 401 proves the first send was refused, and the refreshed one is not sent.
+                            return Exchange(
+                                "retry",
+                                problem=failure(
+                                    operation,
+                                    FailureKind.AVAILABILITY,
+                                    "not enough time remains to resend the mutation",
+                                ),
+                                proven_not_processed=True,
+                            )
                         result = await self._send(call, operation, document, variables, replacement, mutation)
                 except (ReauthorizationRequiredError, RetryError, ValueError, LookupError, OSError):
                     pass  # The original credential rejection remains the terminal provider outcome.
@@ -276,6 +316,7 @@ class Client:
                 problem=failure(
                     operation, FailureKind.LOCAL_DEFECT, "monday.com mutation has no idempotency key"
                 ),
+                definite_refusal=True,
             )
         headers = {
             "Accept": "application/json",
@@ -296,15 +337,12 @@ class Client:
             return Exchange(
                 "defect",
                 problem=failure(operation, FailureKind.LOCAL_DEFECT, "monday.com request could not be built"),
+                definite_refusal=True,
             )
         try:
             response, _ = await send_traced(self.http_client, request)
         except ProviderTransportError as error:
-            outcome = (
-                "retry"
-                if error.provably_not_sent or not mutation or operation == "updateItemColumnValues"
-                else "uncertain"
-            )
+            outcome = "retry" if error.provably_not_sent or not mutation else "uncertain"
             message = (
                 "monday.com could not be reached; no request was sent"
                 if error.provably_not_sent
@@ -313,7 +351,7 @@ class Client:
             return Exchange(
                 outcome,
                 problem=failure(operation, FailureKind.TRANSPORT, message),
-                confirmed_not_processed=error.provably_not_sent,
+                proven_not_processed=error.provably_not_sent,
             )
         status = response.status_code
         replayed = response.headers.get("Idempotency-Replayed", "").strip().lower() == "true"
@@ -349,6 +387,7 @@ class Client:
                 problem=failure(
                     operation, FailureKind.PROTOCOL, "monday.com response reflected the connection credential"
                 ),
+                credential_reflected=True,
             )
         parsed: Any = None
         try:
@@ -452,25 +491,41 @@ def _classify_response(
         column_id = ""
     extras = "; ".join(part for part in (code, f"column {column_id}" if column_id else "") if part)
 
-    def outcome(name: str, kind: FailureKind, verb: str, *, conflict: bool = False) -> Exchange:
+    def outcome(
+        name: str,
+        kind: FailureKind,
+        verb: str,
+        *,
+        conflict: bool = False,
+        not_processed: bool = False,
+        refused: bool = False,
+    ) -> Exchange:
         message = f"monday.com {verb} (HTTP {http_status})"
         if extras:
             message += f" [{extras}]"
         delay = max(retry_after, 2) if conflict else retry_after
-        confirmed = (
-            code in _RATE_CODES | _TEMPORARY_CODES | {"IDEMPOTENCY_CONFLICT"}
-            or status in (409, 423, 429, 503)
-        ) and data is None
         return Exchange(
-            name, http_status, data, request_id, replayed, failure(operation, kind, message), delay, confirmed
+            name,
+            http_status,
+            data,
+            request_id,
+            replayed,
+            failure(operation, kind, message),
+            delay,
+            proven_not_processed=not_processed,
+            definite_refusal=refused,
         )
 
+    # Rate limits and 503 prove nothing was processed; a listed code or status proves a refusal.
     if code == "DAILY_LIMIT_EXCEEDED":
         return outcome(
-            "rejected", FailureKind.QUOTA_EXHAUSTED, "daily call limit is exhausted until midnight UTC"
+            "rejected",
+            FailureKind.QUOTA_EXHAUSTED,
+            "daily call limit is exhausted until midnight UTC",
+            refused=True,
         )
     if code in _RATE_CODES:
-        return outcome("retry", FailureKind.RATE_LIMIT, "rate limited the request")
+        return outcome("retry", FailureKind.RATE_LIMIT, "rate limited the request", not_processed=True)
     if code == "IDEMPOTENCY_CONFLICT":
         return outcome(
             "retry",
@@ -479,19 +534,23 @@ def _classify_response(
             conflict=True,
         )
     if code in _TEMPORARY_CODES:
-        return outcome("retry", FailureKind.AVAILABILITY, "temporarily refused the request")
+        return outcome(
+            "retry", FailureKind.AVAILABILITY, "temporarily refused the request", not_processed=True
+        )
     if code in _AUTHENTICATION_CODES:
-        return outcome("rejected", FailureKind.AUTHENTICATION, "rejected the credential")
+        return outcome("rejected", FailureKind.AUTHENTICATION, "rejected the credential", refused=True)
     if code in _AUTHORIZATION_CODES:
-        return outcome("rejected", FailureKind.AUTHORIZATION, "denied permission")
+        return outcome("rejected", FailureKind.AUTHORIZATION, "denied permission", refused=True)
     if code in _NOT_FOUND_CODES:
-        return outcome("notFound", FailureKind.NOT_FOUND, "found no such board, group, or item")
+        return outcome("notFound", FailureKind.NOT_FOUND, "found no such board, group, or item", refused=True)
     if code in _VALIDATION_CODES:
-        return outcome("rejected", FailureKind.VALIDATION, "rejected the input")
+        return outcome("rejected", FailureKind.VALIDATION, "rejected the input", refused=True)
     if code in _DOCUMENT_CODES:
-        return outcome("defect", FailureKind.PROTOCOL, "rejected the connector's GraphQL request")
+        return outcome(
+            "defect", FailureKind.PROTOCOL, "rejected the connector's GraphQL request", refused=True
+        )
     if status == 429:
-        return outcome("retry", FailureKind.RATE_LIMIT, "rate limited the request")
+        return outcome("retry", FailureKind.RATE_LIMIT, "rate limited the request", not_processed=True)
     if status == 409:
         return outcome(
             "retry",
@@ -501,18 +560,55 @@ def _classify_response(
         )
     if status == 423:
         return outcome("retry", FailureKind.AVAILABILITY, "locked the board for a concurrent change")
+    if status == 503:
+        return outcome(
+            "retry", FailureKind.AVAILABILITY, "could not complete the request", not_processed=True
+        )
     if status == 408 or status >= 500:
         return outcome("retry", FailureKind.AVAILABILITY, "could not complete the request")
     if status == 401:
-        return outcome("rejected", FailureKind.AUTHENTICATION, "rejected the credential")
+        return outcome("rejected", FailureKind.AUTHENTICATION, "rejected the credential", refused=True)
     if status == 403:
-        return outcome("rejected", FailureKind.AUTHORIZATION, "denied permission")
+        return outcome("rejected", FailureKind.AUTHORIZATION, "denied permission", refused=True)
     if status == 404:
-        return outcome("notFound", FailureKind.NOT_FOUND, "found no such board, group, or item")
+        return outcome("notFound", FailureKind.NOT_FOUND, "found no such board, group, or item", refused=True)
     if status == 400:
-        return outcome("defect", FailureKind.PROTOCOL, "rejected the connector's GraphQL request")
+        return outcome(
+            "defect", FailureKind.PROTOCOL, "rejected the connector's GraphQL request", refused=True
+        )
     if status == 422:
-        return outcome("rejected", FailureKind.VALIDATION, "rejected the input")
+        return outcome("rejected", FailureKind.VALIDATION, "rejected the input", refused=True)
     if 300 <= status < 400:
         return outcome("rejected", FailureKind.PROTOCOL, "redirected the request")
-    return outcome("rejected", FailureKind.PROVIDER_REJECTION, "rejected the request")
+    return outcome(
+        "rejected",
+        FailureKind.PROVIDER_REJECTION,
+        "rejected the request",
+        refused=status in _DEFINITE_WRITE_REFUSAL_STATUSES,
+    )
+
+
+_DEFINITE_WRITE_REFUSAL_STATUSES = {400, 401, 403, 404, 411, 413, 414, 415, 422}
+"""Statuses proving monday.com refused a write; any other status leaves it unknown."""
+
+
+def has_mutation_field_value(data: Any, mutation_field: str) -> bool:
+    """Report a non-null value in the named mutation field."""
+    return isinstance(data, dict) and data.get(mutation_field) is not None
+
+
+def classify_write(exchange: Exchange, mutation_field: str) -> str:
+    """Separate definite write outcomes from unknown ones, as Go's classifyWrite does.
+
+    Returns `accepted`, `notProcessed`, `refused`, or `unknown`. Any refusal beside a value in
+    the mutation field is unknown, because the value suggests monday.com accepted the write.
+    """
+    if exchange.outcome == "succeeded":
+        return "accepted"
+    if has_mutation_field_value(exchange.data, mutation_field):
+        return "unknown"
+    if exchange.outcome == "retry" and exchange.proven_not_processed:
+        return "notProcessed"
+    if exchange.definite_refusal and exchange.outcome in ("notFound", "rejected", "defect"):
+        return "refused"
+    return "unknown"

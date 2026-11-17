@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 import { isIP } from 'node:net';
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { DispatchNotAllowedError, newFence, type Decision, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import emailAddresses from 'email-addresses';
 import { AddUpdateDefinition, CreateItemDefinition, GetItemDefinition, ListItemsDefinition, UpdateItemColumnValuesDefinition } from './generated/definitions.js';
 import type { AddUpdateInput, AddUpdateOutput, ColumnValue, CreateItemInput, CreateItemOutput, GetItemInput, Item, ItemColumnValue, ItemFilter, ItemFilterRule, ItemOrder, ListItemsInput, ListItemsOutput, UpdateItemColumnValuesInput, UpdateItemColumnValuesOutput } from './generated/models.js';
-import type { MondayClient, MondayExchange, MondayRequest } from './client.js';
+import { classifyWrite, type MondayClient, type MondayExchange, type MondayRequest, type ResolvedMondayCredentials } from './client.js';
 
 const itemFields = 'id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value }';
 const createdItemFields = 'id name state created_at updated_at url creator_id board { id } group { id title }';
@@ -102,14 +103,24 @@ export class CreateItemOperation implements Mutation<CreateItemInput, CreateItem
       if (output.groupId && !columnPattern.test(output.groupId)) throw new Error('groupId must be a monday.com group ID such as topics');
       const itemName = validateItemName(input.itemName); output.itemName = itemName;
       request = { document: createDocument, variables: { boardId: boardID, itemName, createLabelsIfMissing: !!input.createsLabelsIfMissing,
-        ...(output.groupId ? { groupId: output.groupId } : {}), ...(input.columnValues && Object.keys(input.columnValues).length ? { columnValues: encodeColumnValues(input.columnValues) } : {}) }, isMutation: true, requiresCheckpoint: true };
+        ...(output.groupId ? { groupId: output.groupId } : {}), ...(input.columnValues && Object.keys(input.columnValues).length ? { columnValues: encodeColumnValues(input.columnValues) } : {}) }, isMutation: true };
     } catch (error) { return mutationDefect('createItem', output, error); }
-    const exchange = await this.client.exchange(call, 'createItem', request);
+    const started = await fencedExchange(this.client, call, CreateItemDefinition, 'createItem', request, output);
+    if (!('exchange' in started)) return started;
+    const { write, exchange } = started;
     const receipt = this.client.receipt(call, exchange, '');
     const item = decodeMutationItem(exchange.data, 'create_item');
-    if (item) return newMutationBranch('created', { ...output, itemId: item.id, item, ...(exchange.isReplayed ? { replayed: true } : {}) }, { ...receipt, providerObjectId: item.id });
-    if (exchange.outcome !== 'succeeded') return mutationExchange(exchange, output, receipt, false);
-    return newMutationUncertain(output, failure('createItem', 'PROTOCOL', 'monday.com accepted the item but returned an unusable item'), receipt);
+    if (item) {
+      await write.recordAccepted(item.id);
+      return newMutationBranch('created', { ...output, itemId: item.id, item, ...(exchange.isReplayed ? { replayed: true } : {}) }, { ...receipt, providerObjectId: item.id });
+    }
+    const unusable = failure('createItem', 'PROTOCOL', 'monday.com accepted the item but returned an unusable item');
+    const referenceID = acceptedReferenceID(exchange.data, 'create_item');
+    if (referenceID) {
+      await write.recordAccepted(referenceID);
+      return newMutationUncertain(output, unusable, { ...receipt, providerObjectId: referenceID });
+    }
+    return await write.attemptForWrite(exchange, 'create_item', output, receipt) ?? write.resendOrSelectUncertain(output, unusable, 0, receipt);
   }
 }
 
@@ -133,8 +144,12 @@ export class UpdateItemColumnValuesOperation implements Mutation<UpdateItemColum
     const receipt = this.client.receipt(call, exchange, output.itemId);
     const item = decodeMutationItem(exchange.data, 'change_multiple_column_values');
     if (item && item.id === output.itemId) return newMutationBranch('updated', { ...output, item, ...(exchange.isReplayed ? { replayed: true } : {}) }, receipt);
-    if (exchange.outcome !== 'succeeded') return mutationExchange(exchange, output, receipt, true);
-    return mutationFailure('updateItemColumnValues', 'invalidResponse', 'PROTOCOL', output, receipt, 'monday.com returned an unusable item, so the values may have been set');
+    const disposition = classifyWrite(exchange, 'change_multiple_column_values');
+    if (disposition === 'accepted') return newMutationRetry(failure('updateItemColumnValues', 'PROTOCOL', 'monday.com returned an unusable item, so the values are set again'));
+    if (disposition === 'refused') return newMutationBranch(refusalBranch(exchange), output, receipt, exchange.failure);
+    // Resending would expose the credential to the same faulty endpoint again.
+    if (exchange.credentialReflected) return newMutationBranch('invalidResponse', output, receipt, exchange.failure);
+    return newMutationRetry(exchange.failure!, exchange.retryAfterMs);
   }
 }
 
@@ -147,15 +162,149 @@ export class AddUpdateOperation implements Mutation<AddUpdateInput, AddUpdateOut
   async invoke(call: Call, input: AddUpdateInput): Promise<MutationAttempt<AddUpdateOutput>> {
     const output: AddUpdateOutput = { itemId: input.itemId.trim() };
     let request: MondayRequest;
-    try { const itemID = numericID(input.itemId, 'itemId'); request = { document: addDocument, variables: { itemId: itemID, body: updateBody(input.body) }, isMutation: true, requiresCheckpoint: true }; }
+    try { const itemID = numericID(input.itemId, 'itemId'); request = { document: addDocument, variables: { itemId: itemID, body: updateBody(input.body) }, isMutation: true }; }
     catch (error) { return mutationDefect('addUpdate', output, error); }
-    const exchange = await this.client.exchange(call, 'addUpdate', request);
+    const started = await fencedExchange(this.client, call, AddUpdateDefinition, 'addUpdate', request, output);
+    if (!('exchange' in started)) return started;
+    const { write, exchange } = started;
     const receipt = this.client.receipt(call, exchange, '');
     const update = decodeCreatedUpdate(exchange.data, output.itemId);
-    if (update) return newMutationBranch('added', { ...output, ...update, ...(exchange.isReplayed ? { replayed: true } : {}) }, { ...receipt, providerObjectId: update.updateId });
-    if (exchange.outcome !== 'succeeded') return mutationExchange(exchange, output, receipt, false);
-    return newMutationUncertain(output, failure('addUpdate', 'PROTOCOL', 'monday.com accepted the update but returned an unusable update'), receipt);
+    if (update) {
+      await write.recordAccepted(update.updateId ?? '');
+      return newMutationBranch('added', { ...output, ...update, ...(exchange.isReplayed ? { replayed: true } : {}) }, { ...receipt, providerObjectId: update.updateId });
+    }
+    const unusable = failure('addUpdate', 'PROTOCOL', 'monday.com accepted the update but returned an unusable update');
+    const referenceID = acceptedReferenceID(exchange.data, 'create_update');
+    if (referenceID) {
+      await write.recordAccepted(referenceID);
+      return newMutationUncertain(output, unusable, { ...receipt, providerObjectId: referenceID });
+    }
+    return await write.attemptForWrite(exchange, 'create_update', output, receipt) ?? write.resendOrSelectUncertain(output, unusable, 0, receipt);
   }
+}
+
+/** The request deadline margin plus the least request window in which a write may start. */
+const minimumDispatchWindowMs = 6_000;
+
+/**
+ * One attempt of a createItem or addUpdate behind the shared single-dispatch fence. monday.com's
+ * idempotency cache can be bypassed, so an unknown outcome resends under the same key only while
+ * the send cap allows, and selects uncertain at the cap.
+ */
+class FencedWrite {
+  readonly canResendUnknownOutcome: boolean;
+  readonly hasPossibleEarlierSend: boolean;
+
+  constructor(readonly call: Call, readonly operation: string, readonly fence: Fence, readonly decision: Decision, maxSends: number) {
+    const priorSends = decision.priorSendUpperBound ?? 0;
+    this.canResendUnknownOutcome = priorSends + 1 < maxSends;
+    this.hasPossibleEarlierSend = priorSends > 0;
+  }
+
+  /** Decide whether this attempt may send, or return the attempt that forbids it. */
+  static start<Output>(call: Call, definition: MutationDefinition, operation: string, output: Output, receipt: ReceiptDraft): FencedWrite | MutationAttempt<Output> {
+    const operationMaxSends = definitionMaxSends(definition);
+    let fence: Fence;
+    try { fence = newFence(call, 30_000, { maxSends: operationMaxSends }); }
+    catch {
+      const cause = failure(operation, 'LOCAL_DEFECT', 'monday.com dispatch fence could not be constructed');
+      return call.context?.attempt > 1 ? newMutationUncertain(output, cause, receipt) : newMutationBranch('defect', output, {}, cause);
+    }
+    const decision = fence.decide();
+    if (decision.kind === 'failClosed') return newMutationRetry(failure(operation, 'AVAILABILITY', 'monday.com dispatch checkpoint is unreadable, so nothing was sent in this attempt'));
+    if (decision.kind === 'readBackRequired') return newMutationUncertain(output, failure(operation, 'TRANSPORT', 'earlier attempts of this Step may have sent the request and the send cap is reached, so it is not sent again'), receipt);
+    if (decision.marker?.providerId) return newMutationUncertain(output, failure(operation, 'TRANSPORT', 'an earlier attempt of this Step was accepted, so the request is not sent again'), receipt);
+    // The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins.
+    const maxSends = operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+    return new FencedWrite(call, operation, fence, decision, maxSends);
+  }
+
+  /** Map a credential failure that ended the attempt before any send. */
+  async preSendFailure<Output>(resolution: MondayExchange, output: Output): Promise<MutationAttempt<Output>> {
+    // notSent after a possible earlier send would hide it, so only a first-send decision records it.
+    if (this.decision.kind === 'sendAllowed') {
+      try { await this.fence.recordNotSent(); } catch { return newMutationRetry(failure(this.operation, 'AVAILABILITY', 'monday.com not-sent checkpoint could not be recorded')); }
+    }
+    if (resolution.outcome === 'retry') return newMutationRetry(resolution.failure!, resolution.retryAfterMs);
+    if (this.hasPossibleEarlierSend) return newMutationUncertain(output, resolution.failure!, {});
+    return newMutationBranch(resolution.outcome === 'rejected' ? 'providerRejected' : 'defect', output, {}, resolution.failure);
+  }
+
+  /** Send once behind the fence, or return the attempt that forbids sending. */
+  async dispatch<Output>(client: MondayClient, resolved: ResolvedMondayCredentials, request: MondayRequest, output: Output): Promise<MondayExchange | MutationAttempt<Output>> {
+    const deadline = this.call.context.deadline?.getTime();
+    if (deadline !== undefined && deadline - Date.now() < minimumDispatchWindowMs) {
+      // notSent after a possible earlier send would hide it, so only a first-send decision records it.
+      if (this.decision.kind === 'sendAllowed') {
+        try { await this.fence.recordNotSent(); } catch { return newMutationRetry(failure(this.operation, 'AVAILABILITY', 'monday.com not-sent checkpoint could not be recorded')); }
+      }
+      return newMutationRetry(failure(this.operation, 'AVAILABILITY', 'not enough time remains to send the mutation'));
+    }
+    // The Fence ends its request signal after 7/12 of the attempt budget.
+    const writeDeadlineMs = Date.now() + Math.min(30_000, deadline === undefined ? 30_000 : deadline - Date.now()) * 7 / 12;
+    try { return await this.fence.dispatch(signal => client.sendWithRejectionRefresh(this.call, this.operation, request, resolved, signal, writeDeadlineMs)); }
+    catch (error) {
+      if (error instanceof DispatchNotAllowedError) {
+        const cause = failure(this.operation, 'LOCAL_DEFECT', 'monday.com dispatch was not allowed');
+        return this.hasPossibleEarlierSend ? newMutationUncertain(output, cause, {}) : newMutationBranch('defect', output, {}, cause);
+      }
+      return newMutationRetry(failure(this.operation, 'AVAILABILITY', 'dispatch checkpoint could not be recorded, so nothing was sent'));
+    }
+  }
+
+  /** Map every sent outcome except an accepted one, as Go's attemptForWrite does. */
+  async attemptForWrite<Output>(exchange: MondayExchange, mutationField: string, output: Output, receipt: ReceiptDraft): Promise<MutationAttempt<Output> | undefined> {
+    const disposition = classifyWrite(exchange, mutationField);
+    if (disposition === 'accepted') return undefined;
+    if (disposition === 'notProcessed') {
+      try { await this.fence.recordCanResend(); } catch { return newMutationRetry(failure(this.operation, 'AVAILABILITY', 'monday.com retry checkpoint could not be recorded'), exchange.retryAfterMs); }
+      return newMutationRetry(exchange.failure!, exchange.retryAfterMs);
+    }
+    if (disposition === 'refused') return this.rejectOrSelectUncertain(refusalBranch(exchange), output, receipt, exchange.failure!);
+    return this.resendOrSelectUncertain(output, exchange.failure!, exchange.retryAfterMs, receipt);
+  }
+
+  /** Select a refusal branch only when no earlier send of this call may have written. */
+  async rejectOrSelectUncertain<Output>(branch: string, output: Output, receipt: ReceiptDraft, cause: Failure): Promise<MutationAttempt<Output>> {
+    if (this.hasPossibleEarlierSend) return newMutationUncertain(output, cause, receipt);
+    try { await this.fence.recordCanResend(); } catch { return newMutationRetry(failure(this.operation, 'AVAILABILITY', 'monday.com rejection checkpoint could not be recorded')); }
+    return newMutationBranch(branch, output, receipt, cause);
+  }
+
+  /** Retry an unknown outcome while the send cap allows another send. */
+  resendOrSelectUncertain<Output>(output: Output, cause: Failure, retryAfterMs: number, receipt: ReceiptDraft): MutationAttempt<Output> {
+    // The claim stays the last marker, so the next attempt counts this send.
+    return this.canResendUnknownOutcome ? newMutationRetry(cause, retryAfterMs) : newMutationUncertain(output, cause, receipt);
+  }
+
+  /** Save the accepted identity so a replayed attempt never resends it. */
+  async recordAccepted(providerID: string): Promise<void> {
+    try { await this.fence.recordProviderId(providerID); } catch { /* The accepted result stands; a lost identity checkpoint keeps the claim. */ }
+  }
+}
+
+/** Start the fence, resolve credentials, and send once, or return the attempt that ends here. */
+async function fencedExchange<Output>(client: MondayClient, call: Call, definition: MutationDefinition, operation: string, request: MondayRequest, output: Output): Promise<{ write: FencedWrite; exchange: MondayExchange } | MutationAttempt<Output>> {
+  const write = FencedWrite.start(call, definition, operation, output, client.receipt(call, { outcome: 'succeeded', status: 0, requestID: '', isReplayed: false, retryAfterMs: 0 }, ''));
+  if (!(write instanceof FencedWrite)) return write;
+  const resolved = await client.resolveCredentials(call, operation);
+  if ('outcome' in resolved) return write.preSendFailure(resolved, output);
+  const exchange = await write.dispatch(client, resolved, request, output);
+  return 'outcome' in exchange ? { write, exchange } : exchange;
+}
+
+/** The refusal branch of a definite write refusal. */
+function refusalBranch(exchange: MondayExchange): string {
+  return exchange.outcome === 'notFound' ? 'notFound' : exchange.outcome === 'defect' ? 'defect' : 'providerRejected';
+}
+
+/** The numeric ID in the mutation field, even when the rest is unusable. */
+function acceptedReferenceID(data: unknown, mutationField: string): string {
+  try {
+    const value = object(data)[mutationField];
+    const identifier = value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>).id : undefined;
+    return typeof identifier === 'string' && numericPattern.test(identifier) ? identifier : '';
+  } catch { return ''; }
 }
 
 function failure(operation: string, kind: Failure['kind'], messageText: string): Failure { return { kind, provider: 'monday', operation, message: messageText }; }
@@ -168,13 +317,6 @@ function queryExchange<T>(exchange: MondayExchange, output: T, receipt: ReceiptD
   if (exchange.outcome === 'retry') return newQueryRetry(exchange.failure!, exchange.retryAfterMs);
   const branch = exchange.outcome === 'notFound' ? 'notFound' : exchange.outcome === 'invalid' ? 'invalidResponse' : exchange.outcome === 'defect' ? 'defect' : 'providerRejected';
   return newQueryBranch(branch, output, receipt, exchange.failure);
-}
-function mutationExchange<T>(exchange: MondayExchange, output: T, receipt: ReceiptDraft, repeatSafe: boolean): MutationAttempt<T> {
-  if (exchange.outcome === 'retry') return newMutationRetry(exchange.failure!, exchange.retryAfterMs);
-  if (exchange.outcome === 'uncertain') return repeatSafe ? newMutationRetry(exchange.failure!) : newMutationUncertain(output, exchange.failure!, receipt);
-  if (exchange.outcome === 'invalid' && !repeatSafe) return newMutationUncertain(output, exchange.failure!, receipt);
-  const branch = exchange.outcome === 'notFound' ? 'notFound' : exchange.outcome === 'invalid' ? 'invalidResponse' : exchange.outcome === 'defect' ? 'defect' : 'providerRejected';
-  return newMutationBranch(branch, output, receipt, exchange.failure);
 }
 
 const numericPattern = /^[1-9][0-9]{0,19}$/;
