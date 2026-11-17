@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/amazon/sns/go"
 	"github.com/superdurable/dex-connectors-library/connectors/amazon/sns/go/snsmock"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -26,7 +27,8 @@ func TestTopicListingUsesDefaultMockWithRealDex(t *testing.T) {
 	flow := NewFlow(mock.Connection())
 	publishFlow := NewPublishFlow(mock.Connection())
 	subscriptionFlow := NewSubscriptionListingFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, publishFlow, subscriptionFlow})
+	notificationFlow := NewNotificationFlow()
+	registry, err := dex.NewRegistry([]dex.Flow{flow, publishFlow, subscriptionFlow, notificationFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -80,4 +82,20 @@ func TestTopicListingUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, subscriptionResult.DecodeSingleOutput(&subscriptions))
 	require.Len(t, subscriptions.Subscriptions, 1)
 	require.Len(t, mock.ListSubscriptionsByTopic().Calls(), 1)
+	notificationEvent := sdkgo.TriggerEvent[sns.SNSNotification]{
+		ID: "11111111-1111-4111-8111-111111111111", OccurredAt: time.Now().UTC(),
+		Payload: sns.SNSNotification{
+			MessageID: "11111111-1111-4111-8111-111111111111",
+			TopicARN:  "arn:aws:sns:us-east-1:123456789012:example-topic",
+			Message:   "Report ready", PublishedAt: time.Now().UTC(),
+		},
+	}
+	target := sdkgo.NewDexFlowTriggerTarget(client, notificationFlow, AcceptEveryNotification, ResolveNotificationFlowID, MapNotificationToFlowInput)
+	require.NoError(t, sdkgo.DeliverTrigger(ctx, target, notificationEvent))
+	notificationResult, err := client.WaitForFlow(ctx, ResolveNotificationFlowID(notificationEvent), dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, notificationResult.Status, notificationResult.ErrorMessage)
+	var recorded sns.SNSNotification
+	require.NoError(t, notificationResult.DecodeSingleOutput(&recorded))
+	require.Equal(t, notificationEvent.Payload.MessageID, recorded.MessageID)
 }

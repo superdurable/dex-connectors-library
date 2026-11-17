@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: amazon-sns
   displayName: Amazon SNS
-  description: Manage SNS topics and subscriptions, and publish messages with AWS Signature Version 4.
+  description: Manage SNS topics and subscriptions, publish messages, and receive verified HTTPS notifications with AWS Signature Version 4.
   company: Amazon
   categories: [developer-tools, communication]
   version: v0.2.0
@@ -69,6 +69,12 @@ spec:
         - Open the IAM user > Security credentials > Access keys > Create access key > Other. Copy the Access key ID to secret access_key_id and the one-time Secret access key Value to secret_access_key. Leave session_token blank for long-term keys; include it for temporary ASIA keys.
         - Open https://console.aws.amazon.com/sns > Topics, choose the Region in the console selector, and set region to that Region code. Leave endpoint blank for AWS. Copy the full Topic ARN from a selected topic for deleteTopic, setTopicAttribute, or publishMessage. Leave nextToken blank for the first listTopics page; pass the returned token for the next page.
         - Rotate the key under IAM > Users > selected user > Security credentials > Access keys by creating a second key, updating this connection, verifying a Flow, then deactivating and deleting the old key.
+  triggers:
+    - name: notificationReceived
+      goName: NotificationReceived
+      eventType: SNSNotification
+      configurationType: NotificationReceivedTriggerConfiguration
+      description: Receive RSA signature-verified SNS notifications for one topic over HTTPS and deliver each provider message ID at least once.
   operations:
     - name: createTopic
       goName: CreateTopic

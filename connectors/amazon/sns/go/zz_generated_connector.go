@@ -236,6 +236,50 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+var NotificationReceivedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "notificationReceived"},
+	Description: "Receive RSA signature-verified SNS notifications for one topic over HTTPS and deliver each provider message ID at least once.",
+}
+
+type NotificationReceivedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{} `connector:"connectorId=amazon-sns"`
+	triggerName                             struct{} `connector:"triggerName=notificationReceived"`
+	ConnectionName                          string   `connector:"connectionName"`
+	BindingName                             string   `connector:"bindingName"`
+}
+
+func DefineNotificationReceivedTriggerBinding(config NotificationReceivedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: NotificationReceivedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+	})
+}
+
+type NotificationReceivedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                                 `connector:"connectorId=amazon-sns"`
+	triggerName                      struct{}                                 `connector:"triggerName=notificationReceived"`
+	Connection                       Connection                               `connector:"connection"`
+	ConnectionName                   string                                   `connector:"connectionName"`
+	BindingName                      string                                   `connector:"bindingName"`
+	Configuration                    NotificationReceivedTriggerConfiguration `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[SNSNotification]     `connector:"triggerTarget"`
+}
+
+func NewNotificationReceivedTrigger(config NotificationReceivedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sns connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: NotificationReceivedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[SNSNotification]{
+		Definition: NotificationReceivedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.notificationReceivedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
 const CreateTopicBranchCreated sdkgo.BranchID = "created"
 const CreateTopicBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const CreateTopicBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID

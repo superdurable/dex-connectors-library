@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -40,13 +42,16 @@ func (option signingTimeOption) applyClientOption(client *Client) { client.now =
 
 // Client holds the regional endpoint and resolves AWS credentials per call.
 type Client struct {
-	endpoint         string
-	region           string
-	maxResponseBytes int64
-	credentials      CredentialSource
-	httpClient       *http.Client
-	signer           *v4.Signer
-	now              func() time.Time
+	endpoint                string
+	region                  string
+	maxResponseBytes        int64
+	credentials             CredentialSource
+	httpClient              *http.Client
+	signer                  *v4.Signer
+	now                     func() time.Time
+	certificateRoots        *x509.CertPool
+	notificationEndpointsMu sync.Mutex
+	notificationEndpoints   map[sdkgo.ConnectionRef]*snsNotificationEndpoint
 }
 
 // New validates the endpoint, Region, and dependencies without contacting AWS.
@@ -69,7 +74,11 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("SNS endpoint: %w", err)
 	}
-	client := &Client{endpoint: strings.TrimRight(validated, "/"), region: config.Region, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, signer: v4.NewSigner(), now: time.Now}
+	certificateRoots, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, fmt.Errorf("load system certificate roots: %w", err)
+	}
+	client := &Client{endpoint: strings.TrimRight(validated, "/"), region: config.Region, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, signer: v4.NewSigner(), now: time.Now, certificateRoots: certificateRoots, notificationEndpoints: map[sdkgo.ConnectionRef]*snsNotificationEndpoint{}}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("SNS client option is required")
