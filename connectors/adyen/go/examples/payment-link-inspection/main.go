@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{paymentlinkinspection.NewFlow(connection), paymentlinkinspection.NewExpirePaymentLinkFlow(connection), paymentlinkinspection.NewCreatePaymentLinkFlow(connection), paymentlinkinspection.NewListPaymentMethodsFlow(connection), paymentlinkinspection.NewCancelPaymentFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{paymentlinkinspection.NewFlow(connection), paymentlinkinspection.NewExpirePaymentLinkFlow(connection), paymentlinkinspection.NewCreatePaymentLinkFlow(connection), paymentlinkinspection.NewListPaymentMethodsFlow(connection), paymentlinkinspection.NewCancelPaymentFlow(connection), paymentlinkinspection.NewLookupCardBrandsFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Adyen payment link inspection Flow: %w", err)
 	}

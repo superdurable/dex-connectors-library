@@ -40,6 +40,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	LookupCardBrandsByBIN() sdkgo.Query[LookupCardBrandsByBINInput, CardBrands]
 	CapturePayment() sdkgo.Mutation[PaymentModificationInput, PaymentModificationReceipt]
 	CancelPayment() sdkgo.Mutation[PaymentReferenceModificationInput, PaymentModificationReceipt]
 	RefundPayment() sdkgo.Mutation[PaymentModificationInput, PaymentModificationReceipt]
@@ -53,6 +54,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) LookupCardBrandsByBIN() sdkgo.Query[LookupCardBrandsByBINInput, CardBrands] {
+	return operations.client.LookupCardBrandsByBIN()
+}
 func (operations clientOperations) CapturePayment() sdkgo.Mutation[PaymentModificationInput, PaymentModificationReceipt] {
 	return operations.client.CapturePayment()
 }
@@ -216,6 +220,77 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const LookupCardBrandsByBINBranchFound sdkgo.BranchID = "found"
+const LookupCardBrandsByBINBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const LookupCardBrandsByBINBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const LookupCardBrandsByBINBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var LookupCardBrandsByBINDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "lookupCardBrandsByBIN"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: LookupCardBrandsByBINBranchFound, Description: "Adyen returned card brands for the issuer BIN."},
+		{ID: LookupCardBrandsByBINBranchProviderRejected, Description: "Adyen conclusively rejected the lookup.", Optional: true},
+		{ID: LookupCardBrandsByBINBranchInvalidResponse, Description: "Adyen returned malformed or oversized JSON.", Optional: true},
+		{ID: LookupCardBrandsByBINBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type LookupCardBrandsByBINResult = sdkgo.QueryResult[CardBrands]
+
+type LookupCardBrandsByBINStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=adyen"`
+	operationID                    struct{}                                      `connector:"operationId=lookupCardBrandsByBIN"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) LookupCardBrandsByBINInput           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[LookupCardBrandsByBINResult]     `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[LookupCardBrandsByBINResult]     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[LookupCardBrandsByBINResult]     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[LookupCardBrandsByBINResult]     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CardBrands]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewLookupCardBrandsByBINStep[IN any](config LookupCardBrandsByBINStepConfig[IN]) sdkgo.QueryStep[IN, LookupCardBrandsByBINInput, CardBrands] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adyen connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, LookupCardBrandsByBINInput, CardBrands]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.LookupCardBrandsByBIN(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[LookupCardBrandsByBINResult] {
+			branches := make([]sdkgo.BranchTarget[LookupCardBrandsByBINResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(LookupCardBrandsByBINBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(LookupCardBrandsByBINBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(LookupCardBrandsByBINBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(LookupCardBrandsByBINBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const CapturePaymentBranchReceived sdkgo.BranchID = "received"

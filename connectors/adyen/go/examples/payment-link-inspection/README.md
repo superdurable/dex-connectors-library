@@ -41,3 +41,7 @@ The Worker also registers `AdyenListPaymentMethods`. Start it with `ListPaymentM
 ## Payment cancellation
 
 The Worker also registers `AdyenCancelPayment`. Start it with the `PaymentReferenceModificationInput` fields shown in `flow/cancel_payment_mock_integration_test.go`, replacing the merchant account and PSP reference with those from your Customer Area. The result is a request receipt; inspect the CANCELLATION webhook for the final outcome. The checked-in integration test exercises the Flow through a real Dex Worker and Client using a mock provider.
+
+## Card-brand lookup
+
+The Worker also registers `AdyenLookupCardBrandsByBIN`. Start it with the `LookupCardBrandsByBINInput` fields shown in `flow/lookup_card_brands_mock_integration_test.go`. The connector accepts exactly six BIN digits and returns only supported brand codes; the checked-in integration test exercises the Flow through a real Dex Worker and Client using a mock provider.

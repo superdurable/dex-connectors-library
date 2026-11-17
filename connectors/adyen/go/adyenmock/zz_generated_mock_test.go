@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "lookupCardBrandsByBIN/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.CardBrands](`{"brands":[{"type":"visa","supported":true}]}`)
+			return err
+		}},
 		{name: "capturePayment/receivedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
 			return err
@@ -62,6 +66,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.LookupCardBrandsByBIN().Definition().Operation.OperationID != "lookupCardBrandsByBIN" {
+		t.Errorf("lookupCardBrandsByBIN mock has another definition")
+	}
 	if mock.CapturePayment().Definition().Operation.OperationID != "capturePayment" {
 		t.Errorf("capturePayment mock has another definition")
 	}

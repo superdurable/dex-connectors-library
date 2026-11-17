@@ -18,6 +18,7 @@ import (
 // Mock is a scripted adyen connection. Script each operation through its accessor.
 type Mock struct {
 	connection             adyen.Connection
+	lookupCardBrandsByBIN  *connectormock.Query[adyen.LookupCardBrandsByBINInput, adyen.CardBrands]
 	capturePayment         *connectormock.Mutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt]
 	cancelPayment          *connectormock.Mutation[adyen.PaymentReferenceModificationInput, adyen.PaymentModificationReceipt]
 	refundPayment          *connectormock.Mutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt]
@@ -34,6 +35,7 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		lookupCardBrandsByBIN:  connectormock.NewQuery[adyen.LookupCardBrandsByBINInput, adyen.CardBrands](t, adyen.LookupCardBrandsByBINDefinition),
 		capturePayment:         connectormock.NewMutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt](t, adyen.CapturePaymentDefinition),
 		cancelPayment:          connectormock.NewMutation[adyen.PaymentReferenceModificationInput, adyen.PaymentModificationReceipt](t, adyen.CancelPaymentDefinition),
 		refundPayment:          connectormock.NewMutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt](t, adyen.RefundPaymentDefinition),
@@ -44,6 +46,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		expirePaymentLink:      connectormock.NewMutation[adyen.ExpirePaymentLinkInput, adyen.PaymentLinkStatus](t, adyen.ExpirePaymentLinkDefinition),
 		getPaymentLink:         connectormock.NewQuery[adyen.GetPaymentLinkInput, adyen.PaymentLinkStatus](t, adyen.GetPaymentLinkDefinition),
 	}
+	mock.lookupCardBrandsByBIN.Default(LookupCardBrandsByBINDefault())
 	mock.capturePayment.Default(CapturePaymentDefault())
 	mock.cancelPayment.Default(CancelPaymentDefault())
 	mock.refundPayment.Default(RefundPaymentDefault())
@@ -63,6 +66,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() adyen.Connection { return mock.connection }
+
+// LookupCardBrandsByBIN returns the lookupCardBrandsByBIN script.
+func (mock *Mock) LookupCardBrandsByBIN() *connectormock.Query[adyen.LookupCardBrandsByBINInput, adyen.CardBrands] {
+	return mock.lookupCardBrandsByBIN
+}
 
 // CapturePayment returns the capturePayment script.
 func (mock *Mock) CapturePayment() *connectormock.Mutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt] {
@@ -111,6 +119,9 @@ func (mock *Mock) GetPaymentLink() *connectormock.Query[adyen.GetPaymentLinkInpu
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) LookupCardBrandsByBIN() sdkgo.Query[adyen.LookupCardBrandsByBINInput, adyen.CardBrands] {
+	return operations.mock.lookupCardBrandsByBIN
+}
 func (operations mockOperations) CapturePayment() sdkgo.Mutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt] {
 	return operations.mock.capturePayment
 }
@@ -137,6 +148,42 @@ func (operations mockOperations) ExpirePaymentLink() sdkgo.Mutation[adyen.Expire
 }
 func (operations mockOperations) GetPaymentLink() sdkgo.Query[adyen.GetPaymentLinkInput, adyen.PaymentLinkStatus] {
 	return operations.mock.getPaymentLink
+}
+
+// LookupCardBrandsByBINFound selects the found branch: Adyen returned card brands for the issuer BIN.
+func LookupCardBrandsByBINFound(value adyen.CardBrands, failure *sdkgo.Failure) connectormock.Case[adyen.CardBrands] {
+	return connectormock.Branch(adyen.LookupCardBrandsByBINBranchFound, value, failure)
+}
+
+// LookupCardBrandsByBINProviderRejected selects the providerRejected branch: Adyen conclusively rejected the lookup.
+func LookupCardBrandsByBINProviderRejected(value adyen.CardBrands, failure *sdkgo.Failure) connectormock.Case[adyen.CardBrands] {
+	return connectormock.Branch(adyen.LookupCardBrandsByBINBranchProviderRejected, value, failure)
+}
+
+// LookupCardBrandsByBINInvalidResponse selects the invalidResponse branch: Adyen returned malformed or oversized JSON.
+func LookupCardBrandsByBINInvalidResponse(value adyen.CardBrands, failure *sdkgo.Failure) connectormock.Case[adyen.CardBrands] {
+	return connectormock.Branch(adyen.LookupCardBrandsByBINBranchInvalidResponse, value, failure)
+}
+
+// LookupCardBrandsByBINDefect selects the defect branch: Local input or credentials are invalid.
+func LookupCardBrandsByBINDefect(value adyen.CardBrands, failure *sdkgo.Failure) connectormock.Case[adyen.CardBrands] {
+	return connectormock.Branch(adyen.LookupCardBrandsByBINBranchDefect, value, failure)
+}
+
+// LookupCardBrandsByBINRetry asks Dex to retry the lookupCardBrandsByBIN Step, after the delay when it is positive.
+func LookupCardBrandsByBINRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[adyen.CardBrands] {
+	return connectormock.Retry[adyen.CardBrands](failure, after)
+}
+
+// LookupCardBrandsByBINFoundDefault is the manifest mock foundDefault: Sample card-brand lookup.
+func LookupCardBrandsByBINFoundDefault() connectormock.Case[adyen.CardBrands] {
+	value := connectormock.MustDecodeOutput[adyen.CardBrands](`{"brands":[{"type":"visa","supported":true}]}`)
+	return connectormock.Branch(adyen.LookupCardBrandsByBINBranchFound, value, nil)
+}
+
+// LookupCardBrandsByBINDefault is the manifest default, foundDefault, which New installs.
+func LookupCardBrandsByBINDefault() connectormock.Case[adyen.CardBrands] {
+	return LookupCardBrandsByBINFoundDefault()
 }
 
 // CapturePaymentReceived selects the received branch: Adyen received the modification for asynchronous processing.

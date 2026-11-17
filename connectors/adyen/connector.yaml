@@ -56,6 +56,26 @@ spec:
         - Leave baseUrl blank for test. For live use the live key and find your company prefix under Developers > API URLs > Prefix; set baseUrl to https://{PREFIX}-checkout-live.adyenpayments.com/checkout/v72. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret payment link ID in the Payment Links page or the create-link response, then pass it as paymentLinkId; for example PL50C5F751CED39G71. Blank is invalid.
         - For modification Flows, find the payment PSP reference under Payments > Payment list and the merchant account under Settings > Merchant accounts. Enter the positive amount in Adyen minor units and the original payment currency for capture, refund, or amount update. Modification requests return received first; configure the corresponding payment webhook to observe their final outcome.
   operations:
+    - name: lookupCardBrandsByBIN
+      goName: LookupCardBrandsByBIN
+      inputType: LookupCardBrandsByBINInput
+      outputType: CardBrands
+      kind: query
+      description: Look up supported card brands using only a six-digit issuer BIN.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Adyen returned card brands for the issuer BIN.}
+        - {id: providerRejected, goName: ProviderRejected, description: Adyen conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Adyen returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample card-brand lookup.
+          output: {brands: [{type: visa, supported: true}]}
     - name: capturePayment
       goName: CapturePayment
       inputType: PaymentModificationInput
