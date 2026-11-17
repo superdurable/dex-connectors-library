@@ -1,12 +1,18 @@
 # Gmail thread reply example
 
-This example keeps one complete inbound Gmail integration beside the Gmail
-Connector:
+This example keeps an inbound Gmail integration and a mailbox search Flow
+beside the Gmail Connector. The inbound Flow:
 
 1. a matching received root message starts a Flow;
 2. the Flow reads that message with `GetMessage`;
 3. a matching received reply invokes the typed `ReceiveEmailReply` RPC; and
 4. the Flow replies `Processing complete.` in the same Gmail thread with `ReplyToMessage`.
+
+`GmailSearchMailbox` starts from a typed query and uses `ListMessages` to
+return a bounded page of message IDs and a next page token. It shares the
+`gmail-inbox` connection and is exercised by a provider-fake test against a
+real local Dex server. Its query and page limit are Flow input, so Dex Web
+needs no additional operation fields.
 
 Both neutral provider Triggers use the same application resolver to map the
 connection name and Gmail thread ID to a stable, PII-safe Flow ID. The

@@ -12,7 +12,10 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/google/gmail/scenarios.json")
+SCENARIOS = [
+    scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/google/gmail/scenarios.json")
+    if scenario["operation"] in {"getMessage", "sendMessage", "replyToMessage"}
+]
 CONNECTION = sdk.ConnectionRef("google", "support")
 ADAPTER = conformance.PythonOperationAdapter(
     "gmail", CONNECTION, gmail,

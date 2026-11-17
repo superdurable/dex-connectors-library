@@ -68,7 +68,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		return fmt.Errorf("load the saved reply message: %w", err)
 	}
 	flow := threadreply.NewFlow(connection, replyMessageConfiguration)
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, threadreply.NewSearchMailboxFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Gmail thread reply Flow: %w", err)
 	}

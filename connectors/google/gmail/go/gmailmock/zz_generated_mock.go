@@ -18,6 +18,11 @@ import (
 // Mock is a scripted gmail connection. Script each operation through its accessor.
 type Mock struct {
 	connection     gmail.Connection
+	listMessages   *connectormock.Query[gmail.ListMessagesInput, gmail.MessagesPage]
+	listThreads    *connectormock.Query[gmail.ListThreadsInput, gmail.ThreadsPage]
+	getThread      *connectormock.Query[gmail.GetThreadInput, gmail.Thread]
+	listLabels     *connectormock.Query[gmail.ListLabelsInput, gmail.LabelsList]
+	getLabel       *connectormock.Query[gmail.GetLabelInput, gmail.Label]
 	getMessage     *connectormock.Query[gmail.GetMessageInput, gmail.Message]
 	sendMessage    *connectormock.Mutation[gmail.SendMessageInput, gmail.SendMessageOutput]
 	replyToMessage *connectormock.Mutation[gmail.ReplyToMessageInput, gmail.SendMessageOutput]
@@ -28,10 +33,20 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listMessages:   connectormock.NewQuery[gmail.ListMessagesInput, gmail.MessagesPage](t, gmail.ListMessagesDefinition),
+		listThreads:    connectormock.NewQuery[gmail.ListThreadsInput, gmail.ThreadsPage](t, gmail.ListThreadsDefinition),
+		getThread:      connectormock.NewQuery[gmail.GetThreadInput, gmail.Thread](t, gmail.GetThreadDefinition),
+		listLabels:     connectormock.NewQuery[gmail.ListLabelsInput, gmail.LabelsList](t, gmail.ListLabelsDefinition),
+		getLabel:       connectormock.NewQuery[gmail.GetLabelInput, gmail.Label](t, gmail.GetLabelDefinition),
 		getMessage:     connectormock.NewQuery[gmail.GetMessageInput, gmail.Message](t, gmail.GetMessageDefinition),
 		sendMessage:    connectormock.NewMutation[gmail.SendMessageInput, gmail.SendMessageOutput](t, gmail.SendMessageDefinition),
 		replyToMessage: connectormock.NewMutation[gmail.ReplyToMessageInput, gmail.SendMessageOutput](t, gmail.ReplyToMessageDefinition),
 	}
+	mock.listMessages.Default(ListMessagesDefault())
+	mock.listThreads.Default(ListThreadsDefault())
+	mock.getThread.Default(GetThreadDefault())
+	mock.listLabels.Default(ListLabelsDefault())
+	mock.getLabel.Default(GetLabelDefault())
 	mock.getMessage.Default(GetMessageDefault())
 	mock.sendMessage.Default(SendMessageDefault())
 	mock.replyToMessage.Default(ReplyToMessageDefault())
@@ -45,6 +60,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() gmail.Connection { return mock.connection }
+
+// ListMessages returns the listMessages script.
+func (mock *Mock) ListMessages() *connectormock.Query[gmail.ListMessagesInput, gmail.MessagesPage] {
+	return mock.listMessages
+}
+
+// ListThreads returns the listThreads script.
+func (mock *Mock) ListThreads() *connectormock.Query[gmail.ListThreadsInput, gmail.ThreadsPage] {
+	return mock.listThreads
+}
+
+// GetThread returns the getThread script.
+func (mock *Mock) GetThread() *connectormock.Query[gmail.GetThreadInput, gmail.Thread] {
+	return mock.getThread
+}
+
+// ListLabels returns the listLabels script.
+func (mock *Mock) ListLabels() *connectormock.Query[gmail.ListLabelsInput, gmail.LabelsList] {
+	return mock.listLabels
+}
+
+// GetLabel returns the getLabel script.
+func (mock *Mock) GetLabel() *connectormock.Query[gmail.GetLabelInput, gmail.Label] {
+	return mock.getLabel
+}
 
 // GetMessage returns the getMessage script.
 func (mock *Mock) GetMessage() *connectormock.Query[gmail.GetMessageInput, gmail.Message] {
@@ -63,6 +103,21 @@ func (mock *Mock) ReplyToMessage() *connectormock.Mutation[gmail.ReplyToMessageI
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListMessages() sdkgo.Query[gmail.ListMessagesInput, gmail.MessagesPage] {
+	return operations.mock.listMessages
+}
+func (operations mockOperations) ListThreads() sdkgo.Query[gmail.ListThreadsInput, gmail.ThreadsPage] {
+	return operations.mock.listThreads
+}
+func (operations mockOperations) GetThread() sdkgo.Query[gmail.GetThreadInput, gmail.Thread] {
+	return operations.mock.getThread
+}
+func (operations mockOperations) ListLabels() sdkgo.Query[gmail.ListLabelsInput, gmail.LabelsList] {
+	return operations.mock.listLabels
+}
+func (operations mockOperations) GetLabel() sdkgo.Query[gmail.GetLabelInput, gmail.Label] {
+	return operations.mock.getLabel
+}
 func (operations mockOperations) GetMessage() sdkgo.Query[gmail.GetMessageInput, gmail.Message] {
 	return operations.mock.getMessage
 }
@@ -72,6 +127,186 @@ func (operations mockOperations) SendMessage() sdkgo.Mutation[gmail.SendMessageI
 func (operations mockOperations) ReplyToMessage() sdkgo.Mutation[gmail.ReplyToMessageInput, gmail.SendMessageOutput] {
 	return operations.mock.replyToMessage
 }
+
+// ListMessagesListed selects the listed branch: Gmail returned the selected message page.
+func ListMessagesListed(value gmail.MessagesPage, failure *sdkgo.Failure) connectormock.Case[gmail.MessagesPage] {
+	return connectormock.Branch(gmail.ListMessagesBranchListed, value, failure)
+}
+
+// ListMessagesProviderRejected selects the providerRejected branch: Gmail conclusively rejected the search.
+func ListMessagesProviderRejected(value gmail.MessagesPage, failure *sdkgo.Failure) connectormock.Case[gmail.MessagesPage] {
+	return connectormock.Branch(gmail.ListMessagesBranchProviderRejected, value, failure)
+}
+
+// ListMessagesInvalidResponse selects the invalidResponse branch: Gmail returned malformed or oversized message list JSON.
+func ListMessagesInvalidResponse(value gmail.MessagesPage, failure *sdkgo.Failure) connectormock.Case[gmail.MessagesPage] {
+	return connectormock.Branch(gmail.ListMessagesBranchInvalidResponse, value, failure)
+}
+
+// ListMessagesDefect selects the defect branch: Local search input or credentials are invalid.
+func ListMessagesDefect(value gmail.MessagesPage, failure *sdkgo.Failure) connectormock.Case[gmail.MessagesPage] {
+	return connectormock.Branch(gmail.ListMessagesBranchDefect, value, failure)
+}
+
+// ListMessagesRetry asks Dex to retry the listMessages Step, after the delay when it is positive.
+func ListMessagesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gmail.MessagesPage] {
+	return connectormock.Retry[gmail.MessagesPage](failure, after)
+}
+
+// ListMessagesListedDefault is the manifest mock listedDefault: One message matches the search.
+func ListMessagesListedDefault() connectormock.Case[gmail.MessagesPage] {
+	value := connectormock.MustDecodeOutput[gmail.MessagesPage](`{"messages":[{"id":"18c0a1b2c3d4e5f6","threadId":"18c0a1b2c3d4e5f0"}],"nextPageToken":"","resultSizeEstimate":1}`)
+	return connectormock.Branch(gmail.ListMessagesBranchListed, value, nil)
+}
+
+// ListMessagesDefault is the manifest default, listedDefault, which New installs.
+func ListMessagesDefault() connectormock.Case[gmail.MessagesPage] { return ListMessagesListedDefault() }
+
+// ListThreadsListed selects the listed branch: Gmail returned the selected thread page.
+func ListThreadsListed(value gmail.ThreadsPage, failure *sdkgo.Failure) connectormock.Case[gmail.ThreadsPage] {
+	return connectormock.Branch(gmail.ListThreadsBranchListed, value, failure)
+}
+
+// ListThreadsProviderRejected selects the providerRejected branch: Gmail conclusively rejected the thread search.
+func ListThreadsProviderRejected(value gmail.ThreadsPage, failure *sdkgo.Failure) connectormock.Case[gmail.ThreadsPage] {
+	return connectormock.Branch(gmail.ListThreadsBranchProviderRejected, value, failure)
+}
+
+// ListThreadsInvalidResponse selects the invalidResponse branch: Gmail returned malformed or oversized thread list JSON.
+func ListThreadsInvalidResponse(value gmail.ThreadsPage, failure *sdkgo.Failure) connectormock.Case[gmail.ThreadsPage] {
+	return connectormock.Branch(gmail.ListThreadsBranchInvalidResponse, value, failure)
+}
+
+// ListThreadsDefect selects the defect branch: Local thread search input or credentials are invalid.
+func ListThreadsDefect(value gmail.ThreadsPage, failure *sdkgo.Failure) connectormock.Case[gmail.ThreadsPage] {
+	return connectormock.Branch(gmail.ListThreadsBranchDefect, value, failure)
+}
+
+// ListThreadsRetry asks Dex to retry the listThreads Step, after the delay when it is positive.
+func ListThreadsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gmail.ThreadsPage] {
+	return connectormock.Retry[gmail.ThreadsPage](failure, after)
+}
+
+// ListThreadsListedDefault is the manifest mock listedDefault: One thread matches the search.
+func ListThreadsListedDefault() connectormock.Case[gmail.ThreadsPage] {
+	value := connectormock.MustDecodeOutput[gmail.ThreadsPage](`{"threads":[{"id":"18c0a1b2c3d4e5f0","snippet":"Customer question"}],"nextPageToken":"","resultSizeEstimate":1}`)
+	return connectormock.Branch(gmail.ListThreadsBranchListed, value, nil)
+}
+
+// ListThreadsDefault is the manifest default, listedDefault, which New installs.
+func ListThreadsDefault() connectormock.Case[gmail.ThreadsPage] { return ListThreadsListedDefault() }
+
+// GetThreadFound selects the found branch: Gmail returned the thread and its messages.
+func GetThreadFound(value gmail.Thread, failure *sdkgo.Failure) connectormock.Case[gmail.Thread] {
+	return connectormock.Branch(gmail.GetThreadBranchFound, value, failure)
+}
+
+// GetThreadNotFound selects the notFound branch: No thread has that ID.
+func GetThreadNotFound(value gmail.Thread, failure *sdkgo.Failure) connectormock.Case[gmail.Thread] {
+	return connectormock.Branch(gmail.GetThreadBranchNotFound, value, failure)
+}
+
+// GetThreadProviderRejected selects the providerRejected branch: Gmail conclusively rejected the thread read.
+func GetThreadProviderRejected(value gmail.Thread, failure *sdkgo.Failure) connectormock.Case[gmail.Thread] {
+	return connectormock.Branch(gmail.GetThreadBranchProviderRejected, value, failure)
+}
+
+// GetThreadInvalidResponse selects the invalidResponse branch: Gmail returned malformed or oversized thread JSON.
+func GetThreadInvalidResponse(value gmail.Thread, failure *sdkgo.Failure) connectormock.Case[gmail.Thread] {
+	return connectormock.Branch(gmail.GetThreadBranchInvalidResponse, value, failure)
+}
+
+// GetThreadDefect selects the defect branch: Local thread ID or credentials are invalid.
+func GetThreadDefect(value gmail.Thread, failure *sdkgo.Failure) connectormock.Case[gmail.Thread] {
+	return connectormock.Branch(gmail.GetThreadBranchDefect, value, failure)
+}
+
+// GetThreadRetry asks Dex to retry the getThread Step, after the delay when it is positive.
+func GetThreadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gmail.Thread] {
+	return connectormock.Retry[gmail.Thread](failure, after)
+}
+
+// GetThreadFoundDefault is the manifest mock foundDefault: A thread contains one customer message.
+func GetThreadFoundDefault() connectormock.Case[gmail.Thread] {
+	value := connectormock.MustDecodeOutput[gmail.Thread](`{"id":"18c0a1b2c3d4e5f0","snippet":"Customer question","messages":[{"messageId":"18c0a1b2c3d4e5f6","threadId":"18c0a1b2c3d4e5f0","from":"ada@example.com","subject":"Question","receivedAt":"2026-03-04T09:15:00Z"}]}`)
+	return connectormock.Branch(gmail.GetThreadBranchFound, value, nil)
+}
+
+// GetThreadDefault is the manifest default, foundDefault, which New installs.
+func GetThreadDefault() connectormock.Case[gmail.Thread] { return GetThreadFoundDefault() }
+
+// ListLabelsListed selects the listed branch: Gmail returned its labels.
+func ListLabelsListed(value gmail.LabelsList, failure *sdkgo.Failure) connectormock.Case[gmail.LabelsList] {
+	return connectormock.Branch(gmail.ListLabelsBranchListed, value, failure)
+}
+
+// ListLabelsProviderRejected selects the providerRejected branch: Gmail conclusively rejected the label list.
+func ListLabelsProviderRejected(value gmail.LabelsList, failure *sdkgo.Failure) connectormock.Case[gmail.LabelsList] {
+	return connectormock.Branch(gmail.ListLabelsBranchProviderRejected, value, failure)
+}
+
+// ListLabelsInvalidResponse selects the invalidResponse branch: Gmail returned malformed or oversized label JSON.
+func ListLabelsInvalidResponse(value gmail.LabelsList, failure *sdkgo.Failure) connectormock.Case[gmail.LabelsList] {
+	return connectormock.Branch(gmail.ListLabelsBranchInvalidResponse, value, failure)
+}
+
+// ListLabelsDefect selects the defect branch: Connection credentials are invalid.
+func ListLabelsDefect(value gmail.LabelsList, failure *sdkgo.Failure) connectormock.Case[gmail.LabelsList] {
+	return connectormock.Branch(gmail.ListLabelsBranchDefect, value, failure)
+}
+
+// ListLabelsRetry asks Dex to retry the listLabels Step, after the delay when it is positive.
+func ListLabelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gmail.LabelsList] {
+	return connectormock.Retry[gmail.LabelsList](failure, after)
+}
+
+// ListLabelsListedDefault is the manifest mock listedDefault: Inbox and one user label are visible.
+func ListLabelsListedDefault() connectormock.Case[gmail.LabelsList] {
+	value := connectormock.MustDecodeOutput[gmail.LabelsList](`{"labels":[{"id":"INBOX","name":"INBOX","type":"system"},{"id":"Label_1","name":"Customers","type":"user"}]}`)
+	return connectormock.Branch(gmail.ListLabelsBranchListed, value, nil)
+}
+
+// ListLabelsDefault is the manifest default, listedDefault, which New installs.
+func ListLabelsDefault() connectormock.Case[gmail.LabelsList] { return ListLabelsListedDefault() }
+
+// GetLabelFound selects the found branch: Gmail returned the label.
+func GetLabelFound(value gmail.Label, failure *sdkgo.Failure) connectormock.Case[gmail.Label] {
+	return connectormock.Branch(gmail.GetLabelBranchFound, value, failure)
+}
+
+// GetLabelNotFound selects the notFound branch: No label has that ID.
+func GetLabelNotFound(value gmail.Label, failure *sdkgo.Failure) connectormock.Case[gmail.Label] {
+	return connectormock.Branch(gmail.GetLabelBranchNotFound, value, failure)
+}
+
+// GetLabelProviderRejected selects the providerRejected branch: Gmail conclusively rejected the label read.
+func GetLabelProviderRejected(value gmail.Label, failure *sdkgo.Failure) connectormock.Case[gmail.Label] {
+	return connectormock.Branch(gmail.GetLabelBranchProviderRejected, value, failure)
+}
+
+// GetLabelInvalidResponse selects the invalidResponse branch: Gmail returned malformed or oversized label JSON.
+func GetLabelInvalidResponse(value gmail.Label, failure *sdkgo.Failure) connectormock.Case[gmail.Label] {
+	return connectormock.Branch(gmail.GetLabelBranchInvalidResponse, value, failure)
+}
+
+// GetLabelDefect selects the defect branch: Local label ID or credentials are invalid.
+func GetLabelDefect(value gmail.Label, failure *sdkgo.Failure) connectormock.Case[gmail.Label] {
+	return connectormock.Branch(gmail.GetLabelBranchDefect, value, failure)
+}
+
+// GetLabelRetry asks Dex to retry the getLabel Step, after the delay when it is positive.
+func GetLabelRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gmail.Label] {
+	return connectormock.Retry[gmail.Label](failure, after)
+}
+
+// GetLabelFoundDefault is the manifest mock foundDefault: A customer label has one message.
+func GetLabelFoundDefault() connectormock.Case[gmail.Label] {
+	value := connectormock.MustDecodeOutput[gmail.Label](`{"id":"Label_1","name":"Customers","type":"user","messagesTotal":1,"messagesUnread":1,"threadsTotal":1,"threadsUnread":1}`)
+	return connectormock.Branch(gmail.GetLabelBranchFound, value, nil)
+}
+
+// GetLabelDefault is the manifest default, foundDefault, which New installs.
+func GetLabelDefault() connectormock.Case[gmail.Label] { return GetLabelFoundDefault() }
 
 // GetMessageRead selects the read branch: The Gmail message was read.
 func GetMessageRead(value gmail.Message, failure *sdkgo.Failure) connectormock.Case[gmail.Message] {
