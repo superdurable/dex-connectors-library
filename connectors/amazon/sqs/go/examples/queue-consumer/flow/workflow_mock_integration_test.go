@@ -54,6 +54,22 @@ func TestSendMessageUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Len(t, mock.SendMessage().Calls(), 1)
 }
 
+func TestCreateQueueUsesDefaultMockWithRealDex(t *testing.T) {
+	mock := sqsmock.New(t, ConnectionName)
+	_, harness := newQueueConsumerHarnessWithConnection(t, mock.Connection())
+	ctx := integrationContext(t)
+	flowID := "mock-create-queue-" + uniqueSuffix()
+	_, err := harness.client.StartFlow(ctx, harness.createQueueFlow, flowID, sqs.CreateQueueInput{QueueName: "orders"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var queue sqs.QueueIdentity
+	require.NoError(t, result.DecodeSingleOutput(&queue))
+	require.Equal(t, "https://sqs.eu-west-1.amazonaws.com/123456789012/orders", queue.QueueURL)
+	require.Len(t, mock.CreateQueue().Calls(), 1)
+}
+
 func TestQueueConsumerReleasesMockInvalidOrderWithRealDex(t *testing.T) {
 	mock := sqsmock.New(t, ConnectionName)
 	mock.ReceiveMessages().Respond(sqsmock.ReceiveMessagesReceived(sqs.ReceivedMessages{

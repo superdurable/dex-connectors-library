@@ -37,6 +37,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"receiveMessages":         newConformanceMutationInvocation(t, scenario.Input, context, client.ReceiveMessages(), conformanceConnection, scenario.CallID),
 		"deleteMessage":           newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteMessage(), conformanceConnection, scenario.CallID),
 		"changeMessageVisibility": newConformanceMutationInvocation(t, scenario.Input, context, client.ChangeMessageVisibility(), conformanceConnection, scenario.CallID),
+		"listQueues":              newConformanceQueryInvocation(t, scenario.Input, context, client.ListQueues(), conformanceConnection),
+		"createQueue":             newConformanceMutationInvocation(t, scenario.Input, context, client.CreateQueue(), conformanceConnection, scenario.CallID),
+		"getQueueURL":             newConformanceQueryInvocation(t, scenario.Input, context, client.GetQueueURL(), conformanceConnection),
+		"getQueueAttributes":      newConformanceQueryInvocation(t, scenario.Input, context, client.GetQueueAttributes(), conformanceConnection),
+		"setQueueAttribute":       newConformanceMutationInvocation(t, scenario.Input, context, client.SetQueueAttribute(), conformanceConnection, scenario.CallID),
+		"deleteQueue":             newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteQueue(), conformanceConnection, scenario.CallID),
 	}}
 }
 

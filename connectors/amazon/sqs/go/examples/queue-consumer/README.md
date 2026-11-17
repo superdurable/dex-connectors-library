@@ -1,6 +1,6 @@
 # Amazon SQS queue-consumer example
 
-This example registers two operation-only Flows from Dex Web **Start Flow**. The consumer Flow uses the receive, delete, and visibility operations:
+This example registers three operation-only Flows from Dex Web **Start Flow**. The consumer Flow uses the receive, delete, and visibility operations:
 
 1. `RecordQueueConsumerRequest` records the requested queue;
 2. `ReceiveOrderEvent` calls `sqs.NewReceiveMessagesStep` for one message,
@@ -24,6 +24,8 @@ visibility timeout ends.
 
 The send Flow calls `sqs.NewSendMessageStep` with `SendMessageInput {queueUrl, body, messageGroupId}` and stores the accepted `SentMessage`. Leave `queueUrl` blank to use the connection's `defaultQueueUrl`. For a FIFO queue, supply a nonempty `messageGroupId`; the connector derives a stable deduplication ID from the Dex call ID. A standard queue may receive duplicate messages after an unknown send outcome, so the connector allows at most three possible sends and then selects `uncertain`.
 
+The create Flow calls `sqs.NewCreateQueueStep` with `CreateQueueInput {queueName, attributes}` and stores its `QueueIdentity`. Start `AmazonSQSCreateQueue` with `{"queueName":"orders"}` for a standard queue, or with `{"queueName":"orders.fifo","attributes":{"FifoQueue":"true"}}` for FIFO. Choose a unique name in [SQS Console > Queues](https://console.aws.amazon.com/sqs/v3/home); blank is invalid. Its mock-backed real Dex test runs without AWS credentials.
+
 ## Configure
 
 Follow the [Amazon SQS Connector setup](../../../README.md), then configure the
@@ -42,6 +44,8 @@ dexcli visualize ./examples/queue-consumer/flow/workflow.go \
   --schema-version 2.0 --json --out ./build/amazon-sqs-queue-consumer
 dexcli visualize ./examples/queue-consumer/flow/send_message_flow.go \
   --schema-version 2.0 --lint app --json --out ./build/amazon-sqs-send-message
+dexcli visualize ./examples/queue-consumer/flow/create_queue_flow.go \
+  --schema-version 2.0 --lint app --json --out ./build/amazon-sqs-create-queue
 ```
 
 Run `dexcli dev` with that build directory. Dex Web or Superverse Studio writes

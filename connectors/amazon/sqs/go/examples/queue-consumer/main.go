@@ -40,7 +40,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{queueconsumer.NewFlow(connection), queueconsumer.NewSendFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{queueconsumer.NewFlow(connection), queueconsumer.NewSendFlow(connection), queueconsumer.NewCreateQueueFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Amazon SQS queue-consumer Flow: %w", err)
 	}

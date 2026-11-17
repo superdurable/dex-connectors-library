@@ -107,7 +107,7 @@ func TestNoStudioPickerOrTriggerIsDeclared(t *testing.T) {
 	for _, operation := range manifest.Spec.Operations {
 		operations = append(operations, operation.Name)
 	}
-	require.Equal(t, []string{"sendMessage", "receiveMessages", "deleteMessage", "changeMessageVisibility"}, operations)
+	require.Equal(t, []string{"sendMessage", "receiveMessages", "deleteMessage", "changeMessageVisibility", "listQueues", "createQueue", "getQueueURL", "getQueueAttributes", "setQueueAttribute", "deleteQueue"}, operations)
 	_, err := os.Stat("../ui")
 	require.True(t, os.IsNotExist(err), "a connector without Studio units ships no UI bundle")
 }

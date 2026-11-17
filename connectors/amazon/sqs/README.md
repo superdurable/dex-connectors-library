@@ -24,6 +24,12 @@ factories:
 | `receiveMessages` | Mutation | `ReceiveMessage` | sync | `received` | `empty`, `providerRejected`, `invalidResponse`, `defect` |
 | `deleteMessage` | Mutation | `DeleteMessage` | async | `deleted` | `receiptHandleInvalid`, `providerRejected`, `defect` |
 | `changeMessageVisibility` | Mutation | `ChangeMessageVisibility` | async | `changed` | `receiptHandleInvalid`, `providerRejected`, `defect` |
+| `listQueues` (Go) | Query | `ListQueues` | async | `page` | `providerRejected`, `invalidResponse`, `defect` |
+| `createQueue` (Go) | Mutation | `CreateQueue` | async | `created` | `providerRejected`, `invalidResponse`, `defect` |
+| `getQueueURL` (Go) | Query | `GetQueueUrl` | async | `found` | `missing`, `providerRejected`, `invalidResponse`, `defect` |
+| `getQueueAttributes` (Go) | Query | `GetQueueAttributes` | async | `found` | `missing`, `providerRejected`, `invalidResponse`, `defect` |
+| `setQueueAttribute` (Go) | Mutation | `SetQueueAttributes` | async | `updated` | `providerRejected`, `defect` |
+| `deleteQueue` (Go) | Mutation | `DeleteQueue` | async | `deleted` | `providerRejected`, `defect` |
 
 A consuming Flow receives a batch, processes each message, and then
 acknowledges it with `deleteMessage`, or releases it with
@@ -208,6 +214,14 @@ part of the Result. The connection's secret access key and session token never
 are: a response that contains either selects `invalidResponse` instead of
 entering Flow state.
 
+### Queue management in Go
+
+`listQueues` reads a page of up to 1,000 queue URLs in the connection Region; `queueNamePrefix` and `nextToken` are optional, and `maxResults` defaults to 100. `getQueueURL` finds a queue by its exact name. `getQueueAttributes` reads all available settings and approximate counts using the URL from [SQS Console > Queues](https://console.aws.amazon.com/sqs/v3/home), or the connection's default URL when blank.
+
+`createQueue` accepts a unique `queueName` of at most 80 characters, ending in `.fifo` for FIFO queues. Its optional `attributes` map supports `FifoQueue: "true"` for FIFO and numeric `VisibilityTimeout` (0–43200 seconds), `ReceiveMessageWaitTimeSeconds` (0–20 seconds), `DelaySeconds` (0–900 seconds), and `MaximumMessageSize` (1024–1048576 bytes). Blank attributes use SQS defaults. Repeating the same name and attributes returns the existing URL; a name with different existing attributes is rejected. `setQueueAttribute` changes one of the four numeric settings with an absolute decimal `attributeValue`; blank is invalid. The connector excludes retention and policy changes because they can expire messages or replace access grants. `deleteQueue` permanently removes a queue and its messages; repeat requests are accepted. AWS requires a 60-second wait before recreating the same name.
+
+Grant `sqs:ListQueues`, `sqs:CreateQueue`, `sqs:GetQueueUrl`, `sqs:GetQueueAttributes`, `sqs:SetQueueAttributes`, or `sqs:DeleteQueue` for the operations you use. [IAM Console > Users > selected user > Permissions](https://console.aws.amazon.com/iam) is where you add these actions; `ListQueues` requires a Region-level permission and does not use a queue ARN. All six operations use safe repeat semantics. Their live Amazon SQS authorization and response behavior remain unverified.
+
 ## Not in this release
 
 - **Trigger**: a queue Trigger that starts one Flow per message needs a source
@@ -221,7 +235,8 @@ entering Flow state.
 - **Pickers**: Studio commands send only HTTPS `GET`, and SQS's `ListQueues`
   requires a SigV4-signed `POST`, so queue URLs are guided input or
   `defaultQueueUrl`.
-- Verifying `MD5OfMessageAttributes`, queue management, and IAM roles.
+- Verifying `MD5OfMessageAttributes` and IAM roles.
+- `PurgeQueue`: AWS may delete messages sent during the following minute, so repeating an unknown result can destroy new work. This requires the unsafe repeat tier and is deliberately omitted.
 
 ## Example
 
