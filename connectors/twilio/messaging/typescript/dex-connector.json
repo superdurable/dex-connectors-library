@@ -1,10 +1,10 @@
 {
   "connectorId": "twilio-messaging",
-  "releaseTag": "connectors/twilio/messaging/go/v0.24.0",
+  "releaseTag": "connectors/twilio/messaging/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-twilio-messaging",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -12,7 +12,7 @@
       "kind": "mutation",
       "operationId": "sendMessage",
       "inputType": "SendMessageInput",
-      "description": "Send one SMS, MMS, or WhatsApp message from a Twilio number or Messaging Service to one recipient; synchronous durability makes the single-dispatch checkpoint visible to retries because Twilio provides no message idempotency key.",
+      "description": "Send one SMS, MMS, or WhatsApp message from a Twilio number or Messaging Service to one recipient; Twilio provides no message idempotency key, so an unknown outcome resends up to the send cap and the recipient may receive a duplicate.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

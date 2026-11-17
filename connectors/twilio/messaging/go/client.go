@@ -330,28 +330,43 @@ func (SendMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ SendMessageInp
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke fences one message creation and classifies its outcome.
+// Invoke fences one message creation and classifies its outcome. Twilio accepts no idempotency
+// key, so an unknown outcome resends while possible sends stay below call.MaxSends() and selects
+// uncertain at the cap. A saved message SID is read back instead of resent, and a definite
+// refusal is never resent.
 func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageInput) sdkgo.MutationAttempt[Message] {
 	client := operation.client
-	fence, err := singledispatch.NewFence(call, SendMessageDefinition.StepDefaults.ExecuteMethodTimeout)
-	if err != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, Message{}, failurePointer("sendMessage", sdkgo.FailureLocalDefect, "Twilio dispatch fence could not be initialized"), sdkgo.Receipt{})
-	}
-	decision := fence.Decide()
-	requested := Message{AccountSID: client.accountSID, To: strings.TrimSpace(input.To)}
-	if decision.Kind == singledispatch.FailClosed {
-		return client.uncertainSend(call, requested, providerResponse{}, sdkgo.FailureTransport, "Twilio send checkpoint cannot confirm its outcome")
-	}
-	if decision.Kind == singledispatch.ReadBackRequired {
-		return client.readBackSentMessage(call, decision.Marker, requested)
-	}
 	request, err := client.buildSendRequest(input)
 	if err != nil {
 		return sdkgo.NewMutationBranch(SendMessageBranchDefect, Message{}, failurePointer("sendMessage", sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
-	requested = client.requestedMessage(request)
+	requested := client.requestedMessage(request)
+	fence, err := singledispatch.NewFence(call, SendMessageDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
+	if err != nil {
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, Message{}, failurePointer("sendMessage", sdkgo.FailureLocalDefect, "Twilio dispatch fence could not be initialized"), sdkgo.Receipt{})
+	}
+	decision := fence.Decide()
+	switch decision.Kind {
+	case singledispatch.FailClosed:
+		return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureAvailability, "Twilio send checkpoint is unreadable; no message was sent in this attempt"), 0)
+	case singledispatch.ReadBackRequired:
+		return client.readBackSentMessage(call, decision.Marker, requested)
+	case singledispatch.ReadBackThenResendAllowed:
+		// A saved SID proves Twilio created the message, so it is read back and never resent.
+		if decision.Marker.ProviderID != "" {
+			return client.readBackSentMessage(call, decision.Marker, requested)
+		}
+	}
+	// This attempt's send would be the last one the cap allows when no further send remains.
+	canResendUnknownOutcome := decision.MaximumPriorSends+1 < call.MaxSends()
+	// An earlier send may have created the message, so a refusal of this resend cannot prove nothing changed.
+	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	authorization, failure, isTransient := client.resolveAuthorization(call, "sendMessage")
 	if failure != nil {
+		if hasPossibleEarlierSend {
+			// notSent would hide the earlier possible send, so nothing is recorded.
+			return sdkgo.NewMutationRetry[Message](*failure, 0)
+		}
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
 			return sdkgo.NewMutationRetry[Message](*failure, 0)
 		}
@@ -367,6 +382,11 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 			return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureTransport, "Twilio dispatch checkpoint or attempt time is unavailable"), 0)
 		}
 		if errors.Is(err, errRequestNotBuilt) {
+			// The request was never sent; a lost canResend checkpoint leaves the claim, which still counts.
+			_ = fence.RecordCanResend()
+			if hasPossibleEarlierSend {
+				return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureLocalDefect, err.Error()+"; no message was sent in this attempt"), 0)
+			}
 			return sdkgo.NewMutationBranch(SendMessageBranchDefect, Message{}, failurePointer("sendMessage", sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
 		}
 		if !attempt.isDispatched {
@@ -375,20 +395,24 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 			}
 			return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureTransport, "Twilio could not be reached, so no message was sent"), 0)
 		}
-		return client.uncertainSend(call, requested, providerResponse{}, sdkgo.FailureTransport, "Twilio message outcome is unknown")
+		return client.resendOrSelectUncertain(call, canResendUnknownOutcome, requested, providerResponse{}, sdkgo.FailureTransport, "Twilio message outcome is unknown")
 	}
 	response := attempt.response
 	switch {
 	case response.statusCode >= 200 && response.statusCode < 300:
 		if response.isBodyTooLarge {
-			return sdkgo.NewMutationUncertain(requested, newFailure("sendMessage", sdkgo.FailureResponseTooLarge, "Twilio accepted the request but its response exceeds the configured size limit"), client.receipt(call, response, "", 0))
+			return client.resendOrSelectUncertain(call, canResendUnknownOutcome, requested, response, sdkgo.FailureResponseTooLarge, "Twilio message response exceeds the configured size limit")
 		}
 		if response.hasBodyReadFailed {
-			return sdkgo.NewMutationUncertain(requested, newFailure("sendMessage", sdkgo.FailureTransport, "Twilio accepted the request but its response was interrupted"), client.receipt(call, response, "", 0))
+			return client.resendOrSelectUncertain(call, canResendUnknownOutcome, requested, response, sdkgo.FailureTransport, "Twilio message response was interrupted")
 		}
 		message, err := client.decodeMessage(response.body, authorization)
 		if err != nil {
-			return sdkgo.NewMutationUncertain(requested, newFailure("sendMessage", sdkgo.FailureProtocol, "Twilio accepted the request but returned an unusable message"), client.receipt(call, response, "", 0))
+			if messageSIDPattern.MatchString(readMessageSID(response.body)) {
+				// Twilio returned a created message SID, so a resend could duplicate the message.
+				return sdkgo.NewMutationUncertain(requested, newFailure("sendMessage", sdkgo.FailureProtocol, "Twilio accepted the request but returned an unusable message"), client.receipt(call, response, "", 0))
+			}
+			return client.resendOrSelectUncertain(call, canResendUnknownOutcome, requested, response, sdkgo.FailureProtocol, "Twilio message response is malformed")
 		}
 		// A lost read-back checkpoint cannot change the accepted provider result.
 		_ = fence.RecordProviderID(message.SID)
@@ -419,14 +443,55 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		if refreshFailure != nil {
 			message = refreshFailure.Message
 		}
-		return sdkgo.NewMutationBranch(SendMessageBranchProviderRejected, requested, failurePointer("sendMessage", sdkgo.FailureAuthentication, message), client.receipt(call, response, "", errorCode))
-	case response.statusCode >= 400 && response.statusCode < 500 && response.statusCode != http.StatusRequestTimeout && response.statusCode != http.StatusConflict:
+		return client.rejectOrSelectUncertain(call, fence, hasPossibleEarlierSend, requested, response, newFailure("sendMessage", sdkgo.FailureAuthentication, message), errorCode)
+	case isDefiniteRefusalStatus(response.statusCode) && !messageSIDPattern.MatchString(readMessageSID(response.body)):
 		errorCode := readErrorCode(response.body)
 		requested.ErrorCode = errorCode
-		return sdkgo.NewMutationBranch(SendMessageBranchProviderRejected, requested, rejectionFailure("sendMessage", "message", response.statusCode, errorCode), client.receipt(call, response, "", errorCode))
+		return client.rejectOrSelectUncertain(call, fence, hasPossibleEarlierSend, requested, response, *rejectionFailure("sendMessage", "message", response.statusCode, errorCode), errorCode)
 	default:
-		return client.uncertainSend(call, requested, response, sdkgo.FailureAvailability, "Twilio message outcome is unknown")
+		return client.resendOrSelectUncertain(call, canResendUnknownOutcome, requested, response, sdkgo.FailureAvailability, "Twilio message outcome is unknown")
 	}
+}
+
+// isDefiniteRefusalStatus reports the HTTP statuses that prove Twilio refused the request.
+func isDefiniteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
+// readMessageSID returns the top-level sid of a response body, or empty when it has none.
+func readMessageSID(body []byte) string {
+	var resource struct {
+		SID string `json:"sid"`
+	}
+	if json.Unmarshal(body, &resource) != nil {
+		return ""
+	}
+	return resource.SID
+}
+
+// resendOrSelectUncertain retries a possibly sent message while the send cap allows another send.
+func (client *Client) resendOrSelectUncertain(call sdkgo.Call, canResendUnknownOutcome bool, requested Message, response providerResponse, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[Message] {
+	if canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt counts this send.
+		return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", kind, message), providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now()))
+	}
+	return client.uncertainSend(call, requested, response, kind, message)
+}
+
+// rejectOrSelectUncertain selects providerRejected only when no earlier send of this call may have created the message.
+func (client *Client) rejectOrSelectUncertain(call sdkgo.Call, fence *singledispatch.Fence, hasPossibleEarlierSend bool, requested Message, response providerResponse, failure sdkgo.Failure, errorCode int) sdkgo.MutationAttempt[Message] {
+	if hasPossibleEarlierSend {
+		return sdkgo.NewMutationUncertain(requested, failure, client.receipt(call, response, "", errorCode))
+	}
+	// The branch is terminal, so a lost canResend checkpoint cannot cause a resend.
+	_ = fence.RecordCanResend()
+	return sdkgo.NewMutationBranch(SendMessageBranchProviderRejected, requested, &failure, client.receipt(call, response, "", errorCode))
 }
 
 func (attempt *sendMessageAttempt) send(requestContext context.Context) error {

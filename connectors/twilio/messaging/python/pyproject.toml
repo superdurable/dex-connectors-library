@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dex-connector-twilio-messaging"
-version = "0.2.0"
+version = "0.2.1"
 description = "Dex-native Twilio Programmable Messaging connector"
 readme = "README.md"
 requires-python = ">=3.11"

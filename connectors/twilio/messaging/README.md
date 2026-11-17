@@ -10,7 +10,7 @@ This module sends SMS, MMS, and WhatsApp messages through Twilio Programmable
 Messaging, reads their delivery status, and receives inbound messages:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/twilio/messaging/go@v0.24.0
+go get github.com/superdurable/dex-connectors-library/connectors/twilio/messaging/go@v0.24.1
 ```
 
 | Operation | Kind | Happy branch | Other branches |
@@ -112,31 +112,36 @@ WhatsApp recipient needs a WhatsApp sender or a Messaging Service. Invalid
 input selects `defect` without calling Twilio.
 
 Twilio's [Messages API](https://www.twilio.com/docs/messaging/api/message-resource)
-has no documented idempotency key or lookup by connector Call ID. The shared
-single-dispatch fence permits a retry only after a saved rejection or positive
-proof that no connection opened. Its checkpoint is read before credentials or
-provider lookups, and a missing or stale checkpoint forbids another send.
+has no documented idempotency key or lookup by connector Call ID. `sendMessage`
+is a `limited` Mutation: the shared single-dispatch fence counts possible sends
+across attempts, and an unknown outcome resends while possible sends stay below
+the operation's `maxSends` (default 3), so a recipient may receive a duplicate.
+At the cap it selects `uncertain`. Its checkpoint is read before credentials or
+provider lookups; an unreadable or foreign checkpoint retries without sending.
 
 | Outcome | Result |
 | --- | --- |
 | 2xx with a valid message | `accepted`, with the SID and status, usually `queued` or `accepted` |
-| 400, 401, 403, 404, or another 4xx except 408, 409, and 429 | `providerRejected`, with the Twilio error code in `Value.ErrorCode` and the Receipt's `twilioErrorCode`; a 401 retries only if a fresh credential differs |
+| 400, 401, 403, 404, 411, 413, 414, 415, or 422 on a first send | `providerRejected`, with the Twilio error code in `Value.ErrorCode` and the Receipt's `twilioErrorCode`; a 401 retries only if a fresh credential differs |
+| The same refusal after an earlier possible send | `uncertain` |
 | 429 or 503 | Retry, after `Retry-After` when Twilio sends it |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 408, 409, 3xx, or 5xx other than 503 after dispatch | `uncertain` |
-| 2xx whose body is oversized, unreadable, for another account, or reflects the credential | `uncertain` |
+| Timeout, dropped connection, 408, 409, 3xx, another 4xx, or 5xx other than 503 after dispatch | Retry and resend below the send cap, `uncertain` at the cap |
+| 2xx whose body is oversized, unreadable, or has no message SID | Retry and resend below the send cap, `uncertain` at the cap |
+| 2xx with a message SID that is for another account or reflects the credential | `uncertain`, never resent |
 
 Twilio documents that [429 requests are not processed](https://www.twilio.com/docs/api/errors/20429)
 and [503 means temporarily unavailable and should be retried](https://www.twilio.com/docs/usage/twilios-response).
 Its Messages documentation does not specify a safe retry for 409, so a 409
-without a message SID requires reconciliation. The fence bounds the POST to
+without a message SID is an unknown outcome. The fence bounds the POST to
 7/12 of the smaller 30-second Execute timeout and remaining Step deadline,
 leaving time to classify its result. It disables Go's transparent HTTP replay.
 A transport without positive DNS, connect, or TLS failure evidence is treated
 as possibly dispatched.
 An unavailable credential service retries before the POST with a `notSent`
 checkpoint. An invalid or reauthorization-required credential selects `defect`
-without sending and asks for the connection to be updated or reconnected. On
+without sending and asks for the connection to be updated or reconnected; after
+an earlier possible send it retries instead, so the earlier send stays counted. On
 401, the connector requests a forced credential refresh;
 it records a safe retry only if that returns a different valid credential.
 Static Twilio credentials cannot refresh automatically, so a 401 selects
@@ -146,10 +151,10 @@ updated.
 After a valid 2xx answer, the connector saves the message SID. If Dex repeats
 that Step before committing its result, the next attempt reads the saved SID
 with `getMessage` and never sends a second POST. A transient read-back failure
-retries the read. Reauthorization-required credentials, a missing SID, and
-unconfirmable results select `uncertain`, with the saved SID in the receipt
-when available. The heartbeat frame may still be lost before Dex persists it;
-the fence then fails closed and the operator reconciles the send.
+retries the read. Reauthorization-required credentials and unconfirmable
+results select `uncertain`, with the saved SID in the receipt. The heartbeat
+frame may still be lost before Dex persists it; the fence then counts that
+attempt as a possible send and resends only below the cap.
 
 `uncertain` means the message may exist. On `providerRejected` and
 `uncertain`, `Value` has no SID and echoes the requested account, sender, and
@@ -176,7 +181,8 @@ single-dispatch heartbeat checkpoint. Async local-phase heartbeats are not
 visible to those attempts. `getMessage` is a read and keeps the async default.
 Do not override `sendMessage` to async.
 
-An application handles `uncertain` without resending automatically.
+To forbid every automatic resend, set the Step's `MaxSends` to 1. An
+application handles `uncertain` without resending automatically.
 [`examples/text-message-delivery`](go/examples/text-message-delivery) shows the
 pattern:
 
@@ -233,7 +239,7 @@ dex.DefineStep(messaging.NewSendMessageStep(messaging.SendMessageStepConfig[Inpu
 	StepType: sendTextMessageStepType, ConnectionName: ConnectionName,
 	Annotations: sdkgo.StepAnnotations{
 		GroupID: "twilio", GroupLabel: "Twilio",
-		Explanation: "Send the text once; an unknown outcome is reconciled, never resent automatically.",
+		Explanation: "Send the text; an unknown outcome resends up to the send cap, then is reconciled.",
 	},
 	Connection: flow.connection, MapToOperationInput: flow.MapToSendMessageInput,
 	Accepted: sdkgo.GoTo(recordAcceptedTextMessage{}),
@@ -363,7 +369,7 @@ behavior are unverified.
 
 ## Python
 
-The `python/` package publishes `dex-connector-twilio-messaging` v0.2.0 with `sendMessage` and `getMessage` Steps and the `messageReceived` Trigger on the Python poll Trigger kit (`dex-connectors-sdk>=0.12.0`). Its cursor documents match Go's byte for byte, so Go and Python replicas share a binding's cursor and inbox. Its [runnable delivery example](python/examples/text_message_delivery) sends one message through a static `twilio-messaging` connection, then reads its status, and its [inbound message example](python/examples/message_received/README.md) starts one Flow per inbound message from the `inbound-messages` binding. The send uses the Dex single-dispatch fence; an uncertain outcome must be reconciled before sending again. Configure the Twilio Account SID, sender, and selected credential method through Dex Web Connections. Live Twilio behavior requires a user-controlled account and has not been verified by local replay.
+The `python/` package publishes `dex-connector-twilio-messaging` v0.2.1 with `sendMessage` and `getMessage` Steps and the `messageReceived` Trigger on the Python poll Trigger kit (`dex-connectors-sdk>=0.12.0`). Its cursor documents match Go's byte for byte, so Go and Python replicas share a binding's cursor and inbox. Its [runnable delivery example](python/examples/text_message_delivery) sends one message through a static `twilio-messaging` connection, then reads its status, and its [inbound message example](python/examples/message_received/README.md) starts one Flow per inbound message from the `inbound-messages` binding. The send uses the Dex single-dispatch fence and resends an unknown outcome only below the send cap; an uncertain outcome must be reconciled before sending again. Configure the Twilio Account SID, sender, and selected credential method through Dex Web Connections. Live Twilio behavior requires a user-controlled account and has not been verified by local replay.
 
 | Capability | Kind | Languages |
 | --- | --- | --- |
@@ -372,7 +378,7 @@ The `python/` package publishes `dex-connector-twilio-messaging` v0.2.0 with `se
 
 ## TypeScript package
 
-The TypeScript package `@superdurable/connector-twilio-messaging@0.2.0`
+The TypeScript package `@superdurable/connector-twilio-messaging@0.2.1`
 implements `sendMessage` and `getMessage` with the same branch and retry
 contract as Go, and the `messageReceived` Trigger on the TypeScript poll
 Trigger kit (`@superdurable/connectors-sdk` 0.12.0). Its cursor documents match

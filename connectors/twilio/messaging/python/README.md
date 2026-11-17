@@ -1,6 +1,6 @@
 # Twilio Messaging Python connector
 
-`dex-connector-twilio-messaging` provides Dex Steps for `sendMessage` and `getMessage` and the `messageReceived` poll Trigger. The send operation uses Dex's single-dispatch heartbeat fence because Twilio Messages has no idempotency key. A response whose outcome cannot be confirmed selects the optional `uncertain` branch; the application must decide how to reconcile it before another send.
+`dex-connector-twilio-messaging` provides Dex Steps for `sendMessage` and `getMessage` and the `messageReceived` poll Trigger. The send operation uses Dex's single-dispatch heartbeat fence because Twilio Messages has no idempotency key. An unknown outcome resends while possible sends stay below the send cap, so a recipient may receive a duplicate; at the cap it selects the optional `uncertain` branch, and the application must decide how to reconcile it before another send. A definite refusal is never resent.
 
 Use `new_project_connection(project, "twilio-messaging")` in a Worker and bind `new_send_message_step` or `new_get_message_step` to the static connection name. See [`examples/text_message_delivery`](examples/text_message_delivery) for a runnable Flow and Worker. The connection has Account SID, optional default sender, endpoint, response size limit, poll interval (at least 5 seconds), and either Account SID/Auth Token or API key credentials; setup guidance lives in the [connector manifest](../connector.yaml). Never put credential values or message body in persisted Attributes or logs.
 

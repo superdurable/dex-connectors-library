@@ -20,9 +20,9 @@ export const SendMessageBranch = {
 export const SendMessageBranchAccepted = SendMessageBranch.Accepted;
 /** Twilio conclusively rejected the message, such as an invalid To number, an unverified trial recipient, an unsubscribed recipient, or an unusable sender; nothing was sent. */
 export const SendMessageBranchProviderRejected = SendMessageBranch.ProviderRejected;
-/** The request was dispatched but its outcome cannot be confirmed; Twilio has no idempotency key, so the message may exist and must not be resent automatically. */
+/** Twilio may have created the message, but the send cap was reached, a saved SID could not be confirmed, or Twilio returned a SID without a usable message; check Twilio before sending again. */
 export const SendMessageBranchUncertain = SendMessageBranch.Uncertain;
-/** Local input, connection configuration, or connector definition is invalid. */
+/** Local input, connection configuration, or connector definition is invalid before any send. */
 export const SendMessageBranchDefect = SendMessageBranch.Defect;
 /** Manifest definition for sendMessage. */
 export const SendMessageDefinition: MutationDefinition = {
@@ -30,8 +30,8 @@ export const SendMessageDefinition: MutationDefinition = {
   branches: [
     { id: "accepted", description: "Twilio created the message and returned its SID; delivery status arrives later through getMessage." },
     { id: "providerRejected", description: "Twilio conclusively rejected the message, such as an invalid To number, an unverified trial recipient, an unsubscribed recipient, or an unusable sender; nothing was sent.", optional: true },
-    { id: "uncertain", description: "The request was dispatched but its outcome cannot be confirmed; Twilio has no idempotency key, so the message may exist and must not be resent automatically.", optional: true },
-    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+    { id: "uncertain", description: "Twilio may have created the message, but the send cap was reached, a saved SID could not be confirmed, or Twilio returned a SID without a usable message; check Twilio before sending again.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid before any send.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
   repeatOnUnknown: "limited",

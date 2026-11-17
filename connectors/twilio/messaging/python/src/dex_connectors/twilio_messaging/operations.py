@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Twilio send and status operations with Go-compatible outcome classification."""
 
+import json
 from dataclasses import replace
 from datetime import timedelta
 from urllib.parse import urlsplit
@@ -26,8 +27,31 @@ from dex_connectors.sdk.singledispatch import (
 )
 
 from ._generated.definitions import GET_MESSAGE_DEFINITION, SEND_MESSAGE_DEFINITION
-from .client import _MESSAGE, _PHONE, Client, error_code, failure, is_whatsapp, parse_sender, rejection
+from .client import (
+    _MESSAGE,
+    _PHONE,
+    Client,
+    Exchange,
+    error_code,
+    failure,
+    is_whatsapp,
+    parse_sender,
+    rejection,
+)
 from .models import GetMessageInput, Message, SendMessageInput
+
+# Only these statuses prove Twilio refused a send; other 4xx statuses leave the outcome unknown.
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+
+
+def _message_sid(body: bytes) -> str:
+    """Return the top-level sid of a response body, or empty when it has none."""
+    try:
+        resource = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return ""
+    sid = resource.get("sid") if isinstance(resource, dict) else None
+    return sid if isinstance(sid, str) else ""
 
 
 def _send_form(client: Client, input: SendMessageInput) -> tuple[list[tuple[str, str]], Message]:
@@ -86,11 +110,21 @@ class SendMessageOperation:
         return IdempotencyKey(call_id)
 
     async def invoke(self, call: Call, input: SendMessageInput) -> MutationAttempt[Message]:
-        """Send once, retry only proven unsent requests, and read back a known SID."""
+        """Send under a fence, resending an unknown outcome below the send cap.
+
+        Twilio accepts no idempotency key, so an unknown outcome retries while possible
+        sends stay below `call.max_sends` and selects uncertain at the cap. A saved message
+        SID is read back instead of resent, and a definite refusal is never resent.
+        """
         empty = Message()
-        requested = Message(account_sid=self.client.account_sid, to=input.to.strip())
         try:
-            fence = Fence(call, timedelta(seconds=30))
+            form, requested = _send_form(self.client, input)
+        except ValueError as error:
+            return MutationAttempt.branch_result(
+                "defect", empty, Receipt(), failure("sendMessage", FailureKind.VALIDATION, str(error))
+            )
+        try:
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
             decision = await fence.decide()
         except ValueError:
             return MutationAttempt.branch_result(
@@ -102,25 +136,28 @@ class SendMessageOperation:
                 ),
             )
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return MutationAttempt.uncertain(
-                requested,
+            return MutationAttempt.retry(
                 failure(
-                    "sendMessage", FailureKind.TRANSPORT, "Twilio send checkpoint cannot confirm its outcome"
-                ),
-                self.client.receipt(call),
+                    "sendMessage",
+                    FailureKind.AVAILABILITY,
+                    "Twilio send checkpoint is unreadable; no message was sent in this attempt",
+                )
             )
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
-            return await self._read_back(
-                call, requested, decision.marker.provider_id if decision.marker else ""
-            )
-        try:
-            form, requested = _send_form(self.client, input)
-        except ValueError as error:
-            return MutationAttempt.branch_result(
-                "defect", empty, Receipt(), failure("sendMessage", FailureKind.VALIDATION, str(error))
-            )
+        saved_sid = decision.marker.provider_id if decision.marker else ""
+        # A saved SID proves Twilio created the message, so it is read back and never resent.
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED or (
+            decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED and saved_sid
+        ):
+            return await self._read_back(call, requested, saved_sid)
+        # This attempt's send would be the last one the cap allows when no further send remains.
+        can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        # An earlier send may have created the message, so a refusal of a resend proves nothing.
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
         authorization, credential_failure, is_transient = await self.client.authorization(call, "sendMessage")
         if credential_failure is not None:
+            if has_possible_earlier_send:
+                # notSent would hide the earlier possible send, so nothing is recorded.
+                return MutationAttempt.retry(credential_failure)
             try:
                 await fence.record_not_sent()
             except Exception:
@@ -144,12 +181,23 @@ class SendMessageOperation:
                 )
             )
         except (TimeoutError, DispatchNotAllowedError):
-            return MutationAttempt.uncertain(
-                requested,
-                failure("sendMessage", FailureKind.TRANSPORT, "Twilio message outcome is unknown"),
-                self.client.receipt(call),
+            return self._resend_or_select_uncertain(
+                call, can_resend_unknown_outcome, requested, None,
+                FailureKind.TRANSPORT, "Twilio message outcome is unknown",
             )
         if exchange.error == "notBuilt":
+            try:
+                await fence.record_can_resend()
+            except Exception:
+                pass  # The request was never sent; a lost checkpoint leaves the claim, which still counts.
+            if has_possible_earlier_send:
+                return MutationAttempt.retry(
+                    failure(
+                        "sendMessage",
+                        FailureKind.LOCAL_DEFECT,
+                        "Twilio request could not be built; no message was sent in this attempt",
+                    )
+                )
             return MutationAttempt.branch_result(
                 "defect",
                 empty,
@@ -175,45 +223,41 @@ class SendMessageOperation:
                         "Twilio could not be reached, so no message was sent",
                     )
                 )
-            return MutationAttempt.uncertain(
-                requested,
-                failure("sendMessage", FailureKind.TRANSPORT, "Twilio message outcome is unknown"),
-                self.client.receipt(call),
+            return self._resend_or_select_uncertain(
+                call, can_resend_unknown_outcome, requested, None,
+                FailureKind.TRANSPORT, "Twilio message outcome is unknown",
             )
         receipt = self.client.receipt(call, exchange)
         status = exchange.status
         if 200 <= status < 300:
             if exchange.is_body_too_large:
-                return MutationAttempt.uncertain(
-                    requested,
-                    failure(
-                        "sendMessage",
-                        FailureKind.RESPONSE_TOO_LARGE,
-                        "Twilio accepted the request but its response exceeds the configured size limit",
-                    ),
-                    receipt,
+                return self._resend_or_select_uncertain(
+                    call, can_resend_unknown_outcome, requested, exchange,
+                    FailureKind.RESPONSE_TOO_LARGE,
+                    "Twilio message response exceeds the configured size limit",
                 )
             if exchange.has_body_read_failed:
-                return MutationAttempt.uncertain(
-                    requested,
-                    failure(
-                        "sendMessage",
-                        FailureKind.TRANSPORT,
-                        "Twilio accepted the request but its response was interrupted",
-                    ),
-                    receipt,
+                return self._resend_or_select_uncertain(
+                    call, can_resend_unknown_outcome, requested, exchange,
+                    FailureKind.TRANSPORT, "Twilio message response was interrupted",
                 )
             try:
                 message = self.client.decode_message(exchange.body, authorization)
             except ValueError:
-                return MutationAttempt.uncertain(
-                    requested,
-                    failure(
-                        "sendMessage",
-                        FailureKind.PROTOCOL,
-                        "Twilio accepted the request but returned an unusable message",
-                    ),
-                    receipt,
+                if _MESSAGE.fullmatch(_message_sid(exchange.body)):
+                    # Twilio returned a created message SID, so a resend could duplicate the message.
+                    return MutationAttempt.uncertain(
+                        requested,
+                        failure(
+                            "sendMessage",
+                            FailureKind.PROTOCOL,
+                            "Twilio accepted the request but returned an unusable message",
+                        ),
+                        receipt,
+                    )
+                return self._resend_or_select_uncertain(
+                    call, can_resend_unknown_outcome, requested, exchange,
+                    FailureKind.PROTOCOL, "Twilio message response is malformed",
                 )
             try:
                 await fence.record_provider_id(message.sid)
@@ -256,32 +300,47 @@ class SendMessageOperation:
                 failure("sendMessage", FailureKind.AVAILABILITY, "Twilio service is temporarily unavailable"),
                 self.client.retry_after(exchange),
             )
-        if status == 401:
+        if status in _DEFINITE_REFUSAL_STATUSES and not _MESSAGE.fullmatch(_message_sid(exchange.body)):
             code = error_code(exchange.body)
             rejected = replace(requested, error_code=code)
-            return MutationAttempt.branch_result(
-                "providerRejected",
-                rejected,
-                self.client.receipt(call, exchange, error_code=code),
+            refusal = (
                 failure(
                     "sendMessage",
                     FailureKind.AUTHENTICATION,
                     "Twilio rejected the message credentials; update the connection",
-                ),
+                )
+                if status == 401
+                else rejection("sendMessage", "message", status, code)
             )
-        if 400 <= status < 500 and status not in (408, 409):
-            code = error_code(exchange.body)
-            return MutationAttempt.branch_result(
-                "providerRejected",
-                replace(requested, error_code=code),
-                self.client.receipt(call, exchange, error_code=code),
-                rejection("sendMessage", "message", status, code),
-            )
-        return MutationAttempt.uncertain(
-            requested,
-            failure("sendMessage", FailureKind.AVAILABILITY, "Twilio message outcome is unknown"),
-            receipt,
+            rejection_receipt = self.client.receipt(call, exchange, error_code=code)
+            if has_possible_earlier_send:
+                return MutationAttempt.uncertain(rejected, refusal, rejection_receipt)
+            try:
+                await fence.record_can_resend()
+            except Exception:
+                pass  # The branch is terminal, so a lost canResend checkpoint cannot cause a resend.
+            return MutationAttempt.branch_result("providerRejected", rejected, rejection_receipt, refusal)
+        return self._resend_or_select_uncertain(
+            call, can_resend_unknown_outcome, requested, exchange,
+            FailureKind.AVAILABILITY, "Twilio message outcome is unknown",
         )
+
+    def _resend_or_select_uncertain(
+        self,
+        call: Call,
+        can_resend_unknown_outcome: bool,
+        requested: Message,
+        exchange: Exchange | None,
+        kind: FailureKind,
+        message: str,
+    ) -> MutationAttempt[Message]:
+        """Retry a possibly sent message while the send cap allows another send."""
+        unknown = failure("sendMessage", kind, message)
+        if can_resend_unknown_outcome:
+            # The claim stays the last marker, so the next attempt counts this send.
+            return MutationAttempt.retry(unknown, self.client.retry_after(exchange) if exchange else 0)
+        receipt = self.client.receipt(call, exchange) if exchange else self.client.receipt(call)
+        return MutationAttempt.uncertain(requested, unknown, receipt)
 
     async def _read_back(self, call: Call, requested: Message, provider_id: str) -> MutationAttempt[Message]:
         if not _MESSAGE.fullmatch(provider_id):

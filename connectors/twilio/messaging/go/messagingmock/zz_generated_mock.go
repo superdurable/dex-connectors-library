@@ -77,7 +77,7 @@ func SendMessageUncertain(value messaging.Message, failure sdkgo.Failure) connec
 	return connectormock.Uncertain(value, failure)
 }
 
-// SendMessageDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+// SendMessageDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid before any send.
 func SendMessageDefect(value messaging.Message, failure *sdkgo.Failure) connectormock.Case[messaging.Message] {
 	return connectormock.Branch(messaging.SendMessageBranchDefect, value, failure)
 }

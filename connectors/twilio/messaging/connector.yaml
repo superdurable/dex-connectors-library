@@ -6,17 +6,17 @@ metadata:
   description: Send SMS, MMS, and WhatsApp messages through Twilio Programmable Messaging, read their delivery status, and receive inbound messages.
   company: Twilio
   categories: [communication]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: twilio
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-twilio-messaging
       operations: [sendMessage, getMessage]
       triggers: [messageReceived]
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: '@superdurable/connector-twilio-messaging'
       operations: [sendMessage, getMessage]
       triggers: [messageReceived]
@@ -125,19 +125,19 @@ spec:
       inputType: SendMessageInput
       outputType: Message
       kind: mutation
-      description: Send one SMS, MMS, or WhatsApp message from a Twilio number or Messaging Service to one recipient; synchronous durability makes the single-dispatch checkpoint visible to retries because Twilio provides no message idempotency key.
+      description: Send one SMS, MMS, or WhatsApp message from a Twilio number or Messaging Service to one recipient; Twilio provides no message idempotency key, so an unknown outcome resends up to the send cap and the recipient may receive a duplicate.
       idempotency: required
       branches:
         - {id: accepted, goName: Accepted, description: "Twilio created the message and returned its SID; delivery status arrives later through getMessage."}
         - {id: providerRejected, goName: ProviderRejected, description: "Twilio conclusively rejected the message, such as an invalid To number, an unverified trial recipient, an unsubscribed recipient, or an unusable sender; nothing was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Twilio has no idempotency key, so the message may exist and must not be resent automatically.", optional: true}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Twilio may have created the message, but the send cap was reached, a saved SID could not be confirmed, or Twilio returned a SID without a usable message; check Twilio before sending again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid before any send.", optional: true}
       # Sync makes the single-dispatch heartbeat visible to later attempts; Twilio has no idempotency key.
       execution:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A replayed message POST could send the SMS twice because Twilio offers no idempotency key or message lookup by Call ID."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Each resend of an unknown outcome can send the SMS again because Twilio offers no idempotency key or message lookup by Call ID, so a short window bounds how long a duplicate can appear."}}
       mocks:
         - name: queuedText
           branch: accepted

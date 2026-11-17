@@ -211,51 +211,63 @@ func TestSendMessageRetriesRateLimitWithRetryAfter(t *testing.T) {
 	require.Len(t, provider.recordedRequests(), 1)
 }
 
-func TestSendMessageNeverRetriesAnOutcomeTwilioMayHaveAccepted(t *testing.T) {
+func TestSendMessageResendsAnUnknownOutcomeAndSelectsUncertainAtTheSendCap(t *testing.T) {
 	testCases := []struct {
-		name    string
-		respond func(http.ResponseWriter, *http.Request)
-		config  messaging.Config
-		kind    sdkgo.FailureKind
+		name       string
+		respond    func(http.ResponseWriter, *http.Request)
+		config     messaging.Config
+		kind       sdkgo.FailureKind
+		isAccepted bool
 	}{
-		{"internal server error", respondWithStatus(http.StatusInternalServerError), messaging.Config{}, sdkgo.FailureAvailability},
-		{"conflict without a message SID", respondWithStatus(http.StatusConflict), messaging.Config{}, sdkgo.FailureAvailability},
-		{"gateway request timeout", respondWithStatus(http.StatusRequestTimeout), messaging.Config{}, sdkgo.FailureAvailability},
-		{"accepted without a usable message", func(response http.ResponseWriter, _ *http.Request) {
+		{"internal server error", respondWithStatus(http.StatusInternalServerError), messaging.Config{}, sdkgo.FailureAvailability, false},
+		{"conflict without a message SID", respondWithStatus(http.StatusConflict), messaging.Config{}, sdkgo.FailureAvailability, false},
+		{"gateway request timeout", respondWithStatus(http.StatusRequestTimeout), messaging.Config{}, sdkgo.FailureAvailability, false},
+		{"unlisted client error", respondWithStatus(http.StatusTooEarly), messaging.Config{}, sdkgo.FailureAvailability, false},
+		{"success without a usable message", func(response http.ResponseWriter, _ *http.Request) {
 			response.WriteHeader(http.StatusCreated)
 			writeBody(response, `{"sid":"not-a-sid"}`)
-		}, messaging.Config{}, sdkgo.FailureProtocol},
-		{"accepted with an oversized response", func(response http.ResponseWriter, _ *http.Request) {
+		}, messaging.Config{}, sdkgo.FailureProtocol, false},
+		{"success with an oversized response", func(response http.ResponseWriter, _ *http.Request) {
 			response.WriteHeader(http.StatusCreated)
 			writeBody(response, messageJSON(testMessageSID, "queued", "null"))
-		}, messaging.Config{MaxResponseBytes: 64}, sdkgo.FailureResponseTooLarge},
+		}, messaging.Config{MaxResponseBytes: 64}, sdkgo.FailureResponseTooLarge, false},
 		{"accepted for another account", func(response http.ResponseWriter, _ *http.Request) {
 			response.WriteHeader(http.StatusCreated)
 			writeBody(response, strings.ReplaceAll(messageJSON(testMessageSID, "queued", "null"), testAccountSID, "AC"+strings.Repeat("f", 32)))
-		}, messaging.Config{}, sdkgo.FailureProtocol},
+		}, messaging.Config{}, sdkgo.FailureProtocol, true},
 		{"accepted response that reflects the credential", func(response http.ResponseWriter, _ *http.Request) {
 			response.WriteHeader(http.StatusCreated)
 			writeBody(response, strings.ReplaceAll(messageJSON(testMessageSID, "queued", "null"), `"to":"`+testRecipient+`"`, `"to":"`+testAuthToken+`"`))
-		}, messaging.Config{}, sdkgo.FailureProtocol},
+		}, messaging.Config{}, sdkgo.FailureProtocol, true},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			provider := newTwilioFake(t, testCase.respond)
 			testCase.config.DefaultSender = testSender
 			client := newTwilioClient(t, provider.URL, testCase.config, authTokenCredentials())
-			result, err := sdkgo.RunMutation(newTestDexContext("send-uncertain"), client.SendMessage(), twilioConnection, validSendInput())
-			require.NoError(t, err, "an uncertain outcome is a branch, never a Retry")
+			result, err := sdkgo.RunMutation(newTestDexContext("send-unknown"), client.SendMessage(), twilioConnection, validSendInput())
+			if testCase.isAccepted {
+				require.NoError(t, err, "a returned message SID means a resend could duplicate the message")
+				require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
+			} else {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "an unknown outcome below the send cap resends")
+				require.Equal(t, testCase.kind, retry.Failure.Kind)
+				require.NotContains(t, err.Error(), testAuthToken)
+			}
+			result, err = sdkgo.RunMutation(newTestDexContext("send-unknown-at-cap"), client.SendMessage(), twilioConnection, validSendInput(), sdkgo.WithMaxSends(1))
+			require.NoError(t, err, "at the send cap an unknown outcome is a branch, never a Retry")
 			require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
 			require.Equal(t, testCase.kind, result.Failure.Kind)
 			require.Empty(t, result.Value.SID)
 			require.Equal(t, testRecipient, result.Value.To)
-			require.Len(t, provider.recordedRequests(), 1)
+			require.Len(t, provider.recordedRequests(), 2)
 			requireNoProviderText(t, result)
 		})
 	}
 }
 
-func TestSendMessageTimeoutAfterDispatchSelectsUncertain(t *testing.T) {
+func TestSendMessageTimeoutAfterDispatchSelectsUncertainAtTheSendCap(t *testing.T) {
 	releaseProvider := make(chan struct{})
 	provider := newTwilioFake(t, func(response http.ResponseWriter, _ *http.Request) {
 		<-releaseProvider
@@ -266,8 +278,8 @@ func TestSendMessageTimeoutAfterDispatchSelectsUncertain(t *testing.T) {
 	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials(),
 		messaging.WithHTTPClient(&http.Client{Timeout: 200 * time.Millisecond}))
 
-	result, err := sdkgo.RunMutation(newTestDexContext("send-timeout"), client.SendMessage(), twilioConnection, validSendInput())
-	require.NoError(t, err, "a timeout after dispatch must not become a Dex Retry")
+	result, err := sdkgo.RunMutation(newTestDexContext("send-timeout"), client.SendMessage(), twilioConnection, validSendInput(), sdkgo.WithMaxSends(1))
+	require.NoError(t, err, "a timeout after dispatch at the send cap must not become a Dex Retry")
 	require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
 	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
 	require.Equal(t, "Twilio message outcome is unknown", result.Failure.Message)
@@ -291,7 +303,7 @@ func TestSendMessageRetriesOnlyWhenNoConnectionOpened(t *testing.T) {
 	})}
 	client = newTwilioClient(t, "https://api.twilio.test/2010-04-01", messaging.Config{DefaultSender: testSender}, authTokenCredentials(),
 		messaging.WithHTTPClient(opaqueTransport))
-	result, err := sdkgo.RunMutation(newTestDexContext("send-opaque-transport"), client.SendMessage(), twilioConnection, validSendInput())
+	result, err := sdkgo.RunMutation(newTestDexContext("send-opaque-transport"), client.SendMessage(), twilioConnection, validSendInput(), sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch, "a transport without trace events cannot prove non-dispatch")
 	require.NotContains(t, result.Failure.Message, testAuthToken)
@@ -311,7 +323,7 @@ func TestSendMessageDoesNotFollowRedirectsWithCredentials(t *testing.T) {
 		response.WriteHeader(http.StatusTemporaryRedirect)
 	})
 	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
-	result, err := sdkgo.RunMutation(newTestDexContext("send-redirect"), client.SendMessage(), twilioConnection, validSendInput())
+	result, err := sdkgo.RunMutation(newTestDexContext("send-redirect"), client.SendMessage(), twilioConnection, validSendInput(), sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
 	mutex.Lock()

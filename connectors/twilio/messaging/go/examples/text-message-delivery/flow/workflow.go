@@ -148,7 +148,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: sendTextMessageStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "twilio", GroupLabel: "Twilio",
-				Explanation: "Send the text once; an unknown outcome is reconciled, never resent automatically.",
+				Explanation: "Send the text; an unknown outcome resends up to the send cap, then is reconciled.",
 			},
 			Connection: flow.connection, MapToOperationInput: flow.MapToSendMessageInput,
 			Accepted: sdkgo.GoTo(recordAcceptedTextMessage{}),
