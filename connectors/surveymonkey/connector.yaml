@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: surveymonkey
   displayName: SurveyMonkey
-  description: Read and manage surveys and collectors and inspect response metadata through the SurveyMonkey API.
+  description: Read and manage surveys and collectors and inspect or delete response metadata through the SurveyMonkey API.
   company: SurveyMonkey
   categories: [productivity, marketing]
   version: v0.2.0
@@ -47,12 +47,12 @@ spec:
         goName: AccessToken
         type: secretString
         required: true
-        description: Secret Access Token from https://developer.surveymonkey.com > My Apps > your private app > Settings. Copy the complete token into this secret field; blank makes calls select defect. Dex sends it only as a Bearer authorization header. Writes require the matching Create/Modify Surveys or Collectors permission on the token.
+        description: Secret Access Token from https://developer.surveymonkey.com > My Apps > your private app > Settings. Copy the complete token into this secret field; blank makes calls select defect. Dex sends it only as a Bearer authorization header. Writes require the matching Create/Modify Surveys, Collectors, or Responses permission on the token.
     guide:
       startURL: https://developer.surveymonkey.com
       steps:
         - Sign in at https://developer.surveymonkey.com, open My Apps, create or select a private app, and open its Settings page.
-        - Copy the full Access Token into the secret access_token field. For a public app, configure View Surveys and View Responses scopes for reads, Create/Modify Surveys for survey writes, and View Collectors and Create/Modify Collectors for collector operations before obtaining a token; SurveyMonkey must approve survey write scopes on public apps. Revoke the token in app settings when retired.
+        - Copy the full Access Token into the secret access_token field. For a public app, configure View Surveys and View Responses scopes for reads, Create/Modify Surveys for survey writes, View Collectors and Create/Modify Collectors for collector operations, and Create/Modify Responses for response deletion before obtaining a token; SurveyMonkey must approve survey and response write scopes on public apps. Revoke the token in app settings when retired.
         - Select the v3 API base URL matching the account region. Leave baseUrl, timeout, and maxResponseBytes blank only when their displayed defaults apply.
   operations:
     - name: listSurveys
@@ -243,3 +243,35 @@ spec:
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: One deleted collector ID., output: {id: '2345'}}
+    - name: listResponses
+      goName: ListResponses
+      inputType: ListResponsesInput
+      outputType: ResponseIDsPage
+      kind: query
+      description: List response IDs for one survey without answers or respondent data.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: SurveyMonkey returned a response ID page.}
+        - {id: notFound, goName: NotFound, description: The survey does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SurveyMonkey returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One response ID page., output: {responseIds: ['987654321'], page: 1, perPage: 50, total: 1}}
+    - name: deleteResponse
+      goName: DeleteResponse
+      inputType: DeleteResponseInput
+      outputType: DeleteResponseOutput
+      kind: mutation
+      description: Delete one response through its collector and response IDs.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: SurveyMonkey deleted the response or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: One deleted response ID., output: {id: '987654321'}}

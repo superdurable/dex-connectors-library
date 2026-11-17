@@ -29,6 +29,8 @@ type Mock struct {
 	createCollector *connectormock.Mutation[surveymonkey.CreateCollectorInput, surveymonkey.CollectorMetadata]
 	updateCollector *connectormock.Mutation[surveymonkey.UpdateCollectorInput, surveymonkey.CollectorMetadata]
 	deleteCollector *connectormock.Mutation[surveymonkey.DeleteCollectorInput, surveymonkey.DeleteCollectorOutput]
+	listResponses   *connectormock.Query[surveymonkey.ListResponsesInput, surveymonkey.ResponseIDsPage]
+	deleteResponse  *connectormock.Mutation[surveymonkey.DeleteResponseInput, surveymonkey.DeleteResponseOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -47,6 +49,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		createCollector: connectormock.NewMutation[surveymonkey.CreateCollectorInput, surveymonkey.CollectorMetadata](t, surveymonkey.CreateCollectorDefinition),
 		updateCollector: connectormock.NewMutation[surveymonkey.UpdateCollectorInput, surveymonkey.CollectorMetadata](t, surveymonkey.UpdateCollectorDefinition),
 		deleteCollector: connectormock.NewMutation[surveymonkey.DeleteCollectorInput, surveymonkey.DeleteCollectorOutput](t, surveymonkey.DeleteCollectorDefinition),
+		listResponses:   connectormock.NewQuery[surveymonkey.ListResponsesInput, surveymonkey.ResponseIDsPage](t, surveymonkey.ListResponsesDefinition),
+		deleteResponse:  connectormock.NewMutation[surveymonkey.DeleteResponseInput, surveymonkey.DeleteResponseOutput](t, surveymonkey.DeleteResponseDefinition),
 	}
 	mock.listSurveys.Default(ListSurveysDefault())
 	mock.getResponse.Default(GetResponseDefault())
@@ -59,6 +63,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createCollector.Default(CreateCollectorDefault())
 	mock.updateCollector.Default(UpdateCollectorDefault())
 	mock.deleteCollector.Default(DeleteCollectorDefault())
+	mock.listResponses.Default(ListResponsesDefault())
+	mock.deleteResponse.Default(DeleteResponseDefault())
 	connection, err := surveymonkey.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "surveymonkey", Name: connectionName})
 	if err != nil {
 		t.Fatalf("surveymonkey mock connection: %v", err)
@@ -125,6 +131,16 @@ func (mock *Mock) DeleteCollector() *connectormock.Mutation[surveymonkey.DeleteC
 	return mock.deleteCollector
 }
 
+// ListResponses returns the listResponses script.
+func (mock *Mock) ListResponses() *connectormock.Query[surveymonkey.ListResponsesInput, surveymonkey.ResponseIDsPage] {
+	return mock.listResponses
+}
+
+// DeleteResponse returns the deleteResponse script.
+func (mock *Mock) DeleteResponse() *connectormock.Mutation[surveymonkey.DeleteResponseInput, surveymonkey.DeleteResponseOutput] {
+	return mock.deleteResponse
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListSurveys() sdkgo.Query[surveymonkey.ListSurveysInput, surveymonkey.SurveysPage] {
@@ -159,6 +175,12 @@ func (operations mockOperations) UpdateCollector() sdkgo.Mutation[surveymonkey.U
 }
 func (operations mockOperations) DeleteCollector() sdkgo.Mutation[surveymonkey.DeleteCollectorInput, surveymonkey.DeleteCollectorOutput] {
 	return operations.mock.deleteCollector
+}
+func (operations mockOperations) ListResponses() sdkgo.Query[surveymonkey.ListResponsesInput, surveymonkey.ResponseIDsPage] {
+	return operations.mock.listResponses
+}
+func (operations mockOperations) DeleteResponse() sdkgo.Mutation[surveymonkey.DeleteResponseInput, surveymonkey.DeleteResponseOutput] {
+	return operations.mock.deleteResponse
 }
 
 // ListSurveysListed selects the listed branch: SurveyMonkey returned the selected survey page.
@@ -575,4 +597,76 @@ func DeleteCollectorDeletedDefault() connectormock.Case[surveymonkey.DeleteColle
 // DeleteCollectorDefault is the manifest default, deletedDefault, which New installs.
 func DeleteCollectorDefault() connectormock.Case[surveymonkey.DeleteCollectorOutput] {
 	return DeleteCollectorDeletedDefault()
+}
+
+// ListResponsesListed selects the listed branch: SurveyMonkey returned a response ID page.
+func ListResponsesListed(value surveymonkey.ResponseIDsPage, failure *sdkgo.Failure) connectormock.Case[surveymonkey.ResponseIDsPage] {
+	return connectormock.Branch(surveymonkey.ListResponsesBranchListed, value, failure)
+}
+
+// ListResponsesNotFound selects the notFound branch: The survey does not exist or is inaccessible.
+func ListResponsesNotFound(value surveymonkey.ResponseIDsPage, failure *sdkgo.Failure) connectormock.Case[surveymonkey.ResponseIDsPage] {
+	return connectormock.Branch(surveymonkey.ListResponsesBranchNotFound, value, failure)
+}
+
+// ListResponsesProviderRejected selects the providerRejected branch: SurveyMonkey conclusively rejected the request.
+func ListResponsesProviderRejected(value surveymonkey.ResponseIDsPage, failure *sdkgo.Failure) connectormock.Case[surveymonkey.ResponseIDsPage] {
+	return connectormock.Branch(surveymonkey.ListResponsesBranchProviderRejected, value, failure)
+}
+
+// ListResponsesInvalidResponse selects the invalidResponse branch: SurveyMonkey returned invalid JSON.
+func ListResponsesInvalidResponse(value surveymonkey.ResponseIDsPage, failure *sdkgo.Failure) connectormock.Case[surveymonkey.ResponseIDsPage] {
+	return connectormock.Branch(surveymonkey.ListResponsesBranchInvalidResponse, value, failure)
+}
+
+// ListResponsesDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListResponsesDefect(value surveymonkey.ResponseIDsPage, failure *sdkgo.Failure) connectormock.Case[surveymonkey.ResponseIDsPage] {
+	return connectormock.Branch(surveymonkey.ListResponsesBranchDefect, value, failure)
+}
+
+// ListResponsesRetry asks Dex to retry the listResponses Step, after the delay when it is positive.
+func ListResponsesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[surveymonkey.ResponseIDsPage] {
+	return connectormock.Retry[surveymonkey.ResponseIDsPage](failure, after)
+}
+
+// ListResponsesListedDefault is the manifest mock listedDefault: One response ID page.
+func ListResponsesListedDefault() connectormock.Case[surveymonkey.ResponseIDsPage] {
+	value := connectormock.MustDecodeOutput[surveymonkey.ResponseIDsPage](`{"responseIds":["987654321"],"page":1,"perPage":50,"total":1}`)
+	return connectormock.Branch(surveymonkey.ListResponsesBranchListed, value, nil)
+}
+
+// ListResponsesDefault is the manifest default, listedDefault, which New installs.
+func ListResponsesDefault() connectormock.Case[surveymonkey.ResponseIDsPage] {
+	return ListResponsesListedDefault()
+}
+
+// DeleteResponseDeleted selects the deleted branch: SurveyMonkey deleted the response or it was already absent.
+func DeleteResponseDeleted(value surveymonkey.DeleteResponseOutput, failure *sdkgo.Failure) connectormock.Case[surveymonkey.DeleteResponseOutput] {
+	return connectormock.Branch(surveymonkey.DeleteResponseBranchDeleted, value, failure)
+}
+
+// DeleteResponseProviderRejected selects the providerRejected branch: SurveyMonkey conclusively rejected the request.
+func DeleteResponseProviderRejected(value surveymonkey.DeleteResponseOutput, failure *sdkgo.Failure) connectormock.Case[surveymonkey.DeleteResponseOutput] {
+	return connectormock.Branch(surveymonkey.DeleteResponseBranchProviderRejected, value, failure)
+}
+
+// DeleteResponseDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteResponseDefect(value surveymonkey.DeleteResponseOutput, failure *sdkgo.Failure) connectormock.Case[surveymonkey.DeleteResponseOutput] {
+	return connectormock.Branch(surveymonkey.DeleteResponseBranchDefect, value, failure)
+}
+
+// DeleteResponseRetry asks Dex to retry the deleteResponse Step, after the delay when it is positive.
+func DeleteResponseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[surveymonkey.DeleteResponseOutput] {
+	return connectormock.Retry[surveymonkey.DeleteResponseOutput](failure, after)
+}
+
+// DeleteResponseDeletedDefault is the manifest mock deletedDefault: One deleted response ID.
+func DeleteResponseDeletedDefault() connectormock.Case[surveymonkey.DeleteResponseOutput] {
+	value := connectormock.MustDecodeOutput[surveymonkey.DeleteResponseOutput](`{"id":"987654321"}`)
+	return connectormock.Branch(surveymonkey.DeleteResponseBranchDeleted, value, nil)
+}
+
+// DeleteResponseDefault is the manifest default, deletedDefault, which New installs.
+func DeleteResponseDefault() connectormock.Case[surveymonkey.DeleteResponseOutput] {
+	return DeleteResponseDeletedDefault()
 }

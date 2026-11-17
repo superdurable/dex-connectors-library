@@ -60,6 +60,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[surveymonkey.DeleteCollectorOutput](`{"id":"2345"}`)
 			return err
 		}},
+		{name: "listResponses/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[surveymonkey.ResponseIDsPage](`{"responseIds":["987654321"],"page":1,"perPage":50,"total":1}`)
+			return err
+		}},
+		{name: "deleteResponse/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[surveymonkey.DeleteResponseOutput](`{"id":"987654321"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -102,5 +110,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteCollector().Definition().Operation.OperationID != "deleteCollector" {
 		t.Errorf("deleteCollector mock has another definition")
+	}
+	if mock.ListResponses().Definition().Operation.OperationID != "listResponses" {
+		t.Errorf("listResponses mock has another definition")
+	}
+	if mock.DeleteResponse().Definition().Operation.OperationID != "deleteResponse" {
+		t.Errorf("deleteResponse mock has another definition")
 	}
 }

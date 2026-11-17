@@ -39,5 +39,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createCollector": newConformanceMutationInvocation(t, scenario.Input, collectorContext, client.CreateCollector(), reference, scenario.CallID),
 		"updateCollector": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateCollector(), reference, scenario.CallID),
 		"deleteCollector": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCollector(), reference, scenario.CallID),
+		"listResponses":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListResponses(), reference),
+		"deleteResponse":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteResponse(), reference, scenario.CallID),
 	}}
 }
