@@ -7,3 +7,5 @@ Each call uses the documented [OpenAPI signature V3](https://help.aliyun.com/en/
 `describeRegions` selects `fetched`, `providerRejected`, `invalidResponse`, or `defect`. Rate limits, transport failures, and temporary provider failures retry. Optional branches fail the example Flow unless wired by an application.
 
 [Run the regions Flow](go/examples/regions/README.md). The checked-in mock is synthetic; real provider authorization and response behavior require a user-controlled RAM AccessKey pair in Dex Web Connections.
+
+The [TypeScript package and runnable Flow](typescript/README.md) replay the Go-recorded provider contract and exercise the Flow against a real local Dex Server.

@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: alibaba
+  languages:
+    typescript: {version: v0.1.0, operations: [describeRegions], triggers: []}
   codegen:
     go:
       package: alibaba

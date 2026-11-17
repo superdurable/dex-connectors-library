@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: alapi
+  languages:
+    typescript: {version: v0.1.0, operations: [lookupIPLocation], triggers: []}
   codegen:
     go:
       package: alapi
