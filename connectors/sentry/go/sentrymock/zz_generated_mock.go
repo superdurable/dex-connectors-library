@@ -17,30 +17,33 @@ import (
 
 // Mock is a scripted sentry connection. Script each operation through its accessor.
 type Mock struct {
-	connection        sentry.Connection
-	createTeam        *connectormock.Mutation[sentry.CreateTeamInput, sentry.Team]
-	getTeam           *connectormock.Query[sentry.GetTeamInput, sentry.Team]
-	listTeams         *connectormock.Query[sentry.ListTeamsInput, sentry.TeamPage]
-	updateTeam        *connectormock.Mutation[sentry.UpdateTeamInput, sentry.Team]
-	deleteTeam        *connectormock.Mutation[sentry.DeleteTeamInput, sentry.DeletedTeam]
-	createRelease     *connectormock.Mutation[sentry.CreateReleaseInput, sentry.Release]
-	getRelease        *connectormock.Query[sentry.GetReleaseInput, sentry.Release]
-	listReleases      *connectormock.Query[sentry.ListReleasesInput, sentry.ReleasePage]
-	updateRelease     *connectormock.Mutation[sentry.UpdateReleaseInput, sentry.Release]
-	deleteRelease     *connectormock.Mutation[sentry.DeleteReleaseInput, sentry.DeletedRelease]
-	createProject     *connectormock.Mutation[sentry.CreateProjectInput, sentry.Project]
-	assignIssue       *connectormock.Mutation[sentry.AssignIssueInput, sentry.Issue]
-	deleteIssue       *connectormock.Mutation[sentry.DeleteIssueInput, sentry.DeletedIssue]
-	renameProject     *connectormock.Mutation[sentry.RenameProjectInput, sentry.Project]
-	deleteProject     *connectormock.Mutation[sentry.DeleteProjectInput, sentry.DeletedProject]
-	listIssues        *connectormock.Query[sentry.ListIssuesInput, sentry.IssuePage]
-	getIssue          *connectormock.Query[sentry.GetIssueInput, sentry.Issue]
-	updateIssueStatus *connectormock.Mutation[sentry.UpdateIssueStatusInput, sentry.Issue]
-	listIssueEvents   *connectormock.Query[sentry.ListIssueEventsInput, sentry.IssueEventPage]
-	getIssueEvent     *connectormock.Query[sentry.GetIssueEventInput, sentry.IssueEvent]
-	listProjects      *connectormock.Query[sentry.ListProjectsInput, sentry.ProjectPage]
-	getProject        *connectormock.Query[sentry.GetProjectInput, sentry.Project]
-	listOrganizations *connectormock.Query[sentry.ListOrganizationsInput, sentry.OrganizationPage]
+	connection         sentry.Connection
+	createTeam         *connectormock.Mutation[sentry.CreateTeamInput, sentry.Team]
+	getTeam            *connectormock.Query[sentry.GetTeamInput, sentry.Team]
+	listTeams          *connectormock.Query[sentry.ListTeamsInput, sentry.TeamPage]
+	updateTeam         *connectormock.Mutation[sentry.UpdateTeamInput, sentry.Team]
+	deleteTeam         *connectormock.Mutation[sentry.DeleteTeamInput, sentry.DeletedTeam]
+	createRelease      *connectormock.Mutation[sentry.CreateReleaseInput, sentry.Release]
+	getRelease         *connectormock.Query[sentry.GetReleaseInput, sentry.Release]
+	listReleases       *connectormock.Query[sentry.ListReleasesInput, sentry.ReleasePage]
+	updateRelease      *connectormock.Mutation[sentry.UpdateReleaseInput, sentry.Release]
+	deleteRelease      *connectormock.Mutation[sentry.DeleteReleaseInput, sentry.DeletedRelease]
+	createProject      *connectormock.Mutation[sentry.CreateProjectInput, sentry.Project]
+	assignIssue        *connectormock.Mutation[sentry.AssignIssueInput, sentry.Issue]
+	deleteIssue        *connectormock.Mutation[sentry.DeleteIssueInput, sentry.DeletedIssue]
+	renameProject      *connectormock.Mutation[sentry.RenameProjectInput, sentry.Project]
+	deleteProject      *connectormock.Mutation[sentry.DeleteProjectInput, sentry.DeletedProject]
+	listIssues         *connectormock.Query[sentry.ListIssuesInput, sentry.IssuePage]
+	getIssue           *connectormock.Query[sentry.GetIssueInput, sentry.Issue]
+	updateIssueStatus  *connectormock.Mutation[sentry.UpdateIssueStatusInput, sentry.Issue]
+	listIssueEvents    *connectormock.Query[sentry.ListIssueEventsInput, sentry.IssueEventPage]
+	getIssueEvent      *connectormock.Query[sentry.GetIssueEventInput, sentry.IssueEvent]
+	listProjects       *connectormock.Query[sentry.ListProjectsInput, sentry.ProjectPage]
+	getProject         *connectormock.Query[sentry.GetProjectInput, sentry.Project]
+	listOrganizations  *connectormock.Query[sentry.ListOrganizationsInput, sentry.OrganizationPage]
+	createOrganization *connectormock.Mutation[sentry.CreateOrganizationInput, sentry.Organization]
+	getOrganization    *connectormock.Query[sentry.GetOrganizationInput, sentry.Organization]
+	updateOrganization *connectormock.Mutation[sentry.UpdateOrganizationInput, sentry.Organization]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -48,29 +51,32 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createTeam:        connectormock.NewMutation[sentry.CreateTeamInput, sentry.Team](t, sentry.CreateTeamDefinition),
-		getTeam:           connectormock.NewQuery[sentry.GetTeamInput, sentry.Team](t, sentry.GetTeamDefinition),
-		listTeams:         connectormock.NewQuery[sentry.ListTeamsInput, sentry.TeamPage](t, sentry.ListTeamsDefinition),
-		updateTeam:        connectormock.NewMutation[sentry.UpdateTeamInput, sentry.Team](t, sentry.UpdateTeamDefinition),
-		deleteTeam:        connectormock.NewMutation[sentry.DeleteTeamInput, sentry.DeletedTeam](t, sentry.DeleteTeamDefinition),
-		createRelease:     connectormock.NewMutation[sentry.CreateReleaseInput, sentry.Release](t, sentry.CreateReleaseDefinition),
-		getRelease:        connectormock.NewQuery[sentry.GetReleaseInput, sentry.Release](t, sentry.GetReleaseDefinition),
-		listReleases:      connectormock.NewQuery[sentry.ListReleasesInput, sentry.ReleasePage](t, sentry.ListReleasesDefinition),
-		updateRelease:     connectormock.NewMutation[sentry.UpdateReleaseInput, sentry.Release](t, sentry.UpdateReleaseDefinition),
-		deleteRelease:     connectormock.NewMutation[sentry.DeleteReleaseInput, sentry.DeletedRelease](t, sentry.DeleteReleaseDefinition),
-		createProject:     connectormock.NewMutation[sentry.CreateProjectInput, sentry.Project](t, sentry.CreateProjectDefinition),
-		assignIssue:       connectormock.NewMutation[sentry.AssignIssueInput, sentry.Issue](t, sentry.AssignIssueDefinition),
-		deleteIssue:       connectormock.NewMutation[sentry.DeleteIssueInput, sentry.DeletedIssue](t, sentry.DeleteIssueDefinition),
-		renameProject:     connectormock.NewMutation[sentry.RenameProjectInput, sentry.Project](t, sentry.RenameProjectDefinition),
-		deleteProject:     connectormock.NewMutation[sentry.DeleteProjectInput, sentry.DeletedProject](t, sentry.DeleteProjectDefinition),
-		listIssues:        connectormock.NewQuery[sentry.ListIssuesInput, sentry.IssuePage](t, sentry.ListIssuesDefinition),
-		getIssue:          connectormock.NewQuery[sentry.GetIssueInput, sentry.Issue](t, sentry.GetIssueDefinition),
-		updateIssueStatus: connectormock.NewMutation[sentry.UpdateIssueStatusInput, sentry.Issue](t, sentry.UpdateIssueStatusDefinition),
-		listIssueEvents:   connectormock.NewQuery[sentry.ListIssueEventsInput, sentry.IssueEventPage](t, sentry.ListIssueEventsDefinition),
-		getIssueEvent:     connectormock.NewQuery[sentry.GetIssueEventInput, sentry.IssueEvent](t, sentry.GetIssueEventDefinition),
-		listProjects:      connectormock.NewQuery[sentry.ListProjectsInput, sentry.ProjectPage](t, sentry.ListProjectsDefinition),
-		getProject:        connectormock.NewQuery[sentry.GetProjectInput, sentry.Project](t, sentry.GetProjectDefinition),
-		listOrganizations: connectormock.NewQuery[sentry.ListOrganizationsInput, sentry.OrganizationPage](t, sentry.ListOrganizationsDefinition),
+		createTeam:         connectormock.NewMutation[sentry.CreateTeamInput, sentry.Team](t, sentry.CreateTeamDefinition),
+		getTeam:            connectormock.NewQuery[sentry.GetTeamInput, sentry.Team](t, sentry.GetTeamDefinition),
+		listTeams:          connectormock.NewQuery[sentry.ListTeamsInput, sentry.TeamPage](t, sentry.ListTeamsDefinition),
+		updateTeam:         connectormock.NewMutation[sentry.UpdateTeamInput, sentry.Team](t, sentry.UpdateTeamDefinition),
+		deleteTeam:         connectormock.NewMutation[sentry.DeleteTeamInput, sentry.DeletedTeam](t, sentry.DeleteTeamDefinition),
+		createRelease:      connectormock.NewMutation[sentry.CreateReleaseInput, sentry.Release](t, sentry.CreateReleaseDefinition),
+		getRelease:         connectormock.NewQuery[sentry.GetReleaseInput, sentry.Release](t, sentry.GetReleaseDefinition),
+		listReleases:       connectormock.NewQuery[sentry.ListReleasesInput, sentry.ReleasePage](t, sentry.ListReleasesDefinition),
+		updateRelease:      connectormock.NewMutation[sentry.UpdateReleaseInput, sentry.Release](t, sentry.UpdateReleaseDefinition),
+		deleteRelease:      connectormock.NewMutation[sentry.DeleteReleaseInput, sentry.DeletedRelease](t, sentry.DeleteReleaseDefinition),
+		createProject:      connectormock.NewMutation[sentry.CreateProjectInput, sentry.Project](t, sentry.CreateProjectDefinition),
+		assignIssue:        connectormock.NewMutation[sentry.AssignIssueInput, sentry.Issue](t, sentry.AssignIssueDefinition),
+		deleteIssue:        connectormock.NewMutation[sentry.DeleteIssueInput, sentry.DeletedIssue](t, sentry.DeleteIssueDefinition),
+		renameProject:      connectormock.NewMutation[sentry.RenameProjectInput, sentry.Project](t, sentry.RenameProjectDefinition),
+		deleteProject:      connectormock.NewMutation[sentry.DeleteProjectInput, sentry.DeletedProject](t, sentry.DeleteProjectDefinition),
+		listIssues:         connectormock.NewQuery[sentry.ListIssuesInput, sentry.IssuePage](t, sentry.ListIssuesDefinition),
+		getIssue:           connectormock.NewQuery[sentry.GetIssueInput, sentry.Issue](t, sentry.GetIssueDefinition),
+		updateIssueStatus:  connectormock.NewMutation[sentry.UpdateIssueStatusInput, sentry.Issue](t, sentry.UpdateIssueStatusDefinition),
+		listIssueEvents:    connectormock.NewQuery[sentry.ListIssueEventsInput, sentry.IssueEventPage](t, sentry.ListIssueEventsDefinition),
+		getIssueEvent:      connectormock.NewQuery[sentry.GetIssueEventInput, sentry.IssueEvent](t, sentry.GetIssueEventDefinition),
+		listProjects:       connectormock.NewQuery[sentry.ListProjectsInput, sentry.ProjectPage](t, sentry.ListProjectsDefinition),
+		getProject:         connectormock.NewQuery[sentry.GetProjectInput, sentry.Project](t, sentry.GetProjectDefinition),
+		listOrganizations:  connectormock.NewQuery[sentry.ListOrganizationsInput, sentry.OrganizationPage](t, sentry.ListOrganizationsDefinition),
+		createOrganization: connectormock.NewMutation[sentry.CreateOrganizationInput, sentry.Organization](t, sentry.CreateOrganizationDefinition),
+		getOrganization:    connectormock.NewQuery[sentry.GetOrganizationInput, sentry.Organization](t, sentry.GetOrganizationDefinition),
+		updateOrganization: connectormock.NewMutation[sentry.UpdateOrganizationInput, sentry.Organization](t, sentry.UpdateOrganizationDefinition),
 	}
 	mock.createTeam.Default(CreateTeamDefault())
 	mock.getTeam.Default(GetTeamDefault())
@@ -95,6 +101,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listProjects.Default(ListProjectsDefault())
 	mock.getProject.Default(GetProjectDefault())
 	mock.listOrganizations.Default(ListOrganizationsDefault())
+	mock.createOrganization.Default(CreateOrganizationDefault())
+	mock.getOrganization.Default(GetOrganizationDefault())
+	mock.updateOrganization.Default(UpdateOrganizationDefault())
 	connection, err := sentry.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "sentry", Name: connectionName})
 	if err != nil {
 		t.Fatalf("sentry mock connection: %v", err)
@@ -221,6 +230,21 @@ func (mock *Mock) ListOrganizations() *connectormock.Query[sentry.ListOrganizati
 	return mock.listOrganizations
 }
 
+// CreateOrganization returns the createOrganization script.
+func (mock *Mock) CreateOrganization() *connectormock.Mutation[sentry.CreateOrganizationInput, sentry.Organization] {
+	return mock.createOrganization
+}
+
+// GetOrganization returns the getOrganization script.
+func (mock *Mock) GetOrganization() *connectormock.Query[sentry.GetOrganizationInput, sentry.Organization] {
+	return mock.getOrganization
+}
+
+// UpdateOrganization returns the updateOrganization script.
+func (mock *Mock) UpdateOrganization() *connectormock.Mutation[sentry.UpdateOrganizationInput, sentry.Organization] {
+	return mock.updateOrganization
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateTeam() sdkgo.Mutation[sentry.CreateTeamInput, sentry.Team] {
@@ -291,6 +315,15 @@ func (operations mockOperations) GetProject() sdkgo.Query[sentry.GetProjectInput
 }
 func (operations mockOperations) ListOrganizations() sdkgo.Query[sentry.ListOrganizationsInput, sentry.OrganizationPage] {
 	return operations.mock.listOrganizations
+}
+func (operations mockOperations) CreateOrganization() sdkgo.Mutation[sentry.CreateOrganizationInput, sentry.Organization] {
+	return operations.mock.createOrganization
+}
+func (operations mockOperations) GetOrganization() sdkgo.Query[sentry.GetOrganizationInput, sentry.Organization] {
+	return operations.mock.getOrganization
+}
+func (operations mockOperations) UpdateOrganization() sdkgo.Mutation[sentry.UpdateOrganizationInput, sentry.Organization] {
+	return operations.mock.updateOrganization
 }
 
 // CreateTeamCreated selects the created branch: Sentry created or confirmed the team.
@@ -1169,4 +1202,122 @@ func ListOrganizationsListOrganizationsDefault() connectormock.Case[sentry.Organ
 // ListOrganizationsDefault is the manifest default, listOrganizationsDefault, which New installs.
 func ListOrganizationsDefault() connectormock.Case[sentry.OrganizationPage] {
 	return ListOrganizationsListOrganizationsDefault()
+}
+
+// CreateOrganizationCreated selects the created branch: Sentry created or confirmed the organization.
+func CreateOrganizationCreated(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.CreateOrganizationBranchCreated, value, failure)
+}
+
+// CreateOrganizationProviderRejected selects the providerRejected branch: Sentry definitively rejected creation.
+func CreateOrganizationProviderRejected(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.CreateOrganizationBranchProviderRejected, value, failure)
+}
+
+// CreateOrganizationDefect selects the defect branch: Local input or credentials are invalid.
+func CreateOrganizationDefect(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.CreateOrganizationBranchDefect, value, failure)
+}
+
+// CreateOrganizationUncertain returns an uncertain createOrganization outcome.
+func CreateOrganizationUncertain(value sentry.Organization, failure sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateOrganizationRetry asks Dex to retry the createOrganization Step, after the delay when it is positive.
+func CreateOrganizationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Organization] {
+	return connectormock.Retry[sentry.Organization](failure, after)
+}
+
+// CreateOrganizationCreateOrganizationDefault is the manifest mock createOrganizationDefault: One organization was created.
+func CreateOrganizationCreateOrganizationDefault() connectormock.Case[sentry.Organization] {
+	value := connectormock.MustDecodeOutput[sentry.Organization](`{"id":"789","slug":"acme","name":"Acme"}`)
+	return connectormock.Branch(sentry.CreateOrganizationBranchCreated, value, nil)
+}
+
+// CreateOrganizationDefault is the manifest default, createOrganizationDefault, which New installs.
+func CreateOrganizationDefault() connectormock.Case[sentry.Organization] {
+	return CreateOrganizationCreateOrganizationDefault()
+}
+
+// GetOrganizationFound selects the found branch: Sentry returned the organization.
+func GetOrganizationFound(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.GetOrganizationBranchFound, value, failure)
+}
+
+// GetOrganizationNotFound selects the notFound branch: The organization does not exist.
+func GetOrganizationNotFound(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.GetOrganizationBranchNotFound, value, failure)
+}
+
+// GetOrganizationProviderRejected selects the providerRejected branch: Sentry definitively rejected the request.
+func GetOrganizationProviderRejected(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.GetOrganizationBranchProviderRejected, value, failure)
+}
+
+// GetOrganizationInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func GetOrganizationInvalidResponse(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.GetOrganizationBranchInvalidResponse, value, failure)
+}
+
+// GetOrganizationDefect selects the defect branch: Local input or credentials are invalid.
+func GetOrganizationDefect(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.GetOrganizationBranchDefect, value, failure)
+}
+
+// GetOrganizationRetry asks Dex to retry the getOrganization Step, after the delay when it is positive.
+func GetOrganizationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Organization] {
+	return connectormock.Retry[sentry.Organization](failure, after)
+}
+
+// GetOrganizationGetOrganizationDefault is the manifest mock getOrganizationDefault: One organization was found.
+func GetOrganizationGetOrganizationDefault() connectormock.Case[sentry.Organization] {
+	value := connectormock.MustDecodeOutput[sentry.Organization](`{"id":"789","slug":"acme","name":"Acme"}`)
+	return connectormock.Branch(sentry.GetOrganizationBranchFound, value, nil)
+}
+
+// GetOrganizationDefault is the manifest default, getOrganizationDefault, which New installs.
+func GetOrganizationDefault() connectormock.Case[sentry.Organization] {
+	return GetOrganizationGetOrganizationDefault()
+}
+
+// UpdateOrganizationUpdated selects the updated branch: Sentry updated the organization.
+func UpdateOrganizationUpdated(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.UpdateOrganizationBranchUpdated, value, failure)
+}
+
+// UpdateOrganizationNotFound selects the notFound branch: The organization does not exist.
+func UpdateOrganizationNotFound(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.UpdateOrganizationBranchNotFound, value, failure)
+}
+
+// UpdateOrganizationProviderRejected selects the providerRejected branch: Sentry definitively rejected the update.
+func UpdateOrganizationProviderRejected(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.UpdateOrganizationBranchProviderRejected, value, failure)
+}
+
+// UpdateOrganizationInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func UpdateOrganizationInvalidResponse(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.UpdateOrganizationBranchInvalidResponse, value, failure)
+}
+
+// UpdateOrganizationDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateOrganizationDefect(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.UpdateOrganizationBranchDefect, value, failure)
+}
+
+// UpdateOrganizationRetry asks Dex to retry the updateOrganization Step, after the delay when it is positive.
+func UpdateOrganizationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Organization] {
+	return connectormock.Retry[sentry.Organization](failure, after)
+}
+
+// UpdateOrganizationUpdateOrganizationDefault is the manifest mock updateOrganizationDefault: One organization was updated.
+func UpdateOrganizationUpdateOrganizationDefault() connectormock.Case[sentry.Organization] {
+	value := connectormock.MustDecodeOutput[sentry.Organization](`{"id":"789","slug":"acme","name":"Acme"}`)
+	return connectormock.Branch(sentry.UpdateOrganizationBranchUpdated, value, nil)
+}
+
+// UpdateOrganizationDefault is the manifest default, updateOrganizationDefault, which New installs.
+func UpdateOrganizationDefault() connectormock.Case[sentry.Organization] {
+	return UpdateOrganizationUpdateOrganizationDefault()
 }

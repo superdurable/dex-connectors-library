@@ -102,6 +102,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[sentry.OrganizationPage](`{"organizations":[{"id":"789","slug":"acme","name":"Acme"}]}`)
 			return err
 		}},
+		{name: "createOrganization/createOrganizationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Organization](`{"id":"789","slug":"acme","name":"Acme"}`)
+			return err
+		}},
+		{name: "getOrganization/getOrganizationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Organization](`{"id":"789","slug":"acme","name":"Acme"}`)
+			return err
+		}},
+		{name: "updateOrganization/updateOrganizationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Organization](`{"id":"789","slug":"acme","name":"Acme"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -180,5 +192,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListOrganizations().Definition().Operation.OperationID != "listOrganizations" {
 		t.Errorf("listOrganizations mock has another definition")
+	}
+	if mock.CreateOrganization().Definition().Operation.OperationID != "createOrganization" {
+		t.Errorf("createOrganization mock has another definition")
+	}
+	if mock.GetOrganization().Definition().Operation.OperationID != "getOrganization" {
+		t.Errorf("getOrganization mock has another definition")
+	}
+	if mock.UpdateOrganization().Definition().Operation.OperationID != "updateOrganization" {
+		t.Errorf("updateOrganization mock has another definition")
 	}
 }

@@ -49,6 +49,9 @@ The Python package is [`dex-connector-sentry`](python/README.md), imported as
 | `listTeams` | query | TeamPage |
 | `updateTeam` | mutation | Team |
 | `deleteTeam` | mutation | DeletedTeam |
+| `createOrganization` | mutation | Organization |
+| `getOrganization` | query | Organization |
+| `updateOrganization` | mutation | Organization |
 
 The Go queries use the `safe` repeat tier. List operations return one
 provider page; pass a Sentry cursor to request a known later page. Sentry
@@ -83,6 +86,17 @@ Both writes use the `safe` repeat tier. Tokens need `org:read` for listing,
 `team:read` for detail, `team:write` or `org:write` for creation,
 `team:write` for updates, and `team:admin` for deletion.
 
+`createOrganization` requires a user token whose account may create Sentry
+organizations, an explicit globally unique slug, and `agreeTerms: true` after
+the user accepts Sentry's terms and privacy policy. It uses `limited` resend
+with three possible sends and slug/name read-back after an unknown result.
+Sentry marks this creation endpoint private and user-context-only, so live
+availability depends on the account. `getOrganization` is a safe query;
+`updateOrganization` replaces its slug and name using the safe tier and needs
+`org:write` or `org:admin`. See [organization settings](https://sentry.io/settings/)
+for the current slug and name, and [Sentry's organization API](https://docs.sentry.io/api/organizations/)
+for read and update scopes.
+
 `listIssues` returns the first provider page (default unresolved query); cursor pagination is not exposed in this initial release. `updateIssueStatus` sends an absolute status in a PUT request. Repeating `resolved`, `unresolved`, or `ignored` sets the same state. Only the submitted status field is changed.
 
 ## Authorization
@@ -91,7 +105,8 @@ Start at [https://sentry.io/settings/account/api/auth-tokens/](https://sentry.io
 **User Settings > Auth Tokens > Create New Token**. Create an auth token with
 `event:read` and `event:write` for issues, `event:admin` for issue deletion,
 `project:read`, `project:write`, and `project:admin` for project operations,
-and `org:read` for organization reads. Copy
+`org:read` for organization reads, and `org:write` for organization updates.
+Organization creation also needs user-context permission. Copy
 the opaque secret; blank prevents requests. Paste the token in the
 secret `api_key` field in Dex Web Connections.
 The key travels only in `Authorization`. Leave `baseUrl`, `timeout`,

@@ -54,7 +54,9 @@ spec:
         follow User Settings > Auth Tokens > Create New Token. Create an auth token
         with event:read and event:write for issue reads and updates, event:admin
         for issue deletion, project:read, project:write, and project:admin for
-        project reads and writes, and org:read for organization reads. Copy the opaque
+        project reads and writes, org:read for organization reads, and org:write
+        for organization updates. Organization creation requires a user token with
+        account permission to create organizations. Copy the opaque
         secret; blank prevents requests. It is sent only in the Authorization header.
     guide:
       startURL: https://sentry.io/settings/account/api/auth-tokens/
@@ -65,7 +67,9 @@ spec:
         with event:read and event:write for issue reads and updates, event:admin
         for issue deletion, project:read, project:write, and project:admin for
         project reads and writes, org:read for organization reads, and org:write
-        when the organization restricts project creation. Copy the opaque
+        when the organization restricts project creation. Also select org:write
+        for organization updates; organization creation requires a user token
+        permitted to create organizations. Copy the opaque
         secret; blank prevents requests.
       - For Team operations also select team:read for detail, team:write for
         creation and updates, and team:admin for deletion. For Releases select
@@ -545,3 +549,53 @@ spec:
       description: A representative Sentry response.
       default: true
       output: {organizations: [{id: '789', slug: acme, name: Acme}]}
+  - name: createOrganization
+    goName: CreateOrganization
+    inputType: CreateOrganizationInput
+    outputType: Organization
+    kind: mutation
+    description: Create an organization owned by the token's Sentry user.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Sentry created or confirmed the organization.}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected creation., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createOrganizationDefault, branch: created, default: true, description: One organization was created., output: {id: '789', slug: acme, name: Acme}}
+  - name: getOrganization
+    goName: GetOrganization
+    inputType: GetOrganizationInput
+    outputType: Organization
+    kind: query
+    description: Retrieve one organization visible to the token.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Sentry returned the organization.}
+    - {id: notFound, goName: NotFound, description: The organization does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getOrganizationDefault, branch: found, default: true, description: One organization was found., output: {id: '789', slug: acme, name: Acme}}
+  - name: updateOrganization
+    goName: UpdateOrganization
+    inputType: UpdateOrganizationInput
+    outputType: Organization
+    kind: mutation
+    description: Replace an organization's slug and display name.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Sentry updated the organization.}
+    - {id: notFound, goName: NotFound, description: The organization does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected the update., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateOrganizationDefault, branch: updated, default: true, description: One organization was updated., output: {id: '789', slug: acme, name: Acme}}

@@ -63,6 +63,9 @@ type Operations interface {
 	ListProjects() sdkgo.Query[ListProjectsInput, ProjectPage]
 	GetProject() sdkgo.Query[GetProjectInput, Project]
 	ListOrganizations() sdkgo.Query[ListOrganizationsInput, OrganizationPage]
+	CreateOrganization() sdkgo.Mutation[CreateOrganizationInput, Organization]
+	GetOrganization() sdkgo.Query[GetOrganizationInput, Organization]
+	UpdateOrganization() sdkgo.Mutation[UpdateOrganizationInput, Organization]
 }
 
 type clientOperations struct{ client *Client }
@@ -135,6 +138,15 @@ func (operations clientOperations) GetProject() sdkgo.Query[GetProjectInput, Pro
 }
 func (operations clientOperations) ListOrganizations() sdkgo.Query[ListOrganizationsInput, OrganizationPage] {
 	return operations.client.ListOrganizations()
+}
+func (operations clientOperations) CreateOrganization() sdkgo.Mutation[CreateOrganizationInput, Organization] {
+	return operations.client.CreateOrganization()
+}
+func (operations clientOperations) GetOrganization() sdkgo.Query[GetOrganizationInput, Organization] {
+	return operations.client.GetOrganization()
+}
+func (operations clientOperations) UpdateOrganization() sdkgo.Mutation[UpdateOrganizationInput, Organization] {
+	return operations.client.UpdateOrganization()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -2011,6 +2023,237 @@ func NewListOrganizationsStep[IN any](config ListOrganizationsStepConfig[IN]) sd
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListOrganizationsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateOrganizationBranchCreated sdkgo.BranchID = "created"
+const CreateOrganizationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateOrganizationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateOrganizationBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateOrganizationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createOrganization"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateOrganizationBranchCreated, Description: "Sentry created or confirmed the organization."},
+		{ID: CreateOrganizationBranchProviderRejected, Description: "Sentry definitively rejected creation.", Optional: true},
+		{ID: CreateOrganizationBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateOrganizationBranchUncertain, Description: "The send cap was reached without confirming creation.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateOrganizationResult = sdkgo.MutationResult[Organization]
+
+type CreateOrganizationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=sentry"`
+	operationID                       struct{}                                           `connector:"operationId=createOrganization"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateOrganizationInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateOrganizationResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateOrganizationResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateOrganizationResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateOrganizationResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Organization]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateOrganizationStep[IN any](config CreateOrganizationStepConfig[IN]) sdkgo.MutationStep[IN, CreateOrganizationInput, Organization] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sentry connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateOrganizationInput, Organization]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateOrganization(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateOrganizationResult] {
+			branches := make([]sdkgo.BranchTarget[CreateOrganizationResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateOrganizationBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateOrganizationBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateOrganizationBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateOrganizationBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetOrganizationBranchFound sdkgo.BranchID = "found"
+const GetOrganizationBranchNotFound sdkgo.BranchID = "notFound"
+const GetOrganizationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetOrganizationBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetOrganizationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetOrganizationDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getOrganization"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetOrganizationBranchFound, Description: "Sentry returned the organization."},
+		{ID: GetOrganizationBranchNotFound, Description: "The organization does not exist.", Optional: true},
+		{ID: GetOrganizationBranchProviderRejected, Description: "Sentry definitively rejected the request.", Optional: true},
+		{ID: GetOrganizationBranchInvalidResponse, Description: "Sentry returned malformed or oversized JSON.", Optional: true},
+		{ID: GetOrganizationBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetOrganizationResult = sdkgo.QueryResult[Organization]
+
+type GetOrganizationStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=sentry"`
+	operationID                    struct{}                                        `connector:"operationId=getOrganization"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetOrganizationInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetOrganizationResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetOrganizationResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetOrganizationResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetOrganizationResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetOrganizationResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Organization]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetOrganizationStep[IN any](config GetOrganizationStepConfig[IN]) sdkgo.QueryStep[IN, GetOrganizationInput, Organization] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sentry connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetOrganizationInput, Organization]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetOrganization(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetOrganizationResult] {
+			branches := make([]sdkgo.BranchTarget[GetOrganizationResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetOrganizationBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetOrganizationBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetOrganizationBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetOrganizationBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetOrganizationBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateOrganizationBranchUpdated sdkgo.BranchID = "updated"
+const UpdateOrganizationBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateOrganizationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateOrganizationBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateOrganizationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateOrganizationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateOrganization"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateOrganizationBranchUpdated, Description: "Sentry updated the organization."},
+		{ID: UpdateOrganizationBranchNotFound, Description: "The organization does not exist.", Optional: true},
+		{ID: UpdateOrganizationBranchProviderRejected, Description: "Sentry definitively rejected the update.", Optional: true},
+		{ID: UpdateOrganizationBranchInvalidResponse, Description: "Sentry returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateOrganizationBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateOrganizationResult = sdkgo.MutationResult[Organization]
+
+type UpdateOrganizationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=sentry"`
+	operationID                       struct{}                                           `connector:"operationId=updateOrganization"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateOrganizationInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateOrganizationResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateOrganizationResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateOrganizationResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateOrganizationResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateOrganizationResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Organization]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateOrganizationStep[IN any](config UpdateOrganizationStepConfig[IN]) sdkgo.MutationStep[IN, UpdateOrganizationInput, Organization] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sentry connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateOrganizationInput, Organization]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateOrganization(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateOrganizationResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateOrganizationResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateOrganizationBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateOrganizationBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateOrganizationBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateOrganizationBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateOrganizationBranchDefect))
 			}
 			return branches
 		}(),
