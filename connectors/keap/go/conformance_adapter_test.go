@@ -48,14 +48,19 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	context := &keapConformanceContext{}
 	prior := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(raw []byte) { context.lastHeartbeat = raw })
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = prior + int32(attempt) }, actions: map[string]conformanceOperationInvocation{
-		"getContact":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContact(), reference),
-		"listContacts":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListContacts(), reference),
-		"upsertContact": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpsertContact(), reference, scenario.CallID),
-		"deleteContact": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteContact(), reference, scenario.CallID),
-		"getCompany":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCompany(), reference),
-		"listCompanies": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCompanies(), reference),
-		"createCompany": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateCompany(), reference, scenario.CallID),
-		"updateCompany": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateCompany(), reference, scenario.CallID),
-		"deleteCompany": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCompany(), reference, scenario.CallID),
+		"getContact":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContact(), reference),
+		"listContacts":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListContacts(), reference),
+		"upsertContact":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpsertContact(), reference, scenario.CallID),
+		"deleteContact":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteContact(), reference, scenario.CallID),
+		"getCompany":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCompany(), reference),
+		"listCompanies":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCompanies(), reference),
+		"createCompany":     newConformanceMutationInvocation(t, scenario.Input, context, client.CreateCompany(), reference, scenario.CallID),
+		"updateCompany":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateCompany(), reference, scenario.CallID),
+		"deleteCompany":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCompany(), reference, scenario.CallID),
+		"getContactNote":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContactNote(), reference),
+		"listContactNotes":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListContactNotes(), reference),
+		"createContactNote": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateContactNote(), reference, scenario.CallID),
+		"updateContactNote": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateContactNote(), reference, scenario.CallID),
+		"deleteContactNote": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteContactNote(), reference, scenario.CallID),
 	}}
 }

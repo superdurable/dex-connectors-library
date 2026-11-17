@@ -3117,6 +3117,1985 @@
       },
       "name": "deleteCompany-defect",
       "operation": "deleteCompany"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"456\",\"contact_id\":\"123\",\"title\":\"Example note\",\"text\":\"Example details\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contactId": "123",
+          "id": "456",
+          "text": "Example details",
+          "title": "Example note"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "getContactNote-happy",
+      "operation": "getContactNote"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contactId": "",
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "getContactNote-rejected",
+      "operation": "getContactNote"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactId": "",
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "getContactNote-invalid",
+      "operation": "getContactNote"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contactId": "",
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "getContactNote-notFound",
+      "operation": "getContactNote"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "getContactNote-rateLimit",
+      "operation": "getContactNote"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "getContactNote-unavailable",
+      "operation": "getContactNote"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "getContactNote-serverFailure",
+      "operation": "getContactNote"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "getContactNote-transportFailure",
+      "operation": "getContactNote"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": "",
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "bad/id",
+        "noteId": "456"
+      },
+      "name": "getContactNote-defect",
+      "operation": "getContactNote"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{\"notes\":[{\"id\":\"456\",\"contact_id\":\"123\",\"title\":\"Example note\",\"text\":\"Example details\"}],\"next_page_token\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "",
+          "notes": [
+            {
+              "contactId": "123",
+              "id": "456",
+              "text": "Example details",
+              "title": "Example note"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactNotes-happy",
+      "operation": "listContactNotes"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextPageToken": "",
+          "notes": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactNotes-rejected",
+      "operation": "listContactNotes"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPageToken": "",
+          "notes": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactNotes-invalid",
+      "operation": "listContactNotes"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "nextPageToken": "",
+          "notes": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactNotes-notFound",
+      "operation": "listContactNotes"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactNotes-rateLimit",
+      "operation": "listContactNotes"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactNotes-unavailable",
+      "operation": "listContactNotes"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactNotes-serverFailure",
+      "operation": "listContactNotes"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/notes",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactNotes-transportFailure",
+      "operation": "listContactNotes"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextPageToken": "",
+          "notes": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": -1,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactNotes-defect",
+      "operation": "listContactNotes"
+    },
+    {
+      "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"456\",\"contact_id\":\"123\",\"title\":\"Example note\",\"text\":\"Example details\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "123",
+          "id": "456",
+          "text": "Example details",
+          "title": "Example note"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "input": {
+        "contactId": "123",
+        "text": "Example details",
+        "title": "Example note",
+        "userId": "789"
+      },
+      "name": "createContactNote-happy",
+      "operation": "createContactNote"
+    },
+    {
+      "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "",
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "input": {
+        "contactId": "123",
+        "text": "Example details",
+        "title": "Example note",
+        "userId": "789"
+      },
+      "name": "createContactNote-rejected",
+      "operation": "createContactNote"
+    },
+    {
+      "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "input": {
+        "contactId": "123",
+        "text": "Example details",
+        "title": "Example note",
+        "userId": "789"
+      },
+      "name": "createContactNote-rateLimit",
+      "operation": "createContactNote"
+    },
+    {
+      "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "input": {
+        "contactId": "123",
+        "text": "Example details",
+        "title": "Example note",
+        "userId": "789"
+      },
+      "name": "createContactNote-unavailable",
+      "operation": "createContactNote"
+    },
+    {
+      "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "input": {
+        "contactId": "123",
+        "text": "Example details",
+        "title": "Example note",
+        "userId": "789"
+      },
+      "name": "createContactNote-serverFailure",
+      "operation": "createContactNote"
+    },
+    {
+      "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "input": {
+        "contactId": "123",
+        "text": "Example details",
+        "title": "Example note",
+        "userId": "789"
+      },
+      "name": "createContactNote-transportFailure",
+      "operation": "createContactNote"
+    },
+    {
+      "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": "",
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "input": {
+        "contactId": "123",
+        "text": "Example details",
+        "title": " ",
+        "userId": "789"
+      },
+      "name": "createContactNote-defect",
+      "operation": "createContactNote"
+    },
+    {
+      "callId": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"456\",\"contact_id\":\"123\",\"title\":\"Example note\",\"text\":\"Example details\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "query": {
+            "update_mask": [
+              "title,text"
+            ]
+          },
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "contactId": "123",
+          "id": "456",
+          "text": "Example details",
+          "title": "Example note"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "input": {
+        "contactId": "123",
+        "noteId": "456",
+        "text": "Example details",
+        "title": "Example note"
+      },
+      "name": "updateContactNote-happy",
+      "operation": "updateContactNote"
+    },
+    {
+      "callId": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "query": {
+            "update_mask": [
+              "title,text"
+            ]
+          },
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contactId": "",
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "input": {
+        "contactId": "123",
+        "noteId": "456",
+        "text": "Example details",
+        "title": "Example note"
+      },
+      "name": "updateContactNote-rejected",
+      "operation": "updateContactNote"
+    },
+    {
+      "callId": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "query": {
+            "update_mask": [
+              "title,text"
+            ]
+          },
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactId": "",
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "input": {
+        "contactId": "123",
+        "noteId": "456",
+        "text": "Example details",
+        "title": "Example note"
+      },
+      "name": "updateContactNote-invalid",
+      "operation": "updateContactNote"
+    },
+    {
+      "callId": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "query": {
+            "update_mask": [
+              "title,text"
+            ]
+          },
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contactId": "",
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "input": {
+        "contactId": "123",
+        "noteId": "456",
+        "text": "Example details",
+        "title": "Example note"
+      },
+      "name": "updateContactNote-notFound",
+      "operation": "updateContactNote"
+    },
+    {
+      "callId": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "query": {
+            "update_mask": [
+              "title,text"
+            ]
+          },
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "input": {
+        "contactId": "123",
+        "noteId": "456",
+        "text": "Example details",
+        "title": "Example note"
+      },
+      "name": "updateContactNote-rateLimit",
+      "operation": "updateContactNote"
+    },
+    {
+      "callId": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "query": {
+            "update_mask": [
+              "title,text"
+            ]
+          },
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "input": {
+        "contactId": "123",
+        "noteId": "456",
+        "text": "Example details",
+        "title": "Example note"
+      },
+      "name": "updateContactNote-unavailable",
+      "operation": "updateContactNote"
+    },
+    {
+      "callId": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "query": {
+            "update_mask": [
+              "title,text"
+            ]
+          },
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "input": {
+        "contactId": "123",
+        "noteId": "456",
+        "text": "Example details",
+        "title": "Example note"
+      },
+      "name": "updateContactNote-serverFailure",
+      "operation": "updateContactNote"
+    },
+    {
+      "callId": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "query": {
+            "update_mask": [
+              "title,text"
+            ]
+          },
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "input": {
+        "contactId": "123",
+        "noteId": "456",
+        "text": "Example details",
+        "title": "Example note"
+      },
+      "name": "updateContactNote-transportFailure",
+      "operation": "updateContactNote"
+    },
+    {
+      "callId": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": "",
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
+      "input": {
+        "contactId": "bad/id",
+        "noteId": "456",
+        "text": "Example details",
+        "title": "Example note"
+      },
+      "name": "updateContactNote-defect",
+      "operation": "updateContactNote"
+    },
+    {
+      "callId": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "contactId": "123",
+          "deleted": true,
+          "noteId": "456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "deleteContactNote-happy",
+      "operation": "deleteContactNote"
+    },
+    {
+      "callId": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contactId": "",
+          "deleted": false,
+          "noteId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "deleteContactNote-rejected",
+      "operation": "deleteContactNote"
+    },
+    {
+      "callId": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "exchanges": [
+        {
+          "body": "invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactId": "",
+          "deleted": false,
+          "noteId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "deleteContactNote-invalid",
+      "operation": "deleteContactNote"
+    },
+    {
+      "callId": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contactId": "",
+          "deleted": false,
+          "noteId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "deleteContactNote-notFound",
+      "operation": "deleteContactNote"
+    },
+    {
+      "callId": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "deleteContactNote-rateLimit",
+      "operation": "deleteContactNote"
+    },
+    {
+      "callId": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "deleteContactNote-unavailable",
+      "operation": "deleteContactNote"
+    },
+    {
+      "callId": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "deleteContactNote-serverFailure",
+      "operation": "deleteContactNote"
+    },
+    {
+      "callId": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123/notes/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "input": {
+        "contactId": "123",
+        "noteId": "456"
+      },
+      "name": "deleteContactNote-transportFailure",
+      "operation": "deleteContactNote"
+    },
+    {
+      "callId": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": "",
+          "deleted": false,
+          "noteId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
+      "input": {
+        "contactId": "bad/id",
+        "noteId": "456"
+      },
+      "name": "deleteContactNote-defect",
+      "operation": "deleteContactNote"
+    },
+    {
+      "attempts": 3,
+      "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "",
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "input": {
+        "contactId": "123",
+        "text": "Example details",
+        "title": "Example note",
+        "userId": "789"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createContactNote-uncertain",
+      "operation": "createContactNote"
     }
   ],
   "schemaVersion": 1

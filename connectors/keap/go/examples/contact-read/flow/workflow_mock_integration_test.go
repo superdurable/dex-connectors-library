@@ -24,7 +24,7 @@ import (
 func TestContactReadUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := keapmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, NewDirectoryFlow(mock.Connection()), NewCompanyFlow(mock.Connection())})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewDirectoryFlow(mock.Connection()), NewCompanyFlow(mock.Connection()), NewNoteFlow(mock.Connection())})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -80,4 +80,15 @@ func TestContactReadUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, companyResult.DecodeSingleOutput(&company))
 	require.Equal(t, "321", company.ID)
 	require.Len(t, mock.GetCompany().Calls(), 1)
+	noteFlow := NewNoteFlow(mock.Connection())
+	noteFlowID := "keap-note-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, noteFlow, noteFlowID, keap.ContactNoteIDInput{ContactID: "123", NoteID: "456"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	noteResult, err := client.WaitForFlow(ctx, noteFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, noteResult.Status, noteResult.ErrorMessage)
+	var note keap.ContactNote
+	require.NoError(t, noteResult.DecodeSingleOutput(&note))
+	require.Equal(t, "456", note.ID)
+	require.Len(t, mock.GetContactNote().Calls(), 1)
 }

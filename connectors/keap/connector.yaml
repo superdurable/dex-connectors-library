@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: keap
   displayName: Keap
-  description: Manage Keap CRM v2 contacts and companies.
+  description: Manage Keap CRM v2 contacts, companies, and contact notes.
   company: Keap
   categories: [crm-sales, marketing]
   version: v0.2.0
@@ -240,3 +240,107 @@ spec:
           default: true
           description: A sample company is deleted.
           output: {companyId: '321', deleted: true}
+    - name: getContactNote
+      goName: GetContactNote
+      inputType: ContactNoteIDInput
+      outputType: ContactNote
+      kind: query
+      description: Read one note attached to a Keap contact.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Keap returned the note.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the note., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid note JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample contact note is returned.
+          output: {id: '456', contactId: '123', title: Example note, text: Example details}
+    - name: listContactNotes
+      goName: ListContactNotes
+      inputType: ListContactNotesInput
+      outputType: ContactNotesPage
+      kind: query
+      description: List one page of notes attached to a Keap contact.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Keap returned a note page.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid note list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample note page is returned.
+          output: {notes: [{id: '456', contactId: '123', title: Example note, text: Example details}], nextPageToken: ''}
+    - name: createContactNote
+      goName: CreateContactNote
+      inputType: CreateContactNoteInput
+      outputType: ContactNote
+      kind: mutation
+      description: Add a note to a Keap contact with bounded sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Keap created the note.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the note., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The note create outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample contact note is created.
+          output: {id: '456', contactId: '123', title: Example note, text: Example details}
+    - name: updateContactNote
+      goName: UpdateContactNote
+      inputType: UpdateContactNoteInput
+      outputType: ContactNote
+      kind: mutation
+      description: Replace a Keap contact note's title and text.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Keap updated the note.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the note., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid note JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample contact note is updated.
+          output: {id: '456', contactId: '123', title: Example note, text: Example details}
+    - name: deleteContactNote
+      goName: DeleteContactNote
+      inputType: ContactNoteIDInput
+      outputType: ContactNoteDeletion
+      kind: mutation
+      description: Delete a Keap contact note.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Keap accepted the note deletion.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the note., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample contact note is deleted.
+          output: {contactId: '123', noteId: '456', deleted: true}

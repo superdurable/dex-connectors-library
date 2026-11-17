@@ -17,16 +17,21 @@ import (
 
 // Mock is a scripted keap connection. Script each operation through its accessor.
 type Mock struct {
-	connection    keap.Connection
-	getContact    *connectormock.Query[keap.GetContactInput, keap.ContactProfile]
-	listContacts  *connectormock.Query[keap.ListContactsInput, keap.ContactsPage]
-	upsertContact *connectormock.Mutation[keap.UpsertContactInput, keap.ContactProfile]
-	deleteContact *connectormock.Mutation[keap.GetContactInput, keap.ContactDeletion]
-	getCompany    *connectormock.Query[keap.CompanyIDInput, keap.CompanyProfile]
-	listCompanies *connectormock.Query[keap.ListCompaniesInput, keap.CompaniesPage]
-	createCompany *connectormock.Mutation[keap.CompanyNameInput, keap.CompanyProfile]
-	updateCompany *connectormock.Mutation[keap.UpdateCompanyInput, keap.CompanyProfile]
-	deleteCompany *connectormock.Mutation[keap.CompanyIDInput, keap.CompanyDeletion]
+	connection        keap.Connection
+	getContact        *connectormock.Query[keap.GetContactInput, keap.ContactProfile]
+	listContacts      *connectormock.Query[keap.ListContactsInput, keap.ContactsPage]
+	upsertContact     *connectormock.Mutation[keap.UpsertContactInput, keap.ContactProfile]
+	deleteContact     *connectormock.Mutation[keap.GetContactInput, keap.ContactDeletion]
+	getCompany        *connectormock.Query[keap.CompanyIDInput, keap.CompanyProfile]
+	listCompanies     *connectormock.Query[keap.ListCompaniesInput, keap.CompaniesPage]
+	createCompany     *connectormock.Mutation[keap.CompanyNameInput, keap.CompanyProfile]
+	updateCompany     *connectormock.Mutation[keap.UpdateCompanyInput, keap.CompanyProfile]
+	deleteCompany     *connectormock.Mutation[keap.CompanyIDInput, keap.CompanyDeletion]
+	getContactNote    *connectormock.Query[keap.ContactNoteIDInput, keap.ContactNote]
+	listContactNotes  *connectormock.Query[keap.ListContactNotesInput, keap.ContactNotesPage]
+	createContactNote *connectormock.Mutation[keap.CreateContactNoteInput, keap.ContactNote]
+	updateContactNote *connectormock.Mutation[keap.UpdateContactNoteInput, keap.ContactNote]
+	deleteContactNote *connectormock.Mutation[keap.ContactNoteIDInput, keap.ContactNoteDeletion]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -34,15 +39,20 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getContact:    connectormock.NewQuery[keap.GetContactInput, keap.ContactProfile](t, keap.GetContactDefinition),
-		listContacts:  connectormock.NewQuery[keap.ListContactsInput, keap.ContactsPage](t, keap.ListContactsDefinition),
-		upsertContact: connectormock.NewMutation[keap.UpsertContactInput, keap.ContactProfile](t, keap.UpsertContactDefinition),
-		deleteContact: connectormock.NewMutation[keap.GetContactInput, keap.ContactDeletion](t, keap.DeleteContactDefinition),
-		getCompany:    connectormock.NewQuery[keap.CompanyIDInput, keap.CompanyProfile](t, keap.GetCompanyDefinition),
-		listCompanies: connectormock.NewQuery[keap.ListCompaniesInput, keap.CompaniesPage](t, keap.ListCompaniesDefinition),
-		createCompany: connectormock.NewMutation[keap.CompanyNameInput, keap.CompanyProfile](t, keap.CreateCompanyDefinition),
-		updateCompany: connectormock.NewMutation[keap.UpdateCompanyInput, keap.CompanyProfile](t, keap.UpdateCompanyDefinition),
-		deleteCompany: connectormock.NewMutation[keap.CompanyIDInput, keap.CompanyDeletion](t, keap.DeleteCompanyDefinition),
+		getContact:        connectormock.NewQuery[keap.GetContactInput, keap.ContactProfile](t, keap.GetContactDefinition),
+		listContacts:      connectormock.NewQuery[keap.ListContactsInput, keap.ContactsPage](t, keap.ListContactsDefinition),
+		upsertContact:     connectormock.NewMutation[keap.UpsertContactInput, keap.ContactProfile](t, keap.UpsertContactDefinition),
+		deleteContact:     connectormock.NewMutation[keap.GetContactInput, keap.ContactDeletion](t, keap.DeleteContactDefinition),
+		getCompany:        connectormock.NewQuery[keap.CompanyIDInput, keap.CompanyProfile](t, keap.GetCompanyDefinition),
+		listCompanies:     connectormock.NewQuery[keap.ListCompaniesInput, keap.CompaniesPage](t, keap.ListCompaniesDefinition),
+		createCompany:     connectormock.NewMutation[keap.CompanyNameInput, keap.CompanyProfile](t, keap.CreateCompanyDefinition),
+		updateCompany:     connectormock.NewMutation[keap.UpdateCompanyInput, keap.CompanyProfile](t, keap.UpdateCompanyDefinition),
+		deleteCompany:     connectormock.NewMutation[keap.CompanyIDInput, keap.CompanyDeletion](t, keap.DeleteCompanyDefinition),
+		getContactNote:    connectormock.NewQuery[keap.ContactNoteIDInput, keap.ContactNote](t, keap.GetContactNoteDefinition),
+		listContactNotes:  connectormock.NewQuery[keap.ListContactNotesInput, keap.ContactNotesPage](t, keap.ListContactNotesDefinition),
+		createContactNote: connectormock.NewMutation[keap.CreateContactNoteInput, keap.ContactNote](t, keap.CreateContactNoteDefinition),
+		updateContactNote: connectormock.NewMutation[keap.UpdateContactNoteInput, keap.ContactNote](t, keap.UpdateContactNoteDefinition),
+		deleteContactNote: connectormock.NewMutation[keap.ContactNoteIDInput, keap.ContactNoteDeletion](t, keap.DeleteContactNoteDefinition),
 	}
 	mock.getContact.Default(GetContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
@@ -53,6 +63,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createCompany.Default(CreateCompanyDefault())
 	mock.updateCompany.Default(UpdateCompanyDefault())
 	mock.deleteCompany.Default(DeleteCompanyDefault())
+	mock.getContactNote.Default(GetContactNoteDefault())
+	mock.listContactNotes.Default(ListContactNotesDefault())
+	mock.createContactNote.Default(CreateContactNoteDefault())
+	mock.updateContactNote.Default(UpdateContactNoteDefault())
+	mock.deleteContactNote.Default(DeleteContactNoteDefault())
 	connection, err := keap.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "keap", Name: connectionName})
 	if err != nil {
 		t.Fatalf("keap mock connection: %v", err)
@@ -109,6 +124,31 @@ func (mock *Mock) DeleteCompany() *connectormock.Mutation[keap.CompanyIDInput, k
 	return mock.deleteCompany
 }
 
+// GetContactNote returns the getContactNote script.
+func (mock *Mock) GetContactNote() *connectormock.Query[keap.ContactNoteIDInput, keap.ContactNote] {
+	return mock.getContactNote
+}
+
+// ListContactNotes returns the listContactNotes script.
+func (mock *Mock) ListContactNotes() *connectormock.Query[keap.ListContactNotesInput, keap.ContactNotesPage] {
+	return mock.listContactNotes
+}
+
+// CreateContactNote returns the createContactNote script.
+func (mock *Mock) CreateContactNote() *connectormock.Mutation[keap.CreateContactNoteInput, keap.ContactNote] {
+	return mock.createContactNote
+}
+
+// UpdateContactNote returns the updateContactNote script.
+func (mock *Mock) UpdateContactNote() *connectormock.Mutation[keap.UpdateContactNoteInput, keap.ContactNote] {
+	return mock.updateContactNote
+}
+
+// DeleteContactNote returns the deleteContactNote script.
+func (mock *Mock) DeleteContactNote() *connectormock.Mutation[keap.ContactNoteIDInput, keap.ContactNoteDeletion] {
+	return mock.deleteContactNote
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetContact() sdkgo.Query[keap.GetContactInput, keap.ContactProfile] {
@@ -137,6 +177,21 @@ func (operations mockOperations) UpdateCompany() sdkgo.Mutation[keap.UpdateCompa
 }
 func (operations mockOperations) DeleteCompany() sdkgo.Mutation[keap.CompanyIDInput, keap.CompanyDeletion] {
 	return operations.mock.deleteCompany
+}
+func (operations mockOperations) GetContactNote() sdkgo.Query[keap.ContactNoteIDInput, keap.ContactNote] {
+	return operations.mock.getContactNote
+}
+func (operations mockOperations) ListContactNotes() sdkgo.Query[keap.ListContactNotesInput, keap.ContactNotesPage] {
+	return operations.mock.listContactNotes
+}
+func (operations mockOperations) CreateContactNote() sdkgo.Mutation[keap.CreateContactNoteInput, keap.ContactNote] {
+	return operations.mock.createContactNote
+}
+func (operations mockOperations) UpdateContactNote() sdkgo.Mutation[keap.UpdateContactNoteInput, keap.ContactNote] {
+	return operations.mock.updateContactNote
+}
+func (operations mockOperations) DeleteContactNote() sdkgo.Mutation[keap.ContactNoteIDInput, keap.ContactNoteDeletion] {
+	return operations.mock.deleteContactNote
 }
 
 // GetContactFound selects the found branch: Keap returned the contact.
@@ -480,4 +535,204 @@ func DeleteCompanyDeletedDefault() connectormock.Case[keap.CompanyDeletion] {
 // DeleteCompanyDefault is the manifest default, deletedDefault, which New installs.
 func DeleteCompanyDefault() connectormock.Case[keap.CompanyDeletion] {
 	return DeleteCompanyDeletedDefault()
+}
+
+// GetContactNoteFound selects the found branch: Keap returned the note.
+func GetContactNoteFound(value keap.ContactNote, failure *sdkgo.Failure) connectormock.Case[keap.ContactNote] {
+	return connectormock.Branch(keap.GetContactNoteBranchFound, value, failure)
+}
+
+// GetContactNoteNotFound selects the notFound branch: Keap did not find the note.
+func GetContactNoteNotFound(value keap.ContactNote, failure *sdkgo.Failure) connectormock.Case[keap.ContactNote] {
+	return connectormock.Branch(keap.GetContactNoteBranchNotFound, value, failure)
+}
+
+// GetContactNoteProviderRejected selects the providerRejected branch: Keap rejected the lookup.
+func GetContactNoteProviderRejected(value keap.ContactNote, failure *sdkgo.Failure) connectormock.Case[keap.ContactNote] {
+	return connectormock.Branch(keap.GetContactNoteBranchProviderRejected, value, failure)
+}
+
+// GetContactNoteInvalidResponse selects the invalidResponse branch: Keap returned invalid note JSON.
+func GetContactNoteInvalidResponse(value keap.ContactNote, failure *sdkgo.Failure) connectormock.Case[keap.ContactNote] {
+	return connectormock.Branch(keap.GetContactNoteBranchInvalidResponse, value, failure)
+}
+
+// GetContactNoteDefect selects the defect branch: Input or credentials are invalid.
+func GetContactNoteDefect(value keap.ContactNote, failure *sdkgo.Failure) connectormock.Case[keap.ContactNote] {
+	return connectormock.Branch(keap.GetContactNoteBranchDefect, value, failure)
+}
+
+// GetContactNoteRetry asks Dex to retry the getContactNote Step, after the delay when it is positive.
+func GetContactNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.ContactNote] {
+	return connectormock.Retry[keap.ContactNote](failure, after)
+}
+
+// GetContactNoteFoundDefault is the manifest mock foundDefault: A sample contact note is returned.
+func GetContactNoteFoundDefault() connectormock.Case[keap.ContactNote] {
+	value := connectormock.MustDecodeOutput[keap.ContactNote](`{"id":"456","contactId":"123","title":"Example note","text":"Example details"}`)
+	return connectormock.Branch(keap.GetContactNoteBranchFound, value, nil)
+}
+
+// GetContactNoteDefault is the manifest default, foundDefault, which New installs.
+func GetContactNoteDefault() connectormock.Case[keap.ContactNote] {
+	return GetContactNoteFoundDefault()
+}
+
+// ListContactNotesListed selects the listed branch: Keap returned a note page.
+func ListContactNotesListed(value keap.ContactNotesPage, failure *sdkgo.Failure) connectormock.Case[keap.ContactNotesPage] {
+	return connectormock.Branch(keap.ListContactNotesBranchListed, value, failure)
+}
+
+// ListContactNotesNotFound selects the notFound branch: Keap did not find the contact.
+func ListContactNotesNotFound(value keap.ContactNotesPage, failure *sdkgo.Failure) connectormock.Case[keap.ContactNotesPage] {
+	return connectormock.Branch(keap.ListContactNotesBranchNotFound, value, failure)
+}
+
+// ListContactNotesProviderRejected selects the providerRejected branch: Keap rejected the list request.
+func ListContactNotesProviderRejected(value keap.ContactNotesPage, failure *sdkgo.Failure) connectormock.Case[keap.ContactNotesPage] {
+	return connectormock.Branch(keap.ListContactNotesBranchProviderRejected, value, failure)
+}
+
+// ListContactNotesInvalidResponse selects the invalidResponse branch: Keap returned invalid note list JSON.
+func ListContactNotesInvalidResponse(value keap.ContactNotesPage, failure *sdkgo.Failure) connectormock.Case[keap.ContactNotesPage] {
+	return connectormock.Branch(keap.ListContactNotesBranchInvalidResponse, value, failure)
+}
+
+// ListContactNotesDefect selects the defect branch: Input or credentials are invalid.
+func ListContactNotesDefect(value keap.ContactNotesPage, failure *sdkgo.Failure) connectormock.Case[keap.ContactNotesPage] {
+	return connectormock.Branch(keap.ListContactNotesBranchDefect, value, failure)
+}
+
+// ListContactNotesRetry asks Dex to retry the listContactNotes Step, after the delay when it is positive.
+func ListContactNotesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.ContactNotesPage] {
+	return connectormock.Retry[keap.ContactNotesPage](failure, after)
+}
+
+// ListContactNotesListedDefault is the manifest mock listedDefault: A sample note page is returned.
+func ListContactNotesListedDefault() connectormock.Case[keap.ContactNotesPage] {
+	value := connectormock.MustDecodeOutput[keap.ContactNotesPage](`{"notes":[{"id":"456","contactId":"123","title":"Example note","text":"Example details"}],"nextPageToken":""}`)
+	return connectormock.Branch(keap.ListContactNotesBranchListed, value, nil)
+}
+
+// ListContactNotesDefault is the manifest default, listedDefault, which New installs.
+func ListContactNotesDefault() connectormock.Case[keap.ContactNotesPage] {
+	return ListContactNotesListedDefault()
+}
+
+// CreateContactNoteCreated selects the created branch: Keap created the note.
+func CreateContactNoteCreated(value keap.ContactNote, failure *sdkgo.Failure) connectormock.Case[keap.ContactNote] {
+	return connectormock.Branch(keap.CreateContactNoteBranchCreated, value, failure)
+}
+
+// CreateContactNoteProviderRejected selects the providerRejected branch: Keap rejected the note.
+func CreateContactNoteProviderRejected(value keap.ContactNote, failure *sdkgo.Failure) connectormock.Case[keap.ContactNote] {
+	return connectormock.Branch(keap.CreateContactNoteBranchProviderRejected, value, failure)
+}
+
+// CreateContactNoteUncertain returns an uncertain createContactNote outcome.
+func CreateContactNoteUncertain(value keap.ContactNote, failure sdkgo.Failure) connectormock.Case[keap.ContactNote] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateContactNoteDefect selects the defect branch: Input or credentials are invalid.
+func CreateContactNoteDefect(value keap.ContactNote, failure *sdkgo.Failure) connectormock.Case[keap.ContactNote] {
+	return connectormock.Branch(keap.CreateContactNoteBranchDefect, value, failure)
+}
+
+// CreateContactNoteRetry asks Dex to retry the createContactNote Step, after the delay when it is positive.
+func CreateContactNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.ContactNote] {
+	return connectormock.Retry[keap.ContactNote](failure, after)
+}
+
+// CreateContactNoteCreatedDefault is the manifest mock createdDefault: A sample contact note is created.
+func CreateContactNoteCreatedDefault() connectormock.Case[keap.ContactNote] {
+	value := connectormock.MustDecodeOutput[keap.ContactNote](`{"id":"456","contactId":"123","title":"Example note","text":"Example details"}`)
+	return connectormock.Branch(keap.CreateContactNoteBranchCreated, value, nil)
+}
+
+// CreateContactNoteDefault is the manifest default, createdDefault, which New installs.
+func CreateContactNoteDefault() connectormock.Case[keap.ContactNote] {
+	return CreateContactNoteCreatedDefault()
+}
+
+// UpdateContactNoteUpdated selects the updated branch: Keap updated the note.
+func UpdateContactNoteUpdated(value keap.ContactNote, failure *sdkgo.Failure) connectormock.Case[keap.ContactNote] {
+	return connectormock.Branch(keap.UpdateContactNoteBranchUpdated, value, failure)
+}
+
+// UpdateContactNoteNotFound selects the notFound branch: Keap did not find the note.
+func UpdateContactNoteNotFound(value keap.ContactNote, failure *sdkgo.Failure) connectormock.Case[keap.ContactNote] {
+	return connectormock.Branch(keap.UpdateContactNoteBranchNotFound, value, failure)
+}
+
+// UpdateContactNoteProviderRejected selects the providerRejected branch: Keap rejected the update.
+func UpdateContactNoteProviderRejected(value keap.ContactNote, failure *sdkgo.Failure) connectormock.Case[keap.ContactNote] {
+	return connectormock.Branch(keap.UpdateContactNoteBranchProviderRejected, value, failure)
+}
+
+// UpdateContactNoteInvalidResponse selects the invalidResponse branch: Keap returned invalid note JSON.
+func UpdateContactNoteInvalidResponse(value keap.ContactNote, failure *sdkgo.Failure) connectormock.Case[keap.ContactNote] {
+	return connectormock.Branch(keap.UpdateContactNoteBranchInvalidResponse, value, failure)
+}
+
+// UpdateContactNoteDefect selects the defect branch: Input or credentials are invalid.
+func UpdateContactNoteDefect(value keap.ContactNote, failure *sdkgo.Failure) connectormock.Case[keap.ContactNote] {
+	return connectormock.Branch(keap.UpdateContactNoteBranchDefect, value, failure)
+}
+
+// UpdateContactNoteRetry asks Dex to retry the updateContactNote Step, after the delay when it is positive.
+func UpdateContactNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.ContactNote] {
+	return connectormock.Retry[keap.ContactNote](failure, after)
+}
+
+// UpdateContactNoteUpdatedDefault is the manifest mock updatedDefault: A sample contact note is updated.
+func UpdateContactNoteUpdatedDefault() connectormock.Case[keap.ContactNote] {
+	value := connectormock.MustDecodeOutput[keap.ContactNote](`{"id":"456","contactId":"123","title":"Example note","text":"Example details"}`)
+	return connectormock.Branch(keap.UpdateContactNoteBranchUpdated, value, nil)
+}
+
+// UpdateContactNoteDefault is the manifest default, updatedDefault, which New installs.
+func UpdateContactNoteDefault() connectormock.Case[keap.ContactNote] {
+	return UpdateContactNoteUpdatedDefault()
+}
+
+// DeleteContactNoteDeleted selects the deleted branch: Keap accepted the note deletion.
+func DeleteContactNoteDeleted(value keap.ContactNoteDeletion, failure *sdkgo.Failure) connectormock.Case[keap.ContactNoteDeletion] {
+	return connectormock.Branch(keap.DeleteContactNoteBranchDeleted, value, failure)
+}
+
+// DeleteContactNoteNotFound selects the notFound branch: Keap did not find the note.
+func DeleteContactNoteNotFound(value keap.ContactNoteDeletion, failure *sdkgo.Failure) connectormock.Case[keap.ContactNoteDeletion] {
+	return connectormock.Branch(keap.DeleteContactNoteBranchNotFound, value, failure)
+}
+
+// DeleteContactNoteProviderRejected selects the providerRejected branch: Keap rejected the deletion.
+func DeleteContactNoteProviderRejected(value keap.ContactNoteDeletion, failure *sdkgo.Failure) connectormock.Case[keap.ContactNoteDeletion] {
+	return connectormock.Branch(keap.DeleteContactNoteBranchProviderRejected, value, failure)
+}
+
+// DeleteContactNoteInvalidResponse selects the invalidResponse branch: Keap returned invalid deletion JSON.
+func DeleteContactNoteInvalidResponse(value keap.ContactNoteDeletion, failure *sdkgo.Failure) connectormock.Case[keap.ContactNoteDeletion] {
+	return connectormock.Branch(keap.DeleteContactNoteBranchInvalidResponse, value, failure)
+}
+
+// DeleteContactNoteDefect selects the defect branch: Input or credentials are invalid.
+func DeleteContactNoteDefect(value keap.ContactNoteDeletion, failure *sdkgo.Failure) connectormock.Case[keap.ContactNoteDeletion] {
+	return connectormock.Branch(keap.DeleteContactNoteBranchDefect, value, failure)
+}
+
+// DeleteContactNoteRetry asks Dex to retry the deleteContactNote Step, after the delay when it is positive.
+func DeleteContactNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.ContactNoteDeletion] {
+	return connectormock.Retry[keap.ContactNoteDeletion](failure, after)
+}
+
+// DeleteContactNoteDeletedDefault is the manifest mock deletedDefault: A sample contact note is deleted.
+func DeleteContactNoteDeletedDefault() connectormock.Case[keap.ContactNoteDeletion] {
+	value := connectormock.MustDecodeOutput[keap.ContactNoteDeletion](`{"contactId":"123","noteId":"456","deleted":true}`)
+	return connectormock.Branch(keap.DeleteContactNoteBranchDeleted, value, nil)
+}
+
+// DeleteContactNoteDefault is the manifest default, deletedDefault, which New installs.
+func DeleteContactNoteDefault() connectormock.Case[keap.ContactNoteDeletion] {
+	return DeleteContactNoteDeletedDefault()
 }

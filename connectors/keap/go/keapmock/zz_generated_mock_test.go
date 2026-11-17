@@ -52,6 +52,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[keap.CompanyDeletion](`{"companyId":"321","deleted":true}`)
 			return err
 		}},
+		{name: "getContactNote/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactNote](`{"id":"456","contactId":"123","title":"Example note","text":"Example details"}`)
+			return err
+		}},
+		{name: "listContactNotes/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactNotesPage](`{"notes":[{"id":"456","contactId":"123","title":"Example note","text":"Example details"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "createContactNote/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactNote](`{"id":"456","contactId":"123","title":"Example note","text":"Example details"}`)
+			return err
+		}},
+		{name: "updateContactNote/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactNote](`{"id":"456","contactId":"123","title":"Example note","text":"Example details"}`)
+			return err
+		}},
+		{name: "deleteContactNote/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactNoteDeletion](`{"contactId":"123","noteId":"456","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -88,5 +108,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteCompany().Definition().Operation.OperationID != "deleteCompany" {
 		t.Errorf("deleteCompany mock has another definition")
+	}
+	if mock.GetContactNote().Definition().Operation.OperationID != "getContactNote" {
+		t.Errorf("getContactNote mock has another definition")
+	}
+	if mock.ListContactNotes().Definition().Operation.OperationID != "listContactNotes" {
+		t.Errorf("listContactNotes mock has another definition")
+	}
+	if mock.CreateContactNote().Definition().Operation.OperationID != "createContactNote" {
+		t.Errorf("createContactNote mock has another definition")
+	}
+	if mock.UpdateContactNote().Definition().Operation.OperationID != "updateContactNote" {
+		t.Errorf("updateContactNote mock has another definition")
+	}
+	if mock.DeleteContactNote().Definition().Operation.OperationID != "deleteContactNote" {
+		t.Errorf("deleteContactNote mock has another definition")
 	}
 }
