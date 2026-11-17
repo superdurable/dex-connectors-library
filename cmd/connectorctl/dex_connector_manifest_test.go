@@ -24,6 +24,7 @@ func TestOperationAndBranchNamesBecomePythonKeywords(t *testing.T) {
 	require.Equal(t, "read_ids_from_cache", lowerCamelToSnake("readIDsFromCache"))
 	require.Equal(t, "get_api_settings", lowerCamelToSnake("getAPISettings"))
 	require.Equal(t, "acme_data_api", pythonImportPackageName("connectors/acme/data-api"))
+	require.Equal(t, "_365api", pythonImportPackageName("connectors/365api"))
 }
 
 // sdkgo mirrors lowerCamelToSnake to name agent tools; both read the same vectors.
