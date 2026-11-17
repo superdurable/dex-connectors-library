@@ -24,7 +24,8 @@ import (
 func TestObjectsUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := cloudstoragemock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	bucketFlow := NewBucketFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, bucketFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -57,4 +58,14 @@ func TestObjectsUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "example.txt", output.Objects[0].Name)
 	require.Equal(t, "123", output.Objects[0].Generation)
 	require.Len(t, mock.ListObjects().Calls(), 1)
+	bucketFlowID := "google-cloud-storage-buckets-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, bucketFlow, bucketFlowID, cloudstorage.ListBucketsInput{Project: "123456789"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	bucketResult, err := client.WaitForFlow(ctx, bucketFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, bucketResult.Status, bucketResult.ErrorMessage)
+	var bucketPage cloudstorage.BucketsPage
+	require.NoError(t, bucketResult.DecodeSingleOutput(&bucketPage))
+	require.Equal(t, "example-bucket", bucketPage.Buckets[0].Name)
+	require.Len(t, mock.ListBuckets().Calls(), 1)
 }
