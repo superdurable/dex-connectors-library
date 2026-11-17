@@ -126,6 +126,18 @@ type Mock struct {
 	createInboxLabel             *connectormock.Mutation[resend.CreateInboxLabelInput, resend.InboxLabelReference]
 	updateInboxLabel             *connectormock.Mutation[resend.UpdateInboxLabelInput, resend.InboxLabelReference]
 	deleteInboxLabel             *connectormock.Mutation[resend.DeleteInboxLabelInput, resend.DeletedInboxLabel]
+	listInboxThreads             *connectormock.Query[resend.ListInboxThreadsInput, resend.InboxThreadPage]
+	searchInboxThreads           *connectormock.Query[resend.SearchInboxThreadsInput, resend.InboxThreadPage]
+	getInboxThread               *connectormock.Query[resend.GetInboxThreadInput, resend.InboxThreadReference]
+	updateInboxThread            *connectormock.Mutation[resend.UpdateInboxThreadInput, resend.InboxThreadReference]
+	deleteInboxThread            *connectormock.Mutation[resend.DeleteInboxThreadInput, resend.DeletedInboxThread]
+	addInboxThreadLabels         *connectormock.Mutation[resend.ChangeInboxThreadLabelsInput, resend.InboxThreadLabelList]
+	setInboxThreadLabels         *connectormock.Mutation[resend.ChangeInboxThreadLabelsInput, resend.InboxThreadLabelList]
+	removeInboxThreadLabel       *connectormock.Mutation[resend.RemoveInboxThreadLabelInput, resend.InboxThreadLabelList]
+	listInboxThreadEmails        *connectormock.Query[resend.ListInboxThreadEmailsInput, resend.InboxThreadEmailPage]
+	getInboxThreadEmail          *connectormock.Query[resend.GetInboxThreadEmailInput, resend.InboxThreadEmail]
+	replyInboxThreadEmail        *connectormock.Mutation[resend.ReplyInboxThreadEmailInput, resend.SentInboxThreadEmail]
+	forwardInboxThreadEmail      *connectormock.Mutation[resend.ForwardInboxThreadEmailInput, resend.SentInboxThreadEmail]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -241,6 +253,18 @@ func New(t testing.TB, connectionName string) *Mock {
 		createInboxLabel:             connectormock.NewMutation[resend.CreateInboxLabelInput, resend.InboxLabelReference](t, resend.CreateInboxLabelDefinition),
 		updateInboxLabel:             connectormock.NewMutation[resend.UpdateInboxLabelInput, resend.InboxLabelReference](t, resend.UpdateInboxLabelDefinition),
 		deleteInboxLabel:             connectormock.NewMutation[resend.DeleteInboxLabelInput, resend.DeletedInboxLabel](t, resend.DeleteInboxLabelDefinition),
+		listInboxThreads:             connectormock.NewQuery[resend.ListInboxThreadsInput, resend.InboxThreadPage](t, resend.ListInboxThreadsDefinition),
+		searchInboxThreads:           connectormock.NewQuery[resend.SearchInboxThreadsInput, resend.InboxThreadPage](t, resend.SearchInboxThreadsDefinition),
+		getInboxThread:               connectormock.NewQuery[resend.GetInboxThreadInput, resend.InboxThreadReference](t, resend.GetInboxThreadDefinition),
+		updateInboxThread:            connectormock.NewMutation[resend.UpdateInboxThreadInput, resend.InboxThreadReference](t, resend.UpdateInboxThreadDefinition),
+		deleteInboxThread:            connectormock.NewMutation[resend.DeleteInboxThreadInput, resend.DeletedInboxThread](t, resend.DeleteInboxThreadDefinition),
+		addInboxThreadLabels:         connectormock.NewMutation[resend.ChangeInboxThreadLabelsInput, resend.InboxThreadLabelList](t, resend.AddInboxThreadLabelsDefinition),
+		setInboxThreadLabels:         connectormock.NewMutation[resend.ChangeInboxThreadLabelsInput, resend.InboxThreadLabelList](t, resend.SetInboxThreadLabelsDefinition),
+		removeInboxThreadLabel:       connectormock.NewMutation[resend.RemoveInboxThreadLabelInput, resend.InboxThreadLabelList](t, resend.RemoveInboxThreadLabelDefinition),
+		listInboxThreadEmails:        connectormock.NewQuery[resend.ListInboxThreadEmailsInput, resend.InboxThreadEmailPage](t, resend.ListInboxThreadEmailsDefinition),
+		getInboxThreadEmail:          connectormock.NewQuery[resend.GetInboxThreadEmailInput, resend.InboxThreadEmail](t, resend.GetInboxThreadEmailDefinition),
+		replyInboxThreadEmail:        connectormock.NewMutation[resend.ReplyInboxThreadEmailInput, resend.SentInboxThreadEmail](t, resend.ReplyInboxThreadEmailDefinition),
+		forwardInboxThreadEmail:      connectormock.NewMutation[resend.ForwardInboxThreadEmailInput, resend.SentInboxThreadEmail](t, resend.ForwardInboxThreadEmailDefinition),
 	}
 	mock.createContact.Default(CreateContactDefault())
 	mock.createDomain.Default(CreateDomainDefault())
@@ -350,6 +374,18 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createInboxLabel.Default(CreateInboxLabelDefault())
 	mock.updateInboxLabel.Default(UpdateInboxLabelDefault())
 	mock.deleteInboxLabel.Default(DeleteInboxLabelDefault())
+	mock.listInboxThreads.Default(ListInboxThreadsDefault())
+	mock.searchInboxThreads.Default(SearchInboxThreadsDefault())
+	mock.getInboxThread.Default(GetInboxThreadDefault())
+	mock.updateInboxThread.Default(UpdateInboxThreadDefault())
+	mock.deleteInboxThread.Default(DeleteInboxThreadDefault())
+	mock.addInboxThreadLabels.Default(AddInboxThreadLabelsDefault())
+	mock.setInboxThreadLabels.Default(SetInboxThreadLabelsDefault())
+	mock.removeInboxThreadLabel.Default(RemoveInboxThreadLabelDefault())
+	mock.listInboxThreadEmails.Default(ListInboxThreadEmailsDefault())
+	mock.getInboxThreadEmail.Default(GetInboxThreadEmailDefault())
+	mock.replyInboxThreadEmail.Default(ReplyInboxThreadEmailDefault())
+	mock.forwardInboxThreadEmail.Default(ForwardInboxThreadEmailDefault())
 	connection, err := resend.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "resend", Name: connectionName})
 	if err != nil {
 		t.Fatalf("resend mock connection: %v", err)
@@ -901,6 +937,66 @@ func (mock *Mock) DeleteInboxLabel() *connectormock.Mutation[resend.DeleteInboxL
 	return mock.deleteInboxLabel
 }
 
+// ListInboxThreads returns the listInboxThreads script.
+func (mock *Mock) ListInboxThreads() *connectormock.Query[resend.ListInboxThreadsInput, resend.InboxThreadPage] {
+	return mock.listInboxThreads
+}
+
+// SearchInboxThreads returns the searchInboxThreads script.
+func (mock *Mock) SearchInboxThreads() *connectormock.Query[resend.SearchInboxThreadsInput, resend.InboxThreadPage] {
+	return mock.searchInboxThreads
+}
+
+// GetInboxThread returns the getInboxThread script.
+func (mock *Mock) GetInboxThread() *connectormock.Query[resend.GetInboxThreadInput, resend.InboxThreadReference] {
+	return mock.getInboxThread
+}
+
+// UpdateInboxThread returns the updateInboxThread script.
+func (mock *Mock) UpdateInboxThread() *connectormock.Mutation[resend.UpdateInboxThreadInput, resend.InboxThreadReference] {
+	return mock.updateInboxThread
+}
+
+// DeleteInboxThread returns the deleteInboxThread script.
+func (mock *Mock) DeleteInboxThread() *connectormock.Mutation[resend.DeleteInboxThreadInput, resend.DeletedInboxThread] {
+	return mock.deleteInboxThread
+}
+
+// AddInboxThreadLabels returns the addInboxThreadLabels script.
+func (mock *Mock) AddInboxThreadLabels() *connectormock.Mutation[resend.ChangeInboxThreadLabelsInput, resend.InboxThreadLabelList] {
+	return mock.addInboxThreadLabels
+}
+
+// SetInboxThreadLabels returns the setInboxThreadLabels script.
+func (mock *Mock) SetInboxThreadLabels() *connectormock.Mutation[resend.ChangeInboxThreadLabelsInput, resend.InboxThreadLabelList] {
+	return mock.setInboxThreadLabels
+}
+
+// RemoveInboxThreadLabel returns the removeInboxThreadLabel script.
+func (mock *Mock) RemoveInboxThreadLabel() *connectormock.Mutation[resend.RemoveInboxThreadLabelInput, resend.InboxThreadLabelList] {
+	return mock.removeInboxThreadLabel
+}
+
+// ListInboxThreadEmails returns the listInboxThreadEmails script.
+func (mock *Mock) ListInboxThreadEmails() *connectormock.Query[resend.ListInboxThreadEmailsInput, resend.InboxThreadEmailPage] {
+	return mock.listInboxThreadEmails
+}
+
+// GetInboxThreadEmail returns the getInboxThreadEmail script.
+func (mock *Mock) GetInboxThreadEmail() *connectormock.Query[resend.GetInboxThreadEmailInput, resend.InboxThreadEmail] {
+	return mock.getInboxThreadEmail
+}
+
+// ReplyInboxThreadEmail returns the replyInboxThreadEmail script.
+func (mock *Mock) ReplyInboxThreadEmail() *connectormock.Mutation[resend.ReplyInboxThreadEmailInput, resend.SentInboxThreadEmail] {
+	return mock.replyInboxThreadEmail
+}
+
+// ForwardInboxThreadEmail returns the forwardInboxThreadEmail script.
+func (mock *Mock) ForwardInboxThreadEmail() *connectormock.Mutation[resend.ForwardInboxThreadEmailInput, resend.SentInboxThreadEmail] {
+	return mock.forwardInboxThreadEmail
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateContact() sdkgo.Mutation[resend.CreateContactInput, resend.ContactReference] {
@@ -1226,6 +1322,42 @@ func (operations mockOperations) UpdateInboxLabel() sdkgo.Mutation[resend.Update
 }
 func (operations mockOperations) DeleteInboxLabel() sdkgo.Mutation[resend.DeleteInboxLabelInput, resend.DeletedInboxLabel] {
 	return operations.mock.deleteInboxLabel
+}
+func (operations mockOperations) ListInboxThreads() sdkgo.Query[resend.ListInboxThreadsInput, resend.InboxThreadPage] {
+	return operations.mock.listInboxThreads
+}
+func (operations mockOperations) SearchInboxThreads() sdkgo.Query[resend.SearchInboxThreadsInput, resend.InboxThreadPage] {
+	return operations.mock.searchInboxThreads
+}
+func (operations mockOperations) GetInboxThread() sdkgo.Query[resend.GetInboxThreadInput, resend.InboxThreadReference] {
+	return operations.mock.getInboxThread
+}
+func (operations mockOperations) UpdateInboxThread() sdkgo.Mutation[resend.UpdateInboxThreadInput, resend.InboxThreadReference] {
+	return operations.mock.updateInboxThread
+}
+func (operations mockOperations) DeleteInboxThread() sdkgo.Mutation[resend.DeleteInboxThreadInput, resend.DeletedInboxThread] {
+	return operations.mock.deleteInboxThread
+}
+func (operations mockOperations) AddInboxThreadLabels() sdkgo.Mutation[resend.ChangeInboxThreadLabelsInput, resend.InboxThreadLabelList] {
+	return operations.mock.addInboxThreadLabels
+}
+func (operations mockOperations) SetInboxThreadLabels() sdkgo.Mutation[resend.ChangeInboxThreadLabelsInput, resend.InboxThreadLabelList] {
+	return operations.mock.setInboxThreadLabels
+}
+func (operations mockOperations) RemoveInboxThreadLabel() sdkgo.Mutation[resend.RemoveInboxThreadLabelInput, resend.InboxThreadLabelList] {
+	return operations.mock.removeInboxThreadLabel
+}
+func (operations mockOperations) ListInboxThreadEmails() sdkgo.Query[resend.ListInboxThreadEmailsInput, resend.InboxThreadEmailPage] {
+	return operations.mock.listInboxThreadEmails
+}
+func (operations mockOperations) GetInboxThreadEmail() sdkgo.Query[resend.GetInboxThreadEmailInput, resend.InboxThreadEmail] {
+	return operations.mock.getInboxThreadEmail
+}
+func (operations mockOperations) ReplyInboxThreadEmail() sdkgo.Mutation[resend.ReplyInboxThreadEmailInput, resend.SentInboxThreadEmail] {
+	return operations.mock.replyInboxThreadEmail
+}
+func (operations mockOperations) ForwardInboxThreadEmail() sdkgo.Mutation[resend.ForwardInboxThreadEmailInput, resend.SentInboxThreadEmail] {
+	return operations.mock.forwardInboxThreadEmail
 }
 
 // CreateContactCreated selects the created branch: Resend created or confirmed the contact.
@@ -5352,4 +5484,496 @@ func DeleteInboxLabelDeleteInboxLabelDefault() connectormock.Case[resend.Deleted
 // DeleteInboxLabelDefault is the manifest default, deleteInboxLabelDefault, which New installs.
 func DeleteInboxLabelDefault() connectormock.Case[resend.DeletedInboxLabel] {
 	return DeleteInboxLabelDeleteInboxLabelDefault()
+}
+
+// ListInboxThreadsListed selects the listed branch: Resend completed the request.
+func ListInboxThreadsListed(value resend.InboxThreadPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadPage] {
+	return connectormock.Branch(resend.ListInboxThreadsBranchListed, value, failure)
+}
+
+// ListInboxThreadsNotFound selects the notFound branch: The inbox resource does not exist.
+func ListInboxThreadsNotFound(value resend.InboxThreadPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadPage] {
+	return connectormock.Branch(resend.ListInboxThreadsBranchNotFound, value, failure)
+}
+
+// ListInboxThreadsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListInboxThreadsProviderRejected(value resend.InboxThreadPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadPage] {
+	return connectormock.Branch(resend.ListInboxThreadsBranchProviderRejected, value, failure)
+}
+
+// ListInboxThreadsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListInboxThreadsInvalidResponse(value resend.InboxThreadPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadPage] {
+	return connectormock.Branch(resend.ListInboxThreadsBranchInvalidResponse, value, failure)
+}
+
+// ListInboxThreadsDefect selects the defect branch: Local input or credentials are invalid.
+func ListInboxThreadsDefect(value resend.InboxThreadPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadPage] {
+	return connectormock.Branch(resend.ListInboxThreadsBranchDefect, value, failure)
+}
+
+// ListInboxThreadsRetry asks Dex to retry the listInboxThreads Step, after the delay when it is positive.
+func ListInboxThreadsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxThreadPage] {
+	return connectormock.Retry[resend.InboxThreadPage](failure, after)
+}
+
+// ListInboxThreadsListInboxThreadsDefault is the manifest mock listInboxThreadsDefault: Resend completed the request.
+func ListInboxThreadsListInboxThreadsDefault() connectormock.Case[resend.InboxThreadPage] {
+	value := connectormock.MustDecodeOutput[resend.InboxThreadPage](`{"data":[{"id":"thread-1","subject":"Hello","folder":"inbox","read":false}],"has_more":false}`)
+	return connectormock.Branch(resend.ListInboxThreadsBranchListed, value, nil)
+}
+
+// ListInboxThreadsDefault is the manifest default, listInboxThreadsDefault, which New installs.
+func ListInboxThreadsDefault() connectormock.Case[resend.InboxThreadPage] {
+	return ListInboxThreadsListInboxThreadsDefault()
+}
+
+// SearchInboxThreadsListed selects the listed branch: Resend completed the request.
+func SearchInboxThreadsListed(value resend.InboxThreadPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadPage] {
+	return connectormock.Branch(resend.SearchInboxThreadsBranchListed, value, failure)
+}
+
+// SearchInboxThreadsNotFound selects the notFound branch: The inbox resource does not exist.
+func SearchInboxThreadsNotFound(value resend.InboxThreadPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadPage] {
+	return connectormock.Branch(resend.SearchInboxThreadsBranchNotFound, value, failure)
+}
+
+// SearchInboxThreadsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func SearchInboxThreadsProviderRejected(value resend.InboxThreadPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadPage] {
+	return connectormock.Branch(resend.SearchInboxThreadsBranchProviderRejected, value, failure)
+}
+
+// SearchInboxThreadsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func SearchInboxThreadsInvalidResponse(value resend.InboxThreadPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadPage] {
+	return connectormock.Branch(resend.SearchInboxThreadsBranchInvalidResponse, value, failure)
+}
+
+// SearchInboxThreadsDefect selects the defect branch: Local input or credentials are invalid.
+func SearchInboxThreadsDefect(value resend.InboxThreadPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadPage] {
+	return connectormock.Branch(resend.SearchInboxThreadsBranchDefect, value, failure)
+}
+
+// SearchInboxThreadsRetry asks Dex to retry the searchInboxThreads Step, after the delay when it is positive.
+func SearchInboxThreadsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxThreadPage] {
+	return connectormock.Retry[resend.InboxThreadPage](failure, after)
+}
+
+// SearchInboxThreadsSearchInboxThreadsDefault is the manifest mock searchInboxThreadsDefault: Resend completed the request.
+func SearchInboxThreadsSearchInboxThreadsDefault() connectormock.Case[resend.InboxThreadPage] {
+	value := connectormock.MustDecodeOutput[resend.InboxThreadPage](`{"data":[{"id":"thread-1","subject":"Hello","folder":"inbox","read":false,"matched_email_id":"email-1"}],"has_more":false}`)
+	return connectormock.Branch(resend.SearchInboxThreadsBranchListed, value, nil)
+}
+
+// SearchInboxThreadsDefault is the manifest default, searchInboxThreadsDefault, which New installs.
+func SearchInboxThreadsDefault() connectormock.Case[resend.InboxThreadPage] {
+	return SearchInboxThreadsSearchInboxThreadsDefault()
+}
+
+// GetInboxThreadFound selects the found branch: Resend completed the request.
+func GetInboxThreadFound(value resend.InboxThreadReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadReference] {
+	return connectormock.Branch(resend.GetInboxThreadBranchFound, value, failure)
+}
+
+// GetInboxThreadNotFound selects the notFound branch: The inbox resource does not exist.
+func GetInboxThreadNotFound(value resend.InboxThreadReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadReference] {
+	return connectormock.Branch(resend.GetInboxThreadBranchNotFound, value, failure)
+}
+
+// GetInboxThreadProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetInboxThreadProviderRejected(value resend.InboxThreadReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadReference] {
+	return connectormock.Branch(resend.GetInboxThreadBranchProviderRejected, value, failure)
+}
+
+// GetInboxThreadInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetInboxThreadInvalidResponse(value resend.InboxThreadReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadReference] {
+	return connectormock.Branch(resend.GetInboxThreadBranchInvalidResponse, value, failure)
+}
+
+// GetInboxThreadDefect selects the defect branch: Local input or credentials are invalid.
+func GetInboxThreadDefect(value resend.InboxThreadReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadReference] {
+	return connectormock.Branch(resend.GetInboxThreadBranchDefect, value, failure)
+}
+
+// GetInboxThreadRetry asks Dex to retry the getInboxThread Step, after the delay when it is positive.
+func GetInboxThreadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxThreadReference] {
+	return connectormock.Retry[resend.InboxThreadReference](failure, after)
+}
+
+// GetInboxThreadGetInboxThreadDefault is the manifest mock getInboxThreadDefault: Resend completed the request.
+func GetInboxThreadGetInboxThreadDefault() connectormock.Case[resend.InboxThreadReference] {
+	value := connectormock.MustDecodeOutput[resend.InboxThreadReference](`{"id":"thread-1","folder":"inbox","read":false}`)
+	return connectormock.Branch(resend.GetInboxThreadBranchFound, value, nil)
+}
+
+// GetInboxThreadDefault is the manifest default, getInboxThreadDefault, which New installs.
+func GetInboxThreadDefault() connectormock.Case[resend.InboxThreadReference] {
+	return GetInboxThreadGetInboxThreadDefault()
+}
+
+// UpdateInboxThreadUpdated selects the updated branch: Resend completed the request.
+func UpdateInboxThreadUpdated(value resend.InboxThreadReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadReference] {
+	return connectormock.Branch(resend.UpdateInboxThreadBranchUpdated, value, failure)
+}
+
+// UpdateInboxThreadNotFound selects the notFound branch: The inbox resource does not exist.
+func UpdateInboxThreadNotFound(value resend.InboxThreadReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadReference] {
+	return connectormock.Branch(resend.UpdateInboxThreadBranchNotFound, value, failure)
+}
+
+// UpdateInboxThreadProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func UpdateInboxThreadProviderRejected(value resend.InboxThreadReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadReference] {
+	return connectormock.Branch(resend.UpdateInboxThreadBranchProviderRejected, value, failure)
+}
+
+// UpdateInboxThreadInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func UpdateInboxThreadInvalidResponse(value resend.InboxThreadReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadReference] {
+	return connectormock.Branch(resend.UpdateInboxThreadBranchInvalidResponse, value, failure)
+}
+
+// UpdateInboxThreadDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateInboxThreadDefect(value resend.InboxThreadReference, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadReference] {
+	return connectormock.Branch(resend.UpdateInboxThreadBranchDefect, value, failure)
+}
+
+// UpdateInboxThreadRetry asks Dex to retry the updateInboxThread Step, after the delay when it is positive.
+func UpdateInboxThreadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxThreadReference] {
+	return connectormock.Retry[resend.InboxThreadReference](failure, after)
+}
+
+// UpdateInboxThreadUpdateInboxThreadDefault is the manifest mock updateInboxThreadDefault: Resend completed the request.
+func UpdateInboxThreadUpdateInboxThreadDefault() connectormock.Case[resend.InboxThreadReference] {
+	value := connectormock.MustDecodeOutput[resend.InboxThreadReference](`{"id":"thread-1","folder":"archive","read":true}`)
+	return connectormock.Branch(resend.UpdateInboxThreadBranchUpdated, value, nil)
+}
+
+// UpdateInboxThreadDefault is the manifest default, updateInboxThreadDefault, which New installs.
+func UpdateInboxThreadDefault() connectormock.Case[resend.InboxThreadReference] {
+	return UpdateInboxThreadUpdateInboxThreadDefault()
+}
+
+// DeleteInboxThreadDeleted selects the deleted branch: Resend completed the request.
+func DeleteInboxThreadDeleted(value resend.DeletedInboxThread, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxThread] {
+	return connectormock.Branch(resend.DeleteInboxThreadBranchDeleted, value, failure)
+}
+
+// DeleteInboxThreadNotFound selects the notFound branch: The inbox resource does not exist.
+func DeleteInboxThreadNotFound(value resend.DeletedInboxThread, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxThread] {
+	return connectormock.Branch(resend.DeleteInboxThreadBranchNotFound, value, failure)
+}
+
+// DeleteInboxThreadProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func DeleteInboxThreadProviderRejected(value resend.DeletedInboxThread, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxThread] {
+	return connectormock.Branch(resend.DeleteInboxThreadBranchProviderRejected, value, failure)
+}
+
+// DeleteInboxThreadInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func DeleteInboxThreadInvalidResponse(value resend.DeletedInboxThread, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxThread] {
+	return connectormock.Branch(resend.DeleteInboxThreadBranchInvalidResponse, value, failure)
+}
+
+// DeleteInboxThreadDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteInboxThreadDefect(value resend.DeletedInboxThread, failure *sdkgo.Failure) connectormock.Case[resend.DeletedInboxThread] {
+	return connectormock.Branch(resend.DeleteInboxThreadBranchDefect, value, failure)
+}
+
+// DeleteInboxThreadRetry asks Dex to retry the deleteInboxThread Step, after the delay when it is positive.
+func DeleteInboxThreadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DeletedInboxThread] {
+	return connectormock.Retry[resend.DeletedInboxThread](failure, after)
+}
+
+// DeleteInboxThreadDeleteInboxThreadDefault is the manifest mock deleteInboxThreadDefault: Resend completed the request.
+func DeleteInboxThreadDeleteInboxThreadDefault() connectormock.Case[resend.DeletedInboxThread] {
+	value := connectormock.MustDecodeOutput[resend.DeletedInboxThread](`{"id":"thread-1","deleted":true}`)
+	return connectormock.Branch(resend.DeleteInboxThreadBranchDeleted, value, nil)
+}
+
+// DeleteInboxThreadDefault is the manifest default, deleteInboxThreadDefault, which New installs.
+func DeleteInboxThreadDefault() connectormock.Case[resend.DeletedInboxThread] {
+	return DeleteInboxThreadDeleteInboxThreadDefault()
+}
+
+// AddInboxThreadLabelsUpdated selects the updated branch: Resend completed the request.
+func AddInboxThreadLabelsUpdated(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.AddInboxThreadLabelsBranchUpdated, value, failure)
+}
+
+// AddInboxThreadLabelsNotFound selects the notFound branch: The inbox resource does not exist.
+func AddInboxThreadLabelsNotFound(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.AddInboxThreadLabelsBranchNotFound, value, failure)
+}
+
+// AddInboxThreadLabelsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func AddInboxThreadLabelsProviderRejected(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.AddInboxThreadLabelsBranchProviderRejected, value, failure)
+}
+
+// AddInboxThreadLabelsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func AddInboxThreadLabelsInvalidResponse(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.AddInboxThreadLabelsBranchInvalidResponse, value, failure)
+}
+
+// AddInboxThreadLabelsDefect selects the defect branch: Local input or credentials are invalid.
+func AddInboxThreadLabelsDefect(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.AddInboxThreadLabelsBranchDefect, value, failure)
+}
+
+// AddInboxThreadLabelsRetry asks Dex to retry the addInboxThreadLabels Step, after the delay when it is positive.
+func AddInboxThreadLabelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Retry[resend.InboxThreadLabelList](failure, after)
+}
+
+// AddInboxThreadLabelsAddInboxThreadLabelsDefault is the manifest mock addInboxThreadLabelsDefault: Resend completed the request.
+func AddInboxThreadLabelsAddInboxThreadLabelsDefault() connectormock.Case[resend.InboxThreadLabelList] {
+	value := connectormock.MustDecodeOutput[resend.InboxThreadLabelList](`{"data":[{"id":"label-1","name":"Support","color":"#D4A6FF"}]}`)
+	return connectormock.Branch(resend.AddInboxThreadLabelsBranchUpdated, value, nil)
+}
+
+// AddInboxThreadLabelsDefault is the manifest default, addInboxThreadLabelsDefault, which New installs.
+func AddInboxThreadLabelsDefault() connectormock.Case[resend.InboxThreadLabelList] {
+	return AddInboxThreadLabelsAddInboxThreadLabelsDefault()
+}
+
+// SetInboxThreadLabelsUpdated selects the updated branch: Resend completed the request.
+func SetInboxThreadLabelsUpdated(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.SetInboxThreadLabelsBranchUpdated, value, failure)
+}
+
+// SetInboxThreadLabelsNotFound selects the notFound branch: The inbox resource does not exist.
+func SetInboxThreadLabelsNotFound(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.SetInboxThreadLabelsBranchNotFound, value, failure)
+}
+
+// SetInboxThreadLabelsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func SetInboxThreadLabelsProviderRejected(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.SetInboxThreadLabelsBranchProviderRejected, value, failure)
+}
+
+// SetInboxThreadLabelsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func SetInboxThreadLabelsInvalidResponse(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.SetInboxThreadLabelsBranchInvalidResponse, value, failure)
+}
+
+// SetInboxThreadLabelsDefect selects the defect branch: Local input or credentials are invalid.
+func SetInboxThreadLabelsDefect(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.SetInboxThreadLabelsBranchDefect, value, failure)
+}
+
+// SetInboxThreadLabelsRetry asks Dex to retry the setInboxThreadLabels Step, after the delay when it is positive.
+func SetInboxThreadLabelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Retry[resend.InboxThreadLabelList](failure, after)
+}
+
+// SetInboxThreadLabelsSetInboxThreadLabelsDefault is the manifest mock setInboxThreadLabelsDefault: Resend completed the request.
+func SetInboxThreadLabelsSetInboxThreadLabelsDefault() connectormock.Case[resend.InboxThreadLabelList] {
+	value := connectormock.MustDecodeOutput[resend.InboxThreadLabelList](`{"data":[{"id":"label-1","name":"Support","color":"#D4A6FF"}]}`)
+	return connectormock.Branch(resend.SetInboxThreadLabelsBranchUpdated, value, nil)
+}
+
+// SetInboxThreadLabelsDefault is the manifest default, setInboxThreadLabelsDefault, which New installs.
+func SetInboxThreadLabelsDefault() connectormock.Case[resend.InboxThreadLabelList] {
+	return SetInboxThreadLabelsSetInboxThreadLabelsDefault()
+}
+
+// RemoveInboxThreadLabelUpdated selects the updated branch: Resend completed the request.
+func RemoveInboxThreadLabelUpdated(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.RemoveInboxThreadLabelBranchUpdated, value, failure)
+}
+
+// RemoveInboxThreadLabelNotFound selects the notFound branch: The inbox resource does not exist.
+func RemoveInboxThreadLabelNotFound(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.RemoveInboxThreadLabelBranchNotFound, value, failure)
+}
+
+// RemoveInboxThreadLabelProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func RemoveInboxThreadLabelProviderRejected(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.RemoveInboxThreadLabelBranchProviderRejected, value, failure)
+}
+
+// RemoveInboxThreadLabelInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func RemoveInboxThreadLabelInvalidResponse(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.RemoveInboxThreadLabelBranchInvalidResponse, value, failure)
+}
+
+// RemoveInboxThreadLabelDefect selects the defect branch: Local input or credentials are invalid.
+func RemoveInboxThreadLabelDefect(value resend.InboxThreadLabelList, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Branch(resend.RemoveInboxThreadLabelBranchDefect, value, failure)
+}
+
+// RemoveInboxThreadLabelRetry asks Dex to retry the removeInboxThreadLabel Step, after the delay when it is positive.
+func RemoveInboxThreadLabelRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxThreadLabelList] {
+	return connectormock.Retry[resend.InboxThreadLabelList](failure, after)
+}
+
+// RemoveInboxThreadLabelRemoveInboxThreadLabelDefault is the manifest mock removeInboxThreadLabelDefault: Resend completed the request.
+func RemoveInboxThreadLabelRemoveInboxThreadLabelDefault() connectormock.Case[resend.InboxThreadLabelList] {
+	value := connectormock.MustDecodeOutput[resend.InboxThreadLabelList](`{"data":[]}`)
+	return connectormock.Branch(resend.RemoveInboxThreadLabelBranchUpdated, value, nil)
+}
+
+// RemoveInboxThreadLabelDefault is the manifest default, removeInboxThreadLabelDefault, which New installs.
+func RemoveInboxThreadLabelDefault() connectormock.Case[resend.InboxThreadLabelList] {
+	return RemoveInboxThreadLabelRemoveInboxThreadLabelDefault()
+}
+
+// ListInboxThreadEmailsListed selects the listed branch: Resend completed the request.
+func ListInboxThreadEmailsListed(value resend.InboxThreadEmailPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadEmailPage] {
+	return connectormock.Branch(resend.ListInboxThreadEmailsBranchListed, value, failure)
+}
+
+// ListInboxThreadEmailsNotFound selects the notFound branch: The inbox resource does not exist.
+func ListInboxThreadEmailsNotFound(value resend.InboxThreadEmailPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadEmailPage] {
+	return connectormock.Branch(resend.ListInboxThreadEmailsBranchNotFound, value, failure)
+}
+
+// ListInboxThreadEmailsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListInboxThreadEmailsProviderRejected(value resend.InboxThreadEmailPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadEmailPage] {
+	return connectormock.Branch(resend.ListInboxThreadEmailsBranchProviderRejected, value, failure)
+}
+
+// ListInboxThreadEmailsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListInboxThreadEmailsInvalidResponse(value resend.InboxThreadEmailPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadEmailPage] {
+	return connectormock.Branch(resend.ListInboxThreadEmailsBranchInvalidResponse, value, failure)
+}
+
+// ListInboxThreadEmailsDefect selects the defect branch: Local input or credentials are invalid.
+func ListInboxThreadEmailsDefect(value resend.InboxThreadEmailPage, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadEmailPage] {
+	return connectormock.Branch(resend.ListInboxThreadEmailsBranchDefect, value, failure)
+}
+
+// ListInboxThreadEmailsRetry asks Dex to retry the listInboxThreadEmails Step, after the delay when it is positive.
+func ListInboxThreadEmailsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxThreadEmailPage] {
+	return connectormock.Retry[resend.InboxThreadEmailPage](failure, after)
+}
+
+// ListInboxThreadEmailsListInboxThreadEmailsDefault is the manifest mock listInboxThreadEmailsDefault: Resend completed the request.
+func ListInboxThreadEmailsListInboxThreadEmailsDefault() connectormock.Case[resend.InboxThreadEmailPage] {
+	value := connectormock.MustDecodeOutput[resend.InboxThreadEmailPage](`{"data":[{"id":"email-1","direction":"inbound","from":"customer@example.test","to":["support@example.test"],"subject":"Hello"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListInboxThreadEmailsBranchListed, value, nil)
+}
+
+// ListInboxThreadEmailsDefault is the manifest default, listInboxThreadEmailsDefault, which New installs.
+func ListInboxThreadEmailsDefault() connectormock.Case[resend.InboxThreadEmailPage] {
+	return ListInboxThreadEmailsListInboxThreadEmailsDefault()
+}
+
+// GetInboxThreadEmailFound selects the found branch: Resend completed the request.
+func GetInboxThreadEmailFound(value resend.InboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadEmail] {
+	return connectormock.Branch(resend.GetInboxThreadEmailBranchFound, value, failure)
+}
+
+// GetInboxThreadEmailNotFound selects the notFound branch: The inbox resource does not exist.
+func GetInboxThreadEmailNotFound(value resend.InboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadEmail] {
+	return connectormock.Branch(resend.GetInboxThreadEmailBranchNotFound, value, failure)
+}
+
+// GetInboxThreadEmailProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetInboxThreadEmailProviderRejected(value resend.InboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadEmail] {
+	return connectormock.Branch(resend.GetInboxThreadEmailBranchProviderRejected, value, failure)
+}
+
+// GetInboxThreadEmailInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetInboxThreadEmailInvalidResponse(value resend.InboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadEmail] {
+	return connectormock.Branch(resend.GetInboxThreadEmailBranchInvalidResponse, value, failure)
+}
+
+// GetInboxThreadEmailDefect selects the defect branch: Local input or credentials are invalid.
+func GetInboxThreadEmailDefect(value resend.InboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.InboxThreadEmail] {
+	return connectormock.Branch(resend.GetInboxThreadEmailBranchDefect, value, failure)
+}
+
+// GetInboxThreadEmailRetry asks Dex to retry the getInboxThreadEmail Step, after the delay when it is positive.
+func GetInboxThreadEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.InboxThreadEmail] {
+	return connectormock.Retry[resend.InboxThreadEmail](failure, after)
+}
+
+// GetInboxThreadEmailGetInboxThreadEmailDefault is the manifest mock getInboxThreadEmailDefault: Resend completed the request.
+func GetInboxThreadEmailGetInboxThreadEmailDefault() connectormock.Case[resend.InboxThreadEmail] {
+	value := connectormock.MustDecodeOutput[resend.InboxThreadEmail](`{"id":"email-1","direction":"inbound","from":"customer@example.test","to":["support@example.test"],"subject":"Hello"}`)
+	return connectormock.Branch(resend.GetInboxThreadEmailBranchFound, value, nil)
+}
+
+// GetInboxThreadEmailDefault is the manifest default, getInboxThreadEmailDefault, which New installs.
+func GetInboxThreadEmailDefault() connectormock.Case[resend.InboxThreadEmail] {
+	return GetInboxThreadEmailGetInboxThreadEmailDefault()
+}
+
+// ReplyInboxThreadEmailSent selects the sent branch: Resend completed the request.
+func ReplyInboxThreadEmailSent(value resend.SentInboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxThreadEmail] {
+	return connectormock.Branch(resend.ReplyInboxThreadEmailBranchSent, value, failure)
+}
+
+// ReplyInboxThreadEmailNotFound selects the notFound branch: The inbox resource does not exist.
+func ReplyInboxThreadEmailNotFound(value resend.SentInboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxThreadEmail] {
+	return connectormock.Branch(resend.ReplyInboxThreadEmailBranchNotFound, value, failure)
+}
+
+// ReplyInboxThreadEmailProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ReplyInboxThreadEmailProviderRejected(value resend.SentInboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxThreadEmail] {
+	return connectormock.Branch(resend.ReplyInboxThreadEmailBranchProviderRejected, value, failure)
+}
+
+// ReplyInboxThreadEmailInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ReplyInboxThreadEmailInvalidResponse(value resend.SentInboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxThreadEmail] {
+	return connectormock.Branch(resend.ReplyInboxThreadEmailBranchInvalidResponse, value, failure)
+}
+
+// ReplyInboxThreadEmailDefect selects the defect branch: Local input or credentials are invalid.
+func ReplyInboxThreadEmailDefect(value resend.SentInboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxThreadEmail] {
+	return connectormock.Branch(resend.ReplyInboxThreadEmailBranchDefect, value, failure)
+}
+
+// ReplyInboxThreadEmailRetry asks Dex to retry the replyInboxThreadEmail Step, after the delay when it is positive.
+func ReplyInboxThreadEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.SentInboxThreadEmail] {
+	return connectormock.Retry[resend.SentInboxThreadEmail](failure, after)
+}
+
+// ReplyInboxThreadEmailReplyInboxThreadEmailDefault is the manifest mock replyInboxThreadEmailDefault: Resend completed the request.
+func ReplyInboxThreadEmailReplyInboxThreadEmailDefault() connectormock.Case[resend.SentInboxThreadEmail] {
+	value := connectormock.MustDecodeOutput[resend.SentInboxThreadEmail](`{"id":"email-2"}`)
+	return connectormock.Branch(resend.ReplyInboxThreadEmailBranchSent, value, nil)
+}
+
+// ReplyInboxThreadEmailDefault is the manifest default, replyInboxThreadEmailDefault, which New installs.
+func ReplyInboxThreadEmailDefault() connectormock.Case[resend.SentInboxThreadEmail] {
+	return ReplyInboxThreadEmailReplyInboxThreadEmailDefault()
+}
+
+// ForwardInboxThreadEmailSent selects the sent branch: Resend completed the request.
+func ForwardInboxThreadEmailSent(value resend.SentInboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxThreadEmail] {
+	return connectormock.Branch(resend.ForwardInboxThreadEmailBranchSent, value, failure)
+}
+
+// ForwardInboxThreadEmailNotFound selects the notFound branch: The inbox resource does not exist.
+func ForwardInboxThreadEmailNotFound(value resend.SentInboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxThreadEmail] {
+	return connectormock.Branch(resend.ForwardInboxThreadEmailBranchNotFound, value, failure)
+}
+
+// ForwardInboxThreadEmailProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ForwardInboxThreadEmailProviderRejected(value resend.SentInboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxThreadEmail] {
+	return connectormock.Branch(resend.ForwardInboxThreadEmailBranchProviderRejected, value, failure)
+}
+
+// ForwardInboxThreadEmailInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ForwardInboxThreadEmailInvalidResponse(value resend.SentInboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxThreadEmail] {
+	return connectormock.Branch(resend.ForwardInboxThreadEmailBranchInvalidResponse, value, failure)
+}
+
+// ForwardInboxThreadEmailDefect selects the defect branch: Local input or credentials are invalid.
+func ForwardInboxThreadEmailDefect(value resend.SentInboxThreadEmail, failure *sdkgo.Failure) connectormock.Case[resend.SentInboxThreadEmail] {
+	return connectormock.Branch(resend.ForwardInboxThreadEmailBranchDefect, value, failure)
+}
+
+// ForwardInboxThreadEmailRetry asks Dex to retry the forwardInboxThreadEmail Step, after the delay when it is positive.
+func ForwardInboxThreadEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.SentInboxThreadEmail] {
+	return connectormock.Retry[resend.SentInboxThreadEmail](failure, after)
+}
+
+// ForwardInboxThreadEmailForwardInboxThreadEmailDefault is the manifest mock forwardInboxThreadEmailDefault: Resend completed the request.
+func ForwardInboxThreadEmailForwardInboxThreadEmailDefault() connectormock.Case[resend.SentInboxThreadEmail] {
+	value := connectormock.MustDecodeOutput[resend.SentInboxThreadEmail](`{"id":"email-3"}`)
+	return connectormock.Branch(resend.ForwardInboxThreadEmailBranchSent, value, nil)
+}
+
+// ForwardInboxThreadEmailDefault is the manifest default, forwardInboxThreadEmailDefault, which New installs.
+func ForwardInboxThreadEmailDefault() connectormock.Case[resend.SentInboxThreadEmail] {
+	return ForwardInboxThreadEmailForwardInboxThreadEmailDefault()
 }

@@ -448,6 +448,54 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.DeletedInboxLabel](`{"id":"label-1","deleted":true}`)
 			return err
 		}},
+		{name: "listInboxThreads/listInboxThreadsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadPage](`{"data":[{"id":"thread-1","subject":"Hello","folder":"inbox","read":false}],"has_more":false}`)
+			return err
+		}},
+		{name: "searchInboxThreads/searchInboxThreadsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadPage](`{"data":[{"id":"thread-1","subject":"Hello","folder":"inbox","read":false,"matched_email_id":"email-1"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getInboxThread/getInboxThreadDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadReference](`{"id":"thread-1","folder":"inbox","read":false}`)
+			return err
+		}},
+		{name: "updateInboxThread/updateInboxThreadDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadReference](`{"id":"thread-1","folder":"archive","read":true}`)
+			return err
+		}},
+		{name: "deleteInboxThread/deleteInboxThreadDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedInboxThread](`{"id":"thread-1","deleted":true}`)
+			return err
+		}},
+		{name: "addInboxThreadLabels/addInboxThreadLabelsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadLabelList](`{"data":[{"id":"label-1","name":"Support","color":"#D4A6FF"}]}`)
+			return err
+		}},
+		{name: "setInboxThreadLabels/setInboxThreadLabelsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadLabelList](`{"data":[{"id":"label-1","name":"Support","color":"#D4A6FF"}]}`)
+			return err
+		}},
+		{name: "removeInboxThreadLabel/removeInboxThreadLabelDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadLabelList](`{"data":[]}`)
+			return err
+		}},
+		{name: "listInboxThreadEmails/listInboxThreadEmailsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadEmailPage](`{"data":[{"id":"email-1","direction":"inbound","from":"customer@example.test","to":["support@example.test"],"subject":"Hello"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getInboxThreadEmail/getInboxThreadEmailDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadEmail](`{"id":"email-1","direction":"inbound","from":"customer@example.test","to":["support@example.test"],"subject":"Hello"}`)
+			return err
+		}},
+		{name: "replyInboxThreadEmail/replyInboxThreadEmailDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SentInboxThreadEmail](`{"id":"email-2"}`)
+			return err
+		}},
+		{name: "forwardInboxThreadEmail/forwardInboxThreadEmailDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SentInboxThreadEmail](`{"id":"email-3"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -781,5 +829,41 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteInboxLabel().Definition().Operation.OperationID != "deleteInboxLabel" {
 		t.Errorf("deleteInboxLabel mock has another definition")
+	}
+	if mock.ListInboxThreads().Definition().Operation.OperationID != "listInboxThreads" {
+		t.Errorf("listInboxThreads mock has another definition")
+	}
+	if mock.SearchInboxThreads().Definition().Operation.OperationID != "searchInboxThreads" {
+		t.Errorf("searchInboxThreads mock has another definition")
+	}
+	if mock.GetInboxThread().Definition().Operation.OperationID != "getInboxThread" {
+		t.Errorf("getInboxThread mock has another definition")
+	}
+	if mock.UpdateInboxThread().Definition().Operation.OperationID != "updateInboxThread" {
+		t.Errorf("updateInboxThread mock has another definition")
+	}
+	if mock.DeleteInboxThread().Definition().Operation.OperationID != "deleteInboxThread" {
+		t.Errorf("deleteInboxThread mock has another definition")
+	}
+	if mock.AddInboxThreadLabels().Definition().Operation.OperationID != "addInboxThreadLabels" {
+		t.Errorf("addInboxThreadLabels mock has another definition")
+	}
+	if mock.SetInboxThreadLabels().Definition().Operation.OperationID != "setInboxThreadLabels" {
+		t.Errorf("setInboxThreadLabels mock has another definition")
+	}
+	if mock.RemoveInboxThreadLabel().Definition().Operation.OperationID != "removeInboxThreadLabel" {
+		t.Errorf("removeInboxThreadLabel mock has another definition")
+	}
+	if mock.ListInboxThreadEmails().Definition().Operation.OperationID != "listInboxThreadEmails" {
+		t.Errorf("listInboxThreadEmails mock has another definition")
+	}
+	if mock.GetInboxThreadEmail().Definition().Operation.OperationID != "getInboxThreadEmail" {
+		t.Errorf("getInboxThreadEmail mock has another definition")
+	}
+	if mock.ReplyInboxThreadEmail().Definition().Operation.OperationID != "replyInboxThreadEmail" {
+		t.Errorf("replyInboxThreadEmail mock has another definition")
+	}
+	if mock.ForwardInboxThreadEmail().Definition().Operation.OperationID != "forwardInboxThreadEmail" {
+		t.Errorf("forwardInboxThreadEmail mock has another definition")
 	}
 }

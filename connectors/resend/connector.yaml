@@ -1910,3 +1910,207 @@ spec:
     execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: deleteInboxLabelDefault, branch: deleted, default: true, description: Resend deleted the label., output: {id: label-1, deleted: true}}
+  - name: listInboxThreads
+    goName: ListInboxThreads
+    inputType: ListInboxThreadsInput
+    outputType: InboxThreadPage
+    kind: query
+    description: ListInboxThreads on a Resend inbox without exposing message bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listInboxThreadsDefault, branch: listed, default: true, description: Resend completed the request., output: {"data":[{"id":"thread-1","subject":"Hello","folder":"inbox","read":false}],"has_more":false}}
+  - name: searchInboxThreads
+    goName: SearchInboxThreads
+    inputType: SearchInboxThreadsInput
+    outputType: InboxThreadPage
+    kind: query
+    description: SearchInboxThreads on a Resend inbox without exposing message bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: searchInboxThreadsDefault, branch: listed, default: true, description: Resend completed the request., output: {"data":[{"id":"thread-1","subject":"Hello","folder":"inbox","read":false,"matched_email_id":"email-1"}],"has_more":false}}
+  - name: getInboxThread
+    goName: GetInboxThread
+    inputType: GetInboxThreadInput
+    outputType: InboxThreadReference
+    kind: query
+    description: GetInboxThread on a Resend inbox without exposing message bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getInboxThreadDefault, branch: found, default: true, description: Resend completed the request., output: {"id":"thread-1","folder":"inbox","read":false}}
+  - name: updateInboxThread
+    goName: UpdateInboxThread
+    inputType: UpdateInboxThreadInput
+    outputType: InboxThreadReference
+    kind: mutation
+    description: UpdateInboxThread on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateInboxThreadDefault, branch: updated, default: true, description: Resend completed the request., output: {"id":"thread-1","folder":"archive","read":true}}
+  - name: deleteInboxThread
+    goName: DeleteInboxThread
+    inputType: DeleteInboxThreadInput
+    outputType: DeletedInboxThread
+    kind: mutation
+    description: DeleteInboxThread on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteInboxThreadDefault, branch: deleted, default: true, description: Resend completed the request., output: {"id":"thread-1","deleted":true}}
+  - name: addInboxThreadLabels
+    goName: AddInboxThreadLabels
+    inputType: ChangeInboxThreadLabelsInput
+    outputType: InboxThreadLabelList
+    kind: mutation
+    description: AddInboxThreadLabels on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: addInboxThreadLabelsDefault, branch: updated, default: true, description: Resend completed the request., output: {"data":[{"id":"label-1","name":"Support","color":"#D4A6FF"}]}}
+  - name: setInboxThreadLabels
+    goName: SetInboxThreadLabels
+    inputType: ChangeInboxThreadLabelsInput
+    outputType: InboxThreadLabelList
+    kind: mutation
+    description: SetInboxThreadLabels on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: setInboxThreadLabelsDefault, branch: updated, default: true, description: Resend completed the request., output: {"data":[{"id":"label-1","name":"Support","color":"#D4A6FF"}]}}
+  - name: removeInboxThreadLabel
+    goName: RemoveInboxThreadLabel
+    inputType: RemoveInboxThreadLabelInput
+    outputType: InboxThreadLabelList
+    kind: mutation
+    description: RemoveInboxThreadLabel on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: removeInboxThreadLabelDefault, branch: updated, default: true, description: Resend completed the request., output: {"data":[]}}
+  - name: listInboxThreadEmails
+    goName: ListInboxThreadEmails
+    inputType: ListInboxThreadEmailsInput
+    outputType: InboxThreadEmailPage
+    kind: query
+    description: ListInboxThreadEmails on a Resend inbox without exposing message bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listInboxThreadEmailsDefault, branch: listed, default: true, description: Resend completed the request., output: {"data":[{"id":"email-1","direction":"inbound","from":"customer@example.test","to":["support@example.test"],"subject":"Hello"}],"has_more":false}}
+  - name: getInboxThreadEmail
+    goName: GetInboxThreadEmail
+    inputType: GetInboxThreadEmailInput
+    outputType: InboxThreadEmail
+    kind: query
+    description: GetInboxThreadEmail on a Resend inbox without exposing message bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getInboxThreadEmailDefault, branch: found, default: true, description: Resend completed the request., output: {"id":"email-1","direction":"inbound","from":"customer@example.test","to":["support@example.test"],"subject":"Hello"}}
+  - name: replyInboxThreadEmail
+    goName: ReplyInboxThreadEmail
+    inputType: ReplyInboxThreadEmailInput
+    outputType: SentInboxThreadEmail
+    kind: mutation
+    description: ReplyInboxThreadEmail on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: sent, goName: Sent, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: replyInboxThreadEmailDefault, branch: sent, default: true, description: Resend completed the request., output: {"id":"email-2"}}
+  - name: forwardInboxThreadEmail
+    goName: ForwardInboxThreadEmail
+    inputType: ForwardInboxThreadEmailInput
+    outputType: SentInboxThreadEmail
+    kind: mutation
+    description: ForwardInboxThreadEmail on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: sent, goName: Sent, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: forwardInboxThreadEmailDefault, branch: sent, default: true, description: Resend completed the request., output: {"id":"email-3"}}

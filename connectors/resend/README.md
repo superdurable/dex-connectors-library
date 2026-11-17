@@ -312,6 +312,18 @@ label name before another send. The runnable
 [`create-inbox-label` example](go/examples/create-inbox-label/README.md)
 exercises label creation through a real Dex Worker and generated provider mock.
 
+## Inbox threads and messages
+
+`ListInboxThreads`, `SearchInboxThreads`, and `GetInboxThread` expose
+conversation metadata. `UpdateInboxThread` changes read state or folder;
+`DeleteInboxThread` moves the thread to trash. Add, set, and remove label
+operations are safe to repeat. Thread email reads omit message bodies,
+attachments, and headers from Dex Results. `ReplyInboxThreadEmail` and
+`ForwardInboxThreadEmail` use the provider's 24-hour idempotency key, so
+unknown outcomes can repeat safely. The runnable
+[`update-inbox-thread` example](go/examples/update-inbox-thread/README.md)
+verifies one write through a real Dex Worker and generated provider mock.
+
 ## Mocks
 
 `resendmock.New(t, "mock")` binds the default manifest answers and the

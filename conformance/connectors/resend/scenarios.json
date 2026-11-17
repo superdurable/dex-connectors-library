@@ -43176,6 +43176,5482 @@
       },
       "name": "updateInboxAgent-clear",
       "operation": "updateInboxAgent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"inbox_thread\",\"id\":\"thread-1\",\"subject\":\"Hello\",\"folder\":\"inbox\",\"labels\":[],\"read\":false,\"email_count\":1,\"has_attachment\":false,\"has_draft\":false,\"received_at\":\"2026-01-01T00:00:00Z\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads",
+          "query": {
+            "after": [
+              "thread-0"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "read": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "email_count": 1,
+              "folder": "inbox",
+              "has_attachment": false,
+              "has_draft": false,
+              "id": "thread-1",
+              "read": false,
+              "received_at": "2026-01-01T00:00:00Z",
+              "subject": "Hello"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "read": true
+      },
+      "name": "listInboxThreads-success",
+      "operation": "listInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads",
+          "query": {
+            "after": [
+              "thread-0"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "read": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "read": true
+      },
+      "name": "listInboxThreads-rejected",
+      "operation": "listInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"inbox_thread\",\"id\":\"thread-1\",\"subject\":\"Hello\",\"folder\":\"inbox\",\"labels\":[],\"read\":false,\"email_count\":1,\"has_attachment\":false,\"has_draft\":false,\"received_at\":\"2026-01-01T00:00:00Z\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads",
+          "query": {
+            "after": [
+              "thread-0"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "read": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "email_count": 1,
+              "folder": "inbox",
+              "has_attachment": false,
+              "has_draft": false,
+              "id": "thread-1",
+              "read": false,
+              "received_at": "2026-01-01T00:00:00Z",
+              "subject": "Hello"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "read": true
+      },
+      "name": "listInboxThreads-invalid",
+      "operation": "listInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "inboxId": "",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "read": true
+      },
+      "name": "listInboxThreads-defect",
+      "operation": "listInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads",
+          "query": {
+            "after": [
+              "thread-0"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "read": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "read": true
+      },
+      "name": "listInboxThreads-rate",
+      "operation": "listInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads",
+          "query": {
+            "after": [
+              "thread-0"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "read": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "read": true
+      },
+      "name": "listInboxThreads-server",
+      "operation": "listInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads",
+          "query": {
+            "after": [
+              "thread-0"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "read": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "read": true
+      },
+      "name": "listInboxThreads-transport",
+      "operation": "listInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads",
+          "query": {
+            "after": [
+              "thread-0"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "read": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "read": true
+      },
+      "name": "listInboxThreads-missing",
+      "operation": "listInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"inbox_thread\",\"id\":\"thread-1\",\"subject\":\"Hello\",\"folder\":\"inbox\",\"labels\":[],\"read\":false,\"email_count\":1,\"has_attachment\":false,\"has_draft\":false,\"received_at\":\"2026-01-01T00:00:00Z\",\"matched_email_id\":\"email-1\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/search",
+          "query": {
+            "after": [
+              "thread-0"
+            ],
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "end_date": [
+              "2026-01-31"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "from": [
+              "customer@example.test"
+            ],
+            "has_attachment": [
+              "true"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "query": [
+              "Hello"
+            ],
+            "read": [
+              "true"
+            ],
+            "start_date": [
+              "2026-01-01"
+            ],
+            "to": [
+              "support@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "email_count": 1,
+              "folder": "inbox",
+              "has_attachment": false,
+              "has_draft": false,
+              "id": "thread-1",
+              "matched_email_id": "email-1",
+              "read": false,
+              "received_at": "2026-01-01T00:00:00Z",
+              "subject": "Hello"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "endDate": "2026-01-31",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "from": [
+          "customer@example.test"
+        ],
+        "hasAttachment": true,
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "query": "Hello",
+        "read": true,
+        "startDate": "2026-01-01",
+        "to": [
+          "support@example.test"
+        ]
+      },
+      "name": "searchInboxThreads-success",
+      "operation": "searchInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/search",
+          "query": {
+            "after": [
+              "thread-0"
+            ],
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "end_date": [
+              "2026-01-31"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "from": [
+              "customer@example.test"
+            ],
+            "has_attachment": [
+              "true"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "query": [
+              "Hello"
+            ],
+            "read": [
+              "true"
+            ],
+            "start_date": [
+              "2026-01-01"
+            ],
+            "to": [
+              "support@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "endDate": "2026-01-31",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "from": [
+          "customer@example.test"
+        ],
+        "hasAttachment": true,
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "query": "Hello",
+        "read": true,
+        "startDate": "2026-01-01",
+        "to": [
+          "support@example.test"
+        ]
+      },
+      "name": "searchInboxThreads-rejected",
+      "operation": "searchInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"inbox_thread\",\"id\":\"thread-1\",\"subject\":\"Hello\",\"folder\":\"inbox\",\"labels\":[],\"read\":false,\"email_count\":1,\"has_attachment\":false,\"has_draft\":false,\"received_at\":\"2026-01-01T00:00:00Z\",\"matched_email_id\":\"email-1\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/search",
+          "query": {
+            "after": [
+              "thread-0"
+            ],
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "end_date": [
+              "2026-01-31"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "from": [
+              "customer@example.test"
+            ],
+            "has_attachment": [
+              "true"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "query": [
+              "Hello"
+            ],
+            "read": [
+              "true"
+            ],
+            "start_date": [
+              "2026-01-01"
+            ],
+            "to": [
+              "support@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "email_count": 1,
+              "folder": "inbox",
+              "has_attachment": false,
+              "has_draft": false,
+              "id": "thread-1",
+              "matched_email_id": "email-1",
+              "read": false,
+              "received_at": "2026-01-01T00:00:00Z",
+              "subject": "Hello"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "endDate": "2026-01-31",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "from": [
+          "customer@example.test"
+        ],
+        "hasAttachment": true,
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "query": "Hello",
+        "read": true,
+        "startDate": "2026-01-01",
+        "to": [
+          "support@example.test"
+        ]
+      },
+      "name": "searchInboxThreads-invalid",
+      "operation": "searchInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "endDate": "2026-01-31",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "from": [
+          "customer@example.test"
+        ],
+        "hasAttachment": true,
+        "inboxId": "",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "query": "Hello",
+        "read": true,
+        "startDate": "2026-01-01",
+        "to": [
+          "support@example.test"
+        ]
+      },
+      "name": "searchInboxThreads-defect",
+      "operation": "searchInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/search",
+          "query": {
+            "after": [
+              "thread-0"
+            ],
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "end_date": [
+              "2026-01-31"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "from": [
+              "customer@example.test"
+            ],
+            "has_attachment": [
+              "true"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "query": [
+              "Hello"
+            ],
+            "read": [
+              "true"
+            ],
+            "start_date": [
+              "2026-01-01"
+            ],
+            "to": [
+              "support@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "endDate": "2026-01-31",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "from": [
+          "customer@example.test"
+        ],
+        "hasAttachment": true,
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "query": "Hello",
+        "read": true,
+        "startDate": "2026-01-01",
+        "to": [
+          "support@example.test"
+        ]
+      },
+      "name": "searchInboxThreads-rate",
+      "operation": "searchInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/search",
+          "query": {
+            "after": [
+              "thread-0"
+            ],
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "end_date": [
+              "2026-01-31"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "from": [
+              "customer@example.test"
+            ],
+            "has_attachment": [
+              "true"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "query": [
+              "Hello"
+            ],
+            "read": [
+              "true"
+            ],
+            "start_date": [
+              "2026-01-01"
+            ],
+            "to": [
+              "support@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "endDate": "2026-01-31",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "from": [
+          "customer@example.test"
+        ],
+        "hasAttachment": true,
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "query": "Hello",
+        "read": true,
+        "startDate": "2026-01-01",
+        "to": [
+          "support@example.test"
+        ]
+      },
+      "name": "searchInboxThreads-server",
+      "operation": "searchInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/search",
+          "query": {
+            "after": [
+              "thread-0"
+            ],
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "end_date": [
+              "2026-01-31"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "from": [
+              "customer@example.test"
+            ],
+            "has_attachment": [
+              "true"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "query": [
+              "Hello"
+            ],
+            "read": [
+              "true"
+            ],
+            "start_date": [
+              "2026-01-01"
+            ],
+            "to": [
+              "support@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "endDate": "2026-01-31",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "from": [
+          "customer@example.test"
+        ],
+        "hasAttachment": true,
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "query": "Hello",
+        "read": true,
+        "startDate": "2026-01-01",
+        "to": [
+          "support@example.test"
+        ]
+      },
+      "name": "searchInboxThreads-transport",
+      "operation": "searchInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/search",
+          "query": {
+            "after": [
+              "thread-0"
+            ],
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "end_date": [
+              "2026-01-31"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "from": [
+              "customer@example.test"
+            ],
+            "has_attachment": [
+              "true"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "query": [
+              "Hello"
+            ],
+            "read": [
+              "true"
+            ],
+            "start_date": [
+              "2026-01-01"
+            ],
+            "to": [
+              "support@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "thread-0",
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "endDate": "2026-01-31",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "from": [
+          "customer@example.test"
+        ],
+        "hasAttachment": true,
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "query": "Hello",
+        "read": true,
+        "startDate": "2026-01-01",
+        "to": [
+          "support@example.test"
+        ]
+      },
+      "name": "searchInboxThreads-missing",
+      "operation": "searchInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox_thread\",\"id\":\"thread-1\",\"subject\":\"Hello\",\"folder\":\"inbox\",\"labels\":[],\"read\":false,\"email_count\":1,\"has_attachment\":false,\"has_draft\":false,\"received_at\":\"2026-01-01T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "folder": "inbox",
+          "id": "thread-1",
+          "read": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThread-success",
+      "operation": "getInboxThread"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "folder": "",
+          "id": "",
+          "read": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThread-missing",
+      "operation": "getInboxThread"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "folder": "",
+          "id": "",
+          "read": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThread-rejected",
+      "operation": "getInboxThread"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox_thread\",\"id\":\"thread-1\",\"subject\":\"Hello\",\"folder\":\"inbox\",\"labels\":[],\"read\":false,\"email_count\":1,\"has_attachment\":false,\"has_draft\":false,\"received_at\":\"2026-01-01T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "folder": "inbox",
+          "id": "thread-1",
+          "read": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThread-invalid",
+      "operation": "getInboxThread"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "folder": "",
+          "id": "",
+          "read": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inboxId": "",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThread-defect",
+      "operation": "getInboxThread"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThread-rate",
+      "operation": "getInboxThread"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThread-server",
+      "operation": "getInboxThread"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThread-transport",
+      "operation": "getInboxThread"
+    },
+    {
+      "callId": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox_thread\",\"id\":\"thread-1\",\"subject\":\"Hello\",\"folder\":\"archive\",\"labels\":[],\"read\":true,\"email_count\":1,\"has_attachment\":false,\"has_draft\":false,\"received_at\":\"2026-01-01T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestBody": {
+            "folder": "archive",
+            "read": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "folder": "archive",
+          "id": "thread-1",
+          "read": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "input": {
+        "folder": "archive",
+        "inboxId": "inbox-1",
+        "read": true,
+        "threadId": "thread-1"
+      },
+      "name": "updateInboxThread-success",
+      "operation": "updateInboxThread"
+    },
+    {
+      "callId": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestBody": {
+            "folder": "archive",
+            "read": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "folder": "",
+          "id": "",
+          "read": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "input": {
+        "folder": "archive",
+        "inboxId": "inbox-1",
+        "read": true,
+        "threadId": "thread-1"
+      },
+      "name": "updateInboxThread-notFound",
+      "operation": "updateInboxThread"
+    },
+    {
+      "callId": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestBody": {
+            "folder": "archive",
+            "read": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "folder": "",
+          "id": "",
+          "read": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "input": {
+        "folder": "archive",
+        "inboxId": "inbox-1",
+        "read": true,
+        "threadId": "thread-1"
+      },
+      "name": "updateInboxThread-providerRejected",
+      "operation": "updateInboxThread"
+    },
+    {
+      "callId": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox_thread\",\"id\":\"thread-1\",\"subject\":\"Hello\",\"folder\":\"archive\",\"labels\":[],\"read\":true,\"email_count\":1,\"has_attachment\":false,\"has_draft\":false,\"received_at\":\"2026-01-01T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestBody": {
+            "folder": "archive",
+            "read": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "folder": "archive",
+          "id": "thread-1",
+          "read": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "input": {
+        "folder": "archive",
+        "inboxId": "inbox-1",
+        "read": true,
+        "threadId": "thread-1"
+      },
+      "name": "updateInboxThread-invalidResponse",
+      "operation": "updateInboxThread"
+    },
+    {
+      "callId": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "folder": "",
+          "id": "",
+          "read": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "input": {
+        "folder": "archive",
+        "inboxId": "",
+        "read": true,
+        "threadId": "thread-1"
+      },
+      "name": "updateInboxThread-defect",
+      "operation": "updateInboxThread"
+    },
+    {
+      "callId": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestBody": {
+            "folder": "archive",
+            "read": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "input": {
+        "folder": "archive",
+        "inboxId": "inbox-1",
+        "read": true,
+        "threadId": "thread-1"
+      },
+      "name": "updateInboxThread-429",
+      "operation": "updateInboxThread"
+    },
+    {
+      "callId": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestBody": {
+            "folder": "archive",
+            "read": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "input": {
+        "folder": "archive",
+        "inboxId": "inbox-1",
+        "read": true,
+        "threadId": "thread-1"
+      },
+      "name": "updateInboxThread-5xx",
+      "operation": "updateInboxThread"
+    },
+    {
+      "callId": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestBody": {
+            "folder": "archive",
+            "read": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc10ab10-ed74-5f0f-9fd0-7ccceef6bd30",
+      "input": {
+        "folder": "archive",
+        "inboxId": "inbox-1",
+        "read": true,
+        "threadId": "thread-1"
+      },
+      "name": "updateInboxThread-transport",
+      "operation": "updateInboxThread"
+    },
+    {
+      "callId": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox_thread\",\"id\":\"thread-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "thread-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "input": {
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "deleteInboxThread-success",
+      "operation": "deleteInboxThread"
+    },
+    {
+      "callId": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "input": {
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "deleteInboxThread-notFound",
+      "operation": "deleteInboxThread"
+    },
+    {
+      "callId": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "input": {
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "deleteInboxThread-rejected",
+      "operation": "deleteInboxThread"
+    },
+    {
+      "callId": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox_thread\",\"id\":\"thread-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "thread-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "input": {
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "deleteInboxThread-invalid",
+      "operation": "deleteInboxThread"
+    },
+    {
+      "callId": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "input": {
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "deleteInboxThread-429",
+      "operation": "deleteInboxThread"
+    },
+    {
+      "callId": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "input": {
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "deleteInboxThread-5xx",
+      "operation": "deleteInboxThread"
+    },
+    {
+      "callId": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/threads/thread-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "input": {
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "deleteInboxThread-transport",
+      "operation": "deleteInboxThread"
+    },
+    {
+      "callId": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "313c4c09-6528-5a2b-92c0-43f17f1e39f5",
+      "input": {
+        "inboxId": "",
+        "threadId": "thread-1"
+      },
+      "name": "deleteInboxThread-defect",
+      "operation": "deleteInboxThread"
+    },
+    {
+      "callId": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"label-1\",\"name\":\"Support\",\"color\":\"#D4A6FF\",\"created_at\":\"2026-01-01T00:00:00Z\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels",
+          "requestBody": {
+            "labels": [
+              "label-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "color": "#D4A6FF",
+              "created_at": "2026-01-01T00:00:00Z",
+              "id": "label-1",
+              "name": "Support"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "input": {
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "addInboxThreadLabels-success",
+      "operation": "addInboxThreadLabels"
+    },
+    {
+      "callId": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels",
+          "requestBody": {
+            "labels": [
+              "label-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "input": {
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "addInboxThreadLabels-notFound",
+      "operation": "addInboxThreadLabels"
+    },
+    {
+      "callId": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels",
+          "requestBody": {
+            "labels": [
+              "label-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "input": {
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "addInboxThreadLabels-providerRejected",
+      "operation": "addInboxThreadLabels"
+    },
+    {
+      "callId": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"label-1\",\"name\":\"Support\",\"color\":\"#D4A6FF\",\"created_at\":\"2026-01-01T00:00:00Z\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels",
+          "requestBody": {
+            "labels": [
+              "label-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "color": "#D4A6FF",
+              "created_at": "2026-01-01T00:00:00Z",
+              "id": "label-1",
+              "name": "Support"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "input": {
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "addInboxThreadLabels-invalidResponse",
+      "operation": "addInboxThreadLabels"
+    },
+    {
+      "callId": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "input": {
+        "inboxId": "",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "addInboxThreadLabels-defect",
+      "operation": "addInboxThreadLabels"
+    },
+    {
+      "callId": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels",
+          "requestBody": {
+            "labels": [
+              "label-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "input": {
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "addInboxThreadLabels-429",
+      "operation": "addInboxThreadLabels"
+    },
+    {
+      "callId": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels",
+          "requestBody": {
+            "labels": [
+              "label-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "input": {
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "addInboxThreadLabels-5xx",
+      "operation": "addInboxThreadLabels"
+    },
+    {
+      "callId": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels",
+          "requestBody": {
+            "labels": [
+              "label-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc05693-db8e-58b5-bd1b-b89db874b17b",
+      "input": {
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "addInboxThreadLabels-transport",
+      "operation": "addInboxThreadLabels"
+    },
+    {
+      "callId": "df388e06-4272-5e40-b293-99a985055f61",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"label-1\",\"name\":\"Support\",\"color\":\"#D4A6FF\",\"created_at\":\"2026-01-01T00:00:00Z\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels",
+          "requestBody": {
+            "labels": [
+              "label-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "color": "#D4A6FF",
+              "created_at": "2026-01-01T00:00:00Z",
+              "id": "label-1",
+              "name": "Support"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df388e06-4272-5e40-b293-99a985055f61",
+      "input": {
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "setInboxThreadLabels-success",
+      "operation": "setInboxThreadLabels"
+    },
+    {
+      "callId": "df388e06-4272-5e40-b293-99a985055f61",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels",
+          "requestBody": {
+            "labels": [
+              "label-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df388e06-4272-5e40-b293-99a985055f61",
+      "input": {
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "setInboxThreadLabels-notFound",
+      "operation": "setInboxThreadLabels"
+    },
+    {
+      "callId": "df388e06-4272-5e40-b293-99a985055f61",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels",
+          "requestBody": {
+            "labels": [
+              "label-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df388e06-4272-5e40-b293-99a985055f61",
+      "input": {
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "setInboxThreadLabels-providerRejected",
+      "operation": "setInboxThreadLabels"
+    },
+    {
+      "callId": "df388e06-4272-5e40-b293-99a985055f61",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"label-1\",\"name\":\"Support\",\"color\":\"#D4A6FF\",\"created_at\":\"2026-01-01T00:00:00Z\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels",
+          "requestBody": {
+            "labels": [
+              "label-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "color": "#D4A6FF",
+              "created_at": "2026-01-01T00:00:00Z",
+              "id": "label-1",
+              "name": "Support"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df388e06-4272-5e40-b293-99a985055f61",
+      "input": {
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "setInboxThreadLabels-invalidResponse",
+      "operation": "setInboxThreadLabels"
+    },
+    {
+      "callId": "df388e06-4272-5e40-b293-99a985055f61",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df388e06-4272-5e40-b293-99a985055f61",
+      "input": {
+        "inboxId": "",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "setInboxThreadLabels-defect",
+      "operation": "setInboxThreadLabels"
+    },
+    {
+      "callId": "df388e06-4272-5e40-b293-99a985055f61",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels",
+          "requestBody": {
+            "labels": [
+              "label-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df388e06-4272-5e40-b293-99a985055f61",
+      "input": {
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "setInboxThreadLabels-429",
+      "operation": "setInboxThreadLabels"
+    },
+    {
+      "callId": "df388e06-4272-5e40-b293-99a985055f61",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels",
+          "requestBody": {
+            "labels": [
+              "label-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df388e06-4272-5e40-b293-99a985055f61",
+      "input": {
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "setInboxThreadLabels-5xx",
+      "operation": "setInboxThreadLabels"
+    },
+    {
+      "callId": "df388e06-4272-5e40-b293-99a985055f61",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels",
+          "requestBody": {
+            "labels": [
+              "label-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df388e06-4272-5e40-b293-99a985055f61",
+      "input": {
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "threadId": "thread-1"
+      },
+      "name": "setInboxThreadLabels-transport",
+      "operation": "setInboxThreadLabels"
+    },
+    {
+      "callId": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels/label-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "input": {
+        "inboxId": "inbox-1",
+        "labelId": "label-1",
+        "threadId": "thread-1"
+      },
+      "name": "removeInboxThreadLabel-success",
+      "operation": "removeInboxThreadLabel"
+    },
+    {
+      "callId": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels/label-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "input": {
+        "inboxId": "inbox-1",
+        "labelId": "label-1",
+        "threadId": "thread-1"
+      },
+      "name": "removeInboxThreadLabel-notFound",
+      "operation": "removeInboxThreadLabel"
+    },
+    {
+      "callId": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels/label-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "input": {
+        "inboxId": "inbox-1",
+        "labelId": "label-1",
+        "threadId": "thread-1"
+      },
+      "name": "removeInboxThreadLabel-rejected",
+      "operation": "removeInboxThreadLabel"
+    },
+    {
+      "callId": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels/label-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "input": {
+        "inboxId": "inbox-1",
+        "labelId": "label-1",
+        "threadId": "thread-1"
+      },
+      "name": "removeInboxThreadLabel-invalid",
+      "operation": "removeInboxThreadLabel"
+    },
+    {
+      "callId": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels/label-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "input": {
+        "inboxId": "inbox-1",
+        "labelId": "label-1",
+        "threadId": "thread-1"
+      },
+      "name": "removeInboxThreadLabel-429",
+      "operation": "removeInboxThreadLabel"
+    },
+    {
+      "callId": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels/label-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "input": {
+        "inboxId": "inbox-1",
+        "labelId": "label-1",
+        "threadId": "thread-1"
+      },
+      "name": "removeInboxThreadLabel-5xx",
+      "operation": "removeInboxThreadLabel"
+    },
+    {
+      "callId": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1/threads/thread-1/labels/label-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "input": {
+        "inboxId": "inbox-1",
+        "labelId": "label-1",
+        "threadId": "thread-1"
+      },
+      "name": "removeInboxThreadLabel-transport",
+      "operation": "removeInboxThreadLabel"
+    },
+    {
+      "callId": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c2c5d3b-dc17-541d-b01f-ce4cbbd4e050",
+      "input": {
+        "inboxId": "",
+        "labelId": "label-1",
+        "threadId": "thread-1"
+      },
+      "name": "removeInboxThreadLabel-defect",
+      "operation": "removeInboxThreadLabel"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"email-1\",\"direction\":\"inbound\",\"from\":\"customer@example.test\",\"to\":[\"support@example.test\"],\"subject\":\"Hello\",\"read\":false,\"received_at\":\"2026-01-01T00:00:00Z\",\"html\":\"\u003cp\u003eMessage\u003c/p\u003e\",\"text\":\"Message\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails",
+          "query": {
+            "after": [
+              "email-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "direction": "inbound",
+              "from": "customer@example.test",
+              "id": "email-1",
+              "read": false,
+              "received_at": "2026-01-01T00:00:00Z",
+              "subject": "Hello",
+              "to": [
+                "support@example.test"
+              ]
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "email-0",
+        "inboxId": "inbox-1",
+        "limit": 2,
+        "threadId": "thread-1"
+      },
+      "name": "listInboxThreadEmails-success",
+      "operation": "listInboxThreadEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails",
+          "query": {
+            "after": [
+              "email-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "email-0",
+        "inboxId": "inbox-1",
+        "limit": 2,
+        "threadId": "thread-1"
+      },
+      "name": "listInboxThreadEmails-rejected",
+      "operation": "listInboxThreadEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"email-1\",\"direction\":\"inbound\",\"from\":\"customer@example.test\",\"to\":[\"support@example.test\"],\"subject\":\"Hello\",\"read\":false,\"received_at\":\"2026-01-01T00:00:00Z\",\"html\":\"\u003cp\u003eMessage\u003c/p\u003e\",\"text\":\"Message\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails",
+          "query": {
+            "after": [
+              "email-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "direction": "inbound",
+              "from": "customer@example.test",
+              "id": "email-1",
+              "read": false,
+              "received_at": "2026-01-01T00:00:00Z",
+              "subject": "Hello",
+              "to": [
+                "support@example.test"
+              ]
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "email-0",
+        "inboxId": "inbox-1",
+        "limit": 2,
+        "threadId": "thread-1"
+      },
+      "name": "listInboxThreadEmails-invalid",
+      "operation": "listInboxThreadEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "email-0",
+        "inboxId": "",
+        "limit": 2,
+        "threadId": "thread-1"
+      },
+      "name": "listInboxThreadEmails-defect",
+      "operation": "listInboxThreadEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails",
+          "query": {
+            "after": [
+              "email-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "email-0",
+        "inboxId": "inbox-1",
+        "limit": 2,
+        "threadId": "thread-1"
+      },
+      "name": "listInboxThreadEmails-rate",
+      "operation": "listInboxThreadEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails",
+          "query": {
+            "after": [
+              "email-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "email-0",
+        "inboxId": "inbox-1",
+        "limit": 2,
+        "threadId": "thread-1"
+      },
+      "name": "listInboxThreadEmails-server",
+      "operation": "listInboxThreadEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails",
+          "query": {
+            "after": [
+              "email-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "email-0",
+        "inboxId": "inbox-1",
+        "limit": 2,
+        "threadId": "thread-1"
+      },
+      "name": "listInboxThreadEmails-transport",
+      "operation": "listInboxThreadEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails",
+          "query": {
+            "after": [
+              "email-0"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "email-0",
+        "inboxId": "inbox-1",
+        "limit": 2,
+        "threadId": "thread-1"
+      },
+      "name": "listInboxThreadEmails-missing",
+      "operation": "listInboxThreadEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"email-1\",\"direction\":\"inbound\",\"from\":\"customer@example.test\",\"to\":[\"support@example.test\"],\"subject\":\"Hello\",\"read\":false,\"received_at\":\"2026-01-01T00:00:00Z\",\"html\":\"\u003cp\u003eMessage\u003c/p\u003e\",\"text\":\"Message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "direction": "inbound",
+          "from": "customer@example.test",
+          "id": "email-1",
+          "read": false,
+          "received_at": "2026-01-01T00:00:00Z",
+          "subject": "Hello",
+          "to": [
+            "support@example.test"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "email-1",
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThreadEmail-success",
+      "operation": "getInboxThreadEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "direction": "",
+          "from": "",
+          "id": "",
+          "read": false,
+          "received_at": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "email-1",
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThreadEmail-missing",
+      "operation": "getInboxThreadEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "direction": "",
+          "from": "",
+          "id": "",
+          "read": false,
+          "received_at": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "email-1",
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThreadEmail-rejected",
+      "operation": "getInboxThreadEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"email-1\",\"direction\":\"inbound\",\"from\":\"customer@example.test\",\"to\":[\"support@example.test\"],\"subject\":\"Hello\",\"read\":false,\"received_at\":\"2026-01-01T00:00:00Z\",\"html\":\"\u003cp\u003eMessage\u003c/p\u003e\",\"text\":\"Message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "direction": "inbound",
+          "from": "customer@example.test",
+          "id": "email-1",
+          "read": false,
+          "received_at": "2026-01-01T00:00:00Z",
+          "subject": "Hello",
+          "to": [
+            "support@example.test"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "email-1",
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThreadEmail-invalid",
+      "operation": "getInboxThreadEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "direction": "",
+          "from": "",
+          "id": "",
+          "read": false,
+          "received_at": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "email-1",
+        "inboxId": "",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThreadEmail-defect",
+      "operation": "getInboxThreadEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "email-1",
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThreadEmail-rate",
+      "operation": "getInboxThreadEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "email-1",
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThreadEmail-server",
+      "operation": "getInboxThreadEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "email-1",
+        "inboxId": "inbox-1",
+        "threadId": "thread-1"
+      },
+      "name": "getInboxThreadEmail-transport",
+      "operation": "getInboxThreadEmail"
+    },
+    {
+      "callId": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"email-2\"}",
+          "derivedKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1/reply",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eReply\u003c/p\u003e",
+            "reply_all": true,
+            "subject": "Re: Hello",
+            "text": "Reply"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "id": "email-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "replyAll": true,
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1"
+      },
+      "name": "replyInboxThreadEmail-success",
+      "operation": "replyInboxThreadEmail"
+    },
+    {
+      "callId": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1/reply",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eReply\u003c/p\u003e",
+            "reply_all": true,
+            "subject": "Re: Hello",
+            "text": "Reply"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "replyAll": true,
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1"
+      },
+      "name": "replyInboxThreadEmail-notFound",
+      "operation": "replyInboxThreadEmail"
+    },
+    {
+      "callId": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1/reply",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eReply\u003c/p\u003e",
+            "reply_all": true,
+            "subject": "Re: Hello",
+            "text": "Reply"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "replyAll": true,
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1"
+      },
+      "name": "replyInboxThreadEmail-providerRejected",
+      "operation": "replyInboxThreadEmail"
+    },
+    {
+      "callId": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"email-2\"}",
+          "derivedKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1/reply",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eReply\u003c/p\u003e",
+            "reply_all": true,
+            "subject": "Re: Hello",
+            "text": "Reply"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "id": "email-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "replyAll": true,
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1"
+      },
+      "name": "replyInboxThreadEmail-invalidResponse",
+      "operation": "replyInboxThreadEmail"
+    },
+    {
+      "callId": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "",
+        "replyAll": true,
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1"
+      },
+      "name": "replyInboxThreadEmail-defect",
+      "operation": "replyInboxThreadEmail"
+    },
+    {
+      "callId": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1/reply",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eReply\u003c/p\u003e",
+            "reply_all": true,
+            "subject": "Re: Hello",
+            "text": "Reply"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "replyAll": true,
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1"
+      },
+      "name": "replyInboxThreadEmail-429",
+      "operation": "replyInboxThreadEmail"
+    },
+    {
+      "callId": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1/reply",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eReply\u003c/p\u003e",
+            "reply_all": true,
+            "subject": "Re: Hello",
+            "text": "Reply"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "replyAll": true,
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1"
+      },
+      "name": "replyInboxThreadEmail-5xx",
+      "operation": "replyInboxThreadEmail"
+    },
+    {
+      "callId": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "exchanges": [
+        {
+          "derivedKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1/reply",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eReply\u003c/p\u003e",
+            "reply_all": true,
+            "subject": "Re: Hello",
+            "text": "Reply"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec2c7bb7-40e6-5875-83a5-28724cfecf21",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eReply\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "replyAll": true,
+        "subject": "Re: Hello",
+        "text": "Reply",
+        "threadId": "thread-1"
+      },
+      "name": "replyInboxThreadEmail-transport",
+      "operation": "replyInboxThreadEmail"
+    },
+    {
+      "callId": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"email-3\"}",
+          "derivedKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1/forward",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eNote\u003c/p\u003e",
+            "subject": "Fwd: Hello",
+            "text": "Note",
+            "to": [
+              "colleague@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "id": "email-3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eNote\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "subject": "Fwd: Hello",
+        "text": "Note",
+        "threadId": "thread-1",
+        "to": [
+          "colleague@example.test"
+        ]
+      },
+      "name": "forwardInboxThreadEmail-success",
+      "operation": "forwardInboxThreadEmail"
+    },
+    {
+      "callId": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1/forward",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eNote\u003c/p\u003e",
+            "subject": "Fwd: Hello",
+            "text": "Note",
+            "to": [
+              "colleague@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eNote\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "subject": "Fwd: Hello",
+        "text": "Note",
+        "threadId": "thread-1",
+        "to": [
+          "colleague@example.test"
+        ]
+      },
+      "name": "forwardInboxThreadEmail-notFound",
+      "operation": "forwardInboxThreadEmail"
+    },
+    {
+      "callId": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1/forward",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eNote\u003c/p\u003e",
+            "subject": "Fwd: Hello",
+            "text": "Note",
+            "to": [
+              "colleague@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eNote\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "subject": "Fwd: Hello",
+        "text": "Note",
+        "threadId": "thread-1",
+        "to": [
+          "colleague@example.test"
+        ]
+      },
+      "name": "forwardInboxThreadEmail-providerRejected",
+      "operation": "forwardInboxThreadEmail"
+    },
+    {
+      "callId": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"email-3\"}",
+          "derivedKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1/forward",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eNote\u003c/p\u003e",
+            "subject": "Fwd: Hello",
+            "text": "Note",
+            "to": [
+              "colleague@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "id": "email-3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eNote\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "subject": "Fwd: Hello",
+        "text": "Note",
+        "threadId": "thread-1",
+        "to": [
+          "colleague@example.test"
+        ]
+      },
+      "name": "forwardInboxThreadEmail-invalidResponse",
+      "operation": "forwardInboxThreadEmail"
+    },
+    {
+      "callId": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eNote\u003c/p\u003e",
+        "inboxId": "",
+        "subject": "Fwd: Hello",
+        "text": "Note",
+        "threadId": "thread-1",
+        "to": [
+          "colleague@example.test"
+        ]
+      },
+      "name": "forwardInboxThreadEmail-defect",
+      "operation": "forwardInboxThreadEmail"
+    },
+    {
+      "callId": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1/forward",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eNote\u003c/p\u003e",
+            "subject": "Fwd: Hello",
+            "text": "Note",
+            "to": [
+              "colleague@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eNote\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "subject": "Fwd: Hello",
+        "text": "Note",
+        "threadId": "thread-1",
+        "to": [
+          "colleague@example.test"
+        ]
+      },
+      "name": "forwardInboxThreadEmail-429",
+      "operation": "forwardInboxThreadEmail"
+    },
+    {
+      "callId": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1/forward",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eNote\u003c/p\u003e",
+            "subject": "Fwd: Hello",
+            "text": "Note",
+            "to": [
+              "colleague@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eNote\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "subject": "Fwd: Hello",
+        "text": "Note",
+        "threadId": "thread-1",
+        "to": [
+          "colleague@example.test"
+        ]
+      },
+      "name": "forwardInboxThreadEmail-5xx",
+      "operation": "forwardInboxThreadEmail"
+    },
+    {
+      "callId": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "exchanges": [
+        {
+          "derivedKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails/email-1/forward",
+          "requestBody": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "html": "\u003cp\u003eNote\u003c/p\u003e",
+            "subject": "Fwd: Hello",
+            "text": "Note",
+            "to": [
+              "colleague@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96093b29-92c3-57e6-a3ae-b26237e8858d",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "emailId": "email-1",
+        "html": "\u003cp\u003eNote\u003c/p\u003e",
+        "inboxId": "inbox-1",
+        "subject": "Fwd: Hello",
+        "text": "Note",
+        "threadId": "thread-1",
+        "to": [
+          "colleague@example.test"
+        ]
+      },
+      "name": "forwardInboxThreadEmail-transport",
+      "operation": "forwardInboxThreadEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"inbox_thread\",\"id\":\"thread-1\",\"subject\":\"Hello\",\"folder\":\"inbox\",\"labels\":[],\"read\":false,\"email_count\":1,\"has_attachment\":false,\"has_draft\":false,\"received_at\":\"2026-01-01T00:00:00Z\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads",
+          "query": {
+            "before": [
+              "thread-2"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "read": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "email_count": 1,
+              "folder": "inbox",
+              "has_attachment": false,
+              "has_draft": false,
+              "id": "thread-1",
+              "read": false,
+              "received_at": "2026-01-01T00:00:00Z",
+              "subject": "Hello"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "thread-2",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "read": true
+      },
+      "name": "listInboxThreads-before",
+      "operation": "listInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"inbox_thread\",\"id\":\"thread-1\",\"subject\":\"Hello\",\"folder\":\"inbox\",\"labels\":[],\"read\":false,\"email_count\":1,\"has_attachment\":false,\"has_draft\":false,\"received_at\":\"2026-01-01T00:00:00Z\",\"matched_email_id\":\"email-1\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/search",
+          "query": {
+            "bcc": [
+              "bcc@example.test"
+            ],
+            "before": [
+              "thread-2"
+            ],
+            "cc": [
+              "cc@example.test"
+            ],
+            "end_date": [
+              "2026-01-31"
+            ],
+            "folders": [
+              "inbox,sent"
+            ],
+            "from": [
+              "customer@example.test"
+            ],
+            "has_attachment": [
+              "true"
+            ],
+            "labels": [
+              "label-1"
+            ],
+            "limit": [
+              "2"
+            ],
+            "query": [
+              "Hello"
+            ],
+            "read": [
+              "true"
+            ],
+            "start_date": [
+              "2026-01-01"
+            ],
+            "to": [
+              "support@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "email_count": 1,
+              "folder": "inbox",
+              "has_attachment": false,
+              "has_draft": false,
+              "id": "thread-1",
+              "matched_email_id": "email-1",
+              "read": false,
+              "received_at": "2026-01-01T00:00:00Z",
+              "subject": "Hello"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "before": "thread-2",
+        "cc": [
+          "cc@example.test"
+        ],
+        "endDate": "2026-01-31",
+        "folders": [
+          "inbox",
+          "sent"
+        ],
+        "from": [
+          "customer@example.test"
+        ],
+        "hasAttachment": true,
+        "inboxId": "inbox-1",
+        "labels": [
+          "label-1"
+        ],
+        "limit": 2,
+        "query": "Hello",
+        "read": true,
+        "startDate": "2026-01-01",
+        "to": [
+          "support@example.test"
+        ]
+      },
+      "name": "searchInboxThreads-before",
+      "operation": "searchInboxThreads"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"email-1\",\"direction\":\"inbound\",\"from\":\"customer@example.test\",\"to\":[\"support@example.test\"],\"subject\":\"Hello\",\"read\":false,\"received_at\":\"2026-01-01T00:00:00Z\",\"html\":\"\u003cp\u003eMessage\u003c/p\u003e\",\"text\":\"Message\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1/threads/thread-1/emails",
+          "query": {
+            "before": [
+              "email-2"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "direction": "inbound",
+              "from": "customer@example.test",
+              "id": "email-1",
+              "read": false,
+              "received_at": "2026-01-01T00:00:00Z",
+              "subject": "Hello",
+              "to": [
+                "support@example.test"
+              ]
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "email-2",
+        "inboxId": "inbox-1",
+        "limit": 2,
+        "threadId": "thread-1"
+      },
+      "name": "listInboxThreadEmails-before",
+      "operation": "listInboxThreadEmails"
     }
   ],
   "schemaVersion": 1
