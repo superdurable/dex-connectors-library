@@ -33,3 +33,12 @@ func TestAdGroupDiscoveryFlowRegisters(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)
 }
+
+func TestKeywordDiscoveryFlowRegisters(t *testing.T) {
+	mock := microsoftadvertisingmock.New(t, ConnectionName)
+	_, err := dex.NewRegistry([]dex.Flow{NewKeywordDiscoveryFlow(mock.Connection())})
+	require.NoError(t, err)
+	wait, err := startKeywordDiscovery{}.WaitFor(nil, microsoftadvertising.ListKeywordsInput{})
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+}

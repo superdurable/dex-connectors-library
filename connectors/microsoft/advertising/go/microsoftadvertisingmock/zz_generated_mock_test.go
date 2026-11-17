@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listKeywords/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.KeywordsPage](`{"keywords":[{"id":"44","text":"example shoes","matchType":"Exact","status":"Paused"}]}`)
+			return err
+		}},
+		{name: "getKeyword/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.KeywordSummary](`{"id":"44","text":"example shoes","matchType":"Exact","status":"Paused"}`)
+			return err
+		}},
+		{name: "createKeyword/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.KeywordMutationResult](`{"keywordId":"44"}`)
+			return err
+		}},
+		{name: "updateKeyword/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.KeywordMutationResult](`{"keywordId":"44"}`)
+			return err
+		}},
+		{name: "deleteKeyword/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.KeywordMutationResult](`{"keywordId":"44"}`)
+			return err
+		}},
 		{name: "listAdGroups/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[microsoftadvertising.AdGroupsPage](`{"adGroups":[{"id":"33","name":"Example","status":"Paused"}]}`)
 			return err
@@ -66,6 +86,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListKeywords().Definition().Operation.OperationID != "listKeywords" {
+		t.Errorf("listKeywords mock has another definition")
+	}
+	if mock.GetKeyword().Definition().Operation.OperationID != "getKeyword" {
+		t.Errorf("getKeyword mock has another definition")
+	}
+	if mock.CreateKeyword().Definition().Operation.OperationID != "createKeyword" {
+		t.Errorf("createKeyword mock has another definition")
+	}
+	if mock.UpdateKeyword().Definition().Operation.OperationID != "updateKeyword" {
+		t.Errorf("updateKeyword mock has another definition")
+	}
+	if mock.DeleteKeyword().Definition().Operation.OperationID != "deleteKeyword" {
+		t.Errorf("deleteKeyword mock has another definition")
+	}
 	if mock.ListAdGroups().Definition().Operation.OperationID != "listAdGroups" {
 		t.Errorf("listAdGroups mock has another definition")
 	}

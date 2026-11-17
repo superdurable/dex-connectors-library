@@ -18,6 +18,11 @@ import (
 // Mock is a scripted microsoft-advertising connection. Script each operation through its accessor.
 type Mock struct {
 	connection     microsoftadvertising.Connection
+	listKeywords   *connectormock.Query[microsoftadvertising.ListKeywordsInput, microsoftadvertising.KeywordsPage]
+	getKeyword     *connectormock.Query[microsoftadvertising.GetKeywordInput, microsoftadvertising.KeywordSummary]
+	createKeyword  *connectormock.Mutation[microsoftadvertising.CreateKeywordInput, microsoftadvertising.KeywordMutationResult]
+	updateKeyword  *connectormock.Mutation[microsoftadvertising.UpdateKeywordInput, microsoftadvertising.KeywordMutationResult]
+	deleteKeyword  *connectormock.Mutation[microsoftadvertising.DeleteKeywordInput, microsoftadvertising.KeywordMutationResult]
 	listAdGroups   *connectormock.Query[microsoftadvertising.ListAdGroupsInput, microsoftadvertising.AdGroupsPage]
 	getAdGroup     *connectormock.Query[microsoftadvertising.GetAdGroupInput, microsoftadvertising.AdGroupSummary]
 	createAdGroup  *connectormock.Mutation[microsoftadvertising.CreateAdGroupInput, microsoftadvertising.AdGroupMutationResult]
@@ -35,6 +40,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listKeywords:   connectormock.NewQuery[microsoftadvertising.ListKeywordsInput, microsoftadvertising.KeywordsPage](t, microsoftadvertising.ListKeywordsDefinition),
+		getKeyword:     connectormock.NewQuery[microsoftadvertising.GetKeywordInput, microsoftadvertising.KeywordSummary](t, microsoftadvertising.GetKeywordDefinition),
+		createKeyword:  connectormock.NewMutation[microsoftadvertising.CreateKeywordInput, microsoftadvertising.KeywordMutationResult](t, microsoftadvertising.CreateKeywordDefinition),
+		updateKeyword:  connectormock.NewMutation[microsoftadvertising.UpdateKeywordInput, microsoftadvertising.KeywordMutationResult](t, microsoftadvertising.UpdateKeywordDefinition),
+		deleteKeyword:  connectormock.NewMutation[microsoftadvertising.DeleteKeywordInput, microsoftadvertising.KeywordMutationResult](t, microsoftadvertising.DeleteKeywordDefinition),
 		listAdGroups:   connectormock.NewQuery[microsoftadvertising.ListAdGroupsInput, microsoftadvertising.AdGroupsPage](t, microsoftadvertising.ListAdGroupsDefinition),
 		getAdGroup:     connectormock.NewQuery[microsoftadvertising.GetAdGroupInput, microsoftadvertising.AdGroupSummary](t, microsoftadvertising.GetAdGroupDefinition),
 		createAdGroup:  connectormock.NewMutation[microsoftadvertising.CreateAdGroupInput, microsoftadvertising.AdGroupMutationResult](t, microsoftadvertising.CreateAdGroupDefinition),
@@ -46,6 +56,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteCampaign: connectormock.NewMutation[microsoftadvertising.DeleteCampaignInput, microsoftadvertising.CampaignMutationResult](t, microsoftadvertising.DeleteCampaignDefinition),
 		listCampaigns:  connectormock.NewQuery[microsoftadvertising.ListCampaignsInput, microsoftadvertising.CampaignsPage](t, microsoftadvertising.ListCampaignsDefinition),
 	}
+	mock.listKeywords.Default(ListKeywordsDefault())
+	mock.getKeyword.Default(GetKeywordDefault())
+	mock.createKeyword.Default(CreateKeywordDefault())
+	mock.updateKeyword.Default(UpdateKeywordDefault())
+	mock.deleteKeyword.Default(DeleteKeywordDefault())
 	mock.listAdGroups.Default(ListAdGroupsDefault())
 	mock.getAdGroup.Default(GetAdGroupDefault())
 	mock.createAdGroup.Default(CreateAdGroupDefault())
@@ -66,6 +81,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() microsoftadvertising.Connection { return mock.connection }
+
+// ListKeywords returns the listKeywords script.
+func (mock *Mock) ListKeywords() *connectormock.Query[microsoftadvertising.ListKeywordsInput, microsoftadvertising.KeywordsPage] {
+	return mock.listKeywords
+}
+
+// GetKeyword returns the getKeyword script.
+func (mock *Mock) GetKeyword() *connectormock.Query[microsoftadvertising.GetKeywordInput, microsoftadvertising.KeywordSummary] {
+	return mock.getKeyword
+}
+
+// CreateKeyword returns the createKeyword script.
+func (mock *Mock) CreateKeyword() *connectormock.Mutation[microsoftadvertising.CreateKeywordInput, microsoftadvertising.KeywordMutationResult] {
+	return mock.createKeyword
+}
+
+// UpdateKeyword returns the updateKeyword script.
+func (mock *Mock) UpdateKeyword() *connectormock.Mutation[microsoftadvertising.UpdateKeywordInput, microsoftadvertising.KeywordMutationResult] {
+	return mock.updateKeyword
+}
+
+// DeleteKeyword returns the deleteKeyword script.
+func (mock *Mock) DeleteKeyword() *connectormock.Mutation[microsoftadvertising.DeleteKeywordInput, microsoftadvertising.KeywordMutationResult] {
+	return mock.deleteKeyword
+}
 
 // ListAdGroups returns the listAdGroups script.
 func (mock *Mock) ListAdGroups() *connectormock.Query[microsoftadvertising.ListAdGroupsInput, microsoftadvertising.AdGroupsPage] {
@@ -119,6 +159,21 @@ func (mock *Mock) ListCampaigns() *connectormock.Query[microsoftadvertising.List
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListKeywords() sdkgo.Query[microsoftadvertising.ListKeywordsInput, microsoftadvertising.KeywordsPage] {
+	return operations.mock.listKeywords
+}
+func (operations mockOperations) GetKeyword() sdkgo.Query[microsoftadvertising.GetKeywordInput, microsoftadvertising.KeywordSummary] {
+	return operations.mock.getKeyword
+}
+func (operations mockOperations) CreateKeyword() sdkgo.Mutation[microsoftadvertising.CreateKeywordInput, microsoftadvertising.KeywordMutationResult] {
+	return operations.mock.createKeyword
+}
+func (operations mockOperations) UpdateKeyword() sdkgo.Mutation[microsoftadvertising.UpdateKeywordInput, microsoftadvertising.KeywordMutationResult] {
+	return operations.mock.updateKeyword
+}
+func (operations mockOperations) DeleteKeyword() sdkgo.Mutation[microsoftadvertising.DeleteKeywordInput, microsoftadvertising.KeywordMutationResult] {
+	return operations.mock.deleteKeyword
+}
 func (operations mockOperations) ListAdGroups() sdkgo.Query[microsoftadvertising.ListAdGroupsInput, microsoftadvertising.AdGroupsPage] {
 	return operations.mock.listAdGroups
 }
@@ -148,6 +203,186 @@ func (operations mockOperations) DeleteCampaign() sdkgo.Mutation[microsoftadvert
 }
 func (operations mockOperations) ListCampaigns() sdkgo.Query[microsoftadvertising.ListCampaignsInput, microsoftadvertising.CampaignsPage] {
 	return operations.mock.listCampaigns
+}
+
+// ListKeywordsListed selects the listed branch: Microsoft Advertising returned the keywords.
+func ListKeywordsListed(value microsoftadvertising.KeywordsPage, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordsPage] {
+	return connectormock.Branch(microsoftadvertising.ListKeywordsBranchListed, value, failure)
+}
+
+// ListKeywordsProviderRejected selects the providerRejected branch: Microsoft Advertising rejected the request.
+func ListKeywordsProviderRejected(value microsoftadvertising.KeywordsPage, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordsPage] {
+	return connectormock.Branch(microsoftadvertising.ListKeywordsBranchProviderRejected, value, failure)
+}
+
+// ListKeywordsInvalidResponse selects the invalidResponse branch: The keyword response was invalid.
+func ListKeywordsInvalidResponse(value microsoftadvertising.KeywordsPage, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordsPage] {
+	return connectormock.Branch(microsoftadvertising.ListKeywordsBranchInvalidResponse, value, failure)
+}
+
+// ListKeywordsDefect selects the defect branch: The account or ad group ID is invalid.
+func ListKeywordsDefect(value microsoftadvertising.KeywordsPage, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordsPage] {
+	return connectormock.Branch(microsoftadvertising.ListKeywordsBranchDefect, value, failure)
+}
+
+// ListKeywordsRetry asks Dex to retry the listKeywords Step, after the delay when it is positive.
+func ListKeywordsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[microsoftadvertising.KeywordsPage] {
+	return connectormock.Retry[microsoftadvertising.KeywordsPage](failure, after)
+}
+
+// ListKeywordsListedDefault is the manifest mock listedDefault: One keyword is listed.
+func ListKeywordsListedDefault() connectormock.Case[microsoftadvertising.KeywordsPage] {
+	value := connectormock.MustDecodeOutput[microsoftadvertising.KeywordsPage](`{"keywords":[{"id":"44","text":"example shoes","matchType":"Exact","status":"Paused"}]}`)
+	return connectormock.Branch(microsoftadvertising.ListKeywordsBranchListed, value, nil)
+}
+
+// ListKeywordsDefault is the manifest default, listedDefault, which New installs.
+func ListKeywordsDefault() connectormock.Case[microsoftadvertising.KeywordsPage] {
+	return ListKeywordsListedDefault()
+}
+
+// GetKeywordFound selects the found branch: Microsoft Advertising returned the keyword.
+func GetKeywordFound(value microsoftadvertising.KeywordSummary, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordSummary] {
+	return connectormock.Branch(microsoftadvertising.GetKeywordBranchFound, value, failure)
+}
+
+// GetKeywordNotFound selects the notFound branch: No keyword has the requested ID.
+func GetKeywordNotFound(value microsoftadvertising.KeywordSummary, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordSummary] {
+	return connectormock.Branch(microsoftadvertising.GetKeywordBranchNotFound, value, failure)
+}
+
+// GetKeywordProviderRejected selects the providerRejected branch: Microsoft Advertising rejected the request.
+func GetKeywordProviderRejected(value microsoftadvertising.KeywordSummary, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordSummary] {
+	return connectormock.Branch(microsoftadvertising.GetKeywordBranchProviderRejected, value, failure)
+}
+
+// GetKeywordInvalidResponse selects the invalidResponse branch: The keyword response was invalid.
+func GetKeywordInvalidResponse(value microsoftadvertising.KeywordSummary, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordSummary] {
+	return connectormock.Branch(microsoftadvertising.GetKeywordBranchInvalidResponse, value, failure)
+}
+
+// GetKeywordDefect selects the defect branch: The account, ad group, or keyword ID is invalid.
+func GetKeywordDefect(value microsoftadvertising.KeywordSummary, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordSummary] {
+	return connectormock.Branch(microsoftadvertising.GetKeywordBranchDefect, value, failure)
+}
+
+// GetKeywordRetry asks Dex to retry the getKeyword Step, after the delay when it is positive.
+func GetKeywordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[microsoftadvertising.KeywordSummary] {
+	return connectormock.Retry[microsoftadvertising.KeywordSummary](failure, after)
+}
+
+// GetKeywordFoundDefault is the manifest mock foundDefault: One keyword is found.
+func GetKeywordFoundDefault() connectormock.Case[microsoftadvertising.KeywordSummary] {
+	value := connectormock.MustDecodeOutput[microsoftadvertising.KeywordSummary](`{"id":"44","text":"example shoes","matchType":"Exact","status":"Paused"}`)
+	return connectormock.Branch(microsoftadvertising.GetKeywordBranchFound, value, nil)
+}
+
+// GetKeywordDefault is the manifest default, foundDefault, which New installs.
+func GetKeywordDefault() connectormock.Case[microsoftadvertising.KeywordSummary] {
+	return GetKeywordFoundDefault()
+}
+
+// CreateKeywordCreated selects the created branch: Microsoft Advertising created the keyword.
+func CreateKeywordCreated(value microsoftadvertising.KeywordMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Branch(microsoftadvertising.CreateKeywordBranchCreated, value, failure)
+}
+
+// CreateKeywordProviderRejected selects the providerRejected branch: Microsoft Advertising rejected the create.
+func CreateKeywordProviderRejected(value microsoftadvertising.KeywordMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Branch(microsoftadvertising.CreateKeywordBranchProviderRejected, value, failure)
+}
+
+// CreateKeywordDefect selects the defect branch: The account, ad group, text, or match type is invalid.
+func CreateKeywordDefect(value microsoftadvertising.KeywordMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Branch(microsoftadvertising.CreateKeywordBranchDefect, value, failure)
+}
+
+// CreateKeywordRetry asks Dex to retry the createKeyword Step, after the delay when it is positive.
+func CreateKeywordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Retry[microsoftadvertising.KeywordMutationResult](failure, after)
+}
+
+// CreateKeywordCreatedDefault is the manifest mock createdDefault: One keyword was created.
+func CreateKeywordCreatedDefault() connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	value := connectormock.MustDecodeOutput[microsoftadvertising.KeywordMutationResult](`{"keywordId":"44"}`)
+	return connectormock.Branch(microsoftadvertising.CreateKeywordBranchCreated, value, nil)
+}
+
+// CreateKeywordDefault is the manifest default, createdDefault, which New installs.
+func CreateKeywordDefault() connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return CreateKeywordCreatedDefault()
+}
+
+// UpdateKeywordUpdated selects the updated branch: Microsoft Advertising updated the keyword.
+func UpdateKeywordUpdated(value microsoftadvertising.KeywordMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Branch(microsoftadvertising.UpdateKeywordBranchUpdated, value, failure)
+}
+
+// UpdateKeywordProviderRejected selects the providerRejected branch: Microsoft Advertising rejected the update.
+func UpdateKeywordProviderRejected(value microsoftadvertising.KeywordMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Branch(microsoftadvertising.UpdateKeywordBranchProviderRejected, value, failure)
+}
+
+// UpdateKeywordInvalidResponse selects the invalidResponse branch: The update response was invalid.
+func UpdateKeywordInvalidResponse(value microsoftadvertising.KeywordMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Branch(microsoftadvertising.UpdateKeywordBranchInvalidResponse, value, failure)
+}
+
+// UpdateKeywordDefect selects the defect branch: The account, ad group, keyword, or status is invalid.
+func UpdateKeywordDefect(value microsoftadvertising.KeywordMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Branch(microsoftadvertising.UpdateKeywordBranchDefect, value, failure)
+}
+
+// UpdateKeywordRetry asks Dex to retry the updateKeyword Step, after the delay when it is positive.
+func UpdateKeywordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Retry[microsoftadvertising.KeywordMutationResult](failure, after)
+}
+
+// UpdateKeywordUpdatedDefault is the manifest mock updatedDefault: One keyword was updated.
+func UpdateKeywordUpdatedDefault() connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	value := connectormock.MustDecodeOutput[microsoftadvertising.KeywordMutationResult](`{"keywordId":"44"}`)
+	return connectormock.Branch(microsoftadvertising.UpdateKeywordBranchUpdated, value, nil)
+}
+
+// UpdateKeywordDefault is the manifest default, updatedDefault, which New installs.
+func UpdateKeywordDefault() connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return UpdateKeywordUpdatedDefault()
+}
+
+// DeleteKeywordDeleted selects the deleted branch: Microsoft Advertising deleted the keyword.
+func DeleteKeywordDeleted(value microsoftadvertising.KeywordMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Branch(microsoftadvertising.DeleteKeywordBranchDeleted, value, failure)
+}
+
+// DeleteKeywordProviderRejected selects the providerRejected branch: Microsoft Advertising rejected the delete.
+func DeleteKeywordProviderRejected(value microsoftadvertising.KeywordMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Branch(microsoftadvertising.DeleteKeywordBranchProviderRejected, value, failure)
+}
+
+// DeleteKeywordInvalidResponse selects the invalidResponse branch: The delete response was invalid.
+func DeleteKeywordInvalidResponse(value microsoftadvertising.KeywordMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Branch(microsoftadvertising.DeleteKeywordBranchInvalidResponse, value, failure)
+}
+
+// DeleteKeywordDefect selects the defect branch: The account, ad group, or keyword ID is invalid.
+func DeleteKeywordDefect(value microsoftadvertising.KeywordMutationResult, failure *sdkgo.Failure) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Branch(microsoftadvertising.DeleteKeywordBranchDefect, value, failure)
+}
+
+// DeleteKeywordRetry asks Dex to retry the deleteKeyword Step, after the delay when it is positive.
+func DeleteKeywordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return connectormock.Retry[microsoftadvertising.KeywordMutationResult](failure, after)
+}
+
+// DeleteKeywordDeletedDefault is the manifest mock deletedDefault: One keyword was deleted.
+func DeleteKeywordDeletedDefault() connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	value := connectormock.MustDecodeOutput[microsoftadvertising.KeywordMutationResult](`{"keywordId":"44"}`)
+	return connectormock.Branch(microsoftadvertising.DeleteKeywordBranchDeleted, value, nil)
+}
+
+// DeleteKeywordDefault is the manifest default, deletedDefault, which New installs.
+func DeleteKeywordDefault() connectormock.Case[microsoftadvertising.KeywordMutationResult] {
+	return DeleteKeywordDeletedDefault()
 }
 
 // ListAdGroupsListed selects the listed branch: Microsoft Advertising returned the ad groups.

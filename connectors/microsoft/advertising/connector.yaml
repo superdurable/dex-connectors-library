@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: microsoft-advertising
   displayName: Microsoft Advertising
-  description: Read and manage campaigns and ad groups in a Microsoft Advertising account through the v13 REST API.
+  description: Read and manage campaigns, ad groups, and keywords in a Microsoft Advertising account through the v13 REST API.
   company: Microsoft
   categories: [marketing]
   version: v0.2.0
@@ -101,6 +101,86 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, interaction_required, consent_required]
   operations:
+    - name: listKeywords
+      goName: ListKeywords
+      inputType: ListKeywordsInput
+      outputType: KeywordsPage
+      kind: query
+      description: List keywords in one ad group.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Microsoft Advertising returned the keywords.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The keyword response was invalid., optional: true}
+        - {id: defect, goName: Defect, description: The account or ad group ID is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One keyword is listed., output: {keywords: [{id: '44', text: example shoes, matchType: Exact, status: Paused}]}}
+    - name: getKeyword
+      goName: GetKeyword
+      inputType: GetKeywordInput
+      outputType: KeywordSummary
+      kind: query
+      description: Read one keyword by ID in an ad group.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Microsoft Advertising returned the keyword.}
+        - {id: notFound, goName: NotFound, description: No keyword has the requested ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The keyword response was invalid., optional: true}
+        - {id: defect, goName: Defect, description: "The account, ad group, or keyword ID is invalid.", optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One keyword is found., output: {id: '44', text: example shoes, matchType: Exact, status: Paused}}
+    - name: createKeyword
+      goName: CreateKeyword
+      inputType: CreateKeywordInput
+      outputType: KeywordMutationResult
+      kind: mutation
+      description: Create one paused keyword in an ad group.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Microsoft Advertising created the keyword.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the create., optional: true}
+        - {id: defect, goName: Defect, description: "The account, ad group, text, or match type is invalid.", optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: One keyword was created., output: {keywordId: '44'}}
+    - name: updateKeyword
+      goName: UpdateKeyword
+      inputType: UpdateKeywordInput
+      outputType: KeywordMutationResult
+      kind: mutation
+      description: Replace one keyword's status.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Microsoft Advertising updated the keyword.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The update response was invalid., optional: true}
+        - {id: defect, goName: Defect, description: "The account, ad group, keyword, or status is invalid.", optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: One keyword was updated., output: {keywordId: '44'}}
+    - name: deleteKeyword
+      goName: DeleteKeyword
+      inputType: DeleteKeywordInput
+      outputType: KeywordMutationResult
+      kind: mutation
+      description: Delete one keyword by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Microsoft Advertising deleted the keyword.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the delete., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The delete response was invalid., optional: true}
+        - {id: defect, goName: Defect, description: "The account, ad group, or keyword ID is invalid.", optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: One keyword was deleted., output: {keywordId: '44'}}
     - name: listAdGroups
       goName: ListAdGroups
       inputType: ListAdGroupsInput
