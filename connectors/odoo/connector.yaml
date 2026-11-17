@@ -57,7 +57,7 @@ spec:
     guide:
       startURL: https://www.odoo.com/documentation/19.0/developer/reference/external_api.html
       steps:
-        - Confirm your Odoo 19 or newer deployment supports the JSON-2 API and that your plan permits external API access. Use a dedicated user with the contact or CRM permissions needed by the selected operations.
+        - Confirm your Odoo 19 or newer deployment supports the JSON-2 API and that your plan permits external API access. Use a dedicated user with the contact, CRM, activity, or custom model permissions needed by the selected operations.
         - At the Odoo site open your user avatar > My Profile or Preferences > Account Security > New API Key. Set a description and expiration, generate the key, copy it once into secret apiKey, and rotate it before expiration. Blank prevents requests.
         - Enter the site origin as baseUrl without /json/2. Ask your administrator for the database name, or use the subdomain before .odoo.com on Odoo Online, as database. Blank values prevent requests. Leave timeout and maxResponseBytes blank for the displayed defaults.
   operations:
@@ -247,3 +247,86 @@ spec:
         - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: Example opportunity outcome., output: {id: 73}}
+    - name: listRecords
+      goName: ListRecords
+      inputType: ListRecordsInput
+      outputType: RecordsPage
+      kind: query
+      description: ListRecords in a selected Odoo JSON-2 model.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Odoo returned the selected record outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid record data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid model fields or credentials., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example Odoo activity page., output: {records: [{id: 42, fields: {summary: Call customer}}]}}
+    - name: getRecord
+      goName: GetRecord
+      inputType: GetRecordInput
+      outputType: Record
+      kind: query
+      description: GetRecord in a selected Odoo JSON-2 model.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Odoo returned the selected record outcome.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the record., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid record data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid model fields or credentials., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example Odoo model record outcome., output: {id: 42, fields: {name: Acme Company}}}
+    - name: createRecord
+      goName: CreateRecord
+      inputType: CreateRecordInput
+      outputType: CreatedRecord
+      kind: mutation
+      description: CreateRecord in a selected Odoo JSON-2 model.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: created, goName: Created, description: Odoo returned the selected record outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Invalid model fields or credentials., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Record creation may have succeeded but could not be confirmed., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example Odoo model record outcome., output: {id: 42}}
+    - name: updateRecord
+      goName: UpdateRecord
+      inputType: UpdateRecordInput
+      outputType: UpdatedRecord
+      kind: mutation
+      description: UpdateRecord in a selected Odoo JSON-2 model.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: Odoo returned the selected record outcome.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the record., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid record data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid model fields or credentials., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example Odoo model record outcome., output: {id: 42}}
+    - name: deleteRecord
+      goName: DeleteRecord
+      inputType: DeleteRecordInput
+      outputType: DeletedRecord
+      kind: mutation
+      description: DeleteRecord in a selected Odoo JSON-2 model.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: Odoo returned the selected record outcome.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the record., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid record data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid model fields or credentials., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Example Odoo model record outcome., output: {id: 42}}

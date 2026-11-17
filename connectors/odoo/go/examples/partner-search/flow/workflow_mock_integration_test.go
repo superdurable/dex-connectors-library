@@ -60,4 +60,7 @@ func TestPartnerSearchUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Len(t, contactCalls, 1)
 	require.Equal(t, int64(42), contactCalls[0].Input.ID)
 	require.Len(t, mock.ListOpportunities().Calls(), 1)
+	activityCalls := mock.ListRecords().Calls()
+	require.Len(t, activityCalls, 1)
+	require.Equal(t, "mail.activity", activityCalls[0].Input.Model)
 }

@@ -4278,6 +4278,1982 @@
       },
       "name": "deleteOpportunity-defect",
       "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "odoo-listRecords-success",
+      "exchanges": [
+        {
+          "body": "[{\"id\":42,\"name\":\"Acme Company\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "records": [
+            {
+              "fields": {
+                "name": "Acme Company"
+              },
+              "id": 42
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "limit": 5,
+        "model": "x_customer",
+        "offset": 1
+      },
+      "name": "listRecords-success",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "odoo-listRecords-rejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "limit": 5,
+        "model": "x_customer",
+        "offset": 1
+      },
+      "name": "listRecords-rejected",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "odoo-listRecords-malformed",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "limit": 5,
+        "model": "x_customer",
+        "offset": 1
+      },
+      "name": "listRecords-malformed",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "odoo-listRecords-rate-limited",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "limit": 5,
+        "model": "x_customer",
+        "offset": 1
+      },
+      "name": "listRecords-rate-limited",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "odoo-listRecords-unavailable",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "limit": 5,
+        "model": "x_customer",
+        "offset": 1
+      },
+      "name": "listRecords-unavailable",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "odoo-listRecords-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "limit": 5,
+        "model": "x_customer",
+        "offset": 1
+      },
+      "name": "listRecords-transport",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "odoo-listRecords-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "records": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [],
+        "limit": 0,
+        "model": "bad/model",
+        "offset": -1
+      },
+      "name": "listRecords-defect",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "odoo-getRecord-success",
+      "exchanges": [
+        {
+          "body": "[{\"id\":42,\"name\":\"Acme Company\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "name": "Acme Company"
+          },
+          "id": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "getRecord-success",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "odoo-getRecord-not-found",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fields": {},
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "getRecord-not-found",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "odoo-getRecord-rejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "fields": {},
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "getRecord-rejected",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "odoo-getRecord-malformed",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fields": {},
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "getRecord-malformed",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "odoo-getRecord-rate-limited",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "getRecord-rate-limited",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "odoo-getRecord-unavailable",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "getRecord-unavailable",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "odoo-getRecord-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "getRecord-transport",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "odoo-getRecord-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fields": {},
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [],
+        "id": 0,
+        "model": "bad/model"
+      },
+      "name": "getRecord-defect",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "body": "[42]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-success",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-rejected",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-malformed",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-rate-limited",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-unavailable",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-transport",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "bad/model",
+        "readBackField": "",
+        "values": {}
+      },
+      "name": "createRecord-defect",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "true",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-success",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-not-found",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-rejected",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-malformed",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-rate-limited",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-unavailable",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-transport",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 0,
+        "model": "bad/model",
+        "values": {}
+      },
+      "name": "updateRecord-defect",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "true",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-success",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-not-found",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-rejected",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-malformed",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-rate-limited",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-unavailable",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-transport",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 0,
+        "model": "bad/model"
+      },
+      "name": "deleteRecord-defect",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "odoo-listRecords-activity",
+      "exchanges": [
+        {
+          "body": "[{\"id\":83,\"summary\":\"Call customer\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/mail.activity/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "summary"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "records": [
+            {
+              "fields": {
+                "summary": "Call customer"
+              },
+              "id": 83
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "summary"
+        ],
+        "limit": 5,
+        "model": "mail.activity",
+        "offset": 1
+      },
+      "name": "listRecords-activity",
+      "operation": "listRecords"
     }
   ],
   "schemaVersion": 1

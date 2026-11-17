@@ -69,9 +69,23 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			Listed: sdkgo.GoTo(opportunitiesListed{}),
 		})),
+		dex.DefineStep(odoo.NewListRecordsStep(odoo.ListRecordsStepConfig[odoo.SearchPartnersInput]{
+			StepType: "ListActivities", ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Odoo", Explanation: "List activity summaries from the mail.activity model."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(input odoo.SearchPartnersInput) odoo.ListRecordsInput {
+				limit := input.Limit
+				if limit == 0 {
+					limit = 20
+				}
+				return odoo.ListRecordsInput{Model: "mail.activity", Fields: []string{"summary"}, Limit: limit, Offset: 0}
+			},
+			Listed: sdkgo.GoTo(activitiesListed{}),
+		})),
 		dex.DefineStep(partnersFound{}),
 		dex.DefineStep(contactRead{}),
 		dex.DefineStep(opportunitiesListed{}),
+		dex.DefineStep(activitiesListed{}),
 		dex.DefineStep(completeResult{}),
 	}
 }
@@ -127,6 +141,7 @@ func (startRequest) Execute(_ dex.Context, input odoo.SearchPartnersInput) (*dex
 	return dex.GoToMany(
 		dex.MovementOf(sdkgo.StepRef[odoo.SearchPartnersInput](operationStepType), input),
 		dex.MovementOf(sdkgo.StepRef[odoo.SearchPartnersInput]("ListOpportunities"), input),
+		dex.MovementOf(sdkgo.StepRef[odoo.SearchPartnersInput]("ListActivities"), input),
 	), nil
 }
 
@@ -137,6 +152,16 @@ type opportunitiesListed struct {
 }
 
 func (opportunitiesListed) Execute(_ dex.Context, _ odoo.ListOpportunitiesResult) (*dex.StepDecision, error) {
+	return dex.DeadEnd(), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Finish the activity list after Odoo responds."
+type activitiesListed struct {
+	dex.StepDefaultsNoWaitFor[odoo.ListRecordsResult]
+}
+
+func (activitiesListed) Execute(_ dex.Context, _ odoo.ListRecordsResult) (*dex.StepDecision, error) {
 	return dex.DeadEnd(), nil
 }
 

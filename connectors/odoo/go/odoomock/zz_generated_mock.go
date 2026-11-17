@@ -29,6 +29,11 @@ type Mock struct {
 	createOpportunity *connectormock.Mutation[odoo.CreateOpportunityInput, odoo.CreatedOpportunity]
 	updateOpportunity *connectormock.Mutation[odoo.UpdateOpportunityInput, odoo.UpdatedOpportunity]
 	deleteOpportunity *connectormock.Mutation[odoo.DeleteOpportunityInput, odoo.DeletedOpportunity]
+	listRecords       *connectormock.Query[odoo.ListRecordsInput, odoo.RecordsPage]
+	getRecord         *connectormock.Query[odoo.GetRecordInput, odoo.Record]
+	createRecord      *connectormock.Mutation[odoo.CreateRecordInput, odoo.CreatedRecord]
+	updateRecord      *connectormock.Mutation[odoo.UpdateRecordInput, odoo.UpdatedRecord]
+	deleteRecord      *connectormock.Mutation[odoo.DeleteRecordInput, odoo.DeletedRecord]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -47,6 +52,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		createOpportunity: connectormock.NewMutation[odoo.CreateOpportunityInput, odoo.CreatedOpportunity](t, odoo.CreateOpportunityDefinition),
 		updateOpportunity: connectormock.NewMutation[odoo.UpdateOpportunityInput, odoo.UpdatedOpportunity](t, odoo.UpdateOpportunityDefinition),
 		deleteOpportunity: connectormock.NewMutation[odoo.DeleteOpportunityInput, odoo.DeletedOpportunity](t, odoo.DeleteOpportunityDefinition),
+		listRecords:       connectormock.NewQuery[odoo.ListRecordsInput, odoo.RecordsPage](t, odoo.ListRecordsDefinition),
+		getRecord:         connectormock.NewQuery[odoo.GetRecordInput, odoo.Record](t, odoo.GetRecordDefinition),
+		createRecord:      connectormock.NewMutation[odoo.CreateRecordInput, odoo.CreatedRecord](t, odoo.CreateRecordDefinition),
+		updateRecord:      connectormock.NewMutation[odoo.UpdateRecordInput, odoo.UpdatedRecord](t, odoo.UpdateRecordDefinition),
+		deleteRecord:      connectormock.NewMutation[odoo.DeleteRecordInput, odoo.DeletedRecord](t, odoo.DeleteRecordDefinition),
 	}
 	mock.searchPartners.Default(SearchPartnersDefault())
 	mock.listContacts.Default(ListContactsDefault())
@@ -59,6 +69,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createOpportunity.Default(CreateOpportunityDefault())
 	mock.updateOpportunity.Default(UpdateOpportunityDefault())
 	mock.deleteOpportunity.Default(DeleteOpportunityDefault())
+	mock.listRecords.Default(ListRecordsDefault())
+	mock.getRecord.Default(GetRecordDefault())
+	mock.createRecord.Default(CreateRecordDefault())
+	mock.updateRecord.Default(UpdateRecordDefault())
+	mock.deleteRecord.Default(DeleteRecordDefault())
 	connection, err := odoo.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "odoo", Name: connectionName})
 	if err != nil {
 		t.Fatalf("odoo mock connection: %v", err)
@@ -125,6 +140,31 @@ func (mock *Mock) DeleteOpportunity() *connectormock.Mutation[odoo.DeleteOpportu
 	return mock.deleteOpportunity
 }
 
+// ListRecords returns the listRecords script.
+func (mock *Mock) ListRecords() *connectormock.Query[odoo.ListRecordsInput, odoo.RecordsPage] {
+	return mock.listRecords
+}
+
+// GetRecord returns the getRecord script.
+func (mock *Mock) GetRecord() *connectormock.Query[odoo.GetRecordInput, odoo.Record] {
+	return mock.getRecord
+}
+
+// CreateRecord returns the createRecord script.
+func (mock *Mock) CreateRecord() *connectormock.Mutation[odoo.CreateRecordInput, odoo.CreatedRecord] {
+	return mock.createRecord
+}
+
+// UpdateRecord returns the updateRecord script.
+func (mock *Mock) UpdateRecord() *connectormock.Mutation[odoo.UpdateRecordInput, odoo.UpdatedRecord] {
+	return mock.updateRecord
+}
+
+// DeleteRecord returns the deleteRecord script.
+func (mock *Mock) DeleteRecord() *connectormock.Mutation[odoo.DeleteRecordInput, odoo.DeletedRecord] {
+	return mock.deleteRecord
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SearchPartners() sdkgo.Query[odoo.SearchPartnersInput, odoo.PartnerSearchPage] {
@@ -159,6 +199,21 @@ func (operations mockOperations) UpdateOpportunity() sdkgo.Mutation[odoo.UpdateO
 }
 func (operations mockOperations) DeleteOpportunity() sdkgo.Mutation[odoo.DeleteOpportunityInput, odoo.DeletedOpportunity] {
 	return operations.mock.deleteOpportunity
+}
+func (operations mockOperations) ListRecords() sdkgo.Query[odoo.ListRecordsInput, odoo.RecordsPage] {
+	return operations.mock.listRecords
+}
+func (operations mockOperations) GetRecord() sdkgo.Query[odoo.GetRecordInput, odoo.Record] {
+	return operations.mock.getRecord
+}
+func (operations mockOperations) CreateRecord() sdkgo.Mutation[odoo.CreateRecordInput, odoo.CreatedRecord] {
+	return operations.mock.createRecord
+}
+func (operations mockOperations) UpdateRecord() sdkgo.Mutation[odoo.UpdateRecordInput, odoo.UpdatedRecord] {
+	return operations.mock.updateRecord
+}
+func (operations mockOperations) DeleteRecord() sdkgo.Mutation[odoo.DeleteRecordInput, odoo.DeletedRecord] {
+	return operations.mock.deleteRecord
 }
 
 // SearchPartnersFound selects the found branch: Odoo returned a bounded list of matching company partners.
@@ -581,4 +636,195 @@ func DeleteOpportunityDeletedDefault() connectormock.Case[odoo.DeletedOpportunit
 // DeleteOpportunityDefault is the manifest default, deletedDefault, which New installs.
 func DeleteOpportunityDefault() connectormock.Case[odoo.DeletedOpportunity] {
 	return DeleteOpportunityDeletedDefault()
+}
+
+// ListRecordsListed selects the listed branch: Odoo returned the selected record outcome.
+func ListRecordsListed(value odoo.RecordsPage, failure *sdkgo.Failure) connectormock.Case[odoo.RecordsPage] {
+	return connectormock.Branch(odoo.ListRecordsBranchListed, value, failure)
+}
+
+// ListRecordsProviderRejected selects the providerRejected branch: Odoo rejected the request.
+func ListRecordsProviderRejected(value odoo.RecordsPage, failure *sdkgo.Failure) connectormock.Case[odoo.RecordsPage] {
+	return connectormock.Branch(odoo.ListRecordsBranchProviderRejected, value, failure)
+}
+
+// ListRecordsInvalidResponse selects the invalidResponse branch: Odoo returned invalid record data.
+func ListRecordsInvalidResponse(value odoo.RecordsPage, failure *sdkgo.Failure) connectormock.Case[odoo.RecordsPage] {
+	return connectormock.Branch(odoo.ListRecordsBranchInvalidResponse, value, failure)
+}
+
+// ListRecordsDefect selects the defect branch: Invalid model fields or credentials.
+func ListRecordsDefect(value odoo.RecordsPage, failure *sdkgo.Failure) connectormock.Case[odoo.RecordsPage] {
+	return connectormock.Branch(odoo.ListRecordsBranchDefect, value, failure)
+}
+
+// ListRecordsRetry asks Dex to retry the listRecords Step, after the delay when it is positive.
+func ListRecordsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.RecordsPage] {
+	return connectormock.Retry[odoo.RecordsPage](failure, after)
+}
+
+// ListRecordsListedDefault is the manifest mock listedDefault: Example Odoo activity page.
+func ListRecordsListedDefault() connectormock.Case[odoo.RecordsPage] {
+	value := connectormock.MustDecodeOutput[odoo.RecordsPage](`{"records":[{"id":42,"fields":{"summary":"Call customer"}}]}`)
+	return connectormock.Branch(odoo.ListRecordsBranchListed, value, nil)
+}
+
+// ListRecordsDefault is the manifest default, listedDefault, which New installs.
+func ListRecordsDefault() connectormock.Case[odoo.RecordsPage] { return ListRecordsListedDefault() }
+
+// GetRecordFound selects the found branch: Odoo returned the selected record outcome.
+func GetRecordFound(value odoo.Record, failure *sdkgo.Failure) connectormock.Case[odoo.Record] {
+	return connectormock.Branch(odoo.GetRecordBranchFound, value, failure)
+}
+
+// GetRecordNotFound selects the notFound branch: Odoo did not find the record.
+func GetRecordNotFound(value odoo.Record, failure *sdkgo.Failure) connectormock.Case[odoo.Record] {
+	return connectormock.Branch(odoo.GetRecordBranchNotFound, value, failure)
+}
+
+// GetRecordProviderRejected selects the providerRejected branch: Odoo rejected the request.
+func GetRecordProviderRejected(value odoo.Record, failure *sdkgo.Failure) connectormock.Case[odoo.Record] {
+	return connectormock.Branch(odoo.GetRecordBranchProviderRejected, value, failure)
+}
+
+// GetRecordInvalidResponse selects the invalidResponse branch: Odoo returned invalid record data.
+func GetRecordInvalidResponse(value odoo.Record, failure *sdkgo.Failure) connectormock.Case[odoo.Record] {
+	return connectormock.Branch(odoo.GetRecordBranchInvalidResponse, value, failure)
+}
+
+// GetRecordDefect selects the defect branch: Invalid model fields or credentials.
+func GetRecordDefect(value odoo.Record, failure *sdkgo.Failure) connectormock.Case[odoo.Record] {
+	return connectormock.Branch(odoo.GetRecordBranchDefect, value, failure)
+}
+
+// GetRecordRetry asks Dex to retry the getRecord Step, after the delay when it is positive.
+func GetRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.Record] {
+	return connectormock.Retry[odoo.Record](failure, after)
+}
+
+// GetRecordFoundDefault is the manifest mock foundDefault: Example Odoo model record outcome.
+func GetRecordFoundDefault() connectormock.Case[odoo.Record] {
+	value := connectormock.MustDecodeOutput[odoo.Record](`{"id":42,"fields":{"name":"Acme Company"}}`)
+	return connectormock.Branch(odoo.GetRecordBranchFound, value, nil)
+}
+
+// GetRecordDefault is the manifest default, foundDefault, which New installs.
+func GetRecordDefault() connectormock.Case[odoo.Record] { return GetRecordFoundDefault() }
+
+// CreateRecordCreated selects the created branch: Odoo returned the selected record outcome.
+func CreateRecordCreated(value odoo.CreatedRecord, failure *sdkgo.Failure) connectormock.Case[odoo.CreatedRecord] {
+	return connectormock.Branch(odoo.CreateRecordBranchCreated, value, failure)
+}
+
+// CreateRecordProviderRejected selects the providerRejected branch: Odoo rejected the request.
+func CreateRecordProviderRejected(value odoo.CreatedRecord, failure *sdkgo.Failure) connectormock.Case[odoo.CreatedRecord] {
+	return connectormock.Branch(odoo.CreateRecordBranchProviderRejected, value, failure)
+}
+
+// CreateRecordDefect selects the defect branch: Invalid model fields or credentials.
+func CreateRecordDefect(value odoo.CreatedRecord, failure *sdkgo.Failure) connectormock.Case[odoo.CreatedRecord] {
+	return connectormock.Branch(odoo.CreateRecordBranchDefect, value, failure)
+}
+
+// CreateRecordUncertain returns an uncertain createRecord outcome.
+func CreateRecordUncertain(value odoo.CreatedRecord, failure sdkgo.Failure) connectormock.Case[odoo.CreatedRecord] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateRecordRetry asks Dex to retry the createRecord Step, after the delay when it is positive.
+func CreateRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.CreatedRecord] {
+	return connectormock.Retry[odoo.CreatedRecord](failure, after)
+}
+
+// CreateRecordCreatedDefault is the manifest mock createdDefault: Example Odoo model record outcome.
+func CreateRecordCreatedDefault() connectormock.Case[odoo.CreatedRecord] {
+	value := connectormock.MustDecodeOutput[odoo.CreatedRecord](`{"id":42}`)
+	return connectormock.Branch(odoo.CreateRecordBranchCreated, value, nil)
+}
+
+// CreateRecordDefault is the manifest default, createdDefault, which New installs.
+func CreateRecordDefault() connectormock.Case[odoo.CreatedRecord] {
+	return CreateRecordCreatedDefault()
+}
+
+// UpdateRecordUpdated selects the updated branch: Odoo returned the selected record outcome.
+func UpdateRecordUpdated(value odoo.UpdatedRecord, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedRecord] {
+	return connectormock.Branch(odoo.UpdateRecordBranchUpdated, value, failure)
+}
+
+// UpdateRecordNotFound selects the notFound branch: Odoo did not find the record.
+func UpdateRecordNotFound(value odoo.UpdatedRecord, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedRecord] {
+	return connectormock.Branch(odoo.UpdateRecordBranchNotFound, value, failure)
+}
+
+// UpdateRecordProviderRejected selects the providerRejected branch: Odoo rejected the request.
+func UpdateRecordProviderRejected(value odoo.UpdatedRecord, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedRecord] {
+	return connectormock.Branch(odoo.UpdateRecordBranchProviderRejected, value, failure)
+}
+
+// UpdateRecordInvalidResponse selects the invalidResponse branch: Odoo returned invalid record data.
+func UpdateRecordInvalidResponse(value odoo.UpdatedRecord, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedRecord] {
+	return connectormock.Branch(odoo.UpdateRecordBranchInvalidResponse, value, failure)
+}
+
+// UpdateRecordDefect selects the defect branch: Invalid model fields or credentials.
+func UpdateRecordDefect(value odoo.UpdatedRecord, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedRecord] {
+	return connectormock.Branch(odoo.UpdateRecordBranchDefect, value, failure)
+}
+
+// UpdateRecordRetry asks Dex to retry the updateRecord Step, after the delay when it is positive.
+func UpdateRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.UpdatedRecord] {
+	return connectormock.Retry[odoo.UpdatedRecord](failure, after)
+}
+
+// UpdateRecordUpdatedDefault is the manifest mock updatedDefault: Example Odoo model record outcome.
+func UpdateRecordUpdatedDefault() connectormock.Case[odoo.UpdatedRecord] {
+	value := connectormock.MustDecodeOutput[odoo.UpdatedRecord](`{"id":42}`)
+	return connectormock.Branch(odoo.UpdateRecordBranchUpdated, value, nil)
+}
+
+// UpdateRecordDefault is the manifest default, updatedDefault, which New installs.
+func UpdateRecordDefault() connectormock.Case[odoo.UpdatedRecord] {
+	return UpdateRecordUpdatedDefault()
+}
+
+// DeleteRecordDeleted selects the deleted branch: Odoo returned the selected record outcome.
+func DeleteRecordDeleted(value odoo.DeletedRecord, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedRecord] {
+	return connectormock.Branch(odoo.DeleteRecordBranchDeleted, value, failure)
+}
+
+// DeleteRecordNotFound selects the notFound branch: Odoo did not find the record.
+func DeleteRecordNotFound(value odoo.DeletedRecord, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedRecord] {
+	return connectormock.Branch(odoo.DeleteRecordBranchNotFound, value, failure)
+}
+
+// DeleteRecordProviderRejected selects the providerRejected branch: Odoo rejected the request.
+func DeleteRecordProviderRejected(value odoo.DeletedRecord, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedRecord] {
+	return connectormock.Branch(odoo.DeleteRecordBranchProviderRejected, value, failure)
+}
+
+// DeleteRecordInvalidResponse selects the invalidResponse branch: Odoo returned invalid record data.
+func DeleteRecordInvalidResponse(value odoo.DeletedRecord, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedRecord] {
+	return connectormock.Branch(odoo.DeleteRecordBranchInvalidResponse, value, failure)
+}
+
+// DeleteRecordDefect selects the defect branch: Invalid model fields or credentials.
+func DeleteRecordDefect(value odoo.DeletedRecord, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedRecord] {
+	return connectormock.Branch(odoo.DeleteRecordBranchDefect, value, failure)
+}
+
+// DeleteRecordRetry asks Dex to retry the deleteRecord Step, after the delay when it is positive.
+func DeleteRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.DeletedRecord] {
+	return connectormock.Retry[odoo.DeletedRecord](failure, after)
+}
+
+// DeleteRecordDeletedDefault is the manifest mock deletedDefault: Example Odoo model record outcome.
+func DeleteRecordDeletedDefault() connectormock.Case[odoo.DeletedRecord] {
+	value := connectormock.MustDecodeOutput[odoo.DeletedRecord](`{"id":42}`)
+	return connectormock.Branch(odoo.DeleteRecordBranchDeleted, value, nil)
+}
+
+// DeleteRecordDefault is the manifest default, deletedDefault, which New installs.
+func DeleteRecordDefault() connectormock.Case[odoo.DeletedRecord] {
+	return DeleteRecordDeletedDefault()
 }

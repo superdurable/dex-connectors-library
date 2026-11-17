@@ -42,6 +42,17 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		{name: "createOpportunity/createdDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[odoo.CreatedOpportunity](`{"id":73}`); return err }},
 		{name: "updateOpportunity/updatedDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[odoo.UpdatedOpportunity](`{"id":73}`); return err }},
 		{name: "deleteOpportunity/deletedDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[odoo.DeletedOpportunity](`{"id":73}`); return err }},
+		{name: "listRecords/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[odoo.RecordsPage](`{"records":[{"id":42,"fields":{"summary":"Call customer"}}]}`)
+			return err
+		}},
+		{name: "getRecord/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[odoo.Record](`{"id":42,"fields":{"name":"Acme Company"}}`)
+			return err
+		}},
+		{name: "createRecord/createdDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[odoo.CreatedRecord](`{"id":42}`); return err }},
+		{name: "updateRecord/updatedDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[odoo.UpdatedRecord](`{"id":42}`); return err }},
+		{name: "deleteRecord/deletedDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[odoo.DeletedRecord](`{"id":42}`); return err }},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -84,5 +95,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteOpportunity().Definition().Operation.OperationID != "deleteOpportunity" {
 		t.Errorf("deleteOpportunity mock has another definition")
+	}
+	if mock.ListRecords().Definition().Operation.OperationID != "listRecords" {
+		t.Errorf("listRecords mock has another definition")
+	}
+	if mock.GetRecord().Definition().Operation.OperationID != "getRecord" {
+		t.Errorf("getRecord mock has another definition")
+	}
+	if mock.CreateRecord().Definition().Operation.OperationID != "createRecord" {
+		t.Errorf("createRecord mock has another definition")
+	}
+	if mock.UpdateRecord().Definition().Operation.OperationID != "updateRecord" {
+		t.Errorf("updateRecord mock has another definition")
+	}
+	if mock.DeleteRecord().Definition().Operation.OperationID != "deleteRecord" {
+		t.Errorf("deleteRecord mock has another definition")
 	}
 }
