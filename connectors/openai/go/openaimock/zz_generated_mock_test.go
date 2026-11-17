@@ -48,6 +48,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[openai.DeletedResponse](`{"id":"conv_mock001","deleted":true}`)
 			return err
 		}},
+		{name: "listFiles/filePage/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[openai.FilePage](`{"files":[{"id":"file_mock001","filename":"summary.txt","purpose":"user_data","bytes":24,"createdAt":1741900000}],"hasMore":false,"lastID":"file_mock001"}`)
+			return err
+		}},
+		{name: "deleteFile/fileDeleted/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[openai.DeletedResponse](`{"id":"file_mock001","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -78,5 +86,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteConversation().Definition().Operation.OperationID != "deleteConversation" {
 		t.Errorf("deleteConversation mock has another definition")
+	}
+	if mock.ListFiles().Definition().Operation.OperationID != "listFiles" {
+		t.Errorf("listFiles mock has another definition")
+	}
+	if mock.DeleteFile().Definition().Operation.OperationID != "deleteFile" {
+		t.Errorf("deleteFile mock has another definition")
 	}
 }

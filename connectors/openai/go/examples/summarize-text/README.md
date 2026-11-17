@@ -28,6 +28,9 @@ Set `createConversation` to `true` to store the summary as a conversation's
 first assistant message. `CreateSummaryConversation` uses the limited-tier
 `createConversation` operation, and the completion output includes its ID.
 
+Set `listFilesAfterSummary` to `true` to list one page of OpenAI file metadata
+after the summary is saved. The completion output records its file count.
+
 The Flow and every application Step declare stable types with `GetFlowType`
 and `GetStepType`, because Dex Web Start Flow sends the type names from the
 Flow Definition. The start Step implements a `WaitFor` that skips

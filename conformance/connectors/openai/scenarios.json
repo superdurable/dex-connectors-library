@@ -3797,6 +3797,614 @@
       ],
       "name": "createConversation-send-cap-reached",
       "operation": "createConversation"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"file_001\",\"object\":\"file\",\"filename\":\"summary.txt\",\"purpose\":\"user_data\",\"bytes\":24,\"created_at\":1741900000}],\"first_id\":\"file_001\",\"last_id\":\"file_001\",\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/files",
+          "query": {
+            "after": [
+              "file_prev"
+            ],
+            "limit": [
+              "10"
+            ],
+            "purpose": [
+              "user_data"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "files": [
+            {
+              "bytes": 24,
+              "createdAt": 1741900000,
+              "filename": "summary.txt",
+              "id": "file_001",
+              "purpose": "user_data"
+            }
+          ],
+          "hasMore": false,
+          "lastID": "file_001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "file_prev",
+        "limit": 10,
+        "purpose": "user_data"
+      },
+      "name": "listFiles-success",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/files",
+          "query": {
+            "after": [
+              "file_prev"
+            ],
+            "limit": [
+              "10"
+            ],
+            "purpose": [
+              "user_data"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "files": [],
+          "hasMore": false,
+          "lastID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "file_prev",
+        "limit": 10,
+        "purpose": "user_data"
+      },
+      "name": "listFiles-rejected",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/files",
+          "query": {
+            "after": [
+              "file_prev"
+            ],
+            "limit": [
+              "10"
+            ],
+            "purpose": [
+              "user_data"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "files": [],
+          "hasMore": false,
+          "lastID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "file_prev",
+        "limit": 10,
+        "purpose": "user_data"
+      },
+      "name": "listFiles-invalid",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "files": [],
+          "hasMore": false,
+          "lastID": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "file_prev",
+        "limit": 10,
+        "purpose": "bad"
+      },
+      "name": "listFiles-defect",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/files",
+          "query": {
+            "after": [
+              "file_prev"
+            ],
+            "limit": [
+              "10"
+            ],
+            "purpose": [
+              "user_data"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "file_prev",
+        "limit": 10,
+        "purpose": "user_data"
+      },
+      "name": "listFiles-retry-429",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/files",
+          "query": {
+            "after": [
+              "file_prev"
+            ],
+            "limit": [
+              "10"
+            ],
+            "purpose": [
+              "user_data"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "file_prev",
+        "limit": 10,
+        "purpose": "user_data"
+      },
+      "name": "listFiles-retry-5xx",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/files",
+          "query": {
+            "after": [
+              "file_prev"
+            ],
+            "limit": [
+              "10"
+            ],
+            "purpose": [
+              "user_data"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "file_prev",
+        "limit": 10,
+        "purpose": "user_data"
+      },
+      "name": "listFiles-transport",
+      "operation": "listFiles"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file_001\",\"object\":\"file\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "file_001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-success",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-not-found",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-rejected",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-invalid",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "bad/id"
+      },
+      "name": "deleteFile-defect",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-retry-429",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-retry-5xx",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-transport",
+      "operation": "deleteFile"
     }
   ],
   "schemaVersion": 1

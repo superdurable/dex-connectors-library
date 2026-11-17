@@ -64,6 +64,21 @@ func TestSummarizeTextExampleCreatesConversationWithRealDex(t *testing.T) {
 	require.Equal(t, "The connector shipped today.", calls[0].Input.Items[0].Content)
 }
 
+func TestSummarizeTextExampleListsFileMetadataWithRealDex(t *testing.T) {
+	mock := openaimock.New(t, ConnectionName)
+	flow, client := startSummaryWorkerWithConnection(t, mock.Connection(), SummaryModelConfiguration{})
+	flowID := fmt.Sprintf("openai-summary-files-%d", time.Now().UnixNano())
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	_, err := client.StartFlow(ctx, flow, flowID, SummaryRequest{Text: "The OpenAI connector shipped today.", ListFilesAfterSummary: true}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	outcome := waitForSummaryOutcome(t, ctx, client, flowID)
+	require.Equal(t, 1, outcome.ListedFileCount)
+	calls := mock.ListFiles().Calls()
+	require.Len(t, calls, 1)
+	require.Equal(t, flowID, calls[0].FlowID)
+}
+
 func TestSummarizeTextExampleRunsOnAScriptedOpenAIMockAnswerWithRealDex(t *testing.T) {
 	mock := openaimock.New(t, ConnectionName)
 	flow, client := startSummaryWorkerWithConnection(t, mock.Connection(), SummaryModelConfiguration{})

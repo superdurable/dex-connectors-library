@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: openai
   displayName: OpenAI
-  description: "OpenAI Responses API stored responses and conversations: create, retrieve, update, and delete resources with structured output, streamed text and progress, token usage, and explicit uncertainty. Text generation Steps use the llm connector."
+  description: "OpenAI Responses API stored responses and conversations, with file listing and deletion: typed create, retrieve, update, and delete operations, streamed text and progress, and explicit uncertainty. Text generation Steps use the llm connector."
   company: OpenAI
   categories: [ai]
   version: v0.25.0
@@ -274,3 +274,42 @@ spec:
           description: A conversation was deleted.
           default: true
           output: {id: conv_mock001, deleted: true}
+    - name: listFiles
+      goName: ListFiles
+      inputType: ListFilesRequest
+      outputType: FilePage
+      kind: query
+      description: List one bounded page of OpenAI files, optionally filtered by purpose.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: OpenAI returned a file page.}
+        - {id: providerRejected, goName: ProviderRejected, description: OpenAI rejected the file list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OpenAI returned an invalid file page., optional: true}
+        - {id: defect, goName: Defect, description: Page parameters or connection are invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: filePage
+          branch: found
+          description: One stored file is listed.
+          default: true
+          output: {files: [{id: file_mock001, filename: summary.txt, purpose: user_data, bytes: 24, createdAt: 1741900000}], hasMore: false, lastID: file_mock001}
+    - name: deleteFile
+      goName: DeleteFile
+      inputType: FileIDRequest
+      outputType: DeletedResponse
+      kind: mutation
+      description: Delete a file and remove it from vector stores.
+      idempotency: required
+      branches:
+        - {id: deleted, goName: Deleted, description: OpenAI deleted the file.}
+        - {id: notFound, goName: NotFound, description: The file no longer exists., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OpenAI rejected file deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OpenAI returned an invalid deletion receipt., optional: true}
+        - {id: defect, goName: Defect, description: File ID or connection is invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: fileDeleted
+          branch: deleted
+          description: The file was deleted.
+          default: true
+          output: {id: file_mock001, deleted: true}

@@ -221,6 +221,8 @@ stale checkpoint never permits a new request; the next attempt selects
 | `retrieveConversation` | `found` (required), `notFound`, `providerRejected`, `invalidResponse`, `defect` | Read a conversation and classify absence or unusable data. |
 | `updateConversation` | `updated` (required), `notFound`, `providerRejected`, `invalidResponse`, `defect` | Replace the complete metadata map; repeating the same replacement is safe. |
 | `deleteConversation` | `deleted` (required), `notFound`, `providerRejected`, `invalidResponse`, `defect` | Remove a conversation; OpenAI retains its items. |
+| `listFiles` | `found` (required), `providerRejected`, `invalidResponse`, `defect` | Read one bounded page of file metadata with optional purpose and cursor. File contents are never returned. |
+| `deleteFile` | `deleted` (required), `notFound`, `providerRejected`, `invalidResponse`, `defect` | Remove a file; OpenAI also removes it from vector stores. |
 
 HTTP 429 returns Retry for both operations, honoring a `Retry-After` given in
 seconds or as an HTTP date, up to one hour. `retrieveResponse` also returns
@@ -248,6 +250,8 @@ copy OpenAI's `x-ratelimit-{limit,remaining,reset}-{requests,tokens}` headers.
 | `retrieveConversation` | `async` | 30 seconds | Default retry policy; safe read |
 | `updateConversation` | `async` | 30 seconds | Default retry policy; safe metadata replacement |
 | `deleteConversation` | `async` | 30 seconds | Default retry policy; safe deletion |
+| `listFiles` | `async` | 30 seconds | Default retry policy; safe read |
+| `deleteFile` | `async` | 30 seconds | Default retry policy; safe deletion |
 
 The `createResponse` Step must keep `sync` durability, and its Flow must record
 no heartbeats of its own in that Step. An async attempt that runs locally keeps

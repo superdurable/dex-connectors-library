@@ -39,6 +39,8 @@ type SummaryRequest struct {
 	DeleteAfterSummary bool `json:"deleteAfterSummary,omitempty"`
 	// CreateConversation stores the summary as the first message in a new conversation.
 	CreateConversation bool `json:"createConversation,omitempty"`
+	// ListFilesAfterSummary records the number of files on the first OpenAI file page.
+	ListFilesAfterSummary bool `json:"listFilesAfterSummary,omitempty"`
 }
 
 // SummaryOutcome is the Flow completion output.
@@ -59,6 +61,8 @@ type SummaryOutcome struct {
 	Deleted bool `json:"deleted,omitempty"`
 	// ConversationID is the conversation created to hold the summary, when requested.
 	ConversationID string `json:"conversationId,omitempty"`
+	// ListedFileCount is the number of files on the first listed page, when requested.
+	ListedFileCount int `json:"listedFileCount,omitempty"`
 }
 
 // SummaryModelConfiguration is the SummarizeText Step's model pick from Dex Web.
@@ -114,6 +118,14 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Completed:           sdkgo.GoTo(recordSummaryOutcome{}),
 		})),
 		dex.DefineStep(recordSummaryOutcome{}),
+		dex.DefineStep(openai.NewListFilesStep(openai.ListFilesStepConfig[SummaryOutcome]{
+			StepType: "ListStoredFiles", ConnectionName: ConnectionName,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "summary", GroupLabel: "Summary", Explanation: "List one page of OpenAI file metadata after the summary is recorded."},
+			Connection:          flow.connection,
+			MapToOperationInput: func(SummaryOutcome) openai.ListFilesRequest { return openai.ListFilesRequest{} },
+			Found:               sdkgo.GoTo(recordFilePageOutcome{}),
+		})),
+		dex.DefineStep(recordFilePageOutcome{}),
 		dex.DefineStep(openai.NewCreateConversationStep(openai.CreateConversationStepConfig[SummaryOutcome]{
 			StepType: "CreateSummaryConversation", ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "summary", GroupLabel: "Summary", Explanation: "Store the summary as the first message in an OpenAI conversation."},
@@ -256,6 +268,9 @@ func (recordSummaryOutcome) Execute(ctx dex.Context, result openai.CreateRespons
 	if err != nil {
 		return nil, err
 	}
+	if request.ListFilesAfterSummary {
+		return dex.GoTo(sdkgo.StepRef[SummaryOutcome]("ListStoredFiles"), outcome), nil
+	}
 	if request.DeleteAfterSummary {
 		if request.CreateConversation {
 			return dex.GoTo(sdkgo.StepRef[SummaryOutcome]("CreateSummaryConversation"), outcome), nil
@@ -264,6 +279,36 @@ func (recordSummaryOutcome) Execute(ctx dex.Context, result openai.CreateRespons
 	}
 	if request.CreateConversation {
 		return dex.GoTo(sdkgo.StepRef[SummaryOutcome]("CreateSummaryConversation"), outcome), nil
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:summary group-label:"Summary"
+// dex:explanation text:"Record the number of stored files found on the first OpenAI page."
+type recordFilePageOutcome struct {
+	dex.StepDefaultsNoWaitFor[openai.ListFilesResult]
+}
+
+func (recordFilePageOutcome) GetStepType() string { return "RecordFilePageOutcome" }
+
+func (recordFilePageOutcome) Execute(ctx dex.Context, result openai.ListFilesResult) (*dex.StepDecision, error) {
+	outcome, err := summaryOutcomeAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	outcome.ListedFileCount = len(result.Value.Files)
+	if err := summaryOutcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	request, err := summaryRequestAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if request.CreateConversation {
+		return dex.GoTo(sdkgo.StepRef[SummaryOutcome]("CreateSummaryConversation"), outcome), nil
+	}
+	if request.DeleteAfterSummary {
+		return dex.GoTo(sdkgo.StepRef[SummaryOutcome]("DeleteStoredResponse"), outcome), nil
 	}
 	return dex.GracefulComplete(outcome), nil
 }

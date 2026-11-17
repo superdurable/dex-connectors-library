@@ -25,6 +25,8 @@ type Mock struct {
 	retrieveConversation *connectormock.Query[openai.ConversationIDRequest, openai.Conversation]
 	updateConversation   *connectormock.Mutation[openai.UpdateConversationRequest, openai.Conversation]
 	deleteConversation   *connectormock.Mutation[openai.ConversationIDRequest, openai.DeletedResponse]
+	listFiles            *connectormock.Query[openai.ListFilesRequest, openai.FilePage]
+	deleteFile           *connectormock.Mutation[openai.FileIDRequest, openai.DeletedResponse]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -39,6 +41,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		retrieveConversation: connectormock.NewQuery[openai.ConversationIDRequest, openai.Conversation](t, openai.RetrieveConversationDefinition),
 		updateConversation:   connectormock.NewMutation[openai.UpdateConversationRequest, openai.Conversation](t, openai.UpdateConversationDefinition),
 		deleteConversation:   connectormock.NewMutation[openai.ConversationIDRequest, openai.DeletedResponse](t, openai.DeleteConversationDefinition),
+		listFiles:            connectormock.NewQuery[openai.ListFilesRequest, openai.FilePage](t, openai.ListFilesDefinition),
+		deleteFile:           connectormock.NewMutation[openai.FileIDRequest, openai.DeletedResponse](t, openai.DeleteFileDefinition),
 	}
 	mock.createResponse.Default(CreateResponseDefault())
 	mock.retrieveResponse.Default(RetrieveResponseDefault())
@@ -47,6 +51,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.retrieveConversation.Default(RetrieveConversationDefault())
 	mock.updateConversation.Default(UpdateConversationDefault())
 	mock.deleteConversation.Default(DeleteConversationDefault())
+	mock.listFiles.Default(ListFilesDefault())
+	mock.deleteFile.Default(DeleteFileDefault())
 	connection, err := openai.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "openai", Name: connectionName})
 	if err != nil {
 		t.Fatalf("openai mock connection: %v", err)
@@ -93,6 +99,16 @@ func (mock *Mock) DeleteConversation() *connectormock.Mutation[openai.Conversati
 	return mock.deleteConversation
 }
 
+// ListFiles returns the listFiles script.
+func (mock *Mock) ListFiles() *connectormock.Query[openai.ListFilesRequest, openai.FilePage] {
+	return mock.listFiles
+}
+
+// DeleteFile returns the deleteFile script.
+func (mock *Mock) DeleteFile() *connectormock.Mutation[openai.FileIDRequest, openai.DeletedResponse] {
+	return mock.deleteFile
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateResponse() sdkgo.Mutation[openai.CreateRequest, openai.Response] {
@@ -115,6 +131,12 @@ func (operations mockOperations) UpdateConversation() sdkgo.Mutation[openai.Upda
 }
 func (operations mockOperations) DeleteConversation() sdkgo.Mutation[openai.ConversationIDRequest, openai.DeletedResponse] {
 	return operations.mock.deleteConversation
+}
+func (operations mockOperations) ListFiles() sdkgo.Query[openai.ListFilesRequest, openai.FilePage] {
+	return operations.mock.listFiles
+}
+func (operations mockOperations) DeleteFile() sdkgo.Mutation[openai.FileIDRequest, openai.DeletedResponse] {
+	return operations.mock.deleteFile
 }
 
 // CreateResponseCompleted selects the completed branch: OpenAI completed the response.
@@ -428,3 +450,76 @@ func DeleteConversationConversationDeleted() connectormock.Case[openai.DeletedRe
 func DeleteConversationDefault() connectormock.Case[openai.DeletedResponse] {
 	return DeleteConversationConversationDeleted()
 }
+
+// ListFilesFound selects the found branch: OpenAI returned a file page.
+func ListFilesFound(value openai.FilePage, failure *sdkgo.Failure) connectormock.Case[openai.FilePage] {
+	return connectormock.Branch(openai.ListFilesBranchFound, value, failure)
+}
+
+// ListFilesProviderRejected selects the providerRejected branch: OpenAI rejected the file list.
+func ListFilesProviderRejected(value openai.FilePage, failure *sdkgo.Failure) connectormock.Case[openai.FilePage] {
+	return connectormock.Branch(openai.ListFilesBranchProviderRejected, value, failure)
+}
+
+// ListFilesInvalidResponse selects the invalidResponse branch: OpenAI returned an invalid file page.
+func ListFilesInvalidResponse(value openai.FilePage, failure *sdkgo.Failure) connectormock.Case[openai.FilePage] {
+	return connectormock.Branch(openai.ListFilesBranchInvalidResponse, value, failure)
+}
+
+// ListFilesDefect selects the defect branch: Page parameters or connection are invalid.
+func ListFilesDefect(value openai.FilePage, failure *sdkgo.Failure) connectormock.Case[openai.FilePage] {
+	return connectormock.Branch(openai.ListFilesBranchDefect, value, failure)
+}
+
+// ListFilesRetry asks Dex to retry the listFiles Step, after the delay when it is positive.
+func ListFilesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[openai.FilePage] {
+	return connectormock.Retry[openai.FilePage](failure, after)
+}
+
+// ListFilesFilePage is the manifest mock filePage: One stored file is listed.
+func ListFilesFilePage() connectormock.Case[openai.FilePage] {
+	value := connectormock.MustDecodeOutput[openai.FilePage](`{"files":[{"id":"file_mock001","filename":"summary.txt","purpose":"user_data","bytes":24,"createdAt":1741900000}],"hasMore":false,"lastID":"file_mock001"}`)
+	return connectormock.Branch(openai.ListFilesBranchFound, value, nil)
+}
+
+// ListFilesDefault is the manifest default, filePage, which New installs.
+func ListFilesDefault() connectormock.Case[openai.FilePage] { return ListFilesFilePage() }
+
+// DeleteFileDeleted selects the deleted branch: OpenAI deleted the file.
+func DeleteFileDeleted(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteFileBranchDeleted, value, failure)
+}
+
+// DeleteFileNotFound selects the notFound branch: The file no longer exists.
+func DeleteFileNotFound(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteFileBranchNotFound, value, failure)
+}
+
+// DeleteFileProviderRejected selects the providerRejected branch: OpenAI rejected file deletion.
+func DeleteFileProviderRejected(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteFileBranchProviderRejected, value, failure)
+}
+
+// DeleteFileInvalidResponse selects the invalidResponse branch: OpenAI returned an invalid deletion receipt.
+func DeleteFileInvalidResponse(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteFileBranchInvalidResponse, value, failure)
+}
+
+// DeleteFileDefect selects the defect branch: File ID or connection is invalid.
+func DeleteFileDefect(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteFileBranchDefect, value, failure)
+}
+
+// DeleteFileRetry asks Dex to retry the deleteFile Step, after the delay when it is positive.
+func DeleteFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Retry[openai.DeletedResponse](failure, after)
+}
+
+// DeleteFileFileDeleted is the manifest mock fileDeleted: The file was deleted.
+func DeleteFileFileDeleted() connectormock.Case[openai.DeletedResponse] {
+	value := connectormock.MustDecodeOutput[openai.DeletedResponse](`{"id":"file_mock001","deleted":true}`)
+	return connectormock.Branch(openai.DeleteFileBranchDeleted, value, nil)
+}
+
+// DeleteFileDefault is the manifest default, fileDeleted, which New installs.
+func DeleteFileDefault() connectormock.Case[openai.DeletedResponse] { return DeleteFileFileDeleted() }
