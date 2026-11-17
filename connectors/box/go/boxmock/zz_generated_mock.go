@@ -18,6 +18,8 @@ import (
 // Mock is a scripted box connection. Script each operation through its accessor.
 type Mock struct {
 	connection      box.Connection
+	updateFile      *connectormock.Mutation[box.UpdateBoxFileInput, box.UpdatedBoxItem]
+	updateFolder    *connectormock.Mutation[box.UpdateBoxFolderInput, box.UpdatedBoxItem]
 	downloadFile    *connectormock.Query[box.DownloadFileInput, box.DownloadedFile]
 	uploadFile      *connectormock.Mutation[box.UploadFileInput, box.UploadedFile]
 	getFile         *connectormock.Query[box.GetFileInput, box.BoxFile]
@@ -34,6 +36,8 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		updateFile:      connectormock.NewMutation[box.UpdateBoxFileInput, box.UpdatedBoxItem](t, box.UpdateFileDefinition),
+		updateFolder:    connectormock.NewMutation[box.UpdateBoxFolderInput, box.UpdatedBoxItem](t, box.UpdateFolderDefinition),
 		downloadFile:    connectormock.NewQuery[box.DownloadFileInput, box.DownloadedFile](t, box.DownloadFileDefinition),
 		uploadFile:      connectormock.NewMutation[box.UploadFileInput, box.UploadedFile](t, box.UploadFileDefinition),
 		getFile:         connectormock.NewQuery[box.GetFileInput, box.BoxFile](t, box.GetFileDefinition),
@@ -44,6 +48,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteFile:      connectormock.NewMutation[box.DeleteFileInput, box.DeletedBoxItem](t, box.DeleteFileDefinition),
 		deleteFolder:    connectormock.NewMutation[box.DeleteFolderInput, box.DeletedBoxItem](t, box.DeleteFolderDefinition),
 	}
+	mock.updateFile.Default(UpdateFileDefault())
+	mock.updateFolder.Default(UpdateFolderDefault())
 	mock.downloadFile.Default(DownloadFileDefault())
 	mock.uploadFile.Default(UploadFileDefault())
 	mock.getFile.Default(GetFileDefault())
@@ -63,6 +69,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() box.Connection { return mock.connection }
+
+// UpdateFile returns the updateFile script.
+func (mock *Mock) UpdateFile() *connectormock.Mutation[box.UpdateBoxFileInput, box.UpdatedBoxItem] {
+	return mock.updateFile
+}
+
+// UpdateFolder returns the updateFolder script.
+func (mock *Mock) UpdateFolder() *connectormock.Mutation[box.UpdateBoxFolderInput, box.UpdatedBoxItem] {
+	return mock.updateFolder
+}
 
 // DownloadFile returns the downloadFile script.
 func (mock *Mock) DownloadFile() *connectormock.Query[box.DownloadFileInput, box.DownloadedFile] {
@@ -109,6 +125,12 @@ func (mock *Mock) DeleteFolder() *connectormock.Mutation[box.DeleteFolderInput, 
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) UpdateFile() sdkgo.Mutation[box.UpdateBoxFileInput, box.UpdatedBoxItem] {
+	return operations.mock.updateFile
+}
+func (operations mockOperations) UpdateFolder() sdkgo.Mutation[box.UpdateBoxFolderInput, box.UpdatedBoxItem] {
+	return operations.mock.updateFolder
+}
 func (operations mockOperations) DownloadFile() sdkgo.Query[box.DownloadFileInput, box.DownloadedFile] {
 	return operations.mock.downloadFile
 }
@@ -135,6 +157,86 @@ func (operations mockOperations) DeleteFile() sdkgo.Mutation[box.DeleteFileInput
 }
 func (operations mockOperations) DeleteFolder() sdkgo.Mutation[box.DeleteFolderInput, box.DeletedBoxItem] {
 	return operations.mock.deleteFolder
+}
+
+// UpdateFileUpdated selects the updated branch: Box updated the file.
+func UpdateFileUpdated(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.UpdateFileBranchUpdated, value, failure)
+}
+
+// UpdateFileNotFound selects the notFound branch: Box did not find this file.
+func UpdateFileNotFound(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.UpdateFileBranchNotFound, value, failure)
+}
+
+// UpdateFileProviderRejected selects the providerRejected branch: Box definitively rejected the update.
+func UpdateFileProviderRejected(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.UpdateFileBranchProviderRejected, value, failure)
+}
+
+// UpdateFileInvalidResponse selects the invalidResponse branch: Box returned malformed or oversized JSON.
+func UpdateFileInvalidResponse(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.UpdateFileBranchInvalidResponse, value, failure)
+}
+
+// UpdateFileDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateFileDefect(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.UpdateFileBranchDefect, value, failure)
+}
+
+// UpdateFileRetry asks Dex to retry the updateFile Step, after the delay when it is positive.
+func UpdateFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Retry[box.UpdatedBoxItem](failure, after)
+}
+
+// UpdateFileUpdateFileDefault is the manifest mock updateFileDefault: One file was renamed and shared.
+func UpdateFileUpdateFileDefault() connectormock.Case[box.UpdatedBoxItem] {
+	value := connectormock.MustDecodeOutput[box.UpdatedBoxItem](`{"id":"12345","type":"file","name":"renamed.txt","parentId":"0","sharedLinkUrl":"https://app.box.com/s/example"}`)
+	return connectormock.Branch(box.UpdateFileBranchUpdated, value, nil)
+}
+
+// UpdateFileDefault is the manifest default, updateFileDefault, which New installs.
+func UpdateFileDefault() connectormock.Case[box.UpdatedBoxItem] { return UpdateFileUpdateFileDefault() }
+
+// UpdateFolderUpdated selects the updated branch: Box updated the folder.
+func UpdateFolderUpdated(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.UpdateFolderBranchUpdated, value, failure)
+}
+
+// UpdateFolderNotFound selects the notFound branch: Box did not find this folder.
+func UpdateFolderNotFound(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.UpdateFolderBranchNotFound, value, failure)
+}
+
+// UpdateFolderProviderRejected selects the providerRejected branch: Box definitively rejected the update.
+func UpdateFolderProviderRejected(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.UpdateFolderBranchProviderRejected, value, failure)
+}
+
+// UpdateFolderInvalidResponse selects the invalidResponse branch: Box returned malformed or oversized JSON.
+func UpdateFolderInvalidResponse(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.UpdateFolderBranchInvalidResponse, value, failure)
+}
+
+// UpdateFolderDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateFolderDefect(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.UpdateFolderBranchDefect, value, failure)
+}
+
+// UpdateFolderRetry asks Dex to retry the updateFolder Step, after the delay when it is positive.
+func UpdateFolderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Retry[box.UpdatedBoxItem](failure, after)
+}
+
+// UpdateFolderUpdateFolderDefault is the manifest mock updateFolderDefault: One folder was renamed and shared.
+func UpdateFolderUpdateFolderDefault() connectormock.Case[box.UpdatedBoxItem] {
+	value := connectormock.MustDecodeOutput[box.UpdatedBoxItem](`{"id":"54321","type":"folder","name":"Renamed","parentId":"0","sharedLinkUrl":"https://app.box.com/s/folder-example"}`)
+	return connectormock.Branch(box.UpdateFolderBranchUpdated, value, nil)
+}
+
+// UpdateFolderDefault is the manifest default, updateFolderDefault, which New installs.
+func UpdateFolderDefault() connectormock.Case[box.UpdatedBoxItem] {
+	return UpdateFolderUpdateFolderDefault()
 }
 
 // DownloadFileDownloaded selects the downloaded branch: Box returned the selected file content.

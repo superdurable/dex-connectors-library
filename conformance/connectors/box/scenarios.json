@@ -3951,6 +3951,910 @@
       },
       "name": "deleteFolder-defect",
       "operation": "deleteFolder"
+    },
+    {
+      "callId": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"12345\",\"type\":\"file\",\"name\":\"renamed.txt\",\"parent\":{\"id\":\"0\"},\"shared_link\":{\"url\":\"https://app.box.com/s/example\",\"access\":\"open\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "renamed.txt",
+            "parent": {
+              "id": "0"
+            },
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "12345",
+          "name": "renamed.txt",
+          "parentId": "0",
+          "sharedLinkUrl": "https://app.box.com/s/example",
+          "type": "file"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "input": {
+        "fileId": "12345",
+        "name": "renamed.txt",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFile-success",
+      "operation": "updateFile"
+    },
+    {
+      "callId": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "renamed.txt",
+            "parent": {
+              "id": "0"
+            },
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "input": {
+        "fileId": "12345",
+        "name": "renamed.txt",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFile-notFound",
+      "operation": "updateFile"
+    },
+    {
+      "callId": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "renamed.txt",
+            "parent": {
+              "id": "0"
+            },
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "input": {
+        "fileId": "12345",
+        "name": "renamed.txt",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFile-rejected",
+      "operation": "updateFile"
+    },
+    {
+      "callId": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "renamed.txt",
+            "parent": {
+              "id": "0"
+            },
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "input": {
+        "fileId": "12345",
+        "name": "renamed.txt",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFile-invalid",
+      "operation": "updateFile"
+    },
+    {
+      "callId": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "renamed.txt",
+            "parent": {
+              "id": "0"
+            },
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "input": {
+        "fileId": "12345",
+        "name": "renamed.txt",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFile-429",
+      "operation": "updateFile"
+    },
+    {
+      "callId": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "renamed.txt",
+            "parent": {
+              "id": "0"
+            },
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "input": {
+        "fileId": "12345",
+        "name": "renamed.txt",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFile-5xx",
+      "operation": "updateFile"
+    },
+    {
+      "callId": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "renamed.txt",
+            "parent": {
+              "id": "0"
+            },
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "input": {
+        "fileId": "12345",
+        "name": "renamed.txt",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFile-transport",
+      "operation": "updateFile"
+    },
+    {
+      "callId": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "input": {
+        "fileId": "",
+        "name": "renamed.txt",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFile-defect",
+      "operation": "updateFile"
+    },
+    {
+      "callId": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"54321\",\"type\":\"folder\",\"name\":\"Renamed\",\"parent\":{\"id\":\"0\"},\"shared_link\":{\"url\":\"https://app.box.com/s/folder-example\",\"access\":\"open\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/54321",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "Renamed",
+            "parent": {
+              "id": "0"
+            },
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "54321",
+          "name": "Renamed",
+          "parentId": "0",
+          "sharedLinkUrl": "https://app.box.com/s/folder-example",
+          "type": "folder"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "input": {
+        "folderId": "54321",
+        "name": "Renamed",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFolder-success",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/54321",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "Renamed",
+            "parent": {
+              "id": "0"
+            },
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "input": {
+        "folderId": "54321",
+        "name": "Renamed",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFolder-notFound",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/54321",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "Renamed",
+            "parent": {
+              "id": "0"
+            },
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "input": {
+        "folderId": "54321",
+        "name": "Renamed",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFolder-rejected",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/54321",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "Renamed",
+            "parent": {
+              "id": "0"
+            },
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "input": {
+        "folderId": "54321",
+        "name": "Renamed",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFolder-invalid",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/54321",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "Renamed",
+            "parent": {
+              "id": "0"
+            },
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "input": {
+        "folderId": "54321",
+        "name": "Renamed",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFolder-429",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/54321",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "Renamed",
+            "parent": {
+              "id": "0"
+            },
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "input": {
+        "folderId": "54321",
+        "name": "Renamed",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFolder-5xx",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/54321",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "Renamed",
+            "parent": {
+              "id": "0"
+            },
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "input": {
+        "folderId": "54321",
+        "name": "Renamed",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFolder-transport",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
+      "input": {
+        "folderId": "",
+        "name": "Renamed",
+        "parentId": "0",
+        "sharedLinkAccess": "open"
+      },
+      "name": "updateFolder-defect",
+      "operation": "updateFolder"
     }
   ],
   "schemaVersion": 1

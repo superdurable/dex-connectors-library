@@ -10,6 +10,15 @@ and return the accepted ID on Box HTTP 204. Box's enterprise settings decide
 whether deletion moves an item to trash or removes it permanently. Python and
 TypeScript remain on their declared `downloadFile` and `uploadFile` capabilities.
 
+Go `updateFile` and `updateFolder` use absolute PUT fields and the `safe`
+repeat tier. Each can rename an item, move it to a parent folder, or create
+or change a shared link in one call. Supply a decimal item ID from its Box Web
+URL. Leave `name`, `parentId`, or `sharedLinkAccess` blank to preserve that
+field; at least one must be set. `parentId` is a decimal folder ID, with `0`
+for root. Shared link access is `open`, `company`, or `collaborators`; Box
+enterprise policy may restrict these choices. The result includes the current
+name, parent ID, and shared link URL when Box returns them.
+
 The Box Web URL after `/files/` or `/folders/` supplies the item ID; `0` is
 the root folder and can be listed but cannot be deleted. Search requires text;
 `limit` is at most 200 for search and 1000 for folder contents, while `offset`
@@ -21,9 +30,14 @@ Create an OAuth 2.0 Platform App in the [Box Developer Console](https://app.box.
 The download Query follows only a signed HTTPS `*.boxcloud.com` redirect, without the OAuth token, and selects `invalidResponse` for any other redirect. It retries transport failures, HTTP 429, HTTP 202 (file not ready, honoring `Retry-After`), request timeout, and server failures. HTTP 404 selects the optional `notFound` branch; an oversized file selects `tooLarge`. Upload first reads the file's name and SHA-1; it skips an already identical file, preserving version history. It uses Box's [file-version upload API](https://developer.box.com/reference/post-files-id-content) and reads back ambiguous outcomes. When read-back cannot confirm the content it retries, because the next attempt compares SHA-1 and size before replacing again. Other definitive rejections select `providerRejected`. An unwired optional branch fails the Flow. Box file events and new-file creation remain to be implemented. Live Box authorization and Dex Web setup have not been exercised.
 
 The [Go-recorded conformance scenarios](../../conformance/connectors/box/scenarios.json) define the provider request and retry behavior replayed by Python and TypeScript.
+The [`file-update` Go Flow](go/examples/file-update/README.md) exercises
+rename, move, and shared link creation against a mock through a real Dex Worker.
 
 Provider references: [file metadata](https://developer.box.com/reference/get-files-id/),
 [folder items](https://developer.box.com/reference/get-folders-id-items/),
 [search](https://developer.box.com/reference/get-search/),
 [file deletion](https://developer.box.com/reference/delete-files-id/), and
 [folder deletion](https://developer.box.com/reference/delete-folders-id/).
+Box [file update](https://developer.box.com/reference/put-files-id/) and
+[folder update](https://developer.box.com/reference/put-folders-id/) document
+the rename, move, and shared link request fields.

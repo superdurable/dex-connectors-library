@@ -46,6 +46,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	UpdateFile() sdkgo.Mutation[UpdateBoxFileInput, UpdatedBoxItem]
+	UpdateFolder() sdkgo.Mutation[UpdateBoxFolderInput, UpdatedBoxItem]
 	DownloadFile() sdkgo.Query[DownloadFileInput, DownloadedFile]
 	UploadFile() sdkgo.Mutation[UploadFileInput, UploadedFile]
 	GetFile() sdkgo.Query[GetFileInput, BoxFile]
@@ -59,6 +61,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) UpdateFile() sdkgo.Mutation[UpdateBoxFileInput, UpdatedBoxItem] {
+	return operations.client.UpdateFile()
+}
+func (operations clientOperations) UpdateFolder() sdkgo.Mutation[UpdateBoxFolderInput, UpdatedBoxItem] {
+	return operations.client.UpdateFolder()
+}
 func (operations clientOperations) DownloadFile() sdkgo.Query[DownloadFileInput, DownloadedFile] {
 	return operations.client.DownloadFile()
 }
@@ -309,6 +317,160 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const UpdateFileBranchUpdated sdkgo.BranchID = "updated"
+const UpdateFileBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateFileBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateFileBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateFileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateFileDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateFile"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateFileBranchUpdated, Description: "Box updated the file."},
+		{ID: UpdateFileBranchNotFound, Description: "Box did not find this file.", Optional: true},
+		{ID: UpdateFileBranchProviderRejected, Description: "Box definitively rejected the update.", Optional: true},
+		{ID: UpdateFileBranchInvalidResponse, Description: "Box returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateFileBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateFileResult = sdkgo.MutationResult[UpdatedBoxItem]
+
+type UpdateFileStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=box"`
+	operationID                       struct{}                                             `connector:"operationId=updateFile"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateBoxFileInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateFileResult]                       `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateFileResult]                       `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateFileResult]                       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateFileResult]                       `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateFileResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedBoxItem]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateFileStep[IN any](config UpdateFileStepConfig[IN]) sdkgo.MutationStep[IN, UpdateBoxFileInput, UpdatedBoxItem] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("box connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateBoxFileInput, UpdatedBoxItem]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateFile(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateFileResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateFileResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateFileBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateFileBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateFileBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateFileBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateFileBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateFolderBranchUpdated sdkgo.BranchID = "updated"
+const UpdateFolderBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateFolderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateFolderBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateFolderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateFolderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateFolder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateFolderBranchUpdated, Description: "Box updated the folder."},
+		{ID: UpdateFolderBranchNotFound, Description: "Box did not find this folder.", Optional: true},
+		{ID: UpdateFolderBranchProviderRejected, Description: "Box definitively rejected the update.", Optional: true},
+		{ID: UpdateFolderBranchInvalidResponse, Description: "Box returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateFolderBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateFolderResult = sdkgo.MutationResult[UpdatedBoxItem]
+
+type UpdateFolderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=box"`
+	operationID                       struct{}                                             `connector:"operationId=updateFolder"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateBoxFolderInput                        `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateFolderResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateFolderResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateFolderResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateFolderResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateFolderResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedBoxItem]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateFolderStep[IN any](config UpdateFolderStepConfig[IN]) sdkgo.MutationStep[IN, UpdateBoxFolderInput, UpdatedBoxItem] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("box connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateBoxFolderInput, UpdatedBoxItem]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateFolder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateFolderResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateFolderResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateFolderBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateFolderBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateFolderBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateFolderBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateFolderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const DownloadFileBranchDownloaded sdkgo.BranchID = "downloaded"

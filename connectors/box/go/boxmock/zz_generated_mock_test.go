@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "updateFile/updateFileDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"12345","type":"file","name":"renamed.txt","parentId":"0","sharedLinkUrl":"https://app.box.com/s/example"}`)
+			return err
+		}},
+		{name: "updateFolder/updateFolderDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"54321","type":"folder","name":"Renamed","parentId":"0","sharedLinkUrl":"https://app.box.com/s/folder-example"}`)
+			return err
+		}},
 		{name: "downloadFile/downloadedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[box.DownloadedFile](`{"fileId":"12345","contentBase64":"SGVsbG8=","contentBytes":5}`)
 			return err
@@ -56,6 +64,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.UpdateFile().Definition().Operation.OperationID != "updateFile" {
+		t.Errorf("updateFile mock has another definition")
+	}
+	if mock.UpdateFolder().Definition().Operation.OperationID != "updateFolder" {
+		t.Errorf("updateFolder mock has another definition")
+	}
 	if mock.DownloadFile().Definition().Operation.OperationID != "downloadFile" {
 		t.Errorf("downloadFile mock has another definition")
 	}

@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: box
   displayName: Box
-  description: Inspect, search, download, replace, and delete Box files and folders through typed Dex operations.
+  description: Inspect, search, download, update, share, replace, and delete Box files and folders through typed Dex operations.
   company: Box
   categories: [files-documents]
   version: v0.2.0
@@ -104,6 +104,40 @@ spec:
         requiredScopes: [root_readwrite]
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: updateFile
+      goName: UpdateFile
+      inputType: UpdateBoxFileInput
+      outputType: UpdatedBoxItem
+      kind: mutation
+      description: Rename or move a file, or create or change its shared link.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: Box updated the file.}
+        - {id: notFound, goName: NotFound, description: Box did not find this file., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updateFileDefault, branch: updated, default: true, description: One file was renamed and shared., output: {id: '12345', type: file, name: renamed.txt, parentId: '0', sharedLinkUrl: 'https://app.box.com/s/example'}}
+    - name: updateFolder
+      goName: UpdateFolder
+      inputType: UpdateBoxFolderInput
+      outputType: UpdatedBoxItem
+      kind: mutation
+      description: Rename or move a folder, or create or change its shared link.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: Box updated the folder.}
+        - {id: notFound, goName: NotFound, description: Box did not find this folder., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updateFolderDefault, branch: updated, default: true, description: One folder was renamed and shared., output: {id: '54321', type: folder, name: Renamed, parentId: '0', sharedLinkUrl: 'https://app.box.com/s/folder-example'}}
     - name: downloadFile
       goName: DownloadFile
       inputType: DownloadFileInput
