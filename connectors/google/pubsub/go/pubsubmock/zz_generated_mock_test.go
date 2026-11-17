@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listSubscriptions/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.SubscriptionsPage](`{"subscriptions":[{"name":"projects/sample-project/subscriptions/events-reader","topic":"projects/sample-project/topics/events","ackDeadlineSeconds":10}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "getSubscription/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.Subscription](`{"name":"projects/sample-project/subscriptions/events-reader","topic":"projects/sample-project/topics/events","ackDeadlineSeconds":10}`)
+			return err
+		}},
+		{name: "createSubscription/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.Subscription](`{"name":"projects/sample-project/subscriptions/events-reader","topic":"projects/sample-project/topics/events","ackDeadlineSeconds":10}`)
+			return err
+		}},
+		{name: "updateSubscriptionLabels/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.Subscription](`{"name":"projects/sample-project/subscriptions/events-reader","topic":"projects/sample-project/topics/events","ackDeadlineSeconds":10,"labels":{"team":"operations"}}`)
+			return err
+		}},
+		{name: "deleteSubscription/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.DeletedSubscription](`{"name":"projects/sample-project/subscriptions/events-reader"}`)
+			return err
+		}},
 		{name: "getTopic/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[pubsub.Topic](`{"name":"projects/sample-project/topics/events","labels":{"team":"operations"}}`)
 			return err
@@ -46,6 +66,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListSubscriptions().Definition().Operation.OperationID != "listSubscriptions" {
+		t.Errorf("listSubscriptions mock has another definition")
+	}
+	if mock.GetSubscription().Definition().Operation.OperationID != "getSubscription" {
+		t.Errorf("getSubscription mock has another definition")
+	}
+	if mock.CreateSubscription().Definition().Operation.OperationID != "createSubscription" {
+		t.Errorf("createSubscription mock has another definition")
+	}
+	if mock.UpdateSubscriptionLabels().Definition().Operation.OperationID != "updateSubscriptionLabels" {
+		t.Errorf("updateSubscriptionLabels mock has another definition")
+	}
+	if mock.DeleteSubscription().Definition().Operation.OperationID != "deleteSubscription" {
+		t.Errorf("deleteSubscription mock has another definition")
+	}
 	if mock.GetTopic().Definition().Operation.OperationID != "getTopic" {
 		t.Errorf("getTopic mock has another definition")
 	}

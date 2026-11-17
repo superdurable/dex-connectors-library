@@ -24,10 +24,15 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listTopics":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTopics(), reference),
-		"getTopic":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTopic(), reference),
-		"createTopic":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateTopic(), reference, scenario.CallID),
-		"updateTopicLabels": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateTopicLabels(), reference, scenario.CallID),
-		"deleteTopic":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteTopic(), reference, scenario.CallID),
+		"listTopics":               newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTopics(), reference),
+		"getTopic":                 newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTopic(), reference),
+		"createTopic":              newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateTopic(), reference, scenario.CallID),
+		"updateTopicLabels":        newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateTopicLabels(), reference, scenario.CallID),
+		"deleteTopic":              newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteTopic(), reference, scenario.CallID),
+		"listSubscriptions":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSubscriptions(), reference),
+		"getSubscription":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetSubscription(), reference),
+		"createSubscription":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateSubscription(), reference, scenario.CallID),
+		"updateSubscriptionLabels": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateSubscriptionLabels(), reference, scenario.CallID),
+		"deleteSubscription":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteSubscription(), reference, scenario.CallID),
 	}}
 }

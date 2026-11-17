@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{topics.NewFlow(connection), topics.NewTopicDetailFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{topics.NewFlow(connection), topics.NewTopicDetailFlow(connection), topics.NewSubscriptionDetailFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Google PubSub list Flow: %w", err)
 	}
