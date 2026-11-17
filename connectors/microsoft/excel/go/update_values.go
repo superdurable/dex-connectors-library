@@ -63,8 +63,9 @@ func (UpdateValuesOperation) IdempotencyKey(callID sdkgo.CallID, _ UpdateValuesI
 }
 
 // Invoke writes the values with one PATCH of the range. Because the values are
-// absolute, a transport failure or an ambiguous server error is retried rather
-// than reported as uncertain: repeating the write leaves the same range.
+// absolute, the operation is repeat-safe: a transport failure or any status
+// other than a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or
+// 422) is retried, and repeating the write leaves the same range.
 func (operation UpdateValuesOperation) Invoke(call sdkgo.Call, input UpdateValuesInput) sdkgo.MutationAttempt[UpdateValuesOutput] {
 	client := operation.client
 	address, body, err := validateUpdateValuesInput(input, client.maxCells)
@@ -99,6 +100,11 @@ func (operation UpdateValuesOperation) Invoke(call sdkgo.Call, input UpdateValue
 	}
 	tokens := providerhttp.ReadErrorTokens(response.body, graphErrorTokenPointers)
 	kind := statusFailureKind(response.status, tokens)
+	if !isDefiniteRefusalStatus(response.status) {
+		// The write is repeat-safe, so an unknown outcome is written again.
+		delay := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
+		return sdkgo.NewMutationRetry[UpdateValuesOutput](excelFailure(kind, updateValuesOperationID, "provider did not confirm the write; the same values are written again"), delay)
+	}
 	switch classifyGraphError(response.status, tokens) {
 	case graphErrorRetryable:
 		delay := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())

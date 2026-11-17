@@ -2,7 +2,7 @@
 
 ## Python package
 
-The Python package `dex-connector-microsoft-excel` (`v0.1.0`) provides
+The Python package `dex-connector-microsoft-excel` (`v0.1.1`) provides
 `new_get_table_rows_step`, `new_get_values_step`, `new_update_values_step`,
 and `new_append_table_rows_step` from `dex_connectors.microsoft_excel`.
 It uses the same Microsoft OAuth connection and operation branches as Go.
@@ -11,7 +11,7 @@ runs all four operations with a static `approvals` connection. Its integration
 test verifies the Flow through a real Dex Worker and Client against a local
 Microsoft Graph stand-in. Live Microsoft workbook behavior remains unverified.
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go@v0.24.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/excel`.
 
@@ -174,8 +174,10 @@ a zero `CellValue` is rejected as `defect`, because Graph treats `null` as
 Microsoft Graph has no idempotency key for workbook writes. Dex may replay a
 Step after Worker loss or before an async result is committed.
 
-`updateValues` writes absolute values, so a repeated dispatch writes the same
-content again and the range ends the same. A dispatch that answers late can
+`updateValues` writes absolute values and declares `repeatOnUnknown: safe`, so
+a repeated dispatch writes the same content again and the range ends the same.
+Only 400, 401, 403, 404, 411, 413, 414, 415, and 422 select a rejection branch;
+every other status and every transport failure retries. A dispatch that answers late can
 still land after a later Step's write, so write one range from one Step per
 Flow, or read it back first, as the example does.
 
@@ -188,19 +190,25 @@ first append is still queued. So the operation:
 
 - runs with **sync** durability, so Dex never dispatches it again while an
   attempt is in flight;
-- records a Dex heartbeat checkpoint before it sends `rows/add`. A later
-  attempt of the same Step execution that finds the checkpoint never sends
-  again: it selects `appended` with `isFromEarlierAttempt` when the key column
-  holds every key, and `uncertain` otherwise;
-- clears the checkpoint only for a response that proves Excel appended
-  nothing: any 4xx except 408, plus 501 and 503;
-- treats a transport failure, 408, 500, 502, and 504 as unknown and retries
-  after 10 seconds, so the next attempt can find the rows in the key column.
+- counts possible sends with a single-dispatch fence (`sdkgo/singledispatch`)
+  whose cap is `Call.MaxSends()` (manifest `maxSends`, default 3, or the
+  Step's `MaxSends` override);
+- treats a transport failure, 408, 409, 500, 501, 502, 504, and every other
+  status that is not a definite refusal as unknown and retries after 10
+  seconds. The next attempt reads the key column first: it selects `appended`
+  with `isFromEarlierAttempt` when the column holds every key, resends the
+  missing rows while possible sends stay below the cap, and selects
+  `uncertain` once the cap is reached;
+- retries 429 and 503 after recording that Excel appended nothing;
+- selects `notFound` or `providerRejected` only for a first send refused with
+  400, 401, 403, 404, 411, 413, 414, 415, or 422, and `uncertain` when such a
+  refusal follows an earlier unconfirmed send.
 
 Microsoft's guide says to repeat an append that answered 504. The connector
-reads the key column instead, so a 504 whose append landed converges to
-`appended`, and one that did not land selects `uncertain` instead of risking a
-second row. Wire `uncertain` to a person, or to a Timer and a later
+reads the key column first, so a 504 whose append landed converges to
+`appended`. An append that stays invisible in the key column is resent up to
+the cap, so a lagging key column can produce at most `maxSends` copies of a row;
+lower the Step's `MaxSends` to 1 to never resend. Wire `uncertain` to a person, or to a Timer and a later
 `getTableRows`. The example leaves `uncertain` unwired, so selecting it fails
 the Flow. A key the table already holds is never appended again, by any Flow;
 key text stored with a kept apostrophe still matches.
@@ -290,7 +298,7 @@ operation in one Flow started from Dex Web: it reads an approval-policy table,
 decides a spending request, appends the decision to a decision log keyed by
 request ID, writes the latest decision to a summary range, and reads it back.
 
-The [TypeScript example](typescript/examples/approval-decision/README.md) exposes the same four connector operations through typed Dex Flows with the static `approvals` connection. Its real Dex integration test uses an inert Graph fixture, and its Go-recorded provider conformance fixture covers every operation branch, retry, transport failure, and the append checkpoint. The TypeScript package is `@superdurable/connector-microsoft-excel` v0.1.0 and uses Connector SDK 0.7.0. It adds no new React, Connector Studio, directory UI, or authorization fields. Live Microsoft OAuth and workbook requests remain unverified for this port. Go's independent eight second token refresh deadline awaits the separate Connector SDK 0.8.0 manifest timeout follow-up.
+The [TypeScript example](typescript/examples/approval-decision/README.md) exposes the same four connector operations through typed Dex Flows with the static `approvals` connection. Its real Dex integration test uses an inert Graph fixture, and its Go-recorded provider conformance fixture covers every operation branch, retry, transport failure, and the append send cap. The TypeScript package is `@superdurable/connector-microsoft-excel` v0.1.1 and uses Connector SDK 0.12.0. It adds no new React, Connector Studio, directory UI, or authorization fields. Live Microsoft OAuth and workbook requests remain unverified for this port. Go's independent eight second token refresh deadline awaits the separate Connector SDK 0.8.0 manifest timeout follow-up.
 
 ## Not in this release
 
