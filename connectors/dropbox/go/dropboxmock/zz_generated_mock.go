@@ -23,6 +23,9 @@ type Mock struct {
 	continueFolder *connectormock.Query[dropbox.ContinueFolderInput, dropbox.FolderPage]
 	downloadFile   *connectormock.Query[dropbox.DownloadFileInput, dropbox.DownloadedFile]
 	uploadFile     *connectormock.Mutation[dropbox.UploadFileInput, dropbox.UploadedFile]
+	searchFiles    *connectormock.Query[dropbox.SearchFilesInput, dropbox.SearchFilesPage]
+	ensureFolder   *connectormock.Mutation[dropbox.EnsureFolderInput, dropbox.EnsuredFolder]
+	deletePath     *connectormock.Mutation[dropbox.DeletePathInput, dropbox.DeletedPath]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -35,12 +38,18 @@ func New(t testing.TB, connectionName string) *Mock {
 		continueFolder: connectormock.NewQuery[dropbox.ContinueFolderInput, dropbox.FolderPage](t, dropbox.ContinueFolderDefinition),
 		downloadFile:   connectormock.NewQuery[dropbox.DownloadFileInput, dropbox.DownloadedFile](t, dropbox.DownloadFileDefinition),
 		uploadFile:     connectormock.NewMutation[dropbox.UploadFileInput, dropbox.UploadedFile](t, dropbox.UploadFileDefinition),
+		searchFiles:    connectormock.NewQuery[dropbox.SearchFilesInput, dropbox.SearchFilesPage](t, dropbox.SearchFilesDefinition),
+		ensureFolder:   connectormock.NewMutation[dropbox.EnsureFolderInput, dropbox.EnsuredFolder](t, dropbox.EnsureFolderDefinition),
+		deletePath:     connectormock.NewMutation[dropbox.DeletePathInput, dropbox.DeletedPath](t, dropbox.DeletePathDefinition),
 	}
 	mock.listFolder.Default(ListFolderDefault())
 	mock.getMetadata.Default(GetMetadataDefault())
 	mock.continueFolder.Default(ContinueFolderDefault())
 	mock.downloadFile.Default(DownloadFileDefault())
 	mock.uploadFile.Default(UploadFileDefault())
+	mock.searchFiles.Default(SearchFilesDefault())
+	mock.ensureFolder.Default(EnsureFolderDefault())
+	mock.deletePath.Default(DeletePathDefault())
 	connection, err := dropbox.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "dropbox", Name: connectionName})
 	if err != nil {
 		t.Fatalf("dropbox mock connection: %v", err)
@@ -77,6 +86,21 @@ func (mock *Mock) UploadFile() *connectormock.Mutation[dropbox.UploadFileInput, 
 	return mock.uploadFile
 }
 
+// SearchFiles returns the searchFiles script.
+func (mock *Mock) SearchFiles() *connectormock.Query[dropbox.SearchFilesInput, dropbox.SearchFilesPage] {
+	return mock.searchFiles
+}
+
+// EnsureFolder returns the ensureFolder script.
+func (mock *Mock) EnsureFolder() *connectormock.Mutation[dropbox.EnsureFolderInput, dropbox.EnsuredFolder] {
+	return mock.ensureFolder
+}
+
+// DeletePath returns the deletePath script.
+func (mock *Mock) DeletePath() *connectormock.Mutation[dropbox.DeletePathInput, dropbox.DeletedPath] {
+	return mock.deletePath
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListFolder() sdkgo.Query[dropbox.ListFolderInput, dropbox.FolderPage] {
@@ -93,6 +117,15 @@ func (operations mockOperations) DownloadFile() sdkgo.Query[dropbox.DownloadFile
 }
 func (operations mockOperations) UploadFile() sdkgo.Mutation[dropbox.UploadFileInput, dropbox.UploadedFile] {
 	return operations.mock.uploadFile
+}
+func (operations mockOperations) SearchFiles() sdkgo.Query[dropbox.SearchFilesInput, dropbox.SearchFilesPage] {
+	return operations.mock.searchFiles
+}
+func (operations mockOperations) EnsureFolder() sdkgo.Mutation[dropbox.EnsureFolderInput, dropbox.EnsuredFolder] {
+	return operations.mock.ensureFolder
+}
+func (operations mockOperations) DeletePath() sdkgo.Mutation[dropbox.DeletePathInput, dropbox.DeletedPath] {
+	return operations.mock.deletePath
 }
 
 // ListFolderListed selects the listed branch: Dropbox returned a folder page.
@@ -293,3 +326,109 @@ func UploadFileUploadedDefault() connectormock.Case[dropbox.UploadedFile] {
 
 // UploadFileDefault is the manifest default, uploadedDefault, which New installs.
 func UploadFileDefault() connectormock.Case[dropbox.UploadedFile] { return UploadFileUploadedDefault() }
+
+// SearchFilesFound selects the found branch: Dropbox returned a search page.
+func SearchFilesFound(value dropbox.SearchFilesPage, failure *sdkgo.Failure) connectormock.Case[dropbox.SearchFilesPage] {
+	return connectormock.Branch(dropbox.SearchFilesBranchFound, value, failure)
+}
+
+// SearchFilesProviderRejected selects the providerRejected branch: Dropbox conclusively rejected the search.
+func SearchFilesProviderRejected(value dropbox.SearchFilesPage, failure *sdkgo.Failure) connectormock.Case[dropbox.SearchFilesPage] {
+	return connectormock.Branch(dropbox.SearchFilesBranchProviderRejected, value, failure)
+}
+
+// SearchFilesInvalidResponse selects the invalidResponse branch: Dropbox returned malformed or oversized search results.
+func SearchFilesInvalidResponse(value dropbox.SearchFilesPage, failure *sdkgo.Failure) connectormock.Case[dropbox.SearchFilesPage] {
+	return connectormock.Branch(dropbox.SearchFilesBranchInvalidResponse, value, failure)
+}
+
+// SearchFilesDefect selects the defect branch: Local input or connection credentials are invalid.
+func SearchFilesDefect(value dropbox.SearchFilesPage, failure *sdkgo.Failure) connectormock.Case[dropbox.SearchFilesPage] {
+	return connectormock.Branch(dropbox.SearchFilesBranchDefect, value, failure)
+}
+
+// SearchFilesRetry asks Dex to retry the searchFiles Step, after the delay when it is positive.
+func SearchFilesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dropbox.SearchFilesPage] {
+	return connectormock.Retry[dropbox.SearchFilesPage](failure, after)
+}
+
+// SearchFilesFoundDefault is the manifest mock foundDefault: One matching file is returned.
+func SearchFilesFoundDefault() connectormock.Case[dropbox.SearchFilesPage] {
+	value := connectormock.MustDecodeOutput[dropbox.SearchFilesPage](`{"entries":[{"id":"id:example","name":"example.txt","pathDisplay":"/example.txt","kind":"file"}],"hasMore":false}`)
+	return connectormock.Branch(dropbox.SearchFilesBranchFound, value, nil)
+}
+
+// SearchFilesDefault is the manifest default, foundDefault, which New installs.
+func SearchFilesDefault() connectormock.Case[dropbox.SearchFilesPage] {
+	return SearchFilesFoundDefault()
+}
+
+// EnsureFolderEnsured selects the ensured branch: Dropbox created the folder or confirmed it already exists.
+func EnsureFolderEnsured(value dropbox.EnsuredFolder, failure *sdkgo.Failure) connectormock.Case[dropbox.EnsuredFolder] {
+	return connectormock.Branch(dropbox.EnsureFolderBranchEnsured, value, failure)
+}
+
+// EnsureFolderProviderRejected selects the providerRejected branch: Dropbox conclusively rejected the folder request.
+func EnsureFolderProviderRejected(value dropbox.EnsuredFolder, failure *sdkgo.Failure) connectormock.Case[dropbox.EnsuredFolder] {
+	return connectormock.Branch(dropbox.EnsureFolderBranchProviderRejected, value, failure)
+}
+
+// EnsureFolderInvalidResponse selects the invalidResponse branch: Dropbox returned malformed or oversized folder metadata.
+func EnsureFolderInvalidResponse(value dropbox.EnsuredFolder, failure *sdkgo.Failure) connectormock.Case[dropbox.EnsuredFolder] {
+	return connectormock.Branch(dropbox.EnsureFolderBranchInvalidResponse, value, failure)
+}
+
+// EnsureFolderDefect selects the defect branch: Local input or connection credentials are invalid.
+func EnsureFolderDefect(value dropbox.EnsuredFolder, failure *sdkgo.Failure) connectormock.Case[dropbox.EnsuredFolder] {
+	return connectormock.Branch(dropbox.EnsureFolderBranchDefect, value, failure)
+}
+
+// EnsureFolderRetry asks Dex to retry the ensureFolder Step, after the delay when it is positive.
+func EnsureFolderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dropbox.EnsuredFolder] {
+	return connectormock.Retry[dropbox.EnsuredFolder](failure, after)
+}
+
+// EnsureFolderEnsuredDefault is the manifest mock ensuredDefault: One example folder is ensured.
+func EnsureFolderEnsuredDefault() connectormock.Case[dropbox.EnsuredFolder] {
+	value := connectormock.MustDecodeOutput[dropbox.EnsuredFolder](`{"path":"/example"}`)
+	return connectormock.Branch(dropbox.EnsureFolderBranchEnsured, value, nil)
+}
+
+// EnsureFolderDefault is the manifest default, ensuredDefault, which New installs.
+func EnsureFolderDefault() connectormock.Case[dropbox.EnsuredFolder] {
+	return EnsureFolderEnsuredDefault()
+}
+
+// DeletePathDeleted selects the deleted branch: Dropbox deleted the path or confirmed it was already absent.
+func DeletePathDeleted(value dropbox.DeletedPath, failure *sdkgo.Failure) connectormock.Case[dropbox.DeletedPath] {
+	return connectormock.Branch(dropbox.DeletePathBranchDeleted, value, failure)
+}
+
+// DeletePathProviderRejected selects the providerRejected branch: Dropbox conclusively rejected the deletion.
+func DeletePathProviderRejected(value dropbox.DeletedPath, failure *sdkgo.Failure) connectormock.Case[dropbox.DeletedPath] {
+	return connectormock.Branch(dropbox.DeletePathBranchProviderRejected, value, failure)
+}
+
+// DeletePathInvalidResponse selects the invalidResponse branch: Dropbox returned malformed or oversized deletion metadata.
+func DeletePathInvalidResponse(value dropbox.DeletedPath, failure *sdkgo.Failure) connectormock.Case[dropbox.DeletedPath] {
+	return connectormock.Branch(dropbox.DeletePathBranchInvalidResponse, value, failure)
+}
+
+// DeletePathDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeletePathDefect(value dropbox.DeletedPath, failure *sdkgo.Failure) connectormock.Case[dropbox.DeletedPath] {
+	return connectormock.Branch(dropbox.DeletePathBranchDefect, value, failure)
+}
+
+// DeletePathRetry asks Dex to retry the deletePath Step, after the delay when it is positive.
+func DeletePathRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dropbox.DeletedPath] {
+	return connectormock.Retry[dropbox.DeletedPath](failure, after)
+}
+
+// DeletePathDeletedDefault is the manifest mock deletedDefault: One example path is deleted.
+func DeletePathDeletedDefault() connectormock.Case[dropbox.DeletedPath] {
+	value := connectormock.MustDecodeOutput[dropbox.DeletedPath](`{"path":"/example.txt"}`)
+	return connectormock.Branch(dropbox.DeletePathBranchDeleted, value, nil)
+}
+
+// DeletePathDefault is the manifest default, deletedDefault, which New installs.
+func DeletePathDefault() connectormock.Case[dropbox.DeletedPath] { return DeletePathDeletedDefault() }

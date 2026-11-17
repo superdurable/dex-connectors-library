@@ -1,5 +1,7 @@
 # Dropbox folder discovery Flow
 
+The same Worker also registers `DropboxFileSearch`. Start it with `SearchFilesInput` containing a name fragment, optional folder path, and a page size from 1 to 1000. It returns matching file and folder identities. `TestFileSearchUsesDefaultMockWithRealDex` exercises this Flow against a real local Dex with the connector mock.
+
 This runnable Flow calls `listFolder` with the static `dropbox` connection. Its successful result is saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. Only entry IDs, names, display paths, kinds, and the continuation cursor enter the Flow result; OAuth tokens do not.
 
 ## Strict FDG 2.0 generation
@@ -8,6 +10,7 @@ From `connectors/dropbox/go`, run:
 
 ```bash
 dexcli visualize ./examples/folder-discovery/flow/workflow.go --schema-version 2.0 --lint app --json --out /tmp/dropbox-folder-discovery-fdg --open=false
+dexcli visualize ./examples/folder-discovery/flow/search_flow.go --schema-version 2.0 --lint app --json --out /tmp/dropbox-file-search-fdg --open=false
 ```
 
 The graph must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.

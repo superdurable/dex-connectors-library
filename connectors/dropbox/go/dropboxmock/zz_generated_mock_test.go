@@ -36,6 +36,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[dropbox.UploadedFile](`{"file":{"id":"id:example","name":"example.txt","pathDisplay":"/example.txt","kind":"file"}}`)
 			return err
 		}},
+		{name: "searchFiles/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropbox.SearchFilesPage](`{"entries":[{"id":"id:example","name":"example.txt","pathDisplay":"/example.txt","kind":"file"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "ensureFolder/ensuredDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropbox.EnsuredFolder](`{"path":"/example"}`)
+			return err
+		}},
+		{name: "deletePath/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropbox.DeletedPath](`{"path":"/example.txt"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -60,5 +72,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.UploadFile().Definition().Operation.OperationID != "uploadFile" {
 		t.Errorf("uploadFile mock has another definition")
+	}
+	if mock.SearchFiles().Definition().Operation.OperationID != "searchFiles" {
+		t.Errorf("searchFiles mock has another definition")
+	}
+	if mock.EnsureFolder().Definition().Operation.OperationID != "ensureFolder" {
+		t.Errorf("ensureFolder mock has another definition")
+	}
+	if mock.DeletePath().Definition().Operation.OperationID != "deletePath" {
+		t.Errorf("deletePath mock has another definition")
 	}
 }

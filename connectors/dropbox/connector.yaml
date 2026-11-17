@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: dropbox
   displayName: Dropbox
-  description: List folders, read metadata, download bounded files, and overwrite bounded files through typed Dex operations.
+  description: Search and list Dropbox files, read metadata, download bounded files, and manage files and folders through typed Dex operations.
   company: Dropbox
   categories: [files-documents]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: dropbox
   languages:
@@ -210,3 +210,63 @@ spec:
           default: true
           description: One example text file is overwritten.
           output: {file: {id: 'id:example', name: example.txt, pathDisplay: /example.txt, kind: file}}
+    - name: searchFiles
+      goName: SearchFiles
+      inputType: SearchFilesInput
+      outputType: SearchFilesPage
+      kind: query
+      description: Search one bounded page of Dropbox file and folder names.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Dropbox returned a search page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox returned malformed or oversized search results., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One matching file is returned.
+          output: {entries: [{id: 'id:example', name: example.txt, pathDisplay: /example.txt, kind: file}], hasMore: false}
+    - name: ensureFolder
+      goName: EnsureFolder
+      inputType: EnsureFolderInput
+      outputType: EnsuredFolder
+      kind: mutation
+      description: Create one Dropbox folder if absent and confirm it exists.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: ensured, goName: Ensured, description: Dropbox created the folder or confirmed it already exists.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the folder request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox returned malformed or oversized folder metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: ensuredDefault
+          branch: ensured
+          default: true
+          description: One example folder is ensured.
+          output: {path: /example}
+    - name: deletePath
+      goName: DeletePath
+      inputType: DeletePathInput
+      outputType: DeletedPath
+      kind: mutation
+      description: Delete one Dropbox file or folder if it exists.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Dropbox deleted the path or confirmed it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox returned malformed or oversized deletion metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One example path is deleted.
+          output: {path: /example.txt}

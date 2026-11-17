@@ -28,5 +28,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"continueFolder": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ContinueFolder(), testConnection),
 		"downloadFile":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.DownloadFile(), testConnection),
 		"uploadFile":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UploadFile(), testConnection, scenario.CallID),
+		"searchFiles":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchFiles(), testConnection),
+		"ensureFolder":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.EnsureFolder(), testConnection, scenario.CallID),
+		"deletePath":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeletePath(), testConnection, scenario.CallID),
 	}}
 }
