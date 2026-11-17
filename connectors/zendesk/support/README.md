@@ -1,6 +1,6 @@
 # Zendesk Support Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zendesk/support`.
 
@@ -17,6 +17,26 @@ Flows. It exposes these operation-specific Dex Step factories:
 | `support.NewGetTicketStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `support.NewCreateTicketStep` | Mutation | `created` | `providerRejected`, `invalidResponse`, `defect` |
 | `support.NewUpdateTicketStep` | Mutation | `updated` | `notFound`, `conflict`, `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewListTicketsStep` | Query | `listed` | `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewDeleteTicketStep` | Mutation | `deleted` | `notFound`, `providerRejected`, `defect` |
+| `support.NewRecoverSuspendedTicketStep` | Mutation | `recovered` | `notFound`, `providerRejected`, `defect`, `uncertain` |
+| `support.NewListTicketFieldsStep` | Query | `listed` | `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewGetTicketFieldStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewListUsersStep` | Query | `listed` | `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewGetUserStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewSearchUsersStep` | Query | `searched` | `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewCreateUserStep` | Mutation | `created` | `providerRejected`, `defect`, `uncertain` |
+| `support.NewUpdateUserStep` | Mutation | `updated` | `notFound`, `providerRejected`, `defect` |
+| `support.NewDeleteUserStep` | Mutation | `deleted` | `notFound`, `providerRejected`, `defect` |
+| `support.NewListOrganizationsStep` | Query | `listed` | `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewCountOrganizationsStep` | Query | `counted` | `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewGetOrganizationStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewGetOrganizationRelatedStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewListUserOrganizationsStep` | Query | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewGetUserRelatedStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewCreateOrganizationStep` | Mutation | `created` | `providerRejected`, `defect`, `uncertain` |
+| `support.NewUpdateOrganizationStep` | Mutation | `updated` | `notFound`, `providerRejected`, `defect` |
+| `support.NewDeleteOrganizationStep` | Mutation | `deleted` | `notFound`, `providerRejected`, `defect` |
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
@@ -106,6 +126,20 @@ A Result passes through any value Zendesk adds later. Inputs are validated
 against the documented values before any request.
 
 ## Operations
+
+`listTickets` reads one cursor page of up to 100 non-archived tickets visible to the connection's agent. Pass the returned `nextCursor` to read another page; the first page is used when it is blank. For a complete account export, use the incremental export API instead.
+
+`listTicketFields` reads one cursor page of up to 100 system and custom field definitions; `getTicketField` reads one by positive ID. They return field ID, title, type, active, and required status. Provider field descriptions and other configuration are excluded from Flow results.
+
+`listUsers` reads up to 100 users per cursor page. `getUser` reads one by ID, and `searchUsers` uses Zendesk's offset search with a nonempty query and at most 10,000 matches. User responses include selected profile fields and omit notes, custom fields, and authentication details.
+
+`createUser` creates an end user. An account-unique `externalId` can come from the application; when blank, the connector derives one from the stable Dex call ID. After an unknown result it reads users by that exact ID and confirms the name and email before resending, up to three sends. `updateUser` replaces supplied name, phone, tags, or suspension state; omitted fields are left alone. `deleteUser` removes a user and Zendesk does not offer recovery. These writes require a Zendesk administrator or an agent whose custom role can manage users. Updating a primary email address requires Zendesk's identity API and is outside `updateUser`.
+
+`listOrganizations` and `listUserOrganizations` read up to 100 organizations per cursor page. `countOrganizations` returns Zendesk's approximate count; large accounts can see a count that lags by a day. `getOrganization` reads one by ID. `getOrganizationRelated` returns ticket and user counts, and `getUserRelated` returns assigned, requested, collaborated ticket, and organization subscription counts. Returned organization fields omit free-form notes and custom fields.
+
+`createOrganization` accepts an application-unique `externalId`; when blank, the connector derives one from the stable Dex call ID. An unknown create is checked with Zendesk's exact external-ID search before a bounded resend. `updateOrganization` replaces only supplied name, domains, tags, group, or sharing flags. `deleteOrganization` removes one by ID. Organization writes require a Zendesk administrator or an agent with organization-management permission.
+
+`deleteTicket` soft-deletes one ticket by ID. Zendesk requires an administrator or an agent with deletion permission. `recoverSuspendedTicket` converts one suspended ticket to a regular ticket; Zendesk changes its requester to the authenticated agent. Recovery has a three-send cap and selects `uncertain` after an unconfirmed final attempt. Operators can inspect the suspended-ticket queue and the recovered ticket before manually retrying.
 
 ### searchTickets
 

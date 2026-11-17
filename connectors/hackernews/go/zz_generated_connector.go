@@ -40,6 +40,9 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetArticleThread() sdkgo.Query[GetArticleThreadInput, ArticleThread]
+	SearchItems() sdkgo.Query[SearchItemsInput, ItemSearchPage]
+	GetUser() sdkgo.Query[GetUserInput, User]
 	ListStoryIDs() sdkgo.Query[ListStoryIDsInput, StoryIDs]
 	GetItem() sdkgo.Query[GetItemInput, Item]
 	SearchStories() sdkgo.Query[SearchStoriesInput, StorySearchPage]
@@ -47,6 +50,15 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetArticleThread() sdkgo.Query[GetArticleThreadInput, ArticleThread] {
+	return operations.client.GetArticleThread()
+}
+func (operations clientOperations) SearchItems() sdkgo.Query[SearchItemsInput, ItemSearchPage] {
+	return operations.client.SearchItems()
+}
+func (operations clientOperations) GetUser() sdkgo.Query[GetUserInput, User] {
+	return operations.client.GetUser()
+}
 func (operations clientOperations) ListStoryIDs() sdkgo.Query[ListStoryIDsInput, StoryIDs] {
 	return operations.client.ListStoryIDs()
 }
@@ -196,6 +208,231 @@ func (config Config) Validate() error {
 
 func (credentials Credentials) Validate() error {
 	return nil
+}
+
+const GetArticleThreadBranchFound sdkgo.BranchID = "found"
+const GetArticleThreadBranchNotFound sdkgo.BranchID = "notFound"
+const GetArticleThreadBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetArticleThreadBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetArticleThreadBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetArticleThreadDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getArticleThread"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetArticleThreadBranchFound, Description: "The article and its indexed comments were read."},
+		{ID: GetArticleThreadBranchNotFound, Description: "The article was not found.", Optional: true},
+		{ID: GetArticleThreadBranchProviderRejected, Description: "Hacker News Search rejected the article read.", Optional: true},
+		{ID: GetArticleThreadBranchInvalidResponse, Description: "Hacker News Search returned malformed or oversized thread data.", Optional: true},
+		{ID: GetArticleThreadBranchDefect, Description: "The article ID or connection configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetArticleThreadResult = sdkgo.QueryResult[ArticleThread]
+
+type GetArticleThreadStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=hacker-news-daily"`
+	operationID                    struct{}                                         `connector:"operationId=getArticleThread"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetArticleThreadInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetArticleThreadResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetArticleThreadResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetArticleThreadResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetArticleThreadResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetArticleThreadResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ArticleThread]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetArticleThreadStep[IN any](config GetArticleThreadStepConfig[IN]) sdkgo.QueryStep[IN, GetArticleThreadInput, ArticleThread] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("hacker-news-daily connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetArticleThreadInput, ArticleThread]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetArticleThread(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetArticleThreadResult] {
+			branches := make([]sdkgo.BranchTarget[GetArticleThreadResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetArticleThreadBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetArticleThreadBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetArticleThreadBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetArticleThreadBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetArticleThreadBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SearchItemsBranchSearched sdkgo.BranchID = "searched"
+const SearchItemsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchItemsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchItemsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchItemsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchItems"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchItemsBranchSearched, Description: "One page of public items was read; it can be empty."},
+		{ID: SearchItemsBranchProviderRejected, Description: "Hacker News Search rejected the request.", Optional: true},
+		{ID: SearchItemsBranchInvalidResponse, Description: "Hacker News Search returned malformed or oversized items.", Optional: true},
+		{ID: SearchItemsBranchDefect, Description: "Search filters or connection configuration are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchItemsResult = sdkgo.QueryResult[ItemSearchPage]
+
+type SearchItemsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=hacker-news-daily"`
+	operationID                    struct{}                                          `connector:"operationId=searchItems"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchItemsInput                         `connector:"mapToOperationInput"`
+	Searched                       sdkgo.Target[SearchItemsResult]                   `connector:"branch=searched"`
+	ProviderRejected               sdkgo.Target[SearchItemsResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchItemsResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchItemsResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ItemSearchPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewSearchItemsStep[IN any](config SearchItemsStepConfig[IN]) sdkgo.QueryStep[IN, SearchItemsInput, ItemSearchPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("hacker-news-daily connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchItemsInput, ItemSearchPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchItems(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchItemsResult] {
+			branches := make([]sdkgo.BranchTarget[SearchItemsResult], 0, 4)
+			if config.Searched.HasStep() {
+				branches = append(branches, config.Searched.BranchTarget(SearchItemsBranchSearched))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchItemsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchItemsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchItemsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetUserBranchFound sdkgo.BranchID = "found"
+const GetUserBranchNotFound sdkgo.BranchID = "notFound"
+const GetUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetUserBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetUserDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetUserBranchFound, Description: "The public user was read."},
+		{ID: GetUserBranchNotFound, Description: "The user has no public profile.", Optional: true},
+		{ID: GetUserBranchProviderRejected, Description: "Hacker News rejected the request.", Optional: true},
+		{ID: GetUserBranchInvalidResponse, Description: "Hacker News returned malformed or oversized user data.", Optional: true},
+		{ID: GetUserBranchDefect, Description: "The username or connection configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetUserResult = sdkgo.QueryResult[User]
+
+type GetUserStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                `connector:"connectorId=hacker-news-daily"`
+	operationID                    struct{}                                `connector:"operationId=getUser"`
+	StepType                       string                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                   `connector:"annotations"`
+	Connection                     Connection                              `connector:"connection"`
+	ConnectionName                 string                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetUserInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetUserResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetUserResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetUserResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetUserResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetUserResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[User]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetUserStep[IN any](config GetUserStepConfig[IN]) sdkgo.QueryStep[IN, GetUserInput, User] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("hacker-news-daily connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetUserInput, User]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetUserResult] {
+			branches := make([]sdkgo.BranchTarget[GetUserResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetUserBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetUserBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetUserBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetUserBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListStoryIDsBranchListed sdkgo.BranchID = "listed"

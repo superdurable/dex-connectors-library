@@ -16,6 +16,46 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getUser/publicUser/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.UserProfile](`{"name":"example_user","id":"t2_abc123","commentKarma":12,"linkKarma":34,"profileUrl":"https://www.reddit.com/user/example_user"}`)
+			return err
+		}},
+		{name: "getSubreddit/publicSubreddit/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.Subreddit](`{"name":"golang","id":"t5_abc123","title":"Go","subscribers":100,"url":"https://www.reddit.com/r/golang/"}`)
+			return err
+		}},
+		{name: "getSubredditRules/communityRules/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.SubredditRules](`{"rules":[{"shortName":"Be respectful","description":"Keep discussion civil.","kind":"all","violationReason":"Uncivil behavior"}]}`)
+			return err
+		}},
+		{name: "searchSubreddits/foundSubreddits/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.SubredditPage](`{"subreddits":[{"name":"example","id":"t5_abc123","title":"Example","subscribers":100,"url":"https://www.reddit.com/r/example/"}],"after":"t5_abc123"}`)
+			return err
+		}},
+		{name: "searchSubreddits/foundSubreddits/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.SubredditPage](`{"subreddits":[{"name":"examples","id":"t5_def456","title":"Examples","subscribers":50,"url":"https://www.reddit.com/r/examples/"}],"after":"t5_def456"}`)
+			return err
+		}},
+		{name: "searchSubreddits/foundSubreddits/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.SubredditPage](`{"subreddits":[{"name":"examplecode","id":"t5_ghi789","title":"Example Code","subscribers":25,"url":"https://www.reddit.com/r/examplecode/"}]}`)
+			return err
+		}},
+		{name: "listSubreddits/popularCommunities/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.SubredditPage](`{"subreddits":[{"name":"golang","id":"t5_abc123","title":"Go","subscribers":100,"url":"https://www.reddit.com/r/golang/"}],"after":"t5_abc123"}`)
+			return err
+		}},
+		{name: "listSubreddits/popularCommunities/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.SubredditPage](`{"subreddits":[{"name":"programming","id":"t5_def456","title":"Programming","subscribers":80,"url":"https://www.reddit.com/r/programming/"}],"after":"t5_def456"}`)
+			return err
+		}},
+		{name: "listSubreddits/popularCommunities/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.SubredditPage](`{"subreddits":[{"name":"learnprogramming","id":"t5_ghi789","title":"Learn Programming","subscribers":50,"url":"https://www.reddit.com/r/learnprogramming/"}]}`)
+			return err
+		}},
+		{name: "listPostComments/sampleComments/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.CommentPage](`{"comments":[{"id":"t1_abc123","parentId":"t3_abc123","author":"example_user","body":"Sample comment","permalink":"https://www.reddit.com/r/example/comments/abc123/_/abc123/","score":3}]}`)
+			return err
+		}},
 		{name: "getPost/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[reddit.Post](`{"id":"t3_abc123","title":"Example post","subreddit":"example","permalink":"/r/example/comments/abc123/example_post/","score":42}`)
 			return err
@@ -54,6 +94,24 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetUser().Definition().Operation.OperationID != "getUser" {
+		t.Errorf("getUser mock has another definition")
+	}
+	if mock.GetSubreddit().Definition().Operation.OperationID != "getSubreddit" {
+		t.Errorf("getSubreddit mock has another definition")
+	}
+	if mock.GetSubredditRules().Definition().Operation.OperationID != "getSubredditRules" {
+		t.Errorf("getSubredditRules mock has another definition")
+	}
+	if mock.SearchSubreddits().Definition().Operation.OperationID != "searchSubreddits" {
+		t.Errorf("searchSubreddits mock has another definition")
+	}
+	if mock.ListSubreddits().Definition().Operation.OperationID != "listSubreddits" {
+		t.Errorf("listSubreddits mock has another definition")
+	}
+	if mock.ListPostComments().Definition().Operation.OperationID != "listPostComments" {
+		t.Errorf("listPostComments mock has another definition")
+	}
 	if mock.GetPost().Definition().Operation.OperationID != "getPost" {
 		t.Errorf("getPost mock has another definition")
 	}

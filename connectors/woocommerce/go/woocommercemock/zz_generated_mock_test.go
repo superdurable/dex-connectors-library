@@ -24,6 +24,58 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[woocommerce.Order](`{"id":101,"status":"processing","total":"29.00","currency":"USD"}`)
 			return err
 		}},
+		{name: "createOrder/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[woocommerce.Order](`{"id":102,"status":"pending","total":"29.00","currency":"USD"}`)
+			return err
+		}},
+		{name: "updateOrder/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[woocommerce.Order](`{"id":101,"status":"completed","total":"29.00","currency":"USD"}`)
+			return err
+		}},
+		{name: "listCustomers/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[woocommerce.CustomerPage](`{"customers":[{"id":11,"email":"sample@example.com","first_name":"Ava","last_name":"Lee"}]}`)
+			return err
+		}},
+		{name: "getCustomer/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[woocommerce.Customer](`{"id":11,"email":"sample@example.com","first_name":"Ava","last_name":"Lee"}`)
+			return err
+		}},
+		{name: "createCustomer/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[woocommerce.Customer](`{"id":11,"email":"sample@example.com","first_name":"Ava","last_name":"Lee"}`)
+			return err
+		}},
+		{name: "updateCustomer/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[woocommerce.Customer](`{"id":11,"email":"sample@example.com","first_name":"Ava","last_name":"Lee"}`)
+			return err
+		}},
+		{name: "deleteCustomer/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[woocommerce.Customer](`{"id":11,"email":"sample@example.com","first_name":"Ava","last_name":"Lee"}`)
+			return err
+		}},
+		{name: "listProducts/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[woocommerce.ProductPage](`{"products":[{"id":21,"name":"Sample mug","sku":"MUG-21","regular_price":"12.00"}]}`)
+			return err
+		}},
+		{name: "getProduct/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[woocommerce.Product](`{"id":21,"name":"Sample mug","sku":"MUG-21","regular_price":"12.00"}`)
+			return err
+		}},
+		{name: "createProduct/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[woocommerce.Product](`{"id":21,"name":"Sample mug","sku":"MUG-21","regular_price":"12.00"}`)
+			return err
+		}},
+		{name: "updateProduct/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[woocommerce.Product](`{"id":21,"name":"Sample mug","sku":"MUG-21","regular_price":"12.00"}`)
+			return err
+		}},
+		{name: "deleteProduct/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[woocommerce.Product](`{"id":21,"name":"Sample mug","sku":"MUG-21","regular_price":"12.00"}`)
+			return err
+		}},
+		{name: "deleteOrder/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[woocommerce.Order](`{"id":101,"status":"completed","total":"29.00","currency":"USD"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +91,44 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetOrder().Definition().Operation.OperationID != "getOrder" {
 		t.Errorf("getOrder mock has another definition")
+	}
+	if mock.CreateOrder().Definition().Operation.OperationID != "createOrder" {
+		t.Errorf("createOrder mock has another definition")
+	}
+	if mock.UpdateOrder().Definition().Operation.OperationID != "updateOrder" {
+		t.Errorf("updateOrder mock has another definition")
+	}
+	if mock.ListCustomers().Definition().Operation.OperationID != "listCustomers" {
+		t.Errorf("listCustomers mock has another definition")
+	}
+	if mock.GetCustomer().Definition().Operation.OperationID != "getCustomer" {
+		t.Errorf("getCustomer mock has another definition")
+	}
+	if mock.CreateCustomer().Definition().Operation.OperationID != "createCustomer" {
+		t.Errorf("createCustomer mock has another definition")
+	}
+	if mock.UpdateCustomer().Definition().Operation.OperationID != "updateCustomer" {
+		t.Errorf("updateCustomer mock has another definition")
+	}
+	if mock.DeleteCustomer().Definition().Operation.OperationID != "deleteCustomer" {
+		t.Errorf("deleteCustomer mock has another definition")
+	}
+	if mock.ListProducts().Definition().Operation.OperationID != "listProducts" {
+		t.Errorf("listProducts mock has another definition")
+	}
+	if mock.GetProduct().Definition().Operation.OperationID != "getProduct" {
+		t.Errorf("getProduct mock has another definition")
+	}
+	if mock.CreateProduct().Definition().Operation.OperationID != "createProduct" {
+		t.Errorf("createProduct mock has another definition")
+	}
+	if mock.UpdateProduct().Definition().Operation.OperationID != "updateProduct" {
+		t.Errorf("updateProduct mock has another definition")
+	}
+	if mock.DeleteProduct().Definition().Operation.OperationID != "deleteProduct" {
+		t.Errorf("deleteProduct mock has another definition")
+	}
+	if mock.DeleteOrder().Definition().Operation.OperationID != "deleteOrder" {
+		t.Errorf("deleteOrder mock has another definition")
 	}
 }

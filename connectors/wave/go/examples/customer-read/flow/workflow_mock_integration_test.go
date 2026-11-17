@@ -58,3 +58,117 @@ func TestCustomerReadUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "Example Customer", output.Name)
 	require.Len(t, mock.GetCustomer().Calls(), 1)
 }
+
+func TestCreateCustomerUsesDefaultMockWithRealDex(t *testing.T) {
+	mock := wavemock.New(t, ConnectionName)
+	flow := NewCreateCustomerFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
+	if serverAddress == "" {
+		serverAddress = "127.0.0.1:8801"
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(stopCtx), <-workerResult, client.Close(), cache.Close()))
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+	flowID := "wave-create-customer-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	request := wave.CreateCustomerInput{BusinessID: "business-1", Name: "Example Customer"}
+	_, err = client.StartFlow(ctx, flow, flowID, request, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var output wave.CustomerProfile
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Equal(t, "customer-1", output.ID)
+	require.Len(t, mock.CreateCustomer().Calls(), 1)
+}
+
+func TestCreateProductUsesDefaultMockWithRealDex(t *testing.T) {
+	mock := wavemock.New(t, ConnectionName)
+	flow := NewCreateProductFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
+	if serverAddress == "" {
+		serverAddress = "127.0.0.1:8801"
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(stopCtx), <-workerResult, client.Close(), cache.Close()))
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+	flowID := "wave-create-product-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	request := wave.CreateProductInput{BusinessID: "business-1", Name: "Example Product", UnitPrice: "2.50", IncomeAccountID: "account-1"}
+	_, err = client.StartFlow(ctx, flow, flowID, request, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var output wave.ProductProfile
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Equal(t, "product-1", output.ID)
+	require.Len(t, mock.CreateProduct().Calls(), 1)
+}
+
+func TestCreateInvoiceUsesDefaultMockWithRealDex(t *testing.T) {
+	mock := wavemock.New(t, ConnectionName)
+	flow := NewCreateInvoiceFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
+	if serverAddress == "" {
+		serverAddress = "127.0.0.1:8801"
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(stopCtx), <-workerResult, client.Close(), cache.Close()))
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+	flowID := "wave-create-invoice-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	request := wave.CreateInvoiceInput{BusinessID: "business-1", CustomerID: "customer-1", ProductID: "product-1"}
+	_, err = client.StartFlow(ctx, flow, flowID, request, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var output wave.InvoiceProfile
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Equal(t, "invoice-1", output.ID)
+	require.Len(t, mock.CreateInvoice().Calls(), 1)
+}

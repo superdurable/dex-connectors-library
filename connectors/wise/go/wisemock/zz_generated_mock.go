@@ -17,8 +17,21 @@ import (
 
 // Mock is a scripted wise connection. Script each operation through its accessor.
 type Mock struct {
-	connection  wise.Connection
-	getTransfer *connectormock.Query[wise.GetTransferInput, wise.TransferStatus]
+	connection                     wise.Connection
+	listProfiles                   *connectormock.Query[wise.ListProfilesInput, wise.ProfilesOutput]
+	getProfile                     *connectormock.Query[wise.GetProfileInput, wise.ProfileSummary]
+	getBalance                     *connectormock.Query[wise.GetBalanceInput, wise.BalanceSummary]
+	createBalance                  *connectormock.Mutation[wise.CreateBalanceInput, wise.BalanceSummary]
+	listBalances                   *connectormock.Query[wise.ListBalancesInput, wise.BalancesOutput]
+	listAvailableBalanceCurrencies *connectormock.Query[wise.ListPayinCurrenciesInput, wise.PayinCurrenciesOutput]
+	listPayinCurrencies            *connectormock.Query[wise.ListPayinCurrenciesInput, wise.PayinCurrenciesOutput]
+	listRecipients                 *connectormock.Query[wise.ListRecipientsInput, wise.RecipientsOutput]
+	getExchangeRates               *connectormock.Query[wise.GetExchangeRatesInput, wise.ExchangeRatesOutput]
+	createQuote                    *connectormock.Mutation[wise.CreateQuoteInput, wise.QuoteSummary]
+	getQuote                       *connectormock.Query[wise.GetQuoteInput, wise.QuoteSummary]
+	createTransfer                 *connectormock.Mutation[wise.CreateTransferInput, wise.TransferStatus]
+	cancelTransfer                 *connectormock.Mutation[wise.CancelTransferInput, wise.TransferStatus]
+	getTransfer                    *connectormock.Query[wise.GetTransferInput, wise.TransferStatus]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +39,34 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getTransfer: connectormock.NewQuery[wise.GetTransferInput, wise.TransferStatus](t, wise.GetTransferDefinition),
+		listProfiles:                   connectormock.NewQuery[wise.ListProfilesInput, wise.ProfilesOutput](t, wise.ListProfilesDefinition),
+		getProfile:                     connectormock.NewQuery[wise.GetProfileInput, wise.ProfileSummary](t, wise.GetProfileDefinition),
+		getBalance:                     connectormock.NewQuery[wise.GetBalanceInput, wise.BalanceSummary](t, wise.GetBalanceDefinition),
+		createBalance:                  connectormock.NewMutation[wise.CreateBalanceInput, wise.BalanceSummary](t, wise.CreateBalanceDefinition),
+		listBalances:                   connectormock.NewQuery[wise.ListBalancesInput, wise.BalancesOutput](t, wise.ListBalancesDefinition),
+		listAvailableBalanceCurrencies: connectormock.NewQuery[wise.ListPayinCurrenciesInput, wise.PayinCurrenciesOutput](t, wise.ListAvailableBalanceCurrenciesDefinition),
+		listPayinCurrencies:            connectormock.NewQuery[wise.ListPayinCurrenciesInput, wise.PayinCurrenciesOutput](t, wise.ListPayinCurrenciesDefinition),
+		listRecipients:                 connectormock.NewQuery[wise.ListRecipientsInput, wise.RecipientsOutput](t, wise.ListRecipientsDefinition),
+		getExchangeRates:               connectormock.NewQuery[wise.GetExchangeRatesInput, wise.ExchangeRatesOutput](t, wise.GetExchangeRatesDefinition),
+		createQuote:                    connectormock.NewMutation[wise.CreateQuoteInput, wise.QuoteSummary](t, wise.CreateQuoteDefinition),
+		getQuote:                       connectormock.NewQuery[wise.GetQuoteInput, wise.QuoteSummary](t, wise.GetQuoteDefinition),
+		createTransfer:                 connectormock.NewMutation[wise.CreateTransferInput, wise.TransferStatus](t, wise.CreateTransferDefinition),
+		cancelTransfer:                 connectormock.NewMutation[wise.CancelTransferInput, wise.TransferStatus](t, wise.CancelTransferDefinition),
+		getTransfer:                    connectormock.NewQuery[wise.GetTransferInput, wise.TransferStatus](t, wise.GetTransferDefinition),
 	}
+	mock.listProfiles.Default(ListProfilesDefault())
+	mock.getProfile.Default(GetProfileDefault())
+	mock.getBalance.Default(GetBalanceDefault())
+	mock.createBalance.Default(CreateBalanceDefault())
+	mock.listBalances.Default(ListBalancesDefault())
+	mock.listAvailableBalanceCurrencies.Default(ListAvailableBalanceCurrenciesDefault())
+	mock.listPayinCurrencies.Default(ListPayinCurrenciesDefault())
+	mock.listRecipients.Default(ListRecipientsDefault())
+	mock.getExchangeRates.Default(GetExchangeRatesDefault())
+	mock.createQuote.Default(CreateQuoteDefault())
+	mock.getQuote.Default(GetQuoteDefault())
+	mock.createTransfer.Default(CreateTransferDefault())
+	mock.cancelTransfer.Default(CancelTransferDefault())
 	mock.getTransfer.Default(GetTransferDefault())
 	connection, err := wise.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "wise", Name: connectionName})
 	if err != nil {
@@ -40,6 +79,71 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() wise.Connection { return mock.connection }
 
+// ListProfiles returns the listProfiles script.
+func (mock *Mock) ListProfiles() *connectormock.Query[wise.ListProfilesInput, wise.ProfilesOutput] {
+	return mock.listProfiles
+}
+
+// GetProfile returns the getProfile script.
+func (mock *Mock) GetProfile() *connectormock.Query[wise.GetProfileInput, wise.ProfileSummary] {
+	return mock.getProfile
+}
+
+// GetBalance returns the getBalance script.
+func (mock *Mock) GetBalance() *connectormock.Query[wise.GetBalanceInput, wise.BalanceSummary] {
+	return mock.getBalance
+}
+
+// CreateBalance returns the createBalance script.
+func (mock *Mock) CreateBalance() *connectormock.Mutation[wise.CreateBalanceInput, wise.BalanceSummary] {
+	return mock.createBalance
+}
+
+// ListBalances returns the listBalances script.
+func (mock *Mock) ListBalances() *connectormock.Query[wise.ListBalancesInput, wise.BalancesOutput] {
+	return mock.listBalances
+}
+
+// ListAvailableBalanceCurrencies returns the listAvailableBalanceCurrencies script.
+func (mock *Mock) ListAvailableBalanceCurrencies() *connectormock.Query[wise.ListPayinCurrenciesInput, wise.PayinCurrenciesOutput] {
+	return mock.listAvailableBalanceCurrencies
+}
+
+// ListPayinCurrencies returns the listPayinCurrencies script.
+func (mock *Mock) ListPayinCurrencies() *connectormock.Query[wise.ListPayinCurrenciesInput, wise.PayinCurrenciesOutput] {
+	return mock.listPayinCurrencies
+}
+
+// ListRecipients returns the listRecipients script.
+func (mock *Mock) ListRecipients() *connectormock.Query[wise.ListRecipientsInput, wise.RecipientsOutput] {
+	return mock.listRecipients
+}
+
+// GetExchangeRates returns the getExchangeRates script.
+func (mock *Mock) GetExchangeRates() *connectormock.Query[wise.GetExchangeRatesInput, wise.ExchangeRatesOutput] {
+	return mock.getExchangeRates
+}
+
+// CreateQuote returns the createQuote script.
+func (mock *Mock) CreateQuote() *connectormock.Mutation[wise.CreateQuoteInput, wise.QuoteSummary] {
+	return mock.createQuote
+}
+
+// GetQuote returns the getQuote script.
+func (mock *Mock) GetQuote() *connectormock.Query[wise.GetQuoteInput, wise.QuoteSummary] {
+	return mock.getQuote
+}
+
+// CreateTransfer returns the createTransfer script.
+func (mock *Mock) CreateTransfer() *connectormock.Mutation[wise.CreateTransferInput, wise.TransferStatus] {
+	return mock.createTransfer
+}
+
+// CancelTransfer returns the cancelTransfer script.
+func (mock *Mock) CancelTransfer() *connectormock.Mutation[wise.CancelTransferInput, wise.TransferStatus] {
+	return mock.cancelTransfer
+}
+
 // GetTransfer returns the getTransfer script.
 func (mock *Mock) GetTransfer() *connectormock.Query[wise.GetTransferInput, wise.TransferStatus] {
 	return mock.getTransfer
@@ -47,8 +151,533 @@ func (mock *Mock) GetTransfer() *connectormock.Query[wise.GetTransferInput, wise
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListProfiles() sdkgo.Query[wise.ListProfilesInput, wise.ProfilesOutput] {
+	return operations.mock.listProfiles
+}
+func (operations mockOperations) GetProfile() sdkgo.Query[wise.GetProfileInput, wise.ProfileSummary] {
+	return operations.mock.getProfile
+}
+func (operations mockOperations) GetBalance() sdkgo.Query[wise.GetBalanceInput, wise.BalanceSummary] {
+	return operations.mock.getBalance
+}
+func (operations mockOperations) CreateBalance() sdkgo.Mutation[wise.CreateBalanceInput, wise.BalanceSummary] {
+	return operations.mock.createBalance
+}
+func (operations mockOperations) ListBalances() sdkgo.Query[wise.ListBalancesInput, wise.BalancesOutput] {
+	return operations.mock.listBalances
+}
+func (operations mockOperations) ListAvailableBalanceCurrencies() sdkgo.Query[wise.ListPayinCurrenciesInput, wise.PayinCurrenciesOutput] {
+	return operations.mock.listAvailableBalanceCurrencies
+}
+func (operations mockOperations) ListPayinCurrencies() sdkgo.Query[wise.ListPayinCurrenciesInput, wise.PayinCurrenciesOutput] {
+	return operations.mock.listPayinCurrencies
+}
+func (operations mockOperations) ListRecipients() sdkgo.Query[wise.ListRecipientsInput, wise.RecipientsOutput] {
+	return operations.mock.listRecipients
+}
+func (operations mockOperations) GetExchangeRates() sdkgo.Query[wise.GetExchangeRatesInput, wise.ExchangeRatesOutput] {
+	return operations.mock.getExchangeRates
+}
+func (operations mockOperations) CreateQuote() sdkgo.Mutation[wise.CreateQuoteInput, wise.QuoteSummary] {
+	return operations.mock.createQuote
+}
+func (operations mockOperations) GetQuote() sdkgo.Query[wise.GetQuoteInput, wise.QuoteSummary] {
+	return operations.mock.getQuote
+}
+func (operations mockOperations) CreateTransfer() sdkgo.Mutation[wise.CreateTransferInput, wise.TransferStatus] {
+	return operations.mock.createTransfer
+}
+func (operations mockOperations) CancelTransfer() sdkgo.Mutation[wise.CancelTransferInput, wise.TransferStatus] {
+	return operations.mock.cancelTransfer
+}
 func (operations mockOperations) GetTransfer() sdkgo.Query[wise.GetTransferInput, wise.TransferStatus] {
 	return operations.mock.getTransfer
+}
+
+// ListProfilesListed selects the listed branch: Wise listed accessible profiles.
+func ListProfilesListed(value wise.ProfilesOutput, failure *sdkgo.Failure) connectormock.Case[wise.ProfilesOutput] {
+	return connectormock.Branch(wise.ListProfilesBranchListed, value, failure)
+}
+
+// ListProfilesProviderRejected selects the providerRejected branch: Wise rejected the request.
+func ListProfilesProviderRejected(value wise.ProfilesOutput, failure *sdkgo.Failure) connectormock.Case[wise.ProfilesOutput] {
+	return connectormock.Branch(wise.ListProfilesBranchProviderRejected, value, failure)
+}
+
+// ListProfilesInvalidResponse selects the invalidResponse branch: Wise returned malformed or oversized JSON.
+func ListProfilesInvalidResponse(value wise.ProfilesOutput, failure *sdkgo.Failure) connectormock.Case[wise.ProfilesOutput] {
+	return connectormock.Branch(wise.ListProfilesBranchInvalidResponse, value, failure)
+}
+
+// ListProfilesDefect selects the defect branch: Connection credentials are invalid.
+func ListProfilesDefect(value wise.ProfilesOutput, failure *sdkgo.Failure) connectormock.Case[wise.ProfilesOutput] {
+	return connectormock.Branch(wise.ListProfilesBranchDefect, value, failure)
+}
+
+// ListProfilesRetry asks Dex to retry the listProfiles Step, after the delay when it is positive.
+func ListProfilesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.ProfilesOutput] {
+	return connectormock.Retry[wise.ProfilesOutput](failure, after)
+}
+
+// ListProfilesDefaultListProfiles is the manifest mock defaultListProfiles: One business profile.
+func ListProfilesDefaultListProfiles() connectormock.Case[wise.ProfilesOutput] {
+	value := connectormock.MustDecodeOutput[wise.ProfilesOutput](`{"profiles":[{"id":"101","type":"business"}]}`)
+	return connectormock.Branch(wise.ListProfilesBranchListed, value, nil)
+}
+
+// ListProfilesDefault is the manifest default, defaultListProfiles, which New installs.
+func ListProfilesDefault() connectormock.Case[wise.ProfilesOutput] {
+	return ListProfilesDefaultListProfiles()
+}
+
+// GetProfileFound selects the found branch: Wise returned the profile.
+func GetProfileFound(value wise.ProfileSummary, failure *sdkgo.Failure) connectormock.Case[wise.ProfileSummary] {
+	return connectormock.Branch(wise.GetProfileBranchFound, value, failure)
+}
+
+// GetProfileNotFound selects the notFound branch: Wise did not expose the profile.
+func GetProfileNotFound(value wise.ProfileSummary, failure *sdkgo.Failure) connectormock.Case[wise.ProfileSummary] {
+	return connectormock.Branch(wise.GetProfileBranchNotFound, value, failure)
+}
+
+// GetProfileProviderRejected selects the providerRejected branch: Wise rejected the request.
+func GetProfileProviderRejected(value wise.ProfileSummary, failure *sdkgo.Failure) connectormock.Case[wise.ProfileSummary] {
+	return connectormock.Branch(wise.GetProfileBranchProviderRejected, value, failure)
+}
+
+// GetProfileInvalidResponse selects the invalidResponse branch: Wise returned malformed or oversized JSON.
+func GetProfileInvalidResponse(value wise.ProfileSummary, failure *sdkgo.Failure) connectormock.Case[wise.ProfileSummary] {
+	return connectormock.Branch(wise.GetProfileBranchInvalidResponse, value, failure)
+}
+
+// GetProfileDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetProfileDefect(value wise.ProfileSummary, failure *sdkgo.Failure) connectormock.Case[wise.ProfileSummary] {
+	return connectormock.Branch(wise.GetProfileBranchDefect, value, failure)
+}
+
+// GetProfileRetry asks Dex to retry the getProfile Step, after the delay when it is positive.
+func GetProfileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.ProfileSummary] {
+	return connectormock.Retry[wise.ProfileSummary](failure, after)
+}
+
+// GetProfileDefaultGetProfile is the manifest mock defaultGetProfile: One business profile.
+func GetProfileDefaultGetProfile() connectormock.Case[wise.ProfileSummary] {
+	value := connectormock.MustDecodeOutput[wise.ProfileSummary](`{"id":"101","type":"business"}`)
+	return connectormock.Branch(wise.GetProfileBranchFound, value, nil)
+}
+
+// GetProfileDefault is the manifest default, defaultGetProfile, which New installs.
+func GetProfileDefault() connectormock.Case[wise.ProfileSummary] {
+	return GetProfileDefaultGetProfile()
+}
+
+// GetBalanceFound selects the found branch: Wise returned the balance account.
+func GetBalanceFound(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.GetBalanceBranchFound, value, failure)
+}
+
+// GetBalanceNotFound selects the notFound branch: Wise did not expose the balance.
+func GetBalanceNotFound(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.GetBalanceBranchNotFound, value, failure)
+}
+
+// GetBalanceProviderRejected selects the providerRejected branch: Wise rejected the request.
+func GetBalanceProviderRejected(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.GetBalanceBranchProviderRejected, value, failure)
+}
+
+// GetBalanceInvalidResponse selects the invalidResponse branch: Wise returned malformed or oversized JSON.
+func GetBalanceInvalidResponse(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.GetBalanceBranchInvalidResponse, value, failure)
+}
+
+// GetBalanceDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetBalanceDefect(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.GetBalanceBranchDefect, value, failure)
+}
+
+// GetBalanceRetry asks Dex to retry the getBalance Step, after the delay when it is positive.
+func GetBalanceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Retry[wise.BalanceSummary](failure, after)
+}
+
+// GetBalanceDefaultGetBalance is the manifest mock defaultGetBalance: One EUR standard balance.
+func GetBalanceDefaultGetBalance() connectormock.Case[wise.BalanceSummary] {
+	value := connectormock.MustDecodeOutput[wise.BalanceSummary](`{"id":"301","currency":"EUR","type":"STANDARD","availableAmount":12.5}`)
+	return connectormock.Branch(wise.GetBalanceBranchFound, value, nil)
+}
+
+// GetBalanceDefault is the manifest default, defaultGetBalance, which New installs.
+func GetBalanceDefault() connectormock.Case[wise.BalanceSummary] {
+	return GetBalanceDefaultGetBalance()
+}
+
+// CreateBalanceCreated selects the created branch: Wise opened the balance account.
+func CreateBalanceCreated(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.CreateBalanceBranchCreated, value, failure)
+}
+
+// CreateBalanceProviderRejected selects the providerRejected branch: Wise rejected balance creation.
+func CreateBalanceProviderRejected(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.CreateBalanceBranchProviderRejected, value, failure)
+}
+
+// CreateBalanceInvalidResponse selects the invalidResponse branch: Wise returned malformed or oversized JSON.
+func CreateBalanceInvalidResponse(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.CreateBalanceBranchInvalidResponse, value, failure)
+}
+
+// CreateBalanceDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateBalanceDefect(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.CreateBalanceBranchDefect, value, failure)
+}
+
+// CreateBalanceRetry asks Dex to retry the createBalance Step, after the delay when it is positive.
+func CreateBalanceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Retry[wise.BalanceSummary](failure, after)
+}
+
+// CreateBalanceDefaultCreateBalance is the manifest mock defaultCreateBalance: One new EUR standard balance.
+func CreateBalanceDefaultCreateBalance() connectormock.Case[wise.BalanceSummary] {
+	value := connectormock.MustDecodeOutput[wise.BalanceSummary](`{"id":"301","currency":"EUR","type":"STANDARD","availableAmount":0}`)
+	return connectormock.Branch(wise.CreateBalanceBranchCreated, value, nil)
+}
+
+// CreateBalanceDefault is the manifest default, defaultCreateBalance, which New installs.
+func CreateBalanceDefault() connectormock.Case[wise.BalanceSummary] {
+	return CreateBalanceDefaultCreateBalance()
+}
+
+// ListBalancesListed selects the listed branch: Wise listed balance accounts.
+func ListBalancesListed(value wise.BalancesOutput, failure *sdkgo.Failure) connectormock.Case[wise.BalancesOutput] {
+	return connectormock.Branch(wise.ListBalancesBranchListed, value, failure)
+}
+
+// ListBalancesProviderRejected selects the providerRejected branch: Wise rejected the request.
+func ListBalancesProviderRejected(value wise.BalancesOutput, failure *sdkgo.Failure) connectormock.Case[wise.BalancesOutput] {
+	return connectormock.Branch(wise.ListBalancesBranchProviderRejected, value, failure)
+}
+
+// ListBalancesInvalidResponse selects the invalidResponse branch: Wise returned malformed or oversized JSON.
+func ListBalancesInvalidResponse(value wise.BalancesOutput, failure *sdkgo.Failure) connectormock.Case[wise.BalancesOutput] {
+	return connectormock.Branch(wise.ListBalancesBranchInvalidResponse, value, failure)
+}
+
+// ListBalancesDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListBalancesDefect(value wise.BalancesOutput, failure *sdkgo.Failure) connectormock.Case[wise.BalancesOutput] {
+	return connectormock.Branch(wise.ListBalancesBranchDefect, value, failure)
+}
+
+// ListBalancesRetry asks Dex to retry the listBalances Step, after the delay when it is positive.
+func ListBalancesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.BalancesOutput] {
+	return connectormock.Retry[wise.BalancesOutput](failure, after)
+}
+
+// ListBalancesDefaultListBalances is the manifest mock defaultListBalances: One EUR standard balance.
+func ListBalancesDefaultListBalances() connectormock.Case[wise.BalancesOutput] {
+	value := connectormock.MustDecodeOutput[wise.BalancesOutput](`{"balances":[{"id":"301","currency":"EUR","type":"STANDARD","availableAmount":12.5}]}`)
+	return connectormock.Branch(wise.ListBalancesBranchListed, value, nil)
+}
+
+// ListBalancesDefault is the manifest default, defaultListBalances, which New installs.
+func ListBalancesDefault() connectormock.Case[wise.BalancesOutput] {
+	return ListBalancesDefaultListBalances()
+}
+
+// ListAvailableBalanceCurrenciesListed selects the listed branch: Wise listed available balance currencies.
+func ListAvailableBalanceCurrenciesListed(value wise.PayinCurrenciesOutput, failure *sdkgo.Failure) connectormock.Case[wise.PayinCurrenciesOutput] {
+	return connectormock.Branch(wise.ListAvailableBalanceCurrenciesBranchListed, value, failure)
+}
+
+// ListAvailableBalanceCurrenciesProviderRejected selects the providerRejected branch: Wise rejected the request.
+func ListAvailableBalanceCurrenciesProviderRejected(value wise.PayinCurrenciesOutput, failure *sdkgo.Failure) connectormock.Case[wise.PayinCurrenciesOutput] {
+	return connectormock.Branch(wise.ListAvailableBalanceCurrenciesBranchProviderRejected, value, failure)
+}
+
+// ListAvailableBalanceCurrenciesInvalidResponse selects the invalidResponse branch: Wise returned malformed or oversized JSON.
+func ListAvailableBalanceCurrenciesInvalidResponse(value wise.PayinCurrenciesOutput, failure *sdkgo.Failure) connectormock.Case[wise.PayinCurrenciesOutput] {
+	return connectormock.Branch(wise.ListAvailableBalanceCurrenciesBranchInvalidResponse, value, failure)
+}
+
+// ListAvailableBalanceCurrenciesDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListAvailableBalanceCurrenciesDefect(value wise.PayinCurrenciesOutput, failure *sdkgo.Failure) connectormock.Case[wise.PayinCurrenciesOutput] {
+	return connectormock.Branch(wise.ListAvailableBalanceCurrenciesBranchDefect, value, failure)
+}
+
+// ListAvailableBalanceCurrenciesRetry asks Dex to retry the listAvailableBalanceCurrencies Step, after the delay when it is positive.
+func ListAvailableBalanceCurrenciesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.PayinCurrenciesOutput] {
+	return connectormock.Retry[wise.PayinCurrenciesOutput](failure, after)
+}
+
+// ListAvailableBalanceCurrenciesDefaultListAvailableBalanceCurrencies is the manifest mock defaultListAvailableBalanceCurrencies: Three available balance currencies.
+func ListAvailableBalanceCurrenciesDefaultListAvailableBalanceCurrencies() connectormock.Case[wise.PayinCurrenciesOutput] {
+	value := connectormock.MustDecodeOutput[wise.PayinCurrenciesOutput](`{"currencies":["EUR","GBP","USD"]}`)
+	return connectormock.Branch(wise.ListAvailableBalanceCurrenciesBranchListed, value, nil)
+}
+
+// ListAvailableBalanceCurrenciesDefault is the manifest default, defaultListAvailableBalanceCurrencies, which New installs.
+func ListAvailableBalanceCurrenciesDefault() connectormock.Case[wise.PayinCurrenciesOutput] {
+	return ListAvailableBalanceCurrenciesDefaultListAvailableBalanceCurrencies()
+}
+
+// ListPayinCurrenciesListed selects the listed branch: Wise listed payin currencies.
+func ListPayinCurrenciesListed(value wise.PayinCurrenciesOutput, failure *sdkgo.Failure) connectormock.Case[wise.PayinCurrenciesOutput] {
+	return connectormock.Branch(wise.ListPayinCurrenciesBranchListed, value, failure)
+}
+
+// ListPayinCurrenciesProviderRejected selects the providerRejected branch: Wise rejected the request.
+func ListPayinCurrenciesProviderRejected(value wise.PayinCurrenciesOutput, failure *sdkgo.Failure) connectormock.Case[wise.PayinCurrenciesOutput] {
+	return connectormock.Branch(wise.ListPayinCurrenciesBranchProviderRejected, value, failure)
+}
+
+// ListPayinCurrenciesInvalidResponse selects the invalidResponse branch: Wise returned malformed or oversized JSON.
+func ListPayinCurrenciesInvalidResponse(value wise.PayinCurrenciesOutput, failure *sdkgo.Failure) connectormock.Case[wise.PayinCurrenciesOutput] {
+	return connectormock.Branch(wise.ListPayinCurrenciesBranchInvalidResponse, value, failure)
+}
+
+// ListPayinCurrenciesDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListPayinCurrenciesDefect(value wise.PayinCurrenciesOutput, failure *sdkgo.Failure) connectormock.Case[wise.PayinCurrenciesOutput] {
+	return connectormock.Branch(wise.ListPayinCurrenciesBranchDefect, value, failure)
+}
+
+// ListPayinCurrenciesRetry asks Dex to retry the listPayinCurrencies Step, after the delay when it is positive.
+func ListPayinCurrenciesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.PayinCurrenciesOutput] {
+	return connectormock.Retry[wise.PayinCurrenciesOutput](failure, after)
+}
+
+// ListPayinCurrenciesDefaultListPayinCurrencies is the manifest mock defaultListPayinCurrencies: Three supported balance currencies.
+func ListPayinCurrenciesDefaultListPayinCurrencies() connectormock.Case[wise.PayinCurrenciesOutput] {
+	value := connectormock.MustDecodeOutput[wise.PayinCurrenciesOutput](`{"currencies":["EUR","GBP","USD"]}`)
+	return connectormock.Branch(wise.ListPayinCurrenciesBranchListed, value, nil)
+}
+
+// ListPayinCurrenciesDefault is the manifest default, defaultListPayinCurrencies, which New installs.
+func ListPayinCurrenciesDefault() connectormock.Case[wise.PayinCurrenciesOutput] {
+	return ListPayinCurrenciesDefaultListPayinCurrencies()
+}
+
+// ListRecipientsListed selects the listed branch: Wise listed recipients.
+func ListRecipientsListed(value wise.RecipientsOutput, failure *sdkgo.Failure) connectormock.Case[wise.RecipientsOutput] {
+	return connectormock.Branch(wise.ListRecipientsBranchListed, value, failure)
+}
+
+// ListRecipientsProviderRejected selects the providerRejected branch: Wise rejected the request.
+func ListRecipientsProviderRejected(value wise.RecipientsOutput, failure *sdkgo.Failure) connectormock.Case[wise.RecipientsOutput] {
+	return connectormock.Branch(wise.ListRecipientsBranchProviderRejected, value, failure)
+}
+
+// ListRecipientsInvalidResponse selects the invalidResponse branch: Wise returned malformed or oversized JSON.
+func ListRecipientsInvalidResponse(value wise.RecipientsOutput, failure *sdkgo.Failure) connectormock.Case[wise.RecipientsOutput] {
+	return connectormock.Branch(wise.ListRecipientsBranchInvalidResponse, value, failure)
+}
+
+// ListRecipientsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListRecipientsDefect(value wise.RecipientsOutput, failure *sdkgo.Failure) connectormock.Case[wise.RecipientsOutput] {
+	return connectormock.Branch(wise.ListRecipientsBranchDefect, value, failure)
+}
+
+// ListRecipientsRetry asks Dex to retry the listRecipients Step, after the delay when it is positive.
+func ListRecipientsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.RecipientsOutput] {
+	return connectormock.Retry[wise.RecipientsOutput](failure, after)
+}
+
+// ListRecipientsDefaultListRecipients is the manifest mock defaultListRecipients: One recipient without bank details.
+func ListRecipientsDefaultListRecipients() connectormock.Case[wise.RecipientsOutput] {
+	value := connectormock.MustDecodeOutput[wise.RecipientsOutput](`{"recipients":[{"id":"201","currency":"EUR","active":true}]}`)
+	return connectormock.Branch(wise.ListRecipientsBranchListed, value, nil)
+}
+
+// ListRecipientsDefault is the manifest default, defaultListRecipients, which New installs.
+func ListRecipientsDefault() connectormock.Case[wise.RecipientsOutput] {
+	return ListRecipientsDefaultListRecipients()
+}
+
+// GetExchangeRatesListed selects the listed branch: Wise returned exchange rates.
+func GetExchangeRatesListed(value wise.ExchangeRatesOutput, failure *sdkgo.Failure) connectormock.Case[wise.ExchangeRatesOutput] {
+	return connectormock.Branch(wise.GetExchangeRatesBranchListed, value, failure)
+}
+
+// GetExchangeRatesProviderRejected selects the providerRejected branch: Wise rejected the request.
+func GetExchangeRatesProviderRejected(value wise.ExchangeRatesOutput, failure *sdkgo.Failure) connectormock.Case[wise.ExchangeRatesOutput] {
+	return connectormock.Branch(wise.GetExchangeRatesBranchProviderRejected, value, failure)
+}
+
+// GetExchangeRatesInvalidResponse selects the invalidResponse branch: Wise returned malformed or oversized JSON.
+func GetExchangeRatesInvalidResponse(value wise.ExchangeRatesOutput, failure *sdkgo.Failure) connectormock.Case[wise.ExchangeRatesOutput] {
+	return connectormock.Branch(wise.GetExchangeRatesBranchInvalidResponse, value, failure)
+}
+
+// GetExchangeRatesDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetExchangeRatesDefect(value wise.ExchangeRatesOutput, failure *sdkgo.Failure) connectormock.Case[wise.ExchangeRatesOutput] {
+	return connectormock.Branch(wise.GetExchangeRatesBranchDefect, value, failure)
+}
+
+// GetExchangeRatesRetry asks Dex to retry the getExchangeRates Step, after the delay when it is positive.
+func GetExchangeRatesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.ExchangeRatesOutput] {
+	return connectormock.Retry[wise.ExchangeRatesOutput](failure, after)
+}
+
+// GetExchangeRatesDefaultGetExchangeRates is the manifest mock defaultGetExchangeRates: One EUR to USD exchange rate.
+func GetExchangeRatesDefaultGetExchangeRates() connectormock.Case[wise.ExchangeRatesOutput] {
+	value := connectormock.MustDecodeOutput[wise.ExchangeRatesOutput](`{"rates":[{"source":"EUR","target":"USD","rate":1.1,"time":"2026-11-17T00:00:00Z"}]}`)
+	return connectormock.Branch(wise.GetExchangeRatesBranchListed, value, nil)
+}
+
+// GetExchangeRatesDefault is the manifest default, defaultGetExchangeRates, which New installs.
+func GetExchangeRatesDefault() connectormock.Case[wise.ExchangeRatesOutput] {
+	return GetExchangeRatesDefaultGetExchangeRates()
+}
+
+// CreateQuoteCreated selects the created branch: Wise created the quote.
+func CreateQuoteCreated(value wise.QuoteSummary, failure *sdkgo.Failure) connectormock.Case[wise.QuoteSummary] {
+	return connectormock.Branch(wise.CreateQuoteBranchCreated, value, failure)
+}
+
+// CreateQuoteProviderRejected selects the providerRejected branch: Wise rejected the quote request.
+func CreateQuoteProviderRejected(value wise.QuoteSummary, failure *sdkgo.Failure) connectormock.Case[wise.QuoteSummary] {
+	return connectormock.Branch(wise.CreateQuoteBranchProviderRejected, value, failure)
+}
+
+// CreateQuoteUncertain returns an uncertain createQuote outcome.
+func CreateQuoteUncertain(value wise.QuoteSummary, failure sdkgo.Failure) connectormock.Case[wise.QuoteSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateQuoteDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateQuoteDefect(value wise.QuoteSummary, failure *sdkgo.Failure) connectormock.Case[wise.QuoteSummary] {
+	return connectormock.Branch(wise.CreateQuoteBranchDefect, value, failure)
+}
+
+// CreateQuoteRetry asks Dex to retry the createQuote Step, after the delay when it is positive.
+func CreateQuoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.QuoteSummary] {
+	return connectormock.Retry[wise.QuoteSummary](failure, after)
+}
+
+// CreateQuoteDefaultCreateQuote is the manifest mock defaultCreateQuote: One authenticated quote.
+func CreateQuoteDefaultCreateQuote() connectormock.Case[wise.QuoteSummary] {
+	value := connectormock.MustDecodeOutput[wise.QuoteSummary](`{"id":"11144c35-9fe8-4c32-b7fd-d05c2a7734bf","sourceCurrency":"GBP","targetCurrency":"USD"}`)
+	return connectormock.Branch(wise.CreateQuoteBranchCreated, value, nil)
+}
+
+// CreateQuoteDefault is the manifest default, defaultCreateQuote, which New installs.
+func CreateQuoteDefault() connectormock.Case[wise.QuoteSummary] {
+	return CreateQuoteDefaultCreateQuote()
+}
+
+// GetQuoteFound selects the found branch: Wise returned the quote.
+func GetQuoteFound(value wise.QuoteSummary, failure *sdkgo.Failure) connectormock.Case[wise.QuoteSummary] {
+	return connectormock.Branch(wise.GetQuoteBranchFound, value, failure)
+}
+
+// GetQuoteNotFound selects the notFound branch: Wise did not expose the quote.
+func GetQuoteNotFound(value wise.QuoteSummary, failure *sdkgo.Failure) connectormock.Case[wise.QuoteSummary] {
+	return connectormock.Branch(wise.GetQuoteBranchNotFound, value, failure)
+}
+
+// GetQuoteProviderRejected selects the providerRejected branch: Wise rejected the request.
+func GetQuoteProviderRejected(value wise.QuoteSummary, failure *sdkgo.Failure) connectormock.Case[wise.QuoteSummary] {
+	return connectormock.Branch(wise.GetQuoteBranchProviderRejected, value, failure)
+}
+
+// GetQuoteInvalidResponse selects the invalidResponse branch: Wise returned malformed or oversized JSON.
+func GetQuoteInvalidResponse(value wise.QuoteSummary, failure *sdkgo.Failure) connectormock.Case[wise.QuoteSummary] {
+	return connectormock.Branch(wise.GetQuoteBranchInvalidResponse, value, failure)
+}
+
+// GetQuoteDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetQuoteDefect(value wise.QuoteSummary, failure *sdkgo.Failure) connectormock.Case[wise.QuoteSummary] {
+	return connectormock.Branch(wise.GetQuoteBranchDefect, value, failure)
+}
+
+// GetQuoteRetry asks Dex to retry the getQuote Step, after the delay when it is positive.
+func GetQuoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.QuoteSummary] {
+	return connectormock.Retry[wise.QuoteSummary](failure, after)
+}
+
+// GetQuoteDefaultGetQuote is the manifest mock defaultGetQuote: One authenticated quote.
+func GetQuoteDefaultGetQuote() connectormock.Case[wise.QuoteSummary] {
+	value := connectormock.MustDecodeOutput[wise.QuoteSummary](`{"id":"11144c35-9fe8-4c32-b7fd-d05c2a7734bf","sourceCurrency":"GBP","targetCurrency":"USD"}`)
+	return connectormock.Branch(wise.GetQuoteBranchFound, value, nil)
+}
+
+// GetQuoteDefault is the manifest default, defaultGetQuote, which New installs.
+func GetQuoteDefault() connectormock.Case[wise.QuoteSummary] { return GetQuoteDefaultGetQuote() }
+
+// CreateTransferCreated selects the created branch: Wise created the unfunded transfer.
+func CreateTransferCreated(value wise.TransferStatus, failure *sdkgo.Failure) connectormock.Case[wise.TransferStatus] {
+	return connectormock.Branch(wise.CreateTransferBranchCreated, value, failure)
+}
+
+// CreateTransferProviderRejected selects the providerRejected branch: Wise rejected the transfer.
+func CreateTransferProviderRejected(value wise.TransferStatus, failure *sdkgo.Failure) connectormock.Case[wise.TransferStatus] {
+	return connectormock.Branch(wise.CreateTransferBranchProviderRejected, value, failure)
+}
+
+// CreateTransferInvalidResponse selects the invalidResponse branch: Wise returned malformed or oversized JSON.
+func CreateTransferInvalidResponse(value wise.TransferStatus, failure *sdkgo.Failure) connectormock.Case[wise.TransferStatus] {
+	return connectormock.Branch(wise.CreateTransferBranchInvalidResponse, value, failure)
+}
+
+// CreateTransferDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateTransferDefect(value wise.TransferStatus, failure *sdkgo.Failure) connectormock.Case[wise.TransferStatus] {
+	return connectormock.Branch(wise.CreateTransferBranchDefect, value, failure)
+}
+
+// CreateTransferRetry asks Dex to retry the createTransfer Step, after the delay when it is positive.
+func CreateTransferRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.TransferStatus] {
+	return connectormock.Retry[wise.TransferStatus](failure, after)
+}
+
+// CreateTransferDefaultCreateTransfer is the manifest mock defaultCreateTransfer: One unfunded transfer.
+func CreateTransferDefaultCreateTransfer() connectormock.Case[wise.TransferStatus] {
+	value := connectormock.MustDecodeOutput[wise.TransferStatus](`{"id":"16521632","status":"incoming_payment_waiting","sourceCurrency":"EUR"}`)
+	return connectormock.Branch(wise.CreateTransferBranchCreated, value, nil)
+}
+
+// CreateTransferDefault is the manifest default, defaultCreateTransfer, which New installs.
+func CreateTransferDefault() connectormock.Case[wise.TransferStatus] {
+	return CreateTransferDefaultCreateTransfer()
+}
+
+// CancelTransferCancelled selects the cancelled branch: Wise cancelled the transfer.
+func CancelTransferCancelled(value wise.TransferStatus, failure *sdkgo.Failure) connectormock.Case[wise.TransferStatus] {
+	return connectormock.Branch(wise.CancelTransferBranchCancelled, value, failure)
+}
+
+// CancelTransferNotFound selects the notFound branch: Wise did not expose the transfer.
+func CancelTransferNotFound(value wise.TransferStatus, failure *sdkgo.Failure) connectormock.Case[wise.TransferStatus] {
+	return connectormock.Branch(wise.CancelTransferBranchNotFound, value, failure)
+}
+
+// CancelTransferProviderRejected selects the providerRejected branch: Wise refused cancellation.
+func CancelTransferProviderRejected(value wise.TransferStatus, failure *sdkgo.Failure) connectormock.Case[wise.TransferStatus] {
+	return connectormock.Branch(wise.CancelTransferBranchProviderRejected, value, failure)
+}
+
+// CancelTransferInvalidResponse selects the invalidResponse branch: Wise returned malformed or oversized JSON.
+func CancelTransferInvalidResponse(value wise.TransferStatus, failure *sdkgo.Failure) connectormock.Case[wise.TransferStatus] {
+	return connectormock.Branch(wise.CancelTransferBranchInvalidResponse, value, failure)
+}
+
+// CancelTransferDefect selects the defect branch: Local input or connection credentials are invalid.
+func CancelTransferDefect(value wise.TransferStatus, failure *sdkgo.Failure) connectormock.Case[wise.TransferStatus] {
+	return connectormock.Branch(wise.CancelTransferBranchDefect, value, failure)
+}
+
+// CancelTransferRetry asks Dex to retry the cancelTransfer Step, after the delay when it is positive.
+func CancelTransferRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.TransferStatus] {
+	return connectormock.Retry[wise.TransferStatus](failure, after)
+}
+
+// CancelTransferDefaultCancelTransfer is the manifest mock defaultCancelTransfer: One cancelled transfer.
+func CancelTransferDefaultCancelTransfer() connectormock.Case[wise.TransferStatus] {
+	value := connectormock.MustDecodeOutput[wise.TransferStatus](`{"id":"16521632","status":"cancelled","sourceCurrency":"EUR"}`)
+	return connectormock.Branch(wise.CancelTransferBranchCancelled, value, nil)
+}
+
+// CancelTransferDefault is the manifest default, defaultCancelTransfer, which New installs.
+func CancelTransferDefault() connectormock.Case[wise.TransferStatus] {
+	return CancelTransferDefaultCancelTransfer()
 }
 
 // GetTransferFound selects the found branch: Wise returned the transfer.

@@ -28,6 +28,8 @@ const (
 const (
 	listSubredditPostsStepType = "ListSubredditPostsReddit"
 	searchPostsStepType        = "SearchPostsReddit"
+	getSubredditStepType       = "GetSubredditReddit"
+	getSubredditRulesStepType  = "GetSubredditRulesReddit"
 )
 
 var (
@@ -43,6 +45,10 @@ type TopicPostsRequest struct {
 	// Topic is the search text, such as generics. Newest posts also match when their title or self text
 	// contains it, ignoring case.
 	Topic string `json:"topic"`
+	// ReadCommunity adds the community's public details to the completed result.
+	ReadCommunity bool `json:"readCommunity,omitempty"`
+	// ReadRules includes public community rules after reading community details.
+	ReadRules bool `json:"readRules,omitempty"`
 }
 
 // TopicPostsOutput lists the posts about the topic that the Flow found.
@@ -52,6 +58,10 @@ type TopicPostsOutput struct {
 	Posts []reddit.ListedPost `json:"posts"`
 	// SearchAfter continues the search to older matches when non-blank.
 	SearchAfter string `json:"searchAfter,omitempty"`
+	// Community is the public subreddit record when ReadCommunity was requested.
+	Community *reddit.Subreddit `json:"community,omitempty"`
+	// Rules contains public community rules when ReadRules was requested.
+	Rules *reddit.SubredditRules `json:"rules,omitempty"`
 }
 
 // Flow lists a subreddit's newest posts, searches it for the topic, and completes with the combined matches.
@@ -89,6 +99,20 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Searched:            sdkgo.GoTo(completeTopicPosts{}),
 		})),
 		dex.DefineStep(completeTopicPosts{}),
+		dex.DefineStep(reddit.NewGetSubredditStep(reddit.GetSubredditStepConfig[reddit.GetSubredditInput]{
+			StepType: getSubredditStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "reddit", GroupLabel: "Reddit", Explanation: "Read the community's public description and subscriber count."},
+			MapToOperationInput: func(input reddit.GetSubredditInput) reddit.GetSubredditInput { return input },
+			Found:               sdkgo.GoTo(completeTopicPostsWithCommunity{}),
+		})),
+		dex.DefineStep(completeTopicPostsWithCommunity{}),
+		dex.DefineStep(reddit.NewGetSubredditRulesStep(reddit.GetSubredditRulesStepConfig[reddit.GetSubredditRulesInput]{
+			StepType: getSubredditRulesStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "reddit", GroupLabel: "Reddit", Explanation: "Read the community's public posting and commenting rules."},
+			MapToOperationInput: func(input reddit.GetSubredditRulesInput) reddit.GetSubredditRulesInput { return input },
+			Found:               sdkgo.GoTo(completeTopicPostsWithRules{}),
+		})),
+		dex.DefineStep(completeTopicPostsWithRules{}),
 	}
 }
 
@@ -201,6 +225,9 @@ func (startTopicPosts) Execute(ctx dex.Context, request TopicPostsRequest) (*dex
 	if strings.TrimSpace(request.Subreddit) == "" || strings.TrimSpace(request.Topic) == "" {
 		return dex.ForceFail("a subreddit name and a non-blank topic are required"), nil
 	}
+	if request.ReadRules && !request.ReadCommunity {
+		return dex.ForceFail("readRules requires readCommunity"), nil
+	}
 	if err := topicRequestAttribute.Set(ctx, request); err != nil {
 		return nil, err
 	}
@@ -242,6 +269,60 @@ func (completeTopicPosts) Execute(ctx dex.Context, result reddit.SearchPostsResu
 		return nil, err
 	}
 	output := TopicPostsOutput{Posts: MergeTopicPosts(mentions, result.Value.Posts), SearchAfter: result.Value.After}
+	if err := topicPostsAttribute.Set(ctx, output); err != nil {
+		return nil, err
+	}
+	request, err := topicRequestAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if request.ReadCommunity {
+		return dex.GoTo(sdkgo.StepRef[reddit.GetSubredditInput](getSubredditStepType), reddit.GetSubredditInput{Subreddit: request.Subreddit}), nil
+	}
+	return dex.GracefulComplete(output), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Keep the community details with the collected topic posts."
+type completeTopicPostsWithCommunity struct {
+	dex.StepDefaultsNoWaitFor[reddit.GetSubredditResult]
+}
+
+func (completeTopicPostsWithCommunity) GetStepType() string {
+	return "CompleteRedditTopicPostsWithCommunity"
+}
+func (completeTopicPostsWithCommunity) Execute(ctx dex.Context, result reddit.GetSubredditResult) (*dex.StepDecision, error) {
+	output, err := topicPostsAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	output.Community = &result.Value
+	if err := topicPostsAttribute.Set(ctx, output); err != nil {
+		return nil, err
+	}
+	request, err := topicRequestAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if request.ReadRules {
+		return dex.GoTo(sdkgo.StepRef[reddit.GetSubredditRulesInput](getSubredditRulesStepType), reddit.GetSubredditRulesInput{Subreddit: request.Subreddit}), nil
+	}
+	return dex.GracefulComplete(output), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Store the requested public rules with the topic posts and community details."
+type completeTopicPostsWithRules struct {
+	dex.StepDefaultsNoWaitFor[reddit.GetSubredditRulesResult]
+}
+
+func (completeTopicPostsWithRules) GetStepType() string { return "CompleteRedditTopicPostsWithRules" }
+func (completeTopicPostsWithRules) Execute(ctx dex.Context, result reddit.GetSubredditRulesResult) (*dex.StepDecision, error) {
+	output, err := topicPostsAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	output.Rules = &result.Value
 	if err := topicPostsAttribute.Set(ctx, output); err != nil {
 		return nil, err
 	}

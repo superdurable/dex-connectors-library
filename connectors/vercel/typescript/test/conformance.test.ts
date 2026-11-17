@@ -7,7 +7,7 @@ import { ExchangeRecorder, loadScenarios, replay, scenarioCall, withScenarioHTTP
 import { VercelClient } from '../src/client.js';
 import { GetDeploymentInputSchema, ListDeploymentsInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/vercel/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/vercel/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'listDeployments' || scenario.operation === 'getDeployment');
 const connection = { provider: 'vercel', name: 'vercel' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeVercel));
 

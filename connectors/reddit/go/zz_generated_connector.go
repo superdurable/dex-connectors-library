@@ -44,6 +44,12 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetUser() sdkgo.Query[GetUserInput, UserProfile]
+	GetSubreddit() sdkgo.Query[GetSubredditInput, Subreddit]
+	GetSubredditRules() sdkgo.Query[GetSubredditRulesInput, SubredditRules]
+	SearchSubreddits() sdkgo.Query[SearchSubredditsInput, SubredditPage]
+	ListSubreddits() sdkgo.Query[ListSubredditsInput, SubredditPage]
+	ListPostComments() sdkgo.Query[ListPostCommentsInput, CommentPage]
 	GetPost() sdkgo.Query[GetPostInput, Post]
 	ListSubredditPosts() sdkgo.Query[ListSubredditPostsInput, PostPage]
 	SearchPosts() sdkgo.Query[SearchPostsInput, PostPage]
@@ -51,6 +57,24 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetUser() sdkgo.Query[GetUserInput, UserProfile] {
+	return operations.client.GetUser()
+}
+func (operations clientOperations) GetSubreddit() sdkgo.Query[GetSubredditInput, Subreddit] {
+	return operations.client.GetSubreddit()
+}
+func (operations clientOperations) GetSubredditRules() sdkgo.Query[GetSubredditRulesInput, SubredditRules] {
+	return operations.client.GetSubredditRules()
+}
+func (operations clientOperations) SearchSubreddits() sdkgo.Query[SearchSubredditsInput, SubredditPage] {
+	return operations.client.SearchSubreddits()
+}
+func (operations clientOperations) ListSubreddits() sdkgo.Query[ListSubredditsInput, SubredditPage] {
+	return operations.client.ListSubreddits()
+}
+func (operations clientOperations) ListPostComments() sdkgo.Query[ListPostCommentsInput, CommentPage] {
+	return operations.client.ListPostComments()
+}
 func (operations clientOperations) GetPost() sdkgo.Query[GetPostInput, Post] {
 	return operations.client.GetPost()
 }
@@ -262,6 +286,456 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const GetUserBranchFound sdkgo.BranchID = "found"
+const GetUserBranchNotFound sdkgo.BranchID = "notFound"
+const GetUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetUserBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetUserDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetUserBranchFound, Description: "Reddit returned the public user profile."},
+		{ID: GetUserBranchNotFound, Description: "The user is missing or unavailable.", Optional: true},
+		{ID: GetUserBranchProviderRejected, Description: "Reddit rejected the profile read.", Optional: true},
+		{ID: GetUserBranchInvalidResponse, Description: "Reddit returned malformed or oversized profile data.", Optional: true},
+		{ID: GetUserBranchDefect, Description: "The username or OAuth connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetUserResult = sdkgo.QueryResult[UserProfile]
+
+type GetUserStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=reddit"`
+	operationID                    struct{}                                       `connector:"operationId=getUser"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetUserInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetUserResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetUserResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetUserResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetUserResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetUserResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[UserProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetUserStep[IN any](config GetUserStepConfig[IN]) sdkgo.QueryStep[IN, GetUserInput, UserProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("reddit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetUserInput, UserProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetUserResult] {
+			branches := make([]sdkgo.BranchTarget[GetUserResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetUserBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetUserBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetUserBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetUserBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSubredditBranchFound sdkgo.BranchID = "found"
+const GetSubredditBranchUnavailable sdkgo.BranchID = "unavailable"
+const GetSubredditBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSubredditBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSubredditBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSubredditDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSubreddit"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSubredditBranchFound, Description: "Reddit returned the subreddit."},
+		{ID: GetSubredditBranchUnavailable, Description: "The subreddit is missing, private, banned, or restricted.", Optional: true},
+		{ID: GetSubredditBranchProviderRejected, Description: "Reddit rejected the subreddit read.", Optional: true},
+		{ID: GetSubredditBranchInvalidResponse, Description: "Reddit returned malformed or oversized subreddit data.", Optional: true},
+		{ID: GetSubredditBranchDefect, Description: "The subreddit name or OAuth connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSubredditResult = sdkgo.QueryResult[Subreddit]
+
+type GetSubredditStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=reddit"`
+	operationID                    struct{}                                     `connector:"operationId=getSubreddit"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSubredditInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSubredditResult]             `connector:"branch=found"`
+	Unavailable                    sdkgo.Target[GetSubredditResult]             `connector:"branch=unavailable,optional"`
+	ProviderRejected               sdkgo.Target[GetSubredditResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSubredditResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSubredditResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Subreddit]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewGetSubredditStep[IN any](config GetSubredditStepConfig[IN]) sdkgo.QueryStep[IN, GetSubredditInput, Subreddit] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("reddit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSubredditInput, Subreddit]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSubreddit(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSubredditResult] {
+			branches := make([]sdkgo.BranchTarget[GetSubredditResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSubredditBranchFound))
+			}
+			if config.Unavailable.HasStep() {
+				branches = append(branches, config.Unavailable.BranchTarget(GetSubredditBranchUnavailable))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSubredditBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSubredditBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSubredditBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSubredditRulesBranchFound sdkgo.BranchID = "found"
+const GetSubredditRulesBranchUnavailable sdkgo.BranchID = "unavailable"
+const GetSubredditRulesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSubredditRulesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSubredditRulesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSubredditRulesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSubredditRules"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSubredditRulesBranchFound, Description: "Reddit returned the community rules; the list can be empty."},
+		{ID: GetSubredditRulesBranchUnavailable, Description: "The subreddit is missing, private, banned, or restricted.", Optional: true},
+		{ID: GetSubredditRulesBranchProviderRejected, Description: "Reddit rejected the rules read.", Optional: true},
+		{ID: GetSubredditRulesBranchInvalidResponse, Description: "Reddit returned malformed or oversized rules.", Optional: true},
+		{ID: GetSubredditRulesBranchDefect, Description: "The subreddit name or OAuth connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSubredditRulesResult = sdkgo.QueryResult[SubredditRules]
+
+type GetSubredditRulesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=reddit"`
+	operationID                    struct{}                                          `connector:"operationId=getSubredditRules"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSubredditRulesInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSubredditRulesResult]             `connector:"branch=found"`
+	Unavailable                    sdkgo.Target[GetSubredditRulesResult]             `connector:"branch=unavailable,optional"`
+	ProviderRejected               sdkgo.Target[GetSubredditRulesResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSubredditRulesResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSubredditRulesResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubredditRules]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetSubredditRulesStep[IN any](config GetSubredditRulesStepConfig[IN]) sdkgo.QueryStep[IN, GetSubredditRulesInput, SubredditRules] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("reddit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSubredditRulesInput, SubredditRules]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSubredditRules(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSubredditRulesResult] {
+			branches := make([]sdkgo.BranchTarget[GetSubredditRulesResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSubredditRulesBranchFound))
+			}
+			if config.Unavailable.HasStep() {
+				branches = append(branches, config.Unavailable.BranchTarget(GetSubredditRulesBranchUnavailable))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSubredditRulesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSubredditRulesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSubredditRulesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SearchSubredditsBranchSearched sdkgo.BranchID = "searched"
+const SearchSubredditsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchSubredditsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchSubredditsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchSubredditsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchSubreddits"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchSubredditsBranchSearched, Description: "Reddit returned a page of subreddits; it can be empty."},
+		{ID: SearchSubredditsBranchProviderRejected, Description: "Reddit rejected the subreddit search.", Optional: true},
+		{ID: SearchSubredditsBranchInvalidResponse, Description: "Reddit returned a malformed or oversized subreddit page.", Optional: true},
+		{ID: SearchSubredditsBranchDefect, Description: "The query, cursor, or OAuth connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchSubredditsResult = sdkgo.QueryResult[SubredditPage]
+
+type SearchSubredditsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=reddit"`
+	operationID                    struct{}                                         `connector:"operationId=searchSubreddits"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchSubredditsInput                   `connector:"mapToOperationInput"`
+	Searched                       sdkgo.Target[SearchSubredditsResult]             `connector:"branch=searched"`
+	ProviderRejected               sdkgo.Target[SearchSubredditsResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchSubredditsResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchSubredditsResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubredditPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewSearchSubredditsStep[IN any](config SearchSubredditsStepConfig[IN]) sdkgo.QueryStep[IN, SearchSubredditsInput, SubredditPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("reddit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchSubredditsInput, SubredditPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchSubreddits(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchSubredditsResult] {
+			branches := make([]sdkgo.BranchTarget[SearchSubredditsResult], 0, 4)
+			if config.Searched.HasStep() {
+				branches = append(branches, config.Searched.BranchTarget(SearchSubredditsBranchSearched))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchSubredditsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchSubredditsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchSubredditsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSubredditsBranchListed sdkgo.BranchID = "listed"
+const ListSubredditsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSubredditsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSubredditsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSubredditsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSubreddits"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSubredditsBranchListed, Description: "Reddit returned one page of communities; it can be empty."},
+		{ID: ListSubredditsBranchProviderRejected, Description: "Reddit rejected the directory read.", Optional: true},
+		{ID: ListSubredditsBranchInvalidResponse, Description: "Reddit returned a malformed or oversized directory page.", Optional: true},
+		{ID: ListSubredditsBranchDefect, Description: "The directory, limit, cursor, or OAuth connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSubredditsResult = sdkgo.QueryResult[SubredditPage]
+
+type ListSubredditsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=reddit"`
+	operationID                    struct{}                                         `connector:"operationId=listSubreddits"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSubredditsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSubredditsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSubredditsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSubredditsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSubredditsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubredditPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListSubredditsStep[IN any](config ListSubredditsStepConfig[IN]) sdkgo.QueryStep[IN, ListSubredditsInput, SubredditPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("reddit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSubredditsInput, SubredditPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSubreddits(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSubredditsResult] {
+			branches := make([]sdkgo.BranchTarget[ListSubredditsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSubredditsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSubredditsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSubredditsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSubredditsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListPostCommentsBranchListed sdkgo.BranchID = "listed"
+const ListPostCommentsBranchPostUnavailable sdkgo.BranchID = "postUnavailable"
+const ListPostCommentsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPostCommentsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPostCommentsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPostCommentsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPostComments"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPostCommentsBranchListed, Description: "Reddit returned top-level comments; the page can be empty."},
+		{ID: ListPostCommentsBranchPostUnavailable, Description: "The post is missing or unavailable.", Optional: true},
+		{ID: ListPostCommentsBranchProviderRejected, Description: "Reddit rejected the comment read.", Optional: true},
+		{ID: ListPostCommentsBranchInvalidResponse, Description: "Reddit returned malformed or oversized comment data.", Optional: true},
+		{ID: ListPostCommentsBranchDefect, Description: "The post ID, limit, or OAuth connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPostCommentsResult = sdkgo.QueryResult[CommentPage]
+
+type ListPostCommentsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=reddit"`
+	operationID                    struct{}                                       `connector:"operationId=listPostComments"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPostCommentsInput                 `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPostCommentsResult]           `connector:"branch=listed"`
+	PostUnavailable                sdkgo.Target[ListPostCommentsResult]           `connector:"branch=postUnavailable,optional"`
+	ProviderRejected               sdkgo.Target[ListPostCommentsResult]           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPostCommentsResult]           `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPostCommentsResult]           `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CommentPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListPostCommentsStep[IN any](config ListPostCommentsStepConfig[IN]) sdkgo.QueryStep[IN, ListPostCommentsInput, CommentPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("reddit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPostCommentsInput, CommentPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListPostComments(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPostCommentsResult] {
+			branches := make([]sdkgo.BranchTarget[ListPostCommentsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPostCommentsBranchListed))
+			}
+			if config.PostUnavailable.HasStep() {
+				branches = append(branches, config.PostUnavailable.BranchTarget(ListPostCommentsBranchPostUnavailable))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPostCommentsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPostCommentsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPostCommentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetPostBranchFound sdkgo.BranchID = "found"

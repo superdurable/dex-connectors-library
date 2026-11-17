@@ -17,8 +17,15 @@ import (
 
 // Mock is a scripted upstash-redis connection. Script each operation through its accessor.
 type Mock struct {
-	connection redis.Connection
-	getKey     *connectormock.Query[redis.GetKeyInput, redis.KeyLookup]
+	connection     redis.Connection
+	getKey         *connectormock.Query[redis.GetKeyInput, redis.KeyLookup]
+	setKey         *connectormock.Mutation[redis.SetKeyInput, redis.KeyWrite]
+	deleteKey      *connectormock.Mutation[redis.DeleteKeyInput, redis.KeyDeletion]
+	listKeys       *connectormock.Query[redis.ListKeysInput, redis.KeyList]
+	getListLength  *connectormock.Query[redis.GetListLengthInput, redis.ListLength]
+	getInfo        *connectormock.Query[redis.GetInfoInput, redis.DatabaseInfo]
+	pushListItem   *connectormock.Mutation[redis.PushListItemInput, redis.ListPush]
+	publishMessage *connectormock.Mutation[redis.PublishMessageInput, redis.MessagePublication]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +33,23 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getKey: connectormock.NewQuery[redis.GetKeyInput, redis.KeyLookup](t, redis.GetKeyDefinition),
+		getKey:         connectormock.NewQuery[redis.GetKeyInput, redis.KeyLookup](t, redis.GetKeyDefinition),
+		setKey:         connectormock.NewMutation[redis.SetKeyInput, redis.KeyWrite](t, redis.SetKeyDefinition),
+		deleteKey:      connectormock.NewMutation[redis.DeleteKeyInput, redis.KeyDeletion](t, redis.DeleteKeyDefinition),
+		listKeys:       connectormock.NewQuery[redis.ListKeysInput, redis.KeyList](t, redis.ListKeysDefinition),
+		getListLength:  connectormock.NewQuery[redis.GetListLengthInput, redis.ListLength](t, redis.GetListLengthDefinition),
+		getInfo:        connectormock.NewQuery[redis.GetInfoInput, redis.DatabaseInfo](t, redis.GetInfoDefinition),
+		pushListItem:   connectormock.NewMutation[redis.PushListItemInput, redis.ListPush](t, redis.PushListItemDefinition),
+		publishMessage: connectormock.NewMutation[redis.PublishMessageInput, redis.MessagePublication](t, redis.PublishMessageDefinition),
 	}
 	mock.getKey.Default(GetKeyDefault())
+	mock.setKey.Default(SetKeyDefault())
+	mock.deleteKey.Default(DeleteKeyDefault())
+	mock.listKeys.Default(ListKeysDefault())
+	mock.getListLength.Default(GetListLengthDefault())
+	mock.getInfo.Default(GetInfoDefault())
+	mock.pushListItem.Default(PushListItemDefault())
+	mock.publishMessage.Default(PublishMessageDefault())
 	connection, err := redis.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "upstash-redis", Name: connectionName})
 	if err != nil {
 		t.Fatalf("upstash-redis mock connection: %v", err)
@@ -45,10 +66,66 @@ func (mock *Mock) GetKey() *connectormock.Query[redis.GetKeyInput, redis.KeyLook
 	return mock.getKey
 }
 
+// SetKey returns the setKey script.
+func (mock *Mock) SetKey() *connectormock.Mutation[redis.SetKeyInput, redis.KeyWrite] {
+	return mock.setKey
+}
+
+// DeleteKey returns the deleteKey script.
+func (mock *Mock) DeleteKey() *connectormock.Mutation[redis.DeleteKeyInput, redis.KeyDeletion] {
+	return mock.deleteKey
+}
+
+// ListKeys returns the listKeys script.
+func (mock *Mock) ListKeys() *connectormock.Query[redis.ListKeysInput, redis.KeyList] {
+	return mock.listKeys
+}
+
+// GetListLength returns the getListLength script.
+func (mock *Mock) GetListLength() *connectormock.Query[redis.GetListLengthInput, redis.ListLength] {
+	return mock.getListLength
+}
+
+// GetInfo returns the getInfo script.
+func (mock *Mock) GetInfo() *connectormock.Query[redis.GetInfoInput, redis.DatabaseInfo] {
+	return mock.getInfo
+}
+
+// PushListItem returns the pushListItem script.
+func (mock *Mock) PushListItem() *connectormock.Mutation[redis.PushListItemInput, redis.ListPush] {
+	return mock.pushListItem
+}
+
+// PublishMessage returns the publishMessage script.
+func (mock *Mock) PublishMessage() *connectormock.Mutation[redis.PublishMessageInput, redis.MessagePublication] {
+	return mock.publishMessage
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetKey() sdkgo.Query[redis.GetKeyInput, redis.KeyLookup] {
 	return operations.mock.getKey
+}
+func (operations mockOperations) SetKey() sdkgo.Mutation[redis.SetKeyInput, redis.KeyWrite] {
+	return operations.mock.setKey
+}
+func (operations mockOperations) DeleteKey() sdkgo.Mutation[redis.DeleteKeyInput, redis.KeyDeletion] {
+	return operations.mock.deleteKey
+}
+func (operations mockOperations) ListKeys() sdkgo.Query[redis.ListKeysInput, redis.KeyList] {
+	return operations.mock.listKeys
+}
+func (operations mockOperations) GetListLength() sdkgo.Query[redis.GetListLengthInput, redis.ListLength] {
+	return operations.mock.getListLength
+}
+func (operations mockOperations) GetInfo() sdkgo.Query[redis.GetInfoInput, redis.DatabaseInfo] {
+	return operations.mock.getInfo
+}
+func (operations mockOperations) PushListItem() sdkgo.Mutation[redis.PushListItemInput, redis.ListPush] {
+	return operations.mock.pushListItem
+}
+func (operations mockOperations) PublishMessage() sdkgo.Mutation[redis.PublishMessageInput, redis.MessagePublication] {
+	return operations.mock.publishMessage
 }
 
 // GetKeyFound selects the found branch: The key exists and has a string value.
@@ -89,3 +166,243 @@ func GetKeyFoundDefault() connectormock.Case[redis.KeyLookup] {
 
 // GetKeyDefault is the manifest default, foundDefault, which New installs.
 func GetKeyDefault() connectormock.Case[redis.KeyLookup] { return GetKeyFoundDefault() }
+
+// SetKeySet selects the set branch: The string value was set.
+func SetKeySet(value redis.KeyWrite, failure *sdkgo.Failure) connectormock.Case[redis.KeyWrite] {
+	return connectormock.Branch(redis.SetKeyBranchSet, value, failure)
+}
+
+// SetKeyProviderRejected selects the providerRejected branch: Upstash rejected the command.
+func SetKeyProviderRejected(value redis.KeyWrite, failure *sdkgo.Failure) connectormock.Case[redis.KeyWrite] {
+	return connectormock.Branch(redis.SetKeyBranchProviderRejected, value, failure)
+}
+
+// SetKeyInvalidResponse selects the invalidResponse branch: Upstash returned malformed or oversized JSON.
+func SetKeyInvalidResponse(value redis.KeyWrite, failure *sdkgo.Failure) connectormock.Case[redis.KeyWrite] {
+	return connectormock.Branch(redis.SetKeyBranchInvalidResponse, value, failure)
+}
+
+// SetKeyDefect selects the defect branch: The key or value is invalid.
+func SetKeyDefect(value redis.KeyWrite, failure *sdkgo.Failure) connectormock.Case[redis.KeyWrite] {
+	return connectormock.Branch(redis.SetKeyBranchDefect, value, failure)
+}
+
+// SetKeyRetry asks Dex to retry the setKey Step, after the delay when it is positive.
+func SetKeyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[redis.KeyWrite] {
+	return connectormock.Retry[redis.KeyWrite](failure, after)
+}
+
+// SetKeySetDefault is the manifest mock setDefault: One example string value is stored.
+func SetKeySetDefault() connectormock.Case[redis.KeyWrite] {
+	value := connectormock.MustDecodeOutput[redis.KeyWrite](`{"key":"sample:key"}`)
+	return connectormock.Branch(redis.SetKeyBranchSet, value, nil)
+}
+
+// SetKeyDefault is the manifest default, setDefault, which New installs.
+func SetKeyDefault() connectormock.Case[redis.KeyWrite] { return SetKeySetDefault() }
+
+// DeleteKeyDeleted selects the deleted branch: The key is now absent.
+func DeleteKeyDeleted(value redis.KeyDeletion, failure *sdkgo.Failure) connectormock.Case[redis.KeyDeletion] {
+	return connectormock.Branch(redis.DeleteKeyBranchDeleted, value, failure)
+}
+
+// DeleteKeyProviderRejected selects the providerRejected branch: Upstash rejected the command.
+func DeleteKeyProviderRejected(value redis.KeyDeletion, failure *sdkgo.Failure) connectormock.Case[redis.KeyDeletion] {
+	return connectormock.Branch(redis.DeleteKeyBranchProviderRejected, value, failure)
+}
+
+// DeleteKeyInvalidResponse selects the invalidResponse branch: Upstash returned malformed or oversized JSON.
+func DeleteKeyInvalidResponse(value redis.KeyDeletion, failure *sdkgo.Failure) connectormock.Case[redis.KeyDeletion] {
+	return connectormock.Branch(redis.DeleteKeyBranchInvalidResponse, value, failure)
+}
+
+// DeleteKeyDefect selects the defect branch: The key is invalid.
+func DeleteKeyDefect(value redis.KeyDeletion, failure *sdkgo.Failure) connectormock.Case[redis.KeyDeletion] {
+	return connectormock.Branch(redis.DeleteKeyBranchDefect, value, failure)
+}
+
+// DeleteKeyRetry asks Dex to retry the deleteKey Step, after the delay when it is positive.
+func DeleteKeyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[redis.KeyDeletion] {
+	return connectormock.Retry[redis.KeyDeletion](failure, after)
+}
+
+// DeleteKeyDeletedDefault is the manifest mock deletedDefault: One example key is removed.
+func DeleteKeyDeletedDefault() connectormock.Case[redis.KeyDeletion] {
+	value := connectormock.MustDecodeOutput[redis.KeyDeletion](`{"key":"sample:key","existed":true}`)
+	return connectormock.Branch(redis.DeleteKeyBranchDeleted, value, nil)
+}
+
+// DeleteKeyDefault is the manifest default, deletedDefault, which New installs.
+func DeleteKeyDefault() connectormock.Case[redis.KeyDeletion] { return DeleteKeyDeletedDefault() }
+
+// ListKeysListed selects the listed branch: Matching key names were returned.
+func ListKeysListed(value redis.KeyList, failure *sdkgo.Failure) connectormock.Case[redis.KeyList] {
+	return connectormock.Branch(redis.ListKeysBranchListed, value, failure)
+}
+
+// ListKeysProviderRejected selects the providerRejected branch: Upstash rejected the command.
+func ListKeysProviderRejected(value redis.KeyList, failure *sdkgo.Failure) connectormock.Case[redis.KeyList] {
+	return connectormock.Branch(redis.ListKeysBranchProviderRejected, value, failure)
+}
+
+// ListKeysInvalidResponse selects the invalidResponse branch: Upstash returned malformed or oversized JSON.
+func ListKeysInvalidResponse(value redis.KeyList, failure *sdkgo.Failure) connectormock.Case[redis.KeyList] {
+	return connectormock.Branch(redis.ListKeysBranchInvalidResponse, value, failure)
+}
+
+// ListKeysDefect selects the defect branch: The pattern is invalid.
+func ListKeysDefect(value redis.KeyList, failure *sdkgo.Failure) connectormock.Case[redis.KeyList] {
+	return connectormock.Branch(redis.ListKeysBranchDefect, value, failure)
+}
+
+// ListKeysRetry asks Dex to retry the listKeys Step, after the delay when it is positive.
+func ListKeysRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[redis.KeyList] {
+	return connectormock.Retry[redis.KeyList](failure, after)
+}
+
+// ListKeysListedDefault is the manifest mock listedDefault: One example key matches the pattern.
+func ListKeysListedDefault() connectormock.Case[redis.KeyList] {
+	value := connectormock.MustDecodeOutput[redis.KeyList](`{"keys":["sample:key"]}`)
+	return connectormock.Branch(redis.ListKeysBranchListed, value, nil)
+}
+
+// ListKeysDefault is the manifest default, listedDefault, which New installs.
+func ListKeysDefault() connectormock.Case[redis.KeyList] { return ListKeysListedDefault() }
+
+// GetListLengthFound selects the found branch: The list length was returned.
+func GetListLengthFound(value redis.ListLength, failure *sdkgo.Failure) connectormock.Case[redis.ListLength] {
+	return connectormock.Branch(redis.GetListLengthBranchFound, value, failure)
+}
+
+// GetListLengthProviderRejected selects the providerRejected branch: Upstash rejected the command.
+func GetListLengthProviderRejected(value redis.ListLength, failure *sdkgo.Failure) connectormock.Case[redis.ListLength] {
+	return connectormock.Branch(redis.GetListLengthBranchProviderRejected, value, failure)
+}
+
+// GetListLengthInvalidResponse selects the invalidResponse branch: Upstash returned malformed or oversized JSON.
+func GetListLengthInvalidResponse(value redis.ListLength, failure *sdkgo.Failure) connectormock.Case[redis.ListLength] {
+	return connectormock.Branch(redis.GetListLengthBranchInvalidResponse, value, failure)
+}
+
+// GetListLengthDefect selects the defect branch: The key is invalid.
+func GetListLengthDefect(value redis.ListLength, failure *sdkgo.Failure) connectormock.Case[redis.ListLength] {
+	return connectormock.Branch(redis.GetListLengthBranchDefect, value, failure)
+}
+
+// GetListLengthRetry asks Dex to retry the getListLength Step, after the delay when it is positive.
+func GetListLengthRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[redis.ListLength] {
+	return connectormock.Retry[redis.ListLength](failure, after)
+}
+
+// GetListLengthFoundDefault is the manifest mock foundDefault: One example list contains three elements.
+func GetListLengthFoundDefault() connectormock.Case[redis.ListLength] {
+	value := connectormock.MustDecodeOutput[redis.ListLength](`{"key":"sample:list","length":3}`)
+	return connectormock.Branch(redis.GetListLengthBranchFound, value, nil)
+}
+
+// GetListLengthDefault is the manifest default, foundDefault, which New installs.
+func GetListLengthDefault() connectormock.Case[redis.ListLength] { return GetListLengthFoundDefault() }
+
+// GetInfoFound selects the found branch: Redis server information was returned.
+func GetInfoFound(value redis.DatabaseInfo, failure *sdkgo.Failure) connectormock.Case[redis.DatabaseInfo] {
+	return connectormock.Branch(redis.GetInfoBranchFound, value, failure)
+}
+
+// GetInfoProviderRejected selects the providerRejected branch: Upstash rejected the command.
+func GetInfoProviderRejected(value redis.DatabaseInfo, failure *sdkgo.Failure) connectormock.Case[redis.DatabaseInfo] {
+	return connectormock.Branch(redis.GetInfoBranchProviderRejected, value, failure)
+}
+
+// GetInfoInvalidResponse selects the invalidResponse branch: Upstash returned malformed or oversized JSON.
+func GetInfoInvalidResponse(value redis.DatabaseInfo, failure *sdkgo.Failure) connectormock.Case[redis.DatabaseInfo] {
+	return connectormock.Branch(redis.GetInfoBranchInvalidResponse, value, failure)
+}
+
+// GetInfoDefect selects the defect branch: The connection token is unavailable.
+func GetInfoDefect(value redis.DatabaseInfo, failure *sdkgo.Failure) connectormock.Case[redis.DatabaseInfo] {
+	return connectormock.Branch(redis.GetInfoBranchDefect, value, failure)
+}
+
+// GetInfoRetry asks Dex to retry the getInfo Step, after the delay when it is positive.
+func GetInfoRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[redis.DatabaseInfo] {
+	return connectormock.Retry[redis.DatabaseInfo](failure, after)
+}
+
+// GetInfoFoundDefault is the manifest mock foundDefault: One example INFO report is available.
+func GetInfoFoundDefault() connectormock.Case[redis.DatabaseInfo] {
+	value := connectormock.MustDecodeOutput[redis.DatabaseInfo](`{"report":"# Server\nredis_version:7.2"}`)
+	return connectormock.Branch(redis.GetInfoBranchFound, value, nil)
+}
+
+// GetInfoDefault is the manifest default, foundDefault, which New installs.
+func GetInfoDefault() connectormock.Case[redis.DatabaseInfo] { return GetInfoFoundDefault() }
+
+// PushListItemPushed selects the pushed branch: The item was pushed onto the list.
+func PushListItemPushed(value redis.ListPush, failure *sdkgo.Failure) connectormock.Case[redis.ListPush] {
+	return connectormock.Branch(redis.PushListItemBranchPushed, value, failure)
+}
+
+// PushListItemProviderRejected selects the providerRejected branch: Upstash rejected the command.
+func PushListItemProviderRejected(value redis.ListPush, failure *sdkgo.Failure) connectormock.Case[redis.ListPush] {
+	return connectormock.Branch(redis.PushListItemBranchProviderRejected, value, failure)
+}
+
+// PushListItemUncertain returns an uncertain pushListItem outcome.
+func PushListItemUncertain(value redis.ListPush, failure sdkgo.Failure) connectormock.Case[redis.ListPush] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// PushListItemDefect selects the defect branch: The key, value, or direction is invalid.
+func PushListItemDefect(value redis.ListPush, failure *sdkgo.Failure) connectormock.Case[redis.ListPush] {
+	return connectormock.Branch(redis.PushListItemBranchDefect, value, failure)
+}
+
+// PushListItemRetry asks Dex to retry the pushListItem Step, after the delay when it is positive.
+func PushListItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[redis.ListPush] {
+	return connectormock.Retry[redis.ListPush](failure, after)
+}
+
+// PushListItemPushedDefault is the manifest mock pushedDefault: One example item is pushed.
+func PushListItemPushedDefault() connectormock.Case[redis.ListPush] {
+	value := connectormock.MustDecodeOutput[redis.ListPush](`{"key":"sample:list","length":3}`)
+	return connectormock.Branch(redis.PushListItemBranchPushed, value, nil)
+}
+
+// PushListItemDefault is the manifest default, pushedDefault, which New installs.
+func PushListItemDefault() connectormock.Case[redis.ListPush] { return PushListItemPushedDefault() }
+
+// PublishMessagePublished selects the published branch: The message was published.
+func PublishMessagePublished(value redis.MessagePublication, failure *sdkgo.Failure) connectormock.Case[redis.MessagePublication] {
+	return connectormock.Branch(redis.PublishMessageBranchPublished, value, failure)
+}
+
+// PublishMessageProviderRejected selects the providerRejected branch: Upstash rejected the command.
+func PublishMessageProviderRejected(value redis.MessagePublication, failure *sdkgo.Failure) connectormock.Case[redis.MessagePublication] {
+	return connectormock.Branch(redis.PublishMessageBranchProviderRejected, value, failure)
+}
+
+// PublishMessageUncertain returns an uncertain publishMessage outcome.
+func PublishMessageUncertain(value redis.MessagePublication, failure sdkgo.Failure) connectormock.Case[redis.MessagePublication] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// PublishMessageDefect selects the defect branch: The channel or message is invalid.
+func PublishMessageDefect(value redis.MessagePublication, failure *sdkgo.Failure) connectormock.Case[redis.MessagePublication] {
+	return connectormock.Branch(redis.PublishMessageBranchDefect, value, failure)
+}
+
+// PublishMessageRetry asks Dex to retry the publishMessage Step, after the delay when it is positive.
+func PublishMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[redis.MessagePublication] {
+	return connectormock.Retry[redis.MessagePublication](failure, after)
+}
+
+// PublishMessagePublishedDefault is the manifest mock publishedDefault: One example message is published.
+func PublishMessagePublishedDefault() connectormock.Case[redis.MessagePublication] {
+	value := connectormock.MustDecodeOutput[redis.MessagePublication](`{"channel":"sample:channel","subscribers":1}`)
+	return connectormock.Branch(redis.PublishMessageBranchPublished, value, nil)
+}
+
+// PublishMessageDefault is the manifest default, publishedDefault, which New installs.
+func PublishMessageDefault() connectormock.Case[redis.MessagePublication] {
+	return PublishMessagePublishedDefault()
+}

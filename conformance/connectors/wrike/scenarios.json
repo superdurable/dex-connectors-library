@@ -278,6 +278,1337 @@
       },
       "name": "getTask-transportFailure",
       "operation": "getTask"
+    },
+    {
+      "callId": "c710a19d-88a0-4c0d-8a7a-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"tasks\",\"data\":[{\"id\":\"IEAAAABC\",\"title\":\"Example task\",\"status\":\"Active\"}],\"nextPageToken\":\"next-page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "nextPageToken": [
+              "previous-page"
+            ],
+            "pageSize": [
+              "5"
+            ],
+            "title": [
+              "Example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "id": "IEAAAABC",
+              "status": "Active",
+              "title": "Example task"
+            }
+          ],
+          "nextPageToken": "next-page"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": "IEAFOLDER",
+        "nextPageToken": "previous-page",
+        "pageSize": 5,
+        "title": "Example"
+      },
+      "name": "listTasks-success",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "c710a19d-88a0-4c0d-8a7a-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "pageSize": [
+              "5"
+            ],
+            "title": [
+              "Example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": "IEAFOLDER",
+        "pageSize": 5,
+        "title": "Example"
+      },
+      "name": "listTasks-provider-rejected",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "c710a19d-88a0-4c0d-8a7a-000000000003",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "pageSize": [
+              "5"
+            ],
+            "title": [
+              "Example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": "IEAFOLDER",
+        "pageSize": 5,
+        "title": "Example"
+      },
+      "name": "listTasks-invalid-response",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "c710a19d-88a0-4c0d-8a7a-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "pageSize": [
+              "5"
+            ],
+            "title": [
+              "Example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": "IEAFOLDER",
+        "pageSize": 5,
+        "title": "Example"
+      },
+      "name": "listTasks-rate-limited",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "c710a19d-88a0-4c0d-8a7a-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "pageSize": [
+              "5"
+            ],
+            "title": [
+              "Example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": "IEAFOLDER",
+        "pageSize": 5,
+        "title": "Example"
+      },
+      "name": "listTasks-unavailable",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "c710a19d-88a0-4c0d-8a7a-000000000006",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "pageSize": [
+              "5"
+            ],
+            "title": [
+              "Example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": "IEAFOLDER",
+        "pageSize": 5,
+        "title": "Example"
+      },
+      "name": "listTasks-transport-before-send",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "c710a19d-88a0-4c0d-8a7a-000000000007",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": "../invalid",
+        "pageSize": 5,
+        "title": "Example"
+      },
+      "name": "listTasks-defect",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"tasks\",\"data\":[{\"id\":\"IEAAAABC\",\"title\":\"Example task\",\"status\":\"Active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "description": [
+              "Draft task"
+            ],
+            "title": [
+              "Example task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+          "providerId": "IEAAAABC",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "IEAAAABC",
+          "status": "Active",
+          "title": "Example task"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "input": {
+        "description": "Draft task",
+        "folderId": "IEAFOLDER",
+        "title": "Example task"
+      },
+      "name": "createTask-success",
+      "operation": "createTask"
+    },
+    {
+      "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "description": [
+              "Draft task"
+            ],
+            "title": [
+              "Example task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "input": {
+        "description": "Draft task",
+        "folderId": "IEAFOLDER",
+        "title": "Example task"
+      },
+      "name": "createTask-provider-rejected",
+      "operation": "createTask"
+    },
+    {
+      "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "description": [
+              "Draft task"
+            ],
+            "title": [
+              "Example task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "input": {
+        "description": "Draft task",
+        "folderId": "IEAFOLDER",
+        "title": "Example task"
+      },
+      "name": "createTask-invalid-response",
+      "operation": "createTask"
+    },
+    {
+      "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "description": [
+              "Draft task"
+            ],
+            "title": [
+              "Example task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "input": {
+        "description": "Draft task",
+        "folderId": "IEAFOLDER",
+        "title": "Example task"
+      },
+      "name": "createTask-rate-limited",
+      "operation": "createTask"
+    },
+    {
+      "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "description": [
+              "Draft task"
+            ],
+            "title": [
+              "Example task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "input": {
+        "description": "Draft task",
+        "folderId": "IEAFOLDER",
+        "title": "Example task"
+      },
+      "name": "createTask-unavailable",
+      "operation": "createTask"
+    },
+    {
+      "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "description": [
+              "Draft task"
+            ],
+            "title": [
+              "Example task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "input": {
+        "description": "Draft task",
+        "folderId": "IEAFOLDER",
+        "title": "Example task"
+      },
+      "name": "createTask-transport-before-send",
+      "operation": "createTask"
+    },
+    {
+      "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "input": {
+        "description": "Draft task",
+        "folderId": "../invalid",
+        "title": "Example task"
+      },
+      "name": "createTask-defect",
+      "operation": "createTask"
+    },
+    {
+      "callId": "3792a3f7-063f-5019-a194-ddad7ea5c17b",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"tasks\",\"data\":[{\"id\":\"IEAAAABC\",\"title\":\"Updated task\",\"status\":\"Active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/IEAAAABC",
+          "query": {
+            "status": [
+              "Active"
+            ],
+            "title": [
+              "Updated task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "IEAAAABC",
+          "status": "Active",
+          "title": "Updated task"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3792a3f7-063f-5019-a194-ddad7ea5c17b",
+      "input": {
+        "status": "Active",
+        "taskId": "IEAAAABC",
+        "title": "Updated task"
+      },
+      "name": "updateTask-success",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "3792a3f7-063f-5019-a194-ddad7ea5c17b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/IEAAAABC",
+          "query": {
+            "status": [
+              "Active"
+            ],
+            "title": [
+              "Updated task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3792a3f7-063f-5019-a194-ddad7ea5c17b",
+      "input": {
+        "status": "Active",
+        "taskId": "IEAAAABC",
+        "title": "Updated task"
+      },
+      "name": "updateTask-provider-rejected",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "3792a3f7-063f-5019-a194-ddad7ea5c17b",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/IEAAAABC",
+          "query": {
+            "status": [
+              "Active"
+            ],
+            "title": [
+              "Updated task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3792a3f7-063f-5019-a194-ddad7ea5c17b",
+      "input": {
+        "status": "Active",
+        "taskId": "IEAAAABC",
+        "title": "Updated task"
+      },
+      "name": "updateTask-invalid-response",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "3792a3f7-063f-5019-a194-ddad7ea5c17b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/IEAAAABC",
+          "query": {
+            "status": [
+              "Active"
+            ],
+            "title": [
+              "Updated task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3792a3f7-063f-5019-a194-ddad7ea5c17b",
+      "input": {
+        "status": "Active",
+        "taskId": "IEAAAABC",
+        "title": "Updated task"
+      },
+      "name": "updateTask-rate-limited",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "3792a3f7-063f-5019-a194-ddad7ea5c17b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/IEAAAABC",
+          "query": {
+            "status": [
+              "Active"
+            ],
+            "title": [
+              "Updated task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3792a3f7-063f-5019-a194-ddad7ea5c17b",
+      "input": {
+        "status": "Active",
+        "taskId": "IEAAAABC",
+        "title": "Updated task"
+      },
+      "name": "updateTask-unavailable",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "3792a3f7-063f-5019-a194-ddad7ea5c17b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/IEAAAABC",
+          "query": {
+            "status": [
+              "Active"
+            ],
+            "title": [
+              "Updated task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3792a3f7-063f-5019-a194-ddad7ea5c17b",
+      "input": {
+        "status": "Active",
+        "taskId": "IEAAAABC",
+        "title": "Updated task"
+      },
+      "name": "updateTask-transport-before-send",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "3792a3f7-063f-5019-a194-ddad7ea5c17b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3792a3f7-063f-5019-a194-ddad7ea5c17b",
+      "input": {
+        "status": "Active",
+        "taskId": "../invalid",
+        "title": "Updated task"
+      },
+      "name": "updateTask-defect",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "b0ad0518-1818-5744-9a93-dca7c24d7576",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"tasks\",\"data\":[{\"id\":\"IEAAAABC\",\"title\":\"Example task\",\"status\":\"Active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tasks/IEAAAABC",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "IEAAAABC",
+          "status": "Active",
+          "title": "Example task"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0ad0518-1818-5744-9a93-dca7c24d7576",
+      "input": {
+        "taskId": "IEAAAABC"
+      },
+      "name": "deleteTask-success",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "b0ad0518-1818-5744-9a93-dca7c24d7576",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tasks/IEAAAABC",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0ad0518-1818-5744-9a93-dca7c24d7576",
+      "input": {
+        "taskId": "IEAAAABC"
+      },
+      "name": "deleteTask-provider-rejected",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "b0ad0518-1818-5744-9a93-dca7c24d7576",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tasks/IEAAAABC",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0ad0518-1818-5744-9a93-dca7c24d7576",
+      "input": {
+        "taskId": "IEAAAABC"
+      },
+      "name": "deleteTask-invalid-response",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "b0ad0518-1818-5744-9a93-dca7c24d7576",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tasks/IEAAAABC",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0ad0518-1818-5744-9a93-dca7c24d7576",
+      "input": {
+        "taskId": "IEAAAABC"
+      },
+      "name": "deleteTask-rate-limited",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "b0ad0518-1818-5744-9a93-dca7c24d7576",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tasks/IEAAAABC",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0ad0518-1818-5744-9a93-dca7c24d7576",
+      "input": {
+        "taskId": "IEAAAABC"
+      },
+      "name": "deleteTask-unavailable",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "b0ad0518-1818-5744-9a93-dca7c24d7576",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tasks/IEAAAABC",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0ad0518-1818-5744-9a93-dca7c24d7576",
+      "input": {
+        "taskId": "IEAAAABC"
+      },
+      "name": "deleteTask-transport-before-send",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "b0ad0518-1818-5744-9a93-dca7c24d7576",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0ad0518-1818-5744-9a93-dca7c24d7576",
+      "input": {
+        "taskId": "../invalid"
+      },
+      "name": "deleteTask-defect",
+      "operation": "deleteTask"
+    },
+    {
+      "attempts": 3,
+      "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "description": [
+              "Draft task"
+            ],
+            "title": [
+              "Example task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "description": [
+              "Draft task"
+            ],
+            "title": [
+              "Example task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/folders/IEAFOLDER/tasks",
+          "query": {
+            "description": [
+              "Draft task"
+            ],
+            "title": [
+              "Example task"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wrike-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+      "input": {
+        "description": "Draft task",
+        "folderId": "IEAFOLDER",
+        "title": "Example task"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "2e6db8c1-7577-5fa6-927d-6071c53cef5f",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTask-uncertain-after-send-cap",
+      "operation": "createTask"
     }
   ],
   "schemaVersion": 1

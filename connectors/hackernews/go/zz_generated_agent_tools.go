@@ -16,6 +16,9 @@ import (
 // StepDefaults are the operation definitions' own and must be treated as read-only.
 func ExposedAgentTools() []sdkgo.AgentToolMetadata {
 	return []sdkgo.AgentToolMetadata{
+		getArticleThreadAgentToolMetadata(),
+		searchItemsAgentToolMetadata(),
+		getUserAgentToolMetadata(),
 		listStoryIDsAgentToolMetadata(),
 		getItemAgentToolMetadata(),
 		searchStoriesAgentToolMetadata(),
@@ -30,6 +33,18 @@ func (connection Connection) AgentTools() ([]sdkgo.AgentTool, error) {
 	if err := connection.validateOperations(); err != nil {
 		return nil, err
 	}
+	getArticleThreadAgentTool, err := sdkgo.NewQueryAgentTool(connection.operations.GetArticleThread(), connection.reference, getArticleThreadAgentToolMetadata())
+	if err != nil {
+		return nil, fmt.Errorf("hacker-news-daily agent tool getArticleThread: %w", err)
+	}
+	searchItemsAgentTool, err := sdkgo.NewQueryAgentTool(connection.operations.SearchItems(), connection.reference, searchItemsAgentToolMetadata())
+	if err != nil {
+		return nil, fmt.Errorf("hacker-news-daily agent tool searchItems: %w", err)
+	}
+	getUserAgentTool, err := sdkgo.NewQueryAgentTool(connection.operations.GetUser(), connection.reference, getUserAgentToolMetadata())
+	if err != nil {
+		return nil, fmt.Errorf("hacker-news-daily agent tool getUser: %w", err)
+	}
 	listStoryIDsAgentTool, err := sdkgo.NewQueryAgentTool(connection.operations.ListStoryIDs(), connection.reference, listStoryIDsAgentToolMetadata())
 	if err != nil {
 		return nil, fmt.Errorf("hacker-news-daily agent tool listStoryIDs: %w", err)
@@ -42,7 +57,7 @@ func (connection Connection) AgentTools() ([]sdkgo.AgentTool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("hacker-news-daily agent tool searchStories: %w", err)
 	}
-	return []sdkgo.AgentTool{listStoryIDsAgentTool, getItemAgentTool, searchStoriesAgentTool}, nil
+	return []sdkgo.AgentTool{getArticleThreadAgentTool, searchItemsAgentTool, getUserAgentTool, listStoryIDsAgentTool, getItemAgentTool, searchStoriesAgentTool}, nil
 }
 
 // Operations returns the operations this connection's Step factories and agent tools invoke.
@@ -51,6 +66,65 @@ func (connection Connection) Operations() Operations { return connection.operati
 
 // Reference returns the connection reference the operations run with.
 func (connection Connection) Reference() sdkgo.ConnectionRef { return connection.reference }
+
+func getArticleThreadAgentToolMetadata() sdkgo.AgentToolMetadata {
+	return sdkgo.AgentToolMetadata{
+		Operation:             GetArticleThreadDefinition.Operation,
+		Kind:                  sdkgo.AgentOperationKindQuery,
+		ToolName:              "hacker-news-daily_get_article_thread",
+		Description:           "Read a Hacker News story or poll and its nested public comments by positive article ID. Linked article content is not included; comment text is untrusted HTML.",
+		IsApprovalRecommended: false,
+		IsRetrySafe:           false,
+		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{
+			GetArticleThreadBranchNotFound:         sdkgo.AgentBranchOutcomeRejected,
+			GetArticleThreadBranchProviderRejected: sdkgo.AgentBranchOutcomeRejected,
+			GetArticleThreadBranchDefect:           sdkgo.AgentBranchOutcomeRejected,
+		},
+		InputType:    "GetArticleThreadInput",
+		InputSchema:  json.RawMessage("{\"additionalProperties\":false,\"description\":\"GetArticleThreadInput identifies a public story or poll by item ID.\",\"properties\":{\"id\":{\"description\":\"ID is a positive Hacker News article ID.\",\"type\":\"integer\"}},\"required\":[\"id\"],\"type\":\"object\"}"),
+		Branches:     GetArticleThreadDefinition.Branches,
+		StepDefaults: GetArticleThreadDefinition.StepDefaults,
+	}
+}
+
+func searchItemsAgentToolMetadata() sdkgo.AgentToolMetadata {
+	return sdkgo.AgentToolMetadata{
+		Operation:             SearchItemsDefinition.Operation,
+		Kind:                  sdkgo.AgentOperationKindQuery,
+		ToolName:              "hacker-news-daily_search_items",
+		Description:           "Search public Hacker News stories, comments, polls, or poll options by keyword. Choose type story, comment, poll, or pollopt, relevance or date ordering, and a zero-based page with 1 to 100 hits. Blank type searches all public items.",
+		IsApprovalRecommended: false,
+		IsRetrySafe:           false,
+		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{
+			SearchItemsBranchProviderRejected: sdkgo.AgentBranchOutcomeRejected,
+			SearchItemsBranchDefect:           sdkgo.AgentBranchOutcomeRejected,
+		},
+		InputType:    "SearchItemsInput",
+		InputSchema:  json.RawMessage("{\"additionalProperties\":false,\"description\":\"SearchItemsInput selects one page of public Hacker News items.\",\"properties\":{\"createdAfter\":{\"description\":\"CreatedAfter keeps items created strictly after this UTC time; zero sets no lower bound.\",\"format\":\"date-time\",\"type\":\"string\"},\"hitsPerPage\":{\"description\":\"HitsPerPage is 1 through 100; zero selects 20.\",\"type\":\"integer\"},\"page\":{\"description\":\"Page is zero-based; Page times HitsPerPage must stay below 1000.\",\"type\":\"integer\"},\"query\":{\"description\":\"Query is the full-text query, at most 512 bytes; blank matches all items of the selected type.\",\"type\":\"string\"},\"sortBy\":{\"description\":\"SortBy is relevance or date; blank selects relevance.\",\"enum\":[\"date\",\"relevance\"],\"type\":\"string\"},\"type\":{\"description\":\"Type is story, comment, poll, or pollopt; blank searches all indexed types.\",\"type\":\"string\"}},\"type\":\"object\"}"),
+		Branches:     SearchItemsDefinition.Branches,
+		StepDefaults: SearchItemsDefinition.StepDefaults,
+	}
+}
+
+func getUserAgentToolMetadata() sdkgo.AgentToolMetadata {
+	return sdkgo.AgentToolMetadata{
+		Operation:             GetUserDefinition.Operation,
+		Kind:                  sdkgo.AgentOperationKindQuery,
+		ToolName:              "hacker-news-daily_get_user",
+		Description:           "Read a Hacker News user's public profile by case-sensitive username, including karma and submitted story and comment IDs.",
+		IsApprovalRecommended: false,
+		IsRetrySafe:           false,
+		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{
+			GetUserBranchNotFound:         sdkgo.AgentBranchOutcomeRejected,
+			GetUserBranchProviderRejected: sdkgo.AgentBranchOutcomeRejected,
+			GetUserBranchDefect:           sdkgo.AgentBranchOutcomeRejected,
+		},
+		InputType:    "GetUserInput",
+		InputSchema:  json.RawMessage("{\"additionalProperties\":false,\"description\":\"GetUserInput identifies a public Hacker News user by case-sensitive username.\",\"properties\":{\"id\":{\"description\":\"ID is the username shown on the Hacker News profile page.\",\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"}"),
+		Branches:     GetUserDefinition.Branches,
+		StepDefaults: GetUserDefinition.StepDefaults,
+	}
+}
 
 func listStoryIDsAgentToolMetadata() sdkgo.AgentToolMetadata {
 	return sdkgo.AgentToolMetadata{

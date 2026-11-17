@@ -1,6 +1,6 @@
 {
   "connectorId": "zendesk-support",
-  "releaseTag": "connectors/zendesk/support/go/v0.24.0",
+  "releaseTag": "connectors/zendesk/support/go/v0.25.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-zendesk-support",

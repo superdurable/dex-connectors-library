@@ -45,6 +45,16 @@ type Operations interface {
 	CreatePost() sdkgo.Mutation[CreatePostInput, CreatedPost]
 	GetPost() sdkgo.Query[GetPostInput, Post]
 	ListPosts() sdkgo.Query[ListPostsInput, PostPage]
+	UpdatePost() sdkgo.Mutation[UpdatePostInput, CreatedPost]
+	DeletePost() sdkgo.Mutation[DeletePostInput, CreatedPost]
+	CreatePage() sdkgo.Mutation[CreatePageInput, Page]
+	GetPage() sdkgo.Query[GetPageInput, Page]
+	ListPages() sdkgo.Query[ListPagesInput, PagePage]
+	UpdatePage() sdkgo.Mutation[UpdatePageInput, Page]
+	DeletePage() sdkgo.Mutation[DeletePageInput, Page]
+	GetUser() sdkgo.Query[GetUserInput, User]
+	ListUsers() sdkgo.Query[ListUsersInput, UserPage]
+	UpdateUser() sdkgo.Mutation[UpdateUserInput, User]
 }
 
 type clientOperations struct{ client *Client }
@@ -57,6 +67,36 @@ func (operations clientOperations) GetPost() sdkgo.Query[GetPostInput, Post] {
 }
 func (operations clientOperations) ListPosts() sdkgo.Query[ListPostsInput, PostPage] {
 	return operations.client.ListPosts()
+}
+func (operations clientOperations) UpdatePost() sdkgo.Mutation[UpdatePostInput, CreatedPost] {
+	return operations.client.UpdatePost()
+}
+func (operations clientOperations) DeletePost() sdkgo.Mutation[DeletePostInput, CreatedPost] {
+	return operations.client.DeletePost()
+}
+func (operations clientOperations) CreatePage() sdkgo.Mutation[CreatePageInput, Page] {
+	return operations.client.CreatePage()
+}
+func (operations clientOperations) GetPage() sdkgo.Query[GetPageInput, Page] {
+	return operations.client.GetPage()
+}
+func (operations clientOperations) ListPages() sdkgo.Query[ListPagesInput, PagePage] {
+	return operations.client.ListPages()
+}
+func (operations clientOperations) UpdatePage() sdkgo.Mutation[UpdatePageInput, Page] {
+	return operations.client.UpdatePage()
+}
+func (operations clientOperations) DeletePage() sdkgo.Mutation[DeletePageInput, Page] {
+	return operations.client.DeletePage()
+}
+func (operations clientOperations) GetUser() sdkgo.Query[GetUserInput, User] {
+	return operations.client.GetUser()
+}
+func (operations clientOperations) ListUsers() sdkgo.Query[ListUsersInput, UserPage] {
+	return operations.client.ListUsers()
+}
+func (operations clientOperations) UpdateUser() sdkgo.Mutation[UpdateUserInput, User] {
+	return operations.client.UpdateUser()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -225,6 +265,8 @@ var CreatePostDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreatePostResult = sdkgo.MutationResult[CreatedPost]
@@ -244,6 +286,8 @@ type CreatePostStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreatePostResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedPost]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreatePostStep[IN any](config CreatePostStepConfig[IN]) sdkgo.MutationStep[IN, CreatePostInput, CreatedPost] {
@@ -275,6 +319,7 @@ func NewCreatePostStep[IN any](config CreatePostStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -418,6 +463,792 @@ func NewListPostsStep[IN any](config ListPostsStepConfig[IN]) sdkgo.QueryStep[IN
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListPostsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdatePostBranchUpdated sdkgo.BranchID = "updated"
+const UpdatePostBranchNotFound sdkgo.BranchID = "notFound"
+const UpdatePostBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdatePostBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdatePostBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdatePostDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updatePost"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdatePostBranchUpdated, Description: "WordPress updated the post."},
+		{ID: UpdatePostBranchNotFound, Description: "The post was not found.", Optional: true},
+		{ID: UpdatePostBranchProviderRejected, Description: "WordPress conclusively rejected the request.", Optional: true},
+		{ID: UpdatePostBranchInvalidResponse, Description: "WordPress returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdatePostBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdatePostResult = sdkgo.MutationResult[CreatedPost]
+
+type UpdatePostStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=wordpress"`
+	operationID                       struct{}                                          `connector:"operationId=updatePost"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdatePostInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdatePostResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdatePostResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdatePostResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdatePostResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdatePostResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedPost]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewUpdatePostStep[IN any](config UpdatePostStepConfig[IN]) sdkgo.MutationStep[IN, UpdatePostInput, CreatedPost] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wordpress connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdatePostInput, CreatedPost]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdatePost(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdatePostResult] {
+			branches := make([]sdkgo.BranchTarget[UpdatePostResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdatePostBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdatePostBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdatePostBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdatePostBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdatePostBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeletePostBranchDeleted sdkgo.BranchID = "deleted"
+const DeletePostBranchNotFound sdkgo.BranchID = "notFound"
+const DeletePostBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeletePostBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeletePostBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeletePostDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deletePost"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeletePostBranchDeleted, Description: "WordPress deleted the post."},
+		{ID: DeletePostBranchNotFound, Description: "The post was not found.", Optional: true},
+		{ID: DeletePostBranchProviderRejected, Description: "WordPress conclusively rejected the request.", Optional: true},
+		{ID: DeletePostBranchInvalidResponse, Description: "WordPress returned malformed or oversized JSON.", Optional: true},
+		{ID: DeletePostBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeletePostResult = sdkgo.MutationResult[CreatedPost]
+
+type DeletePostStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=wordpress"`
+	operationID                       struct{}                                          `connector:"operationId=deletePost"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeletePostInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeletePostResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeletePostResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeletePostResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeletePostResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeletePostResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedPost]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeletePostStep[IN any](config DeletePostStepConfig[IN]) sdkgo.MutationStep[IN, DeletePostInput, CreatedPost] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wordpress connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeletePostInput, CreatedPost]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeletePost(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeletePostResult] {
+			branches := make([]sdkgo.BranchTarget[DeletePostResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeletePostBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeletePostBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeletePostBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeletePostBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeletePostBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreatePageBranchCreated sdkgo.BranchID = "created"
+const CreatePageBranchNotFound sdkgo.BranchID = "notFound"
+const CreatePageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreatePageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreatePageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreatePageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreatePageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createPage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreatePageBranchCreated, Description: "WordPress created the page."},
+		{ID: CreatePageBranchNotFound, Description: "The page was not found.", Optional: true},
+		{ID: CreatePageBranchProviderRejected, Description: "WordPress conclusively rejected the request.", Optional: true},
+		{ID: CreatePageBranchInvalidResponse, Description: "WordPress returned malformed or oversized JSON.", Optional: true},
+		{ID: CreatePageBranchUncertain, Description: "The capped create outcome could not be confirmed.", Optional: true},
+		{ID: CreatePageBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreatePageResult = sdkgo.MutationResult[Page]
+
+type CreatePageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                   `connector:"connectorId=wordpress"`
+	operationID                       struct{}                                   `connector:"operationId=createPage"`
+	StepType                          string                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                        Connection                                 `connector:"connection"`
+	ConnectionName                    string                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreatePageInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreatePageResult]             `connector:"branch=created"`
+	NotFound                          sdkgo.Target[CreatePageResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CreatePageResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreatePageResult]             `connector:"branch=invalidResponse,optional"`
+	Uncertain                         sdkgo.Target[CreatePageResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreatePageResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Page]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreatePageStep[IN any](config CreatePageStepConfig[IN]) sdkgo.MutationStep[IN, CreatePageInput, Page] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wordpress connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreatePageInput, Page]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreatePage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreatePageResult] {
+			branches := make([]sdkgo.BranchTarget[CreatePageResult], 0, 6)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreatePageBranchCreated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CreatePageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreatePageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreatePageBranchInvalidResponse))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreatePageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreatePageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetPageBranchFound sdkgo.BranchID = "found"
+const GetPageBranchNotFound sdkgo.BranchID = "notFound"
+const GetPageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPageDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPageBranchFound, Description: "WordPress found the page."},
+		{ID: GetPageBranchNotFound, Description: "The page was not found.", Optional: true},
+		{ID: GetPageBranchProviderRejected, Description: "WordPress conclusively rejected the request.", Optional: true},
+		{ID: GetPageBranchInvalidResponse, Description: "WordPress returned malformed or oversized JSON.", Optional: true},
+		{ID: GetPageBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPageResult = sdkgo.QueryResult[Page]
+
+type GetPageStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                `connector:"connectorId=wordpress"`
+	operationID                    struct{}                                `connector:"operationId=getPage"`
+	StepType                       string                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                   `connector:"annotations"`
+	Connection                     Connection                              `connector:"connection"`
+	ConnectionName                 string                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetPageInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPageResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPageResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetPageResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPageResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPageResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Page]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetPageStep[IN any](config GetPageStepConfig[IN]) sdkgo.QueryStep[IN, GetPageInput, Page] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wordpress connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPageInput, Page]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPageResult] {
+			branches := make([]sdkgo.BranchTarget[GetPageResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPageBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListPagesBranchListed sdkgo.BranchID = "listed"
+const ListPagesBranchNotFound sdkgo.BranchID = "notFound"
+const ListPagesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPagesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPagesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPagesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPages"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPagesBranchListed, Description: "WordPress listed the page."},
+		{ID: ListPagesBranchNotFound, Description: "The page was not found.", Optional: true},
+		{ID: ListPagesBranchProviderRejected, Description: "WordPress conclusively rejected the request.", Optional: true},
+		{ID: ListPagesBranchInvalidResponse, Description: "WordPress returned malformed or oversized JSON.", Optional: true},
+		{ID: ListPagesBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPagesResult = sdkgo.QueryResult[PagePage]
+
+type ListPagesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=wordpress"`
+	operationID                    struct{}                                    `connector:"operationId=listPages"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPagesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPagesResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListPagesResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListPagesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPagesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPagesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PagePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewListPagesStep[IN any](config ListPagesStepConfig[IN]) sdkgo.QueryStep[IN, ListPagesInput, PagePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wordpress connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPagesInput, PagePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListPages(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPagesResult] {
+			branches := make([]sdkgo.BranchTarget[ListPagesResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPagesBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListPagesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPagesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPagesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPagesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdatePageBranchUpdated sdkgo.BranchID = "updated"
+const UpdatePageBranchNotFound sdkgo.BranchID = "notFound"
+const UpdatePageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdatePageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdatePageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdatePageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updatePage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdatePageBranchUpdated, Description: "WordPress updated the page."},
+		{ID: UpdatePageBranchNotFound, Description: "The page was not found.", Optional: true},
+		{ID: UpdatePageBranchProviderRejected, Description: "WordPress conclusively rejected the request.", Optional: true},
+		{ID: UpdatePageBranchInvalidResponse, Description: "WordPress returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdatePageBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdatePageResult = sdkgo.MutationResult[Page]
+
+type UpdatePageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                   `connector:"connectorId=wordpress"`
+	operationID                       struct{}                                   `connector:"operationId=updatePage"`
+	StepType                          string                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                        Connection                                 `connector:"connection"`
+	ConnectionName                    string                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdatePageInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdatePageResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdatePageResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdatePageResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdatePageResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdatePageResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Page]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewUpdatePageStep[IN any](config UpdatePageStepConfig[IN]) sdkgo.MutationStep[IN, UpdatePageInput, Page] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wordpress connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdatePageInput, Page]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdatePage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdatePageResult] {
+			branches := make([]sdkgo.BranchTarget[UpdatePageResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdatePageBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdatePageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdatePageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdatePageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdatePageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeletePageBranchDeleted sdkgo.BranchID = "deleted"
+const DeletePageBranchNotFound sdkgo.BranchID = "notFound"
+const DeletePageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeletePageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeletePageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeletePageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deletePage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeletePageBranchDeleted, Description: "WordPress deleted the page."},
+		{ID: DeletePageBranchNotFound, Description: "The page was not found.", Optional: true},
+		{ID: DeletePageBranchProviderRejected, Description: "WordPress conclusively rejected the request.", Optional: true},
+		{ID: DeletePageBranchInvalidResponse, Description: "WordPress returned malformed or oversized JSON.", Optional: true},
+		{ID: DeletePageBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeletePageResult = sdkgo.MutationResult[Page]
+
+type DeletePageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                   `connector:"connectorId=wordpress"`
+	operationID                       struct{}                                   `connector:"operationId=deletePage"`
+	StepType                          string                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                        Connection                                 `connector:"connection"`
+	ConnectionName                    string                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeletePageInput                   `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeletePageResult]             `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeletePageResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeletePageResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeletePageResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeletePageResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Page]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewDeletePageStep[IN any](config DeletePageStepConfig[IN]) sdkgo.MutationStep[IN, DeletePageInput, Page] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wordpress connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeletePageInput, Page]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeletePage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeletePageResult] {
+			branches := make([]sdkgo.BranchTarget[DeletePageResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeletePageBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeletePageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeletePageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeletePageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeletePageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetUserBranchFound sdkgo.BranchID = "found"
+const GetUserBranchNotFound sdkgo.BranchID = "notFound"
+const GetUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetUserBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetUserDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetUserBranchFound, Description: "WordPress found the user."},
+		{ID: GetUserBranchNotFound, Description: "The user was not found.", Optional: true},
+		{ID: GetUserBranchProviderRejected, Description: "WordPress conclusively rejected the request.", Optional: true},
+		{ID: GetUserBranchInvalidResponse, Description: "WordPress returned malformed or oversized JSON.", Optional: true},
+		{ID: GetUserBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetUserResult = sdkgo.QueryResult[User]
+
+type GetUserStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                `connector:"connectorId=wordpress"`
+	operationID                    struct{}                                `connector:"operationId=getUser"`
+	StepType                       string                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                   `connector:"annotations"`
+	Connection                     Connection                              `connector:"connection"`
+	ConnectionName                 string                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetUserInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetUserResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetUserResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetUserResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetUserResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetUserResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[User]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetUserStep[IN any](config GetUserStepConfig[IN]) sdkgo.QueryStep[IN, GetUserInput, User] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wordpress connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetUserInput, User]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetUserResult] {
+			branches := make([]sdkgo.BranchTarget[GetUserResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetUserBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetUserBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetUserBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetUserBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListUsersBranchListed sdkgo.BranchID = "listed"
+const ListUsersBranchNotFound sdkgo.BranchID = "notFound"
+const ListUsersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListUsersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListUsersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListUsersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listUsers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListUsersBranchListed, Description: "WordPress listed the user."},
+		{ID: ListUsersBranchNotFound, Description: "The user was not found.", Optional: true},
+		{ID: ListUsersBranchProviderRejected, Description: "WordPress conclusively rejected the request.", Optional: true},
+		{ID: ListUsersBranchInvalidResponse, Description: "WordPress returned malformed or oversized JSON.", Optional: true},
+		{ID: ListUsersBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListUsersResult = sdkgo.QueryResult[UserPage]
+
+type ListUsersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=wordpress"`
+	operationID                    struct{}                                    `connector:"operationId=listUsers"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListUsersInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListUsersResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListUsersResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListUsersResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListUsersResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListUsersResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[UserPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewListUsersStep[IN any](config ListUsersStepConfig[IN]) sdkgo.QueryStep[IN, ListUsersInput, UserPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wordpress connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListUsersInput, UserPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListUsers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListUsersResult] {
+			branches := make([]sdkgo.BranchTarget[ListUsersResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListUsersBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListUsersBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListUsersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListUsersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListUsersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateUserBranchUpdated sdkgo.BranchID = "updated"
+const UpdateUserBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateUserBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateUserDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateUserBranchUpdated, Description: "WordPress updated the user."},
+		{ID: UpdateUserBranchNotFound, Description: "The user was not found.", Optional: true},
+		{ID: UpdateUserBranchProviderRejected, Description: "WordPress conclusively rejected the request.", Optional: true},
+		{ID: UpdateUserBranchInvalidResponse, Description: "WordPress returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateUserBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateUserResult = sdkgo.MutationResult[User]
+
+type UpdateUserStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                   `connector:"connectorId=wordpress"`
+	operationID                       struct{}                                   `connector:"operationId=updateUser"`
+	StepType                          string                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                        Connection                                 `connector:"connection"`
+	ConnectionName                    string                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateUserInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateUserResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateUserResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateUserResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateUserResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateUserResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[User]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateUserStep[IN any](config UpdateUserStepConfig[IN]) sdkgo.MutationStep[IN, UpdateUserInput, User] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wordpress connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateUserInput, User]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateUserResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateUserResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateUserBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateUserBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateUserBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateUserBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateUserBranchDefect))
 			}
 			return branches
 		}(),

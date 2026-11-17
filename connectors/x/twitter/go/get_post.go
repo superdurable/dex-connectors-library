@@ -29,6 +29,40 @@ type PostMetadata struct {
 	Text string `json:"text"`
 }
 
+// SearchRecentPostsInput selects one recent-search page.
+type SearchRecentPostsInput struct {
+	// Query is an X search expression of 1–4096 characters.
+	Query string `json:"query"`
+	// MaxResults is 10–100; zero uses X's default of 10.
+	MaxResults int `json:"maxResults,omitempty"`
+	// NextToken continues the previous page; blank starts at the first page.
+	NextToken string `json:"nextToken,omitempty"`
+}
+
+// PostPage contains one page of recent public Posts.
+type PostPage struct {
+	// Data contains the matching Posts.
+	Data []PostMetadata `json:"data"`
+	// NextToken continues pagination when nonempty.
+	NextToken string `json:"nextToken,omitempty"`
+}
+
+// GetUserInput identifies a public X user by username.
+type GetUserInput struct {
+	// Username is the handle without the leading @.
+	Username string `json:"username"`
+}
+
+// UserMetadata contains public user identity and display name.
+type UserMetadata struct {
+	// ID is the user's numeric X ID.
+	ID string `json:"id"`
+	// Name is the user's public display name.
+	Name string `json:"name"`
+	// Username is the user's public handle without @.
+	Username string `json:"username"`
+}
+
 // GetPostOperation reads one public Post.
 type GetPostOperation struct{ client *Client }
 

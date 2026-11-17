@@ -28,6 +28,33 @@ func (queryContext) Done() <-chan struct{}       { return nil }
 func (queryContext) Err() error                  { return nil }
 func (queryContext) Value(key any) any           { return context.Background().Value(key) }
 
+type customerTestContext struct {
+	queryContext
+	attempt   int32
+	heartbeat json.RawMessage
+}
+
+func (ctx *customerTestContext) Attempt() int32 {
+	if ctx.attempt == 0 {
+		return 1
+	}
+	return ctx.attempt
+}
+func (ctx *customerTestContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	ctx.heartbeat = encoded
+	return nil
+}
+func (ctx *customerTestContext) GetLastHeartbeatValue(target any) (bool, error) {
+	if len(ctx.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(ctx.heartbeat, target)
+}
+
 func newTestClient(t *testing.T, endpoint string, maxResponseBytes int64) *Client {
 	t.Helper()
 	credentials := Credentials{AccessToken: sdkgo.NewSecretString("sample-wave-access-token")}

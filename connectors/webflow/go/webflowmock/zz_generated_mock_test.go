@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listCollections/defaultListCollections/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[webflow.ListCollectionsOutput](`{"data":{"collections":[{"id":"62b720ef280c7a7a3be8cabe","displayName":"Articles"}]}}`)
+			return err
+		}},
+		{name: "getCollection/defaultGetCollection/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[webflow.GetCollectionOutput](`{"data":{"id":"62b720ef280c7a7a3be8cabe","displayName":"Articles","fields":[]}}`)
+			return err
+		}},
+		{name: "listLiveCollectionItems/defaultListLiveCollectionItems/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[webflow.ListCollectionItemsOutput](`{"data":{"items":[{"id":"62b720ef280c7a7a3be8cabe","fieldData":{"name":"Meridian"}}],"pagination":{"total":1,"limit":100,"offset":0}}}`)
+			return err
+		}},
+		{name: "getLiveCollectionItem/defaultGetLiveCollectionItem/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[webflow.GetCollectionItemOutput](`{"data":{"id":"62b720ef280c7a7a3be8cabe","fieldData":{"name":"Meridian"}}}`)
+			return err
+		}},
 		{name: "listCollectionItems/defaultListCollectionItems/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[webflow.ListCollectionItemsOutput](`{"data":{"items":[{"id":"62b720ef280c7a7a3be8cabe","fieldData":{"name":"Meridian"}}],"pagination":{"total":1,"limit":100,"offset":0}}}`)
 			return err
@@ -34,6 +50,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListCollections().Definition().Operation.OperationID != "listCollections" {
+		t.Errorf("listCollections mock has another definition")
+	}
+	if mock.GetCollection().Definition().Operation.OperationID != "getCollection" {
+		t.Errorf("getCollection mock has another definition")
+	}
+	if mock.ListLiveCollectionItems().Definition().Operation.OperationID != "listLiveCollectionItems" {
+		t.Errorf("listLiveCollectionItems mock has another definition")
+	}
+	if mock.GetLiveCollectionItem().Definition().Operation.OperationID != "getLiveCollectionItem" {
+		t.Errorf("getLiveCollectionItem mock has another definition")
+	}
 	if mock.ListCollectionItems().Definition().Operation.OperationID != "listCollectionItems" {
 		t.Errorf("listCollectionItems mock has another definition")
 	}

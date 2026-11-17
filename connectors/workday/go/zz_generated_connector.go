@@ -46,11 +46,15 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListWorkers() sdkgo.Query[ListWorkersInput, WorkerPage]
 	GetWorker() sdkgo.Query[GetWorkerInput, WorkerSummary]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListWorkers() sdkgo.Query[ListWorkersInput, WorkerPage] {
+	return operations.client.ListWorkers()
+}
 func (operations clientOperations) GetWorker() sdkgo.Query[GetWorkerInput, WorkerSummary] {
 	return operations.client.GetWorker()
 }
@@ -273,6 +277,77 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const ListWorkersBranchFound sdkgo.BranchID = "found"
+const ListWorkersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListWorkersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListWorkersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListWorkersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listWorkers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListWorkersBranchFound, Description: "Workday returned the requested worker page."},
+		{ID: ListWorkersBranchProviderRejected, Description: "Workday conclusively rejected the search.", Optional: true},
+		{ID: ListWorkersBranchInvalidResponse, Description: "Workday returned malformed or oversized worker JSON.", Optional: true},
+		{ID: ListWorkersBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListWorkersResult = sdkgo.QueryResult[WorkerPage]
+
+type ListWorkersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=workday"`
+	operationID                    struct{}                                      `connector:"operationId=listWorkers"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListWorkersInput                     `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[ListWorkersResult]               `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[ListWorkersResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListWorkersResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListWorkersResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[WorkerPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListWorkersStep[IN any](config ListWorkersStepConfig[IN]) sdkgo.QueryStep[IN, ListWorkersInput, WorkerPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("workday connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListWorkersInput, WorkerPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListWorkers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListWorkersResult] {
+			branches := make([]sdkgo.BranchTarget[ListWorkersResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(ListWorkersBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListWorkersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListWorkersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListWorkersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetWorkerBranchFound sdkgo.BranchID = "found"

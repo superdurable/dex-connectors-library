@@ -18,6 +18,10 @@ import (
 // Mock is a scripted wrike connection. Script each operation through its accessor.
 type Mock struct {
 	connection wrike.Connection
+	listTasks  *connectormock.Query[wrike.ListTasksInput, wrike.TaskPage]
+	createTask *connectormock.Mutation[wrike.CreateTaskInput, wrike.TaskStatus]
+	updateTask *connectormock.Mutation[wrike.UpdateTaskInput, wrike.TaskStatus]
+	deleteTask *connectormock.Mutation[wrike.DeleteTaskInput, wrike.TaskStatus]
 	getTask    *connectormock.Query[wrike.GetTaskInput, wrike.TaskStatus]
 }
 
@@ -26,8 +30,16 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getTask: connectormock.NewQuery[wrike.GetTaskInput, wrike.TaskStatus](t, wrike.GetTaskDefinition),
+		listTasks:  connectormock.NewQuery[wrike.ListTasksInput, wrike.TaskPage](t, wrike.ListTasksDefinition),
+		createTask: connectormock.NewMutation[wrike.CreateTaskInput, wrike.TaskStatus](t, wrike.CreateTaskDefinition),
+		updateTask: connectormock.NewMutation[wrike.UpdateTaskInput, wrike.TaskStatus](t, wrike.UpdateTaskDefinition),
+		deleteTask: connectormock.NewMutation[wrike.DeleteTaskInput, wrike.TaskStatus](t, wrike.DeleteTaskDefinition),
+		getTask:    connectormock.NewQuery[wrike.GetTaskInput, wrike.TaskStatus](t, wrike.GetTaskDefinition),
 	}
+	mock.listTasks.Default(ListTasksDefault())
+	mock.createTask.Default(CreateTaskDefault())
+	mock.updateTask.Default(UpdateTaskDefault())
+	mock.deleteTask.Default(DeleteTaskDefault())
 	mock.getTask.Default(GetTaskDefault())
 	connection, err := wrike.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "wrike", Name: connectionName})
 	if err != nil {
@@ -40,6 +52,26 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() wrike.Connection { return mock.connection }
 
+// ListTasks returns the listTasks script.
+func (mock *Mock) ListTasks() *connectormock.Query[wrike.ListTasksInput, wrike.TaskPage] {
+	return mock.listTasks
+}
+
+// CreateTask returns the createTask script.
+func (mock *Mock) CreateTask() *connectormock.Mutation[wrike.CreateTaskInput, wrike.TaskStatus] {
+	return mock.createTask
+}
+
+// UpdateTask returns the updateTask script.
+func (mock *Mock) UpdateTask() *connectormock.Mutation[wrike.UpdateTaskInput, wrike.TaskStatus] {
+	return mock.updateTask
+}
+
+// DeleteTask returns the deleteTask script.
+func (mock *Mock) DeleteTask() *connectormock.Mutation[wrike.DeleteTaskInput, wrike.TaskStatus] {
+	return mock.deleteTask
+}
+
 // GetTask returns the getTask script.
 func (mock *Mock) GetTask() *connectormock.Query[wrike.GetTaskInput, wrike.TaskStatus] {
 	return mock.getTask
@@ -47,9 +79,172 @@ func (mock *Mock) GetTask() *connectormock.Query[wrike.GetTaskInput, wrike.TaskS
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListTasks() sdkgo.Query[wrike.ListTasksInput, wrike.TaskPage] {
+	return operations.mock.listTasks
+}
+func (operations mockOperations) CreateTask() sdkgo.Mutation[wrike.CreateTaskInput, wrike.TaskStatus] {
+	return operations.mock.createTask
+}
+func (operations mockOperations) UpdateTask() sdkgo.Mutation[wrike.UpdateTaskInput, wrike.TaskStatus] {
+	return operations.mock.updateTask
+}
+func (operations mockOperations) DeleteTask() sdkgo.Mutation[wrike.DeleteTaskInput, wrike.TaskStatus] {
+	return operations.mock.deleteTask
+}
 func (operations mockOperations) GetTask() sdkgo.Query[wrike.GetTaskInput, wrike.TaskStatus] {
 	return operations.mock.getTask
 }
+
+// ListTasksFound selects the found branch: Wrike returned a page of tasks.
+func ListTasksFound(value wrike.TaskPage, failure *sdkgo.Failure) connectormock.Case[wrike.TaskPage] {
+	return connectormock.Branch(wrike.ListTasksBranchFound, value, failure)
+}
+
+// ListTasksProviderRejected selects the providerRejected branch: Wrike conclusively rejected the search.
+func ListTasksProviderRejected(value wrike.TaskPage, failure *sdkgo.Failure) connectormock.Case[wrike.TaskPage] {
+	return connectormock.Branch(wrike.ListTasksBranchProviderRejected, value, failure)
+}
+
+// ListTasksInvalidResponse selects the invalidResponse branch: Wrike returned malformed or oversized JSON.
+func ListTasksInvalidResponse(value wrike.TaskPage, failure *sdkgo.Failure) connectormock.Case[wrike.TaskPage] {
+	return connectormock.Branch(wrike.ListTasksBranchInvalidResponse, value, failure)
+}
+
+// ListTasksDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListTasksDefect(value wrike.TaskPage, failure *sdkgo.Failure) connectormock.Case[wrike.TaskPage] {
+	return connectormock.Branch(wrike.ListTasksBranchDefect, value, failure)
+}
+
+// ListTasksRetry asks Dex to retry the listTasks Step, after the delay when it is positive.
+func ListTasksRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wrike.TaskPage] {
+	return connectormock.Retry[wrike.TaskPage](failure, after)
+}
+
+// ListTasksFoundDefault is the manifest mock foundDefault: One sample task is returned.
+func ListTasksFoundDefault() connectormock.Case[wrike.TaskPage] {
+	value := connectormock.MustDecodeOutput[wrike.TaskPage](`{"data":[{"id":"IEAAAABC","title":"Example task","status":"Active"}],"nextPageToken":""}`)
+	return connectormock.Branch(wrike.ListTasksBranchFound, value, nil)
+}
+
+// ListTasksDefault is the manifest default, foundDefault, which New installs.
+func ListTasksDefault() connectormock.Case[wrike.TaskPage] { return ListTasksFoundDefault() }
+
+// CreateTaskCreated selects the created branch: Wrike created the task.
+func CreateTaskCreated(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Branch(wrike.CreateTaskBranchCreated, value, failure)
+}
+
+// CreateTaskProviderRejected selects the providerRejected branch: Wrike conclusively rejected the creation.
+func CreateTaskProviderRejected(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Branch(wrike.CreateTaskBranchProviderRejected, value, failure)
+}
+
+// CreateTaskInvalidResponse selects the invalidResponse branch: Wrike returned malformed or oversized JSON.
+func CreateTaskInvalidResponse(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Branch(wrike.CreateTaskBranchInvalidResponse, value, failure)
+}
+
+// CreateTaskDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateTaskDefect(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Branch(wrike.CreateTaskBranchDefect, value, failure)
+}
+
+// CreateTaskUncertain returns an uncertain createTask outcome.
+func CreateTaskUncertain(value wrike.TaskStatus, failure sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateTaskRetry asks Dex to retry the createTask Step, after the delay when it is positive.
+func CreateTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Retry[wrike.TaskStatus](failure, after)
+}
+
+// CreateTaskCreatedDefault is the manifest mock createdDefault: One sample task is created.
+func CreateTaskCreatedDefault() connectormock.Case[wrike.TaskStatus] {
+	value := connectormock.MustDecodeOutput[wrike.TaskStatus](`{"id":"IEAAAABC","title":"Example task","status":"Active"}`)
+	return connectormock.Branch(wrike.CreateTaskBranchCreated, value, nil)
+}
+
+// CreateTaskDefault is the manifest default, createdDefault, which New installs.
+func CreateTaskDefault() connectormock.Case[wrike.TaskStatus] { return CreateTaskCreatedDefault() }
+
+// UpdateTaskUpdated selects the updated branch: Wrike updated the task.
+func UpdateTaskUpdated(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Branch(wrike.UpdateTaskBranchUpdated, value, failure)
+}
+
+// UpdateTaskNotFound selects the notFound branch: Wrike did not expose the task.
+func UpdateTaskNotFound(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Branch(wrike.UpdateTaskBranchNotFound, value, failure)
+}
+
+// UpdateTaskProviderRejected selects the providerRejected branch: Wrike conclusively rejected the update.
+func UpdateTaskProviderRejected(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Branch(wrike.UpdateTaskBranchProviderRejected, value, failure)
+}
+
+// UpdateTaskInvalidResponse selects the invalidResponse branch: Wrike returned malformed or oversized JSON.
+func UpdateTaskInvalidResponse(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Branch(wrike.UpdateTaskBranchInvalidResponse, value, failure)
+}
+
+// UpdateTaskDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateTaskDefect(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Branch(wrike.UpdateTaskBranchDefect, value, failure)
+}
+
+// UpdateTaskRetry asks Dex to retry the updateTask Step, after the delay when it is positive.
+func UpdateTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Retry[wrike.TaskStatus](failure, after)
+}
+
+// UpdateTaskUpdatedDefault is the manifest mock updatedDefault: One sample task is updated.
+func UpdateTaskUpdatedDefault() connectormock.Case[wrike.TaskStatus] {
+	value := connectormock.MustDecodeOutput[wrike.TaskStatus](`{"id":"IEAAAABC","title":"Updated task","status":"Active"}`)
+	return connectormock.Branch(wrike.UpdateTaskBranchUpdated, value, nil)
+}
+
+// UpdateTaskDefault is the manifest default, updatedDefault, which New installs.
+func UpdateTaskDefault() connectormock.Case[wrike.TaskStatus] { return UpdateTaskUpdatedDefault() }
+
+// DeleteTaskDeleted selects the deleted branch: Wrike deleted the task.
+func DeleteTaskDeleted(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Branch(wrike.DeleteTaskBranchDeleted, value, failure)
+}
+
+// DeleteTaskNotFound selects the notFound branch: Wrike did not expose the task.
+func DeleteTaskNotFound(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Branch(wrike.DeleteTaskBranchNotFound, value, failure)
+}
+
+// DeleteTaskProviderRejected selects the providerRejected branch: Wrike conclusively rejected the deletion.
+func DeleteTaskProviderRejected(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Branch(wrike.DeleteTaskBranchProviderRejected, value, failure)
+}
+
+// DeleteTaskInvalidResponse selects the invalidResponse branch: Wrike returned malformed or oversized JSON.
+func DeleteTaskInvalidResponse(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Branch(wrike.DeleteTaskBranchInvalidResponse, value, failure)
+}
+
+// DeleteTaskDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteTaskDefect(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Branch(wrike.DeleteTaskBranchDefect, value, failure)
+}
+
+// DeleteTaskRetry asks Dex to retry the deleteTask Step, after the delay when it is positive.
+func DeleteTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wrike.TaskStatus] {
+	return connectormock.Retry[wrike.TaskStatus](failure, after)
+}
+
+// DeleteTaskDeletedDefault is the manifest mock deletedDefault: One sample task is deleted.
+func DeleteTaskDeletedDefault() connectormock.Case[wrike.TaskStatus] {
+	value := connectormock.MustDecodeOutput[wrike.TaskStatus](`{"id":"IEAAAABC","title":"Example task","status":"Active"}`)
+	return connectormock.Branch(wrike.DeleteTaskBranchDeleted, value, nil)
+}
+
+// DeleteTaskDefault is the manifest default, deletedDefault, which New installs.
+func DeleteTaskDefault() connectormock.Case[wrike.TaskStatus] { return DeleteTaskDeletedDefault() }
 
 // GetTaskFound selects the found branch: Wrike returned the task.
 func GetTaskFound(value wrike.TaskStatus, failure *sdkgo.Failure) connectormock.Case[wrike.TaskStatus] {

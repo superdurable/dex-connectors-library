@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: wrike
   displayName: Wrike
-  description: Read selected Wrike task fields through API v4.
+  description: Read, create, update, and delete Wrike tasks through API v4.
   company: Wrike
   categories: [project-management]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: wrike
   languages:
@@ -55,6 +55,73 @@ spec:
         - Sign in to Wrike, open profile > Apps & Integrations > API, create or select an app, then create a Permanent Access Token. Copy the opaque secret once into Dex Web api_token; blank is invalid. Revoke it on the same page when retired. It inherits the user's task permissions.
         - Leave baseUrl blank for the displayed US API host; for an EU account enter https://app-eu.wrike.com/api/v4 or the host given by Wrike. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret task ID in a Wrike task URL or API response and pass it as taskId; blank is invalid.
   operations:
+    - name: listTasks
+      goName: ListTasks
+      inputType: ListTasksInput
+      outputType: TaskPage
+      kind: query
+      description: List or search tasks in a Wrike folder.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Wrike returned a page of tasks.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wrike conclusively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wrike returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One sample task is returned., output: {data: [{id: IEAAAABC, title: Example task, status: Active}], nextPageToken: ''}}
+    - name: createTask
+      goName: CreateTask
+      inputType: CreateTaskInput
+      outputType: TaskStatus
+      kind: mutation
+      description: Create a task in a Wrike folder.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Wrike created the task.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wrike conclusively rejected the creation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wrike returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirmation., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: One sample task is created., output: {id: IEAAAABC, title: Example task, status: Active}}
+    - name: updateTask
+      goName: UpdateTask
+      inputType: UpdateTaskInput
+      outputType: TaskStatus
+      kind: mutation
+      description: Replace a task title or status.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Wrike updated the task.}
+        - {id: notFound, goName: NotFound, description: Wrike did not expose the task., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wrike conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wrike returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: One sample task is updated., output: {id: IEAAAABC, title: Updated task, status: Active}}
+    - name: deleteTask
+      goName: DeleteTask
+      inputType: DeleteTaskInput
+      outputType: TaskStatus
+      kind: mutation
+      description: Move a task to the Wrike Recycle Bin.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Wrike deleted the task.}
+        - {id: notFound, goName: NotFound, description: Wrike did not expose the task., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wrike conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wrike returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: One sample task is deleted., output: {id: IEAAAABC, title: Example task, status: Active}}
     - name: getTask
       goName: GetTask
       inputType: GetTaskInput

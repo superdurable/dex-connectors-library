@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { ZendeskClient } from '../src/client.js';
 import { CreateTicketInputSchema, GetTicketInputSchema, SearchTicketsInputSchema, UpdateTicketInputSchema, type CreateTicketInput, type UpdateTicketInput } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/zendesk/support/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/zendesk/support/scenarios.json', import.meta.url))
+  .filter(scenario => ['searchTickets', 'getTicket', 'createTicket', 'updateTicket'].includes(scenario.operation));
 const connection = { provider: 'zendesk', name: 'zendesk-support' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeZendesk, '/api/v2'));

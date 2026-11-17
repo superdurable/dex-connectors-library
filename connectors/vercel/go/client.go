@@ -6,6 +6,7 @@ package vercel
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 // Option supplies an HTTP transport without serializing it into a Dex Flow.
@@ -218,6 +220,10 @@ func executeQuery[T any](client *Client, call sdkgo.Call, operation string, spec
 }
 
 func (client *Client) send(call sdkgo.Call, operation string, spec requestSpec) (*http.Response, *sdkgo.Failure, error) {
+	return client.sendWithContext(call, call.Context, operation, spec, false)
+}
+
+func (client *Client) sendWithContext(call sdkgo.Call, requestContext context.Context, operation string, spec requestSpec, fenced bool) (*http.Response, *sdkgo.Failure, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
 		return nil, failure(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), nil
@@ -229,9 +235,14 @@ func (client *Client) send(call sdkgo.Call, operation string, spec requestSpec) 
 	if len(spec.query) != 0 {
 		endpoint += "?" + spec.query.Encode()
 	}
-	request, err := http.NewRequestWithContext(call.Context, spec.method, endpoint, bytes.NewReader(spec.body))
+	request, err := http.NewRequestWithContext(requestContext, spec.method, endpoint, bytes.NewReader(spec.body))
 	if err != nil {
 		return nil, failure(sdkgo.FailureLocalDefect, operation, "request could not be built"), nil
+	}
+	if fenced {
+		if err := singledispatch.PrepareHTTPWrite(request); err != nil {
+			return nil, failure(sdkgo.FailureLocalDefect, operation, "request could not be prepared"), nil
+		}
 	}
 	request.Header.Set("Authorization", "Bearer "+credentials.AccessToken.Reveal())
 	request.Header.Set("Accept", "application/json")

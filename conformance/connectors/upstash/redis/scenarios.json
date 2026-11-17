@@ -327,6 +327,2307 @@
       },
       "name": "getKey-transportFailure",
       "operation": "getKey"
+    },
+    {
+      "callId": "26d0a9c1-ff73-519b-b835-8d797a5f26a5",
+      "exchanges": [
+        {
+          "body": "{\"result\":\"OK\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "SET",
+            "sample:key",
+            "value",
+            "EXAT",
+            1800000000
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "set",
+        "failureKind": "",
+        "output": {
+          "key": "sample:key"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26d0a9c1-ff73-519b-b835-8d797a5f26a5",
+      "input": {
+        "expireAtUnixSeconds": 1800000000,
+        "key": "sample:key",
+        "value": "value"
+      },
+      "name": "setKey-set",
+      "operation": "setKey"
+    },
+    {
+      "callId": "44c3f39b-757d-5e56-bef0-ea442e1a9930",
+      "exchanges": [
+        {
+          "body": "{\"result\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "DEL",
+            "sample:key"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "existed": true,
+          "key": "sample:key"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44c3f39b-757d-5e56-bef0-ea442e1a9930",
+      "input": {
+        "key": "sample:key"
+      },
+      "name": "deleteKey-deleted",
+      "operation": "deleteKey"
+    },
+    {
+      "callId": "79bb5c0d-f124-5cc6-8b7e-6a0ac31fc881",
+      "exchanges": [
+        {
+          "body": "{\"result\":[\"sample:key\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "KEYS",
+            "sample:*"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "keys": [
+            "sample:key"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pattern": "sample:*"
+      },
+      "name": "listKeys-listed",
+      "operation": "listKeys"
+    },
+    {
+      "callId": "a33f4734-9160-50f0-89b2-8aa096313d21",
+      "exchanges": [
+        {
+          "body": "{\"result\":3}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LLEN",
+            "sample:list"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "key": "sample:list",
+          "length": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": "sample:list"
+      },
+      "name": "getListLength-found",
+      "operation": "getListLength"
+    },
+    {
+      "callId": "26d0a9c1-ff73-519b-b835-8d797a5f26a5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "SET",
+            "sample:key",
+            "value"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "key": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26d0a9c1-ff73-519b-b835-8d797a5f26a5",
+      "input": {
+        "key": "sample:key",
+        "value": "value"
+      },
+      "name": "setKey-providerRejected",
+      "operation": "setKey"
+    },
+    {
+      "callId": "26d0a9c1-ff73-519b-b835-8d797a5f26a5",
+      "exchanges": [
+        {
+          "body": "{\"result\":17}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "SET",
+            "sample:key",
+            "value"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "key": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26d0a9c1-ff73-519b-b835-8d797a5f26a5",
+      "input": {
+        "key": "sample:key",
+        "value": "value"
+      },
+      "name": "setKey-invalidResponse",
+      "operation": "setKey"
+    },
+    {
+      "callId": "26d0a9c1-ff73-519b-b835-8d797a5f26a5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "key": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26d0a9c1-ff73-519b-b835-8d797a5f26a5",
+      "input": {
+        "key": "",
+        "value": "value"
+      },
+      "name": "setKey-defect",
+      "operation": "setKey"
+    },
+    {
+      "callId": "26d0a9c1-ff73-519b-b835-8d797a5f26a5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "SET",
+            "sample:key",
+            "value"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26d0a9c1-ff73-519b-b835-8d797a5f26a5",
+      "input": {
+        "key": "sample:key",
+        "value": "value"
+      },
+      "name": "setKey-rateLimit",
+      "operation": "setKey"
+    },
+    {
+      "callId": "26d0a9c1-ff73-519b-b835-8d797a5f26a5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "SET",
+            "sample:key",
+            "value"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26d0a9c1-ff73-519b-b835-8d797a5f26a5",
+      "input": {
+        "key": "sample:key",
+        "value": "value"
+      },
+      "name": "setKey-serverUnavailable",
+      "operation": "setKey"
+    },
+    {
+      "callId": "26d0a9c1-ff73-519b-b835-8d797a5f26a5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "SET",
+            "sample:key",
+            "value"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26d0a9c1-ff73-519b-b835-8d797a5f26a5",
+      "input": {
+        "key": "sample:key",
+        "value": "value"
+      },
+      "name": "setKey-transportFailure",
+      "operation": "setKey"
+    },
+    {
+      "callId": "44c3f39b-757d-5e56-bef0-ea442e1a9930",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "DEL",
+            "sample:key"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "existed": false,
+          "key": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44c3f39b-757d-5e56-bef0-ea442e1a9930",
+      "input": {
+        "key": "sample:key"
+      },
+      "name": "deleteKey-providerRejected",
+      "operation": "deleteKey"
+    },
+    {
+      "callId": "44c3f39b-757d-5e56-bef0-ea442e1a9930",
+      "exchanges": [
+        {
+          "body": "{\"result\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "DEL",
+            "sample:key"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "existed": false,
+          "key": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44c3f39b-757d-5e56-bef0-ea442e1a9930",
+      "input": {
+        "key": "sample:key"
+      },
+      "name": "deleteKey-invalidResponse",
+      "operation": "deleteKey"
+    },
+    {
+      "callId": "44c3f39b-757d-5e56-bef0-ea442e1a9930",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "existed": false,
+          "key": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44c3f39b-757d-5e56-bef0-ea442e1a9930",
+      "input": {
+        "key": ""
+      },
+      "name": "deleteKey-defect",
+      "operation": "deleteKey"
+    },
+    {
+      "callId": "44c3f39b-757d-5e56-bef0-ea442e1a9930",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "DEL",
+            "sample:key"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44c3f39b-757d-5e56-bef0-ea442e1a9930",
+      "input": {
+        "key": "sample:key"
+      },
+      "name": "deleteKey-rateLimit",
+      "operation": "deleteKey"
+    },
+    {
+      "callId": "44c3f39b-757d-5e56-bef0-ea442e1a9930",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "DEL",
+            "sample:key"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44c3f39b-757d-5e56-bef0-ea442e1a9930",
+      "input": {
+        "key": "sample:key"
+      },
+      "name": "deleteKey-serverUnavailable",
+      "operation": "deleteKey"
+    },
+    {
+      "callId": "44c3f39b-757d-5e56-bef0-ea442e1a9930",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "DEL",
+            "sample:key"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44c3f39b-757d-5e56-bef0-ea442e1a9930",
+      "input": {
+        "key": "sample:key"
+      },
+      "name": "deleteKey-transportFailure",
+      "operation": "deleteKey"
+    },
+    {
+      "callId": "79bb5c0d-f124-5cc6-8b7e-6a0ac31fc881",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "KEYS",
+            "sample:*"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "keys": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pattern": "sample:*"
+      },
+      "name": "listKeys-providerRejected",
+      "operation": "listKeys"
+    },
+    {
+      "callId": "79bb5c0d-f124-5cc6-8b7e-6a0ac31fc881",
+      "exchanges": [
+        {
+          "body": "{\"result\":17}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "KEYS",
+            "sample:*"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "keys": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pattern": "sample:*"
+      },
+      "name": "listKeys-invalidResponse",
+      "operation": "listKeys"
+    },
+    {
+      "callId": "79bb5c0d-f124-5cc6-8b7e-6a0ac31fc881",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "keys": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pattern": "bad\u0000pattern"
+      },
+      "name": "listKeys-defect",
+      "operation": "listKeys"
+    },
+    {
+      "callId": "79bb5c0d-f124-5cc6-8b7e-6a0ac31fc881",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "KEYS",
+            "sample:*"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pattern": "sample:*"
+      },
+      "name": "listKeys-rateLimit",
+      "operation": "listKeys"
+    },
+    {
+      "callId": "79bb5c0d-f124-5cc6-8b7e-6a0ac31fc881",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "KEYS",
+            "sample:*"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pattern": "sample:*"
+      },
+      "name": "listKeys-serverUnavailable",
+      "operation": "listKeys"
+    },
+    {
+      "callId": "79bb5c0d-f124-5cc6-8b7e-6a0ac31fc881",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "KEYS",
+            "sample:*"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pattern": "sample:*"
+      },
+      "name": "listKeys-transportFailure",
+      "operation": "listKeys"
+    },
+    {
+      "callId": "a33f4734-9160-50f0-89b2-8aa096313d21",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LLEN",
+            "sample:list"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "key": "",
+          "length": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": "sample:list"
+      },
+      "name": "getListLength-providerRejected",
+      "operation": "getListLength"
+    },
+    {
+      "callId": "a33f4734-9160-50f0-89b2-8aa096313d21",
+      "exchanges": [
+        {
+          "body": "{\"result\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LLEN",
+            "sample:list"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "key": "",
+          "length": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": "sample:list"
+      },
+      "name": "getListLength-invalidResponse",
+      "operation": "getListLength"
+    },
+    {
+      "callId": "a33f4734-9160-50f0-89b2-8aa096313d21",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "key": "",
+          "length": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": ""
+      },
+      "name": "getListLength-defect",
+      "operation": "getListLength"
+    },
+    {
+      "callId": "a33f4734-9160-50f0-89b2-8aa096313d21",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LLEN",
+            "sample:list"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": "sample:list"
+      },
+      "name": "getListLength-rateLimit",
+      "operation": "getListLength"
+    },
+    {
+      "callId": "a33f4734-9160-50f0-89b2-8aa096313d21",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LLEN",
+            "sample:list"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": "sample:list"
+      },
+      "name": "getListLength-serverUnavailable",
+      "operation": "getListLength"
+    },
+    {
+      "callId": "a33f4734-9160-50f0-89b2-8aa096313d21",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LLEN",
+            "sample:list"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": "sample:list"
+      },
+      "name": "getListLength-transportFailure",
+      "operation": "getListLength"
+    },
+    {
+      "callId": "5956de6d-905f-50a5-9bba-a51fc7deb538",
+      "exchanges": [
+        {
+          "body": "{\"result\":\"# Server\\nredis_version:7.2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "INFO"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "report": "# Server\nredis_version:7.2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getInfo-found",
+      "operation": "getInfo"
+    },
+    {
+      "callId": "5956de6d-905f-50a5-9bba-a51fc7deb538",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "INFO"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "report": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getInfo-providerRejected",
+      "operation": "getInfo"
+    },
+    {
+      "callId": "5956de6d-905f-50a5-9bba-a51fc7deb538",
+      "exchanges": [
+        {
+          "body": "{\"result\":17}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "INFO"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "report": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getInfo-invalidResponse",
+      "operation": "getInfo"
+    },
+    {
+      "callId": "5956de6d-905f-50a5-9bba-a51fc7deb538",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "report": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getInfo-defect",
+      "operation": "getInfo"
+    },
+    {
+      "callId": "5956de6d-905f-50a5-9bba-a51fc7deb538",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "INFO"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getInfo-rateLimit",
+      "operation": "getInfo"
+    },
+    {
+      "callId": "5956de6d-905f-50a5-9bba-a51fc7deb538",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "INFO"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getInfo-serverUnavailable",
+      "operation": "getInfo"
+    },
+    {
+      "callId": "5956de6d-905f-50a5-9bba-a51fc7deb538",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "INFO"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getInfo-transportFailure",
+      "operation": "getInfo"
+    },
+    {
+      "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "exchanges": [
+        {
+          "body": "{\"result\":3}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LPUSH",
+            "sample:list",
+            "item"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "pushed",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "key": "sample:list",
+          "length": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "input": {
+        "direction": "left",
+        "key": "sample:list",
+        "value": "item"
+      },
+      "name": "pushListItem-pushed",
+      "operation": "pushListItem"
+    },
+    {
+      "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LPUSH",
+            "sample:list",
+            "item"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "key": "",
+          "length": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "input": {
+        "direction": "left",
+        "key": "sample:list",
+        "value": "item"
+      },
+      "name": "pushListItem-providerRejected",
+      "operation": "pushListItem"
+    },
+    {
+      "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "key": "",
+          "length": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "input": {
+        "direction": "left",
+        "key": "",
+        "value": "item"
+      },
+      "name": "pushListItem-defect",
+      "operation": "pushListItem"
+    },
+    {
+      "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LPUSH",
+            "sample:list",
+            "item"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "input": {
+        "direction": "left",
+        "key": "sample:list",
+        "value": "item"
+      },
+      "name": "pushListItem-rateLimit",
+      "operation": "pushListItem"
+    },
+    {
+      "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LPUSH",
+            "sample:list",
+            "item"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "input": {
+        "direction": "left",
+        "key": "sample:list",
+        "value": "item"
+      },
+      "name": "pushListItem-serviceUnavailable",
+      "operation": "pushListItem"
+    },
+    {
+      "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LPUSH",
+            "sample:list",
+            "item"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "input": {
+        "direction": "left",
+        "key": "sample:list",
+        "value": "item"
+      },
+      "name": "pushListItem-serverUnavailable",
+      "operation": "pushListItem"
+    },
+    {
+      "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LPUSH",
+            "sample:list",
+            "item"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "input": {
+        "direction": "left",
+        "key": "sample:list",
+        "value": "item"
+      },
+      "name": "pushListItem-transportFailure",
+      "operation": "pushListItem"
+    },
+    {
+      "attempts": 3,
+      "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LPUSH",
+            "sample:list",
+            "item"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LPUSH",
+            "sample:list",
+            "item"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "LPUSH",
+            "sample:list",
+            "item"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "key": "",
+          "length": 0
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+      "input": {
+        "direction": "left",
+        "key": "sample:list",
+        "value": "item"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "56d38fe9-fc23-531b-be3c-d91c811e0625",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "pushListItem-uncertain",
+      "operation": "pushListItem"
+    },
+    {
+      "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "exchanges": [
+        {
+          "body": "{\"result\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "PUBLISH",
+            "sample:channel",
+            "message"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "published",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "channel": "sample:channel",
+          "subscribers": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "input": {
+        "channel": "sample:channel",
+        "message": "message"
+      },
+      "name": "publishMessage-published",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "PUBLISH",
+            "sample:channel",
+            "message"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "channel": "",
+          "subscribers": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "input": {
+        "channel": "sample:channel",
+        "message": "message"
+      },
+      "name": "publishMessage-providerRejected",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "channel": "",
+          "subscribers": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "input": {
+        "channel": "",
+        "message": "message"
+      },
+      "name": "publishMessage-defect",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "PUBLISH",
+            "sample:channel",
+            "message"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "input": {
+        "channel": "sample:channel",
+        "message": "message"
+      },
+      "name": "publishMessage-rateLimit",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "PUBLISH",
+            "sample:channel",
+            "message"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "input": {
+        "channel": "sample:channel",
+        "message": "message"
+      },
+      "name": "publishMessage-serviceUnavailable",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "PUBLISH",
+            "sample:channel",
+            "message"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "input": {
+        "channel": "sample:channel",
+        "message": "message"
+      },
+      "name": "publishMessage-serverUnavailable",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "PUBLISH",
+            "sample:channel",
+            "message"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "input": {
+        "channel": "sample:channel",
+        "message": "message"
+      },
+      "name": "publishMessage-transportFailure",
+      "operation": "publishMessage"
+    },
+    {
+      "attempts": 3,
+      "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "PUBLISH",
+            "sample:channel",
+            "message"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "PUBLISH",
+            "sample:channel",
+            "message"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "PUBLISH",
+            "sample:channel",
+            "message"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "channel": "",
+          "subscribers": 0
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+      "input": {
+        "channel": "sample:channel",
+        "message": "message"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "f24e77c3-d620-550c-9f0d-d06a4e47bb58",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "publishMessage-uncertain",
+      "operation": "publishMessage"
     }
   ],
   "schemaVersion": 1

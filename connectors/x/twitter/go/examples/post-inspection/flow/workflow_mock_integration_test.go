@@ -24,7 +24,8 @@ import (
 func TestPostInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := xmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	searchFlow := NewSearchFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, searchFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestPostInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "1845123456789012345", output.ID)
 	require.Len(t, mock.GetPost().Calls(), 1)
+	searchFlowID := "x-postsearch-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, searchFlow, searchFlowID, x.SearchRecentPostsInput{Query: "from:ada", MaxResults: 10}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	searchResult, err := client.WaitForFlow(ctx, searchFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, searchResult.Status, searchResult.ErrorMessage)
+	var page x.PostPage
+	require.NoError(t, searchResult.DecodeSingleOutput(&page))
+	require.Equal(t, "1845123456789012345", page.Data[0].ID)
+	require.Len(t, mock.SearchRecentPosts().Calls(), 1)
 }

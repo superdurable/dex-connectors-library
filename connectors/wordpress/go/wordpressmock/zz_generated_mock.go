@@ -21,6 +21,16 @@ type Mock struct {
 	createPost *connectormock.Mutation[wordpress.CreatePostInput, wordpress.CreatedPost]
 	getPost    *connectormock.Query[wordpress.GetPostInput, wordpress.Post]
 	listPosts  *connectormock.Query[wordpress.ListPostsInput, wordpress.PostPage]
+	updatePost *connectormock.Mutation[wordpress.UpdatePostInput, wordpress.CreatedPost]
+	deletePost *connectormock.Mutation[wordpress.DeletePostInput, wordpress.CreatedPost]
+	createPage *connectormock.Mutation[wordpress.CreatePageInput, wordpress.Page]
+	getPage    *connectormock.Query[wordpress.GetPageInput, wordpress.Page]
+	listPages  *connectormock.Query[wordpress.ListPagesInput, wordpress.PagePage]
+	updatePage *connectormock.Mutation[wordpress.UpdatePageInput, wordpress.Page]
+	deletePage *connectormock.Mutation[wordpress.DeletePageInput, wordpress.Page]
+	getUser    *connectormock.Query[wordpress.GetUserInput, wordpress.User]
+	listUsers  *connectormock.Query[wordpress.ListUsersInput, wordpress.UserPage]
+	updateUser *connectormock.Mutation[wordpress.UpdateUserInput, wordpress.User]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -31,10 +41,30 @@ func New(t testing.TB, connectionName string) *Mock {
 		createPost: connectormock.NewMutation[wordpress.CreatePostInput, wordpress.CreatedPost](t, wordpress.CreatePostDefinition),
 		getPost:    connectormock.NewQuery[wordpress.GetPostInput, wordpress.Post](t, wordpress.GetPostDefinition),
 		listPosts:  connectormock.NewQuery[wordpress.ListPostsInput, wordpress.PostPage](t, wordpress.ListPostsDefinition),
+		updatePost: connectormock.NewMutation[wordpress.UpdatePostInput, wordpress.CreatedPost](t, wordpress.UpdatePostDefinition),
+		deletePost: connectormock.NewMutation[wordpress.DeletePostInput, wordpress.CreatedPost](t, wordpress.DeletePostDefinition),
+		createPage: connectormock.NewMutation[wordpress.CreatePageInput, wordpress.Page](t, wordpress.CreatePageDefinition),
+		getPage:    connectormock.NewQuery[wordpress.GetPageInput, wordpress.Page](t, wordpress.GetPageDefinition),
+		listPages:  connectormock.NewQuery[wordpress.ListPagesInput, wordpress.PagePage](t, wordpress.ListPagesDefinition),
+		updatePage: connectormock.NewMutation[wordpress.UpdatePageInput, wordpress.Page](t, wordpress.UpdatePageDefinition),
+		deletePage: connectormock.NewMutation[wordpress.DeletePageInput, wordpress.Page](t, wordpress.DeletePageDefinition),
+		getUser:    connectormock.NewQuery[wordpress.GetUserInput, wordpress.User](t, wordpress.GetUserDefinition),
+		listUsers:  connectormock.NewQuery[wordpress.ListUsersInput, wordpress.UserPage](t, wordpress.ListUsersDefinition),
+		updateUser: connectormock.NewMutation[wordpress.UpdateUserInput, wordpress.User](t, wordpress.UpdateUserDefinition),
 	}
 	mock.createPost.Default(CreatePostDefault())
 	mock.getPost.Default(GetPostDefault())
 	mock.listPosts.Default(ListPostsDefault())
+	mock.updatePost.Default(UpdatePostDefault())
+	mock.deletePost.Default(DeletePostDefault())
+	mock.createPage.Default(CreatePageDefault())
+	mock.getPage.Default(GetPageDefault())
+	mock.listPages.Default(ListPagesDefault())
+	mock.updatePage.Default(UpdatePageDefault())
+	mock.deletePage.Default(DeletePageDefault())
+	mock.getUser.Default(GetUserDefault())
+	mock.listUsers.Default(ListUsersDefault())
+	mock.updateUser.Default(UpdateUserDefault())
 	connection, err := wordpress.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "wordpress", Name: connectionName})
 	if err != nil {
 		t.Fatalf("wordpress mock connection: %v", err)
@@ -61,6 +91,56 @@ func (mock *Mock) ListPosts() *connectormock.Query[wordpress.ListPostsInput, wor
 	return mock.listPosts
 }
 
+// UpdatePost returns the updatePost script.
+func (mock *Mock) UpdatePost() *connectormock.Mutation[wordpress.UpdatePostInput, wordpress.CreatedPost] {
+	return mock.updatePost
+}
+
+// DeletePost returns the deletePost script.
+func (mock *Mock) DeletePost() *connectormock.Mutation[wordpress.DeletePostInput, wordpress.CreatedPost] {
+	return mock.deletePost
+}
+
+// CreatePage returns the createPage script.
+func (mock *Mock) CreatePage() *connectormock.Mutation[wordpress.CreatePageInput, wordpress.Page] {
+	return mock.createPage
+}
+
+// GetPage returns the getPage script.
+func (mock *Mock) GetPage() *connectormock.Query[wordpress.GetPageInput, wordpress.Page] {
+	return mock.getPage
+}
+
+// ListPages returns the listPages script.
+func (mock *Mock) ListPages() *connectormock.Query[wordpress.ListPagesInput, wordpress.PagePage] {
+	return mock.listPages
+}
+
+// UpdatePage returns the updatePage script.
+func (mock *Mock) UpdatePage() *connectormock.Mutation[wordpress.UpdatePageInput, wordpress.Page] {
+	return mock.updatePage
+}
+
+// DeletePage returns the deletePage script.
+func (mock *Mock) DeletePage() *connectormock.Mutation[wordpress.DeletePageInput, wordpress.Page] {
+	return mock.deletePage
+}
+
+// GetUser returns the getUser script.
+func (mock *Mock) GetUser() *connectormock.Query[wordpress.GetUserInput, wordpress.User] {
+	return mock.getUser
+}
+
+// ListUsers returns the listUsers script.
+func (mock *Mock) ListUsers() *connectormock.Query[wordpress.ListUsersInput, wordpress.UserPage] {
+	return mock.listUsers
+}
+
+// UpdateUser returns the updateUser script.
+func (mock *Mock) UpdateUser() *connectormock.Mutation[wordpress.UpdateUserInput, wordpress.User] {
+	return mock.updateUser
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreatePost() sdkgo.Mutation[wordpress.CreatePostInput, wordpress.CreatedPost] {
@@ -71,6 +151,36 @@ func (operations mockOperations) GetPost() sdkgo.Query[wordpress.GetPostInput, w
 }
 func (operations mockOperations) ListPosts() sdkgo.Query[wordpress.ListPostsInput, wordpress.PostPage] {
 	return operations.mock.listPosts
+}
+func (operations mockOperations) UpdatePost() sdkgo.Mutation[wordpress.UpdatePostInput, wordpress.CreatedPost] {
+	return operations.mock.updatePost
+}
+func (operations mockOperations) DeletePost() sdkgo.Mutation[wordpress.DeletePostInput, wordpress.CreatedPost] {
+	return operations.mock.deletePost
+}
+func (operations mockOperations) CreatePage() sdkgo.Mutation[wordpress.CreatePageInput, wordpress.Page] {
+	return operations.mock.createPage
+}
+func (operations mockOperations) GetPage() sdkgo.Query[wordpress.GetPageInput, wordpress.Page] {
+	return operations.mock.getPage
+}
+func (operations mockOperations) ListPages() sdkgo.Query[wordpress.ListPagesInput, wordpress.PagePage] {
+	return operations.mock.listPages
+}
+func (operations mockOperations) UpdatePage() sdkgo.Mutation[wordpress.UpdatePageInput, wordpress.Page] {
+	return operations.mock.updatePage
+}
+func (operations mockOperations) DeletePage() sdkgo.Mutation[wordpress.DeletePageInput, wordpress.Page] {
+	return operations.mock.deletePage
+}
+func (operations mockOperations) GetUser() sdkgo.Query[wordpress.GetUserInput, wordpress.User] {
+	return operations.mock.getUser
+}
+func (operations mockOperations) ListUsers() sdkgo.Query[wordpress.ListUsersInput, wordpress.UserPage] {
+	return operations.mock.listUsers
+}
+func (operations mockOperations) UpdateUser() sdkgo.Mutation[wordpress.UpdateUserInput, wordpress.User] {
+	return operations.mock.updateUser
 }
 
 // CreatePostCreated selects the created branch: WordPress created the post and returned its numeric ID.
@@ -179,3 +289,398 @@ func ListPostsPublishedPosts() connectormock.Case[wordpress.PostPage] {
 
 // ListPostsDefault is the manifest default, publishedPosts, which New installs.
 func ListPostsDefault() connectormock.Case[wordpress.PostPage] { return ListPostsPublishedPosts() }
+
+// UpdatePostUpdated selects the updated branch: WordPress updated the post.
+func UpdatePostUpdated(value wordpress.CreatedPost, failure *sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Branch(wordpress.UpdatePostBranchUpdated, value, failure)
+}
+
+// UpdatePostNotFound selects the notFound branch: The post was not found.
+func UpdatePostNotFound(value wordpress.CreatedPost, failure *sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Branch(wordpress.UpdatePostBranchNotFound, value, failure)
+}
+
+// UpdatePostProviderRejected selects the providerRejected branch: WordPress conclusively rejected the request.
+func UpdatePostProviderRejected(value wordpress.CreatedPost, failure *sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Branch(wordpress.UpdatePostBranchProviderRejected, value, failure)
+}
+
+// UpdatePostInvalidResponse selects the invalidResponse branch: WordPress returned malformed or oversized JSON.
+func UpdatePostInvalidResponse(value wordpress.CreatedPost, failure *sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Branch(wordpress.UpdatePostBranchInvalidResponse, value, failure)
+}
+
+// UpdatePostDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdatePostDefect(value wordpress.CreatedPost, failure *sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Branch(wordpress.UpdatePostBranchDefect, value, failure)
+}
+
+// UpdatePostRetry asks Dex to retry the updatePost Step, after the delay when it is positive.
+func UpdatePostRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Retry[wordpress.CreatedPost](failure, after)
+}
+
+// UpdatePostDefaultAnswer is the manifest mock defaultAnswer: A sample post updated result.
+func UpdatePostDefaultAnswer() connectormock.Case[wordpress.CreatedPost] {
+	value := connectormock.MustDecodeOutput[wordpress.CreatedPost](`{"id":42,"status":"publish"}`)
+	return connectormock.Branch(wordpress.UpdatePostBranchUpdated, value, nil)
+}
+
+// UpdatePostDefault is the manifest default, defaultAnswer, which New installs.
+func UpdatePostDefault() connectormock.Case[wordpress.CreatedPost] { return UpdatePostDefaultAnswer() }
+
+// DeletePostDeleted selects the deleted branch: WordPress deleted the post.
+func DeletePostDeleted(value wordpress.CreatedPost, failure *sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Branch(wordpress.DeletePostBranchDeleted, value, failure)
+}
+
+// DeletePostNotFound selects the notFound branch: The post was not found.
+func DeletePostNotFound(value wordpress.CreatedPost, failure *sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Branch(wordpress.DeletePostBranchNotFound, value, failure)
+}
+
+// DeletePostProviderRejected selects the providerRejected branch: WordPress conclusively rejected the request.
+func DeletePostProviderRejected(value wordpress.CreatedPost, failure *sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Branch(wordpress.DeletePostBranchProviderRejected, value, failure)
+}
+
+// DeletePostInvalidResponse selects the invalidResponse branch: WordPress returned malformed or oversized JSON.
+func DeletePostInvalidResponse(value wordpress.CreatedPost, failure *sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Branch(wordpress.DeletePostBranchInvalidResponse, value, failure)
+}
+
+// DeletePostDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeletePostDefect(value wordpress.CreatedPost, failure *sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Branch(wordpress.DeletePostBranchDefect, value, failure)
+}
+
+// DeletePostRetry asks Dex to retry the deletePost Step, after the delay when it is positive.
+func DeletePostRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Retry[wordpress.CreatedPost](failure, after)
+}
+
+// DeletePostDefaultAnswer is the manifest mock defaultAnswer: A sample post deleted result.
+func DeletePostDefaultAnswer() connectormock.Case[wordpress.CreatedPost] {
+	value := connectormock.MustDecodeOutput[wordpress.CreatedPost](`{"id":42,"status":"trash"}`)
+	return connectormock.Branch(wordpress.DeletePostBranchDeleted, value, nil)
+}
+
+// DeletePostDefault is the manifest default, defaultAnswer, which New installs.
+func DeletePostDefault() connectormock.Case[wordpress.CreatedPost] { return DeletePostDefaultAnswer() }
+
+// CreatePageCreated selects the created branch: WordPress created the page.
+func CreatePageCreated(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.CreatePageBranchCreated, value, failure)
+}
+
+// CreatePageNotFound selects the notFound branch: The page was not found.
+func CreatePageNotFound(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.CreatePageBranchNotFound, value, failure)
+}
+
+// CreatePageProviderRejected selects the providerRejected branch: WordPress conclusively rejected the request.
+func CreatePageProviderRejected(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.CreatePageBranchProviderRejected, value, failure)
+}
+
+// CreatePageInvalidResponse selects the invalidResponse branch: WordPress returned malformed or oversized JSON.
+func CreatePageInvalidResponse(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.CreatePageBranchInvalidResponse, value, failure)
+}
+
+// CreatePageUncertain returns an uncertain createPage outcome.
+func CreatePageUncertain(value wordpress.Page, failure sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreatePageDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreatePageDefect(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.CreatePageBranchDefect, value, failure)
+}
+
+// CreatePageRetry asks Dex to retry the createPage Step, after the delay when it is positive.
+func CreatePageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wordpress.Page] {
+	return connectormock.Retry[wordpress.Page](failure, after)
+}
+
+// CreatePageDefaultAnswer is the manifest mock defaultAnswer: A sample page created result.
+func CreatePageDefaultAnswer() connectormock.Case[wordpress.Page] {
+	value := connectormock.MustDecodeOutput[wordpress.Page](`{"id":51,"slug":"sample-page","status":"draft","link":"https://example.test/sample-page/","title":{"rendered":"Sample page"}}`)
+	return connectormock.Branch(wordpress.CreatePageBranchCreated, value, nil)
+}
+
+// CreatePageDefault is the manifest default, defaultAnswer, which New installs.
+func CreatePageDefault() connectormock.Case[wordpress.Page] { return CreatePageDefaultAnswer() }
+
+// GetPageFound selects the found branch: WordPress found the page.
+func GetPageFound(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.GetPageBranchFound, value, failure)
+}
+
+// GetPageNotFound selects the notFound branch: The page was not found.
+func GetPageNotFound(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.GetPageBranchNotFound, value, failure)
+}
+
+// GetPageProviderRejected selects the providerRejected branch: WordPress conclusively rejected the request.
+func GetPageProviderRejected(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.GetPageBranchProviderRejected, value, failure)
+}
+
+// GetPageInvalidResponse selects the invalidResponse branch: WordPress returned malformed or oversized JSON.
+func GetPageInvalidResponse(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.GetPageBranchInvalidResponse, value, failure)
+}
+
+// GetPageDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetPageDefect(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.GetPageBranchDefect, value, failure)
+}
+
+// GetPageRetry asks Dex to retry the getPage Step, after the delay when it is positive.
+func GetPageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wordpress.Page] {
+	return connectormock.Retry[wordpress.Page](failure, after)
+}
+
+// GetPageDefaultAnswer is the manifest mock defaultAnswer: A sample page found result.
+func GetPageDefaultAnswer() connectormock.Case[wordpress.Page] {
+	value := connectormock.MustDecodeOutput[wordpress.Page](`{"id":51,"slug":"sample-page","status":"publish","link":"https://example.test/sample-page/","title":{"rendered":"Sample page"}}`)
+	return connectormock.Branch(wordpress.GetPageBranchFound, value, nil)
+}
+
+// GetPageDefault is the manifest default, defaultAnswer, which New installs.
+func GetPageDefault() connectormock.Case[wordpress.Page] { return GetPageDefaultAnswer() }
+
+// ListPagesListed selects the listed branch: WordPress listed the page.
+func ListPagesListed(value wordpress.PagePage, failure *sdkgo.Failure) connectormock.Case[wordpress.PagePage] {
+	return connectormock.Branch(wordpress.ListPagesBranchListed, value, failure)
+}
+
+// ListPagesNotFound selects the notFound branch: The page was not found.
+func ListPagesNotFound(value wordpress.PagePage, failure *sdkgo.Failure) connectormock.Case[wordpress.PagePage] {
+	return connectormock.Branch(wordpress.ListPagesBranchNotFound, value, failure)
+}
+
+// ListPagesProviderRejected selects the providerRejected branch: WordPress conclusively rejected the request.
+func ListPagesProviderRejected(value wordpress.PagePage, failure *sdkgo.Failure) connectormock.Case[wordpress.PagePage] {
+	return connectormock.Branch(wordpress.ListPagesBranchProviderRejected, value, failure)
+}
+
+// ListPagesInvalidResponse selects the invalidResponse branch: WordPress returned malformed or oversized JSON.
+func ListPagesInvalidResponse(value wordpress.PagePage, failure *sdkgo.Failure) connectormock.Case[wordpress.PagePage] {
+	return connectormock.Branch(wordpress.ListPagesBranchInvalidResponse, value, failure)
+}
+
+// ListPagesDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListPagesDefect(value wordpress.PagePage, failure *sdkgo.Failure) connectormock.Case[wordpress.PagePage] {
+	return connectormock.Branch(wordpress.ListPagesBranchDefect, value, failure)
+}
+
+// ListPagesRetry asks Dex to retry the listPages Step, after the delay when it is positive.
+func ListPagesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wordpress.PagePage] {
+	return connectormock.Retry[wordpress.PagePage](failure, after)
+}
+
+// ListPagesDefaultAnswer is the manifest mock defaultAnswer: A sample page listed result.
+func ListPagesDefaultAnswer() connectormock.Case[wordpress.PagePage] {
+	value := connectormock.MustDecodeOutput[wordpress.PagePage](`{"pages":[{"id":51,"slug":"sample-page","status":"publish","link":"https://example.test/sample-page/","title":{"rendered":"Sample page"}}]}`)
+	return connectormock.Branch(wordpress.ListPagesBranchListed, value, nil)
+}
+
+// ListPagesDefault is the manifest default, defaultAnswer, which New installs.
+func ListPagesDefault() connectormock.Case[wordpress.PagePage] { return ListPagesDefaultAnswer() }
+
+// UpdatePageUpdated selects the updated branch: WordPress updated the page.
+func UpdatePageUpdated(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.UpdatePageBranchUpdated, value, failure)
+}
+
+// UpdatePageNotFound selects the notFound branch: The page was not found.
+func UpdatePageNotFound(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.UpdatePageBranchNotFound, value, failure)
+}
+
+// UpdatePageProviderRejected selects the providerRejected branch: WordPress conclusively rejected the request.
+func UpdatePageProviderRejected(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.UpdatePageBranchProviderRejected, value, failure)
+}
+
+// UpdatePageInvalidResponse selects the invalidResponse branch: WordPress returned malformed or oversized JSON.
+func UpdatePageInvalidResponse(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.UpdatePageBranchInvalidResponse, value, failure)
+}
+
+// UpdatePageDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdatePageDefect(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.UpdatePageBranchDefect, value, failure)
+}
+
+// UpdatePageRetry asks Dex to retry the updatePage Step, after the delay when it is positive.
+func UpdatePageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wordpress.Page] {
+	return connectormock.Retry[wordpress.Page](failure, after)
+}
+
+// UpdatePageDefaultAnswer is the manifest mock defaultAnswer: A sample page updated result.
+func UpdatePageDefaultAnswer() connectormock.Case[wordpress.Page] {
+	value := connectormock.MustDecodeOutput[wordpress.Page](`{"id":51,"slug":"sample-page","status":"publish","link":"https://example.test/sample-page/","title":{"rendered":"Sample page"}}`)
+	return connectormock.Branch(wordpress.UpdatePageBranchUpdated, value, nil)
+}
+
+// UpdatePageDefault is the manifest default, defaultAnswer, which New installs.
+func UpdatePageDefault() connectormock.Case[wordpress.Page] { return UpdatePageDefaultAnswer() }
+
+// DeletePageDeleted selects the deleted branch: WordPress deleted the page.
+func DeletePageDeleted(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.DeletePageBranchDeleted, value, failure)
+}
+
+// DeletePageNotFound selects the notFound branch: The page was not found.
+func DeletePageNotFound(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.DeletePageBranchNotFound, value, failure)
+}
+
+// DeletePageProviderRejected selects the providerRejected branch: WordPress conclusively rejected the request.
+func DeletePageProviderRejected(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.DeletePageBranchProviderRejected, value, failure)
+}
+
+// DeletePageInvalidResponse selects the invalidResponse branch: WordPress returned malformed or oversized JSON.
+func DeletePageInvalidResponse(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.DeletePageBranchInvalidResponse, value, failure)
+}
+
+// DeletePageDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeletePageDefect(value wordpress.Page, failure *sdkgo.Failure) connectormock.Case[wordpress.Page] {
+	return connectormock.Branch(wordpress.DeletePageBranchDefect, value, failure)
+}
+
+// DeletePageRetry asks Dex to retry the deletePage Step, after the delay when it is positive.
+func DeletePageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wordpress.Page] {
+	return connectormock.Retry[wordpress.Page](failure, after)
+}
+
+// DeletePageDefaultAnswer is the manifest mock defaultAnswer: A sample page deleted result.
+func DeletePageDefaultAnswer() connectormock.Case[wordpress.Page] {
+	value := connectormock.MustDecodeOutput[wordpress.Page](`{"id":51,"slug":"sample-page","status":"trash","link":"https://example.test/sample-page/","title":{"rendered":"Sample page"}}`)
+	return connectormock.Branch(wordpress.DeletePageBranchDeleted, value, nil)
+}
+
+// DeletePageDefault is the manifest default, defaultAnswer, which New installs.
+func DeletePageDefault() connectormock.Case[wordpress.Page] { return DeletePageDefaultAnswer() }
+
+// GetUserFound selects the found branch: WordPress found the user.
+func GetUserFound(value wordpress.User, failure *sdkgo.Failure) connectormock.Case[wordpress.User] {
+	return connectormock.Branch(wordpress.GetUserBranchFound, value, failure)
+}
+
+// GetUserNotFound selects the notFound branch: The user was not found.
+func GetUserNotFound(value wordpress.User, failure *sdkgo.Failure) connectormock.Case[wordpress.User] {
+	return connectormock.Branch(wordpress.GetUserBranchNotFound, value, failure)
+}
+
+// GetUserProviderRejected selects the providerRejected branch: WordPress conclusively rejected the request.
+func GetUserProviderRejected(value wordpress.User, failure *sdkgo.Failure) connectormock.Case[wordpress.User] {
+	return connectormock.Branch(wordpress.GetUserBranchProviderRejected, value, failure)
+}
+
+// GetUserInvalidResponse selects the invalidResponse branch: WordPress returned malformed or oversized JSON.
+func GetUserInvalidResponse(value wordpress.User, failure *sdkgo.Failure) connectormock.Case[wordpress.User] {
+	return connectormock.Branch(wordpress.GetUserBranchInvalidResponse, value, failure)
+}
+
+// GetUserDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetUserDefect(value wordpress.User, failure *sdkgo.Failure) connectormock.Case[wordpress.User] {
+	return connectormock.Branch(wordpress.GetUserBranchDefect, value, failure)
+}
+
+// GetUserRetry asks Dex to retry the getUser Step, after the delay when it is positive.
+func GetUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wordpress.User] {
+	return connectormock.Retry[wordpress.User](failure, after)
+}
+
+// GetUserDefaultAnswer is the manifest mock defaultAnswer: A sample user found result.
+func GetUserDefaultAnswer() connectormock.Case[wordpress.User] {
+	value := connectormock.MustDecodeOutput[wordpress.User](`{"id":7,"name":"Sample Editor","slug":"sample-editor"}`)
+	return connectormock.Branch(wordpress.GetUserBranchFound, value, nil)
+}
+
+// GetUserDefault is the manifest default, defaultAnswer, which New installs.
+func GetUserDefault() connectormock.Case[wordpress.User] { return GetUserDefaultAnswer() }
+
+// ListUsersListed selects the listed branch: WordPress listed the user.
+func ListUsersListed(value wordpress.UserPage, failure *sdkgo.Failure) connectormock.Case[wordpress.UserPage] {
+	return connectormock.Branch(wordpress.ListUsersBranchListed, value, failure)
+}
+
+// ListUsersNotFound selects the notFound branch: The user was not found.
+func ListUsersNotFound(value wordpress.UserPage, failure *sdkgo.Failure) connectormock.Case[wordpress.UserPage] {
+	return connectormock.Branch(wordpress.ListUsersBranchNotFound, value, failure)
+}
+
+// ListUsersProviderRejected selects the providerRejected branch: WordPress conclusively rejected the request.
+func ListUsersProviderRejected(value wordpress.UserPage, failure *sdkgo.Failure) connectormock.Case[wordpress.UserPage] {
+	return connectormock.Branch(wordpress.ListUsersBranchProviderRejected, value, failure)
+}
+
+// ListUsersInvalidResponse selects the invalidResponse branch: WordPress returned malformed or oversized JSON.
+func ListUsersInvalidResponse(value wordpress.UserPage, failure *sdkgo.Failure) connectormock.Case[wordpress.UserPage] {
+	return connectormock.Branch(wordpress.ListUsersBranchInvalidResponse, value, failure)
+}
+
+// ListUsersDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListUsersDefect(value wordpress.UserPage, failure *sdkgo.Failure) connectormock.Case[wordpress.UserPage] {
+	return connectormock.Branch(wordpress.ListUsersBranchDefect, value, failure)
+}
+
+// ListUsersRetry asks Dex to retry the listUsers Step, after the delay when it is positive.
+func ListUsersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wordpress.UserPage] {
+	return connectormock.Retry[wordpress.UserPage](failure, after)
+}
+
+// ListUsersDefaultAnswer is the manifest mock defaultAnswer: A sample user listed result.
+func ListUsersDefaultAnswer() connectormock.Case[wordpress.UserPage] {
+	value := connectormock.MustDecodeOutput[wordpress.UserPage](`{"users":[{"id":7,"name":"Sample Editor","slug":"sample-editor"}]}`)
+	return connectormock.Branch(wordpress.ListUsersBranchListed, value, nil)
+}
+
+// ListUsersDefault is the manifest default, defaultAnswer, which New installs.
+func ListUsersDefault() connectormock.Case[wordpress.UserPage] { return ListUsersDefaultAnswer() }
+
+// UpdateUserUpdated selects the updated branch: WordPress updated the user.
+func UpdateUserUpdated(value wordpress.User, failure *sdkgo.Failure) connectormock.Case[wordpress.User] {
+	return connectormock.Branch(wordpress.UpdateUserBranchUpdated, value, failure)
+}
+
+// UpdateUserNotFound selects the notFound branch: The user was not found.
+func UpdateUserNotFound(value wordpress.User, failure *sdkgo.Failure) connectormock.Case[wordpress.User] {
+	return connectormock.Branch(wordpress.UpdateUserBranchNotFound, value, failure)
+}
+
+// UpdateUserProviderRejected selects the providerRejected branch: WordPress conclusively rejected the request.
+func UpdateUserProviderRejected(value wordpress.User, failure *sdkgo.Failure) connectormock.Case[wordpress.User] {
+	return connectormock.Branch(wordpress.UpdateUserBranchProviderRejected, value, failure)
+}
+
+// UpdateUserInvalidResponse selects the invalidResponse branch: WordPress returned malformed or oversized JSON.
+func UpdateUserInvalidResponse(value wordpress.User, failure *sdkgo.Failure) connectormock.Case[wordpress.User] {
+	return connectormock.Branch(wordpress.UpdateUserBranchInvalidResponse, value, failure)
+}
+
+// UpdateUserDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateUserDefect(value wordpress.User, failure *sdkgo.Failure) connectormock.Case[wordpress.User] {
+	return connectormock.Branch(wordpress.UpdateUserBranchDefect, value, failure)
+}
+
+// UpdateUserRetry asks Dex to retry the updateUser Step, after the delay when it is positive.
+func UpdateUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wordpress.User] {
+	return connectormock.Retry[wordpress.User](failure, after)
+}
+
+// UpdateUserDefaultAnswer is the manifest mock defaultAnswer: A sample user updated result.
+func UpdateUserDefaultAnswer() connectormock.Case[wordpress.User] {
+	value := connectormock.MustDecodeOutput[wordpress.User](`{"id":7,"name":"Sample Editor","slug":"sample-editor"}`)
+	return connectormock.Branch(wordpress.UpdateUserBranchUpdated, value, nil)
+}
+
+// UpdateUserDefault is the manifest default, defaultAnswer, which New installs.
+func UpdateUserDefault() connectormock.Case[wordpress.User] { return UpdateUserDefaultAnswer() }

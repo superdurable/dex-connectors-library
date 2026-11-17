@@ -24,7 +24,8 @@ import (
 func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 	mock := woocommercemock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	updateFlow := NewOrderUpdateFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, updateFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -68,4 +69,17 @@ func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, woocommerce.ListOrdersInput{Page: 1}, calls[0].Input)
 	require.Equal(t, woocommerce.ListOrdersBranchListed, calls[0].Branch)
+	updateFlowID := "woocommerce-order-update-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, updateFlow, updateFlowID, OrderUpdateRequest{OrderID: 101, Status: "completed"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	updateResult, err := client.WaitForFlow(ctx, updateFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, updateResult.Status, updateResult.ErrorMessage)
+	var updatedOrder woocommerce.Order
+	require.NoError(t, updateResult.DecodeSingleOutput(&updatedOrder))
+	require.Equal(t, int64(101), updatedOrder.ID)
+	updateCalls := mock.UpdateOrder().Calls()
+	require.Len(t, updateCalls, 1)
+	require.Equal(t, woocommerce.UpdateOrderInput{OrderID: 101, Status: "completed"}, updateCalls[0].Input)
+	require.Equal(t, woocommerce.UpdateOrderBranchUpdated, updateCalls[0].Branch)
 }

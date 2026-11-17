@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package wordpress reads and creates WordPress posts through typed Dex Steps.
+// Package wordpress reads and manages WordPress posts, pages, and users through typed Dex Steps.
 // The runnable examples/post-inspection Flow shows connection and Worker registration.
 package wordpress
 

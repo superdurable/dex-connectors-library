@@ -24,7 +24,8 @@ import (
 func TestTaskInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := wrikemock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	updateFlow := NewUpdateFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, updateFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -58,4 +59,14 @@ func TestTaskInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "Example task", output.Title)
 	require.Equal(t, "Active", output.Status)
 	require.Len(t, mock.GetTask().Calls(), 1)
+	updateFlowID := "wrike-taskupdate-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, updateFlow, updateFlowID, wrike.UpdateTaskInput{TaskID: "IEAAAABC", Title: "Updated task"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	updateResult, err := client.WaitForFlow(ctx, updateFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, updateResult.Status, updateResult.ErrorMessage)
+	var updatedTask wrike.TaskStatus
+	require.NoError(t, updateResult.DecodeSingleOutput(&updatedTask))
+	require.Equal(t, "Updated task", updatedTask.Title)
+	require.Len(t, mock.UpdateTask().Calls(), 1)
 }

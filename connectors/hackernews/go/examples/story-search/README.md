@@ -6,6 +6,17 @@ turn, keeps each story once, and completes with the matching stories, their
 original links, and their HN discussion links. It needs no API key and no
 model.
 
+Set `itemType` to `comment`, `poll`, `pollopt`, or `story` to use
+`NewSearchItemsStep` and collect those public items in `Report.items`. The
+start request's keyword, time window, sort, and page budget still apply. The
+mock-backed Dex test exercises a comment search. Leave `itemType` blank for
+the original story search and optional first-author lookup.
+
+Set `readFirstThread` to `true` on a story search to run
+`NewGetArticleThreadStep` for the first result and include its nested comments
+in `Report.firstThread`. The mock-backed Dex test exercises this path alongside
+the first-author profile lookup.
+
 ## Run locally
 
 Run these commands from the repository root. Install Dex CLI first, then render
@@ -24,7 +35,7 @@ publish a release or modify the Go module cache:
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/hackernews/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/hackernews/go \
-  --version v0.26.0 --tag connectors/hackernews/go/v0.26.0 \
+  --version v0.27.0 --tag connectors/hackernews/go/v0.27.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/hn-search/release/connector-release.json \
   --digest-output /tmp/hn-search/release/connector-release.json.sha256
@@ -104,6 +115,16 @@ so they make no live provider requests:
 ```sh
 make test-connectors
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 make test-connector-integration
+```
+
+The opt-in live test runs this Flow through Dex against Hacker News's public
+Search API. With `dexcli dev -open=false` running on port 8801, run:
+
+```sh
+cd connectors/hackernews/go
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
+  GOWORK=off go test -tags=integration,live ./examples/story-search/flow \
+  -run '^TestStorySearchLiveCommentsWithRealDex$' -count=1 -v
 ```
 
 A live acceptance run uses the same **Connections**, Worker health, and

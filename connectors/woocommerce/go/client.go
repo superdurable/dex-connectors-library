@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package woocommerce provides read-only WooCommerce Query operations for Dex Flows.
+// Package woocommerce provides WooCommerce Query and Mutation operations for Dex Flows.
 package woocommerce
 
 import (
@@ -96,6 +96,38 @@ type Order struct {
 type OrderPage struct {
 	// Orders contains the returned orders, possibly none.
 	Orders []Order `json:"orders"`
+}
+
+// OrderLineItem identifies a product and quantity in an order request.
+type OrderLineItem struct {
+	// ProductID is the WooCommerce product ID.
+	ProductID int64 `json:"product_id"`
+	// Quantity is the number of units ordered.
+	Quantity int `json:"quantity"`
+}
+
+// CreateOrderInput describes a new WooCommerce order.
+type CreateOrderInput struct {
+	// CustomerID is an existing customer ID; zero creates a guest order.
+	CustomerID int64 `json:"customerId,omitempty"`
+	// LineItems contains at least one product with a positive quantity.
+	LineItems []OrderLineItem `json:"lineItems"`
+	// Status is a provider order status; blank uses the provider default.
+	Status string `json:"status,omitempty"`
+}
+
+// UpdateOrderInput replaces the status of an existing order.
+type UpdateOrderInput struct {
+	// OrderID identifies the order.
+	OrderID int64 `json:"orderId"`
+	// Status is the replacement provider order status.
+	Status string `json:"status"`
+}
+
+// DeleteOrderInput identifies an order to permanently delete.
+type DeleteOrderInput struct {
+	// OrderID identifies the order.
+	OrderID int64 `json:"orderId"`
 }
 
 // ListOrdersOperation executes the listOrders read.

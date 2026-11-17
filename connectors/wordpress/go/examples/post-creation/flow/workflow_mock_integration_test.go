@@ -29,7 +29,8 @@ import (
 func TestPostCreationUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := wordpressmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	updateFlow := NewPostUpdateFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, updateFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -61,6 +62,20 @@ func TestPostCreationUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, int64(43), output.ID)
 	require.Len(t, mock.CreatePost().Calls(), 1)
+	updateFlowID := "wordpress-post-update-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	updateInput := wordpress.UpdatePostInput{PostID: 42, Title: "Meridian release", Content: "<p>Updated.</p>", Status: "publish"}
+	_, err = client.StartFlow(ctx, updateFlow, updateFlowID, updateInput, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	updateResult, err := client.WaitForFlow(ctx, updateFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, updateResult.Status, updateResult.ErrorMessage)
+	var updatedPost wordpress.CreatedPost
+	require.NoError(t, updateResult.DecodeSingleOutput(&updatedPost))
+	require.Equal(t, int64(42), updatedPost.ID)
+	updateCalls := mock.UpdatePost().Calls()
+	require.Len(t, updateCalls, 1)
+	require.Equal(t, updateInput, updateCalls[0].Input)
+	require.Equal(t, wordpress.UpdatePostBranchUpdated, updateCalls[0].Branch)
 }
 
 func TestPostCreationRetriesRateLimitWithRealDex(t *testing.T) {
