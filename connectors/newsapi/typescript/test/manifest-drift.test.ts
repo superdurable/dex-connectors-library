@@ -30,14 +30,14 @@ describe('NewsAPI manifest and TypeScript contract', () => {
   it('matches every operation route, execution default, and mock case', async () => {
     const manifest = YAML.parse(await readFile(new URL('../../connector.yaml', import.meta.url), 'utf8')) as {
       metadata: { name: string };
-      spec: { provider: string; languages: { typescript: { version: string } }; operations: ManifestOperation[] };
+      spec: { provider: string; languages: { typescript: { version: string; operations: string[] } }; operations: ManifestOperation[] };
     };
     expect(manifest.metadata.name).toBe('newsapi');
     expect(manifest.spec.provider).toBe('newsapi');
     expect(manifest.spec.languages.typescript.version).toBe('v0.1.1');
-    expect(manifest.spec.operations).toHaveLength(1);
+    expect(manifest.spec.languages.typescript.operations).toEqual([SearchArticlesDefinition.operation.operationId]);
 
-    const operation = manifest.spec.operations[0];
+    const operation = manifest.spec.operations.find(candidate => candidate.name === SearchArticlesDefinition.operation.operationId);
     expect(operation).toBeDefined();
     if (!operation) throw new Error('NewsAPI operation is missing');
     expect(operation.name).toBe(SearchArticlesDefinition.operation.operationId);

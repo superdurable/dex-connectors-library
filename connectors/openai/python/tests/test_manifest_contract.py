@@ -68,6 +68,11 @@ def test_manifest_operations_branches_and_defaults() -> None:
 def test_mocks_match_manifest() -> None:
     manifest = yaml.safe_load((CONNECTOR_DIRECTORY / "connector.yaml").read_text())
     operations = {operation["name"]: operation for operation in manifest["spec"]["operations"]}
+    declared_python_operations = manifest["spec"]["languages"]["python"]["operations"]
+    assert set(declared_python_operations) == {
+        CREATE_RESPONSE_DEFINITION.operation.operation_id,
+        RETRIEVE_RESPONSE_DEFINITION.operation.operation_id,
+    }
     cases = {
         "storedSummary": create_response_stored_summary(),
         "incompleteSummary": create_response_incomplete_summary(),
@@ -76,7 +81,7 @@ def test_mocks_match_manifest() -> None:
         "responseNotFound": retrieve_response_not_found(),
         "retrieveRejected": retrieve_response_rejected(),
     }
-    mocks = [mock for operation in operations.values() for mock in operation["mocks"]]
+    mocks = [mock for name in declared_python_operations for mock in operations[name]["mocks"]]
     assert {mock["name"] for mock in mocks} == set(cases)
     for mock in mocks:
         case = cases[mock["name"]]
