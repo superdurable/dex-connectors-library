@@ -69,6 +69,8 @@ type Operations interface {
 	GetRecord() sdkgo.Query[GetRecordInput, Record]
 	UpsertRecordByExternalID() sdkgo.Mutation[UpsertRecordByExternalIDInput, UpsertRecordByExternalIDOutput]
 	UpdateRecord() sdkgo.Mutation[UpdateRecordInput, UpdateRecordOutput]
+	DeleteRecord() sdkgo.Mutation[DeleteRecordInput, DeleteRecordOutput]
+	CreateRecord() sdkgo.Mutation[CreateRecordInput, CreateRecordOutput]
 }
 
 type clientOperations struct{ client *Client }
@@ -84,6 +86,12 @@ func (operations clientOperations) UpsertRecordByExternalID() sdkgo.Mutation[Ups
 }
 func (operations clientOperations) UpdateRecord() sdkgo.Mutation[UpdateRecordInput, UpdateRecordOutput] {
 	return operations.client.UpdateRecord()
+}
+func (operations clientOperations) DeleteRecord() sdkgo.Mutation[DeleteRecordInput, DeleteRecordOutput] {
+	return operations.client.DeleteRecord()
+}
+func (operations clientOperations) CreateRecord() sdkgo.Mutation[CreateRecordInput, CreateRecordOutput] {
+	return operations.client.CreateRecord()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -745,5 +753,169 @@ func NewUpdateRecordStep[IN any](config UpdateRecordStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteRecordBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteRecordBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteRecordBranchRecordRejected sdkgo.BranchID = "recordRejected"
+const DeleteRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteRecordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteRecord"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteRecordBranchDeleted, Description: "Salesforce removed the record."},
+		{ID: DeleteRecordBranchNotFound, Description: "The record was already absent or unavailable.", Optional: true},
+		{ID: DeleteRecordBranchRecordRejected, Description: "Salesforce rejected deletion because of a record constraint.", Optional: true},
+		{ID: DeleteRecordBranchProviderRejected, Description: "Salesforce denied authorization or object access.", Optional: true},
+		{ID: DeleteRecordBranchDefect, Description: "Local input or connector configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteRecordResult = sdkgo.MutationResult[DeleteRecordOutput]
+
+type DeleteRecordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=salesforce"`
+	operationID                       struct{}                                                 `connector:"operationId=deleteRecord"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                           `connector:"configurationUI"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteRecordInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteRecordResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteRecordResult]                         `connector:"branch=notFound,optional"`
+	RecordRejected                    sdkgo.Target[DeleteRecordResult]                         `connector:"branch=recordRejected,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteRecordResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteRecordResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteRecordOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteRecordStep[IN any](config DeleteRecordStepConfig[IN]) sdkgo.MutationStep[IN, DeleteRecordInput, DeleteRecordOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("salesforce connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteRecordInput, DeleteRecordOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteRecord(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteRecordResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteRecordResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteRecordBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteRecordBranchNotFound))
+			}
+			if config.RecordRejected.HasStep() {
+				branches = append(branches, config.RecordRejected.BranchTarget(DeleteRecordBranchRecordRejected))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteRecordBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteRecordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateRecordBranchCreated sdkgo.BranchID = "created"
+const CreateRecordBranchRecordRejected sdkgo.BranchID = "recordRejected"
+const CreateRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateRecordBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateRecordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createRecord"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateRecordBranchCreated, Description: "Salesforce created or confirmed the record."},
+		{ID: CreateRecordBranchRecordRejected, Description: "Salesforce rejected the field values.", Optional: true},
+		{ID: CreateRecordBranchProviderRejected, Description: "Salesforce denied authorization or object access.", Optional: true},
+		{ID: CreateRecordBranchUncertain, Description: "A bounded create may have succeeded but could not be confirmed.", Optional: true},
+		{ID: CreateRecordBranchDefect, Description: "Local input or connector configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateRecordResult = sdkgo.MutationResult[CreateRecordOutput]
+
+type CreateRecordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=salesforce"`
+	operationID                       struct{}                                                 `connector:"operationId=createRecord"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                           `connector:"configurationUI"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateRecordInput                               `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateRecordResult]                         `connector:"branch=created"`
+	RecordRejected                    sdkgo.Target[CreateRecordResult]                         `connector:"branch=recordRejected,optional"`
+	ProviderRejected                  sdkgo.Target[CreateRecordResult]                         `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateRecordResult]                         `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateRecordResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateRecordOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateRecordStep[IN any](config CreateRecordStepConfig[IN]) sdkgo.MutationStep[IN, CreateRecordInput, CreateRecordOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("salesforce connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateRecordInput, CreateRecordOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreateRecord(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateRecordResult] {
+			branches := make([]sdkgo.BranchTarget[CreateRecordResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateRecordBranchCreated))
+			}
+			if config.RecordRejected.HasStep() {
+				branches = append(branches, config.RecordRejected.BranchTarget(CreateRecordBranchRecordRejected))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateRecordBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateRecordBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateRecordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

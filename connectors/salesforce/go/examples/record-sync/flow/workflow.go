@@ -33,6 +33,8 @@ const (
 	prepareCreatedReadBackStepType = "PrepareCreatedReadBack"
 	readBackStepType               = "ReadBackRecord"
 	completeStepType               = "CompleteRecordSync"
+	deleteAfterSyncStepType        = "DeleteAfterRecordSync"
+	completeDeletedStepType        = "CompleteDeletedRecordSync"
 
 	defaultSObjectType = "Contact"
 	defaultMatchField  = "Email"
@@ -57,6 +59,8 @@ type Input struct {
 	// picklist, and date fields; write numbers and booleans as exact JSON
 	// values through the operation input instead.
 	Fields map[string]string `json:"fields"`
+	// DeleteAfterReadBack removes the synced record after verifying its values.
+	DeleteAfterReadBack bool `json:"deleteAfterReadBack,omitempty"`
 }
 
 // SyncConfiguration is what the FindMatchingRecords Step's units save in Dex
@@ -99,6 +103,8 @@ type Outcome struct {
 	CandidateRecordIDs []string `json:"candidateRecordIds,omitempty"`
 	// Record is the record read back after the write.
 	Record *salesforce.Record `json:"record,omitempty"`
+	// WasDeleted reports that the optional cleanup removed the synced record.
+	WasDeleted bool `json:"wasDeleted,omitempty"`
 }
 
 // WriteRequest is the explicit domain value a write Step needs.
@@ -213,6 +219,13 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Found: sdkgo.GoTo(completeRecordSync{configuration: flow.configuration}),
 		})),
 		dex.DefineStep(completeRecordSync{configuration: flow.configuration}),
+		dex.DefineStep(salesforce.NewDeleteRecordStep(salesforce.DeleteRecordStepConfig[salesforce.DeleteRecordInput]{
+			StepType: deleteAfterSyncStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "salesforce", GroupLabel: "Salesforce", Explanation: "Remove the record only when the Start Flow request asks for cleanup after read-back."},
+			Connection:  flow.connection, MapToOperationInput: func(input salesforce.DeleteRecordInput) salesforce.DeleteRecordInput { return input },
+			Deleted: sdkgo.GoTo(completeDeletedRecordSync{}),
+		})),
+		dex.DefineStep(completeDeletedRecordSync{}),
 	}
 }
 
@@ -379,6 +392,26 @@ func (step reviewMatchingRecords) Execute(ctx dex.Context, result salesforce.Que
 }
 
 // dex:group group-id:record-sync group-label:"Record sync"
+// dex:explanation text:"Complete the optional cleanup after Salesforce confirms deletion."
+type completeDeletedRecordSync struct {
+	dex.StepDefaultsNoWaitFor[salesforce.DeleteRecordResult]
+}
+
+func (completeDeletedRecordSync) GetStepType() string { return completeDeletedStepType }
+
+func (completeDeletedRecordSync) Execute(ctx dex.Context, _ salesforce.DeleteRecordResult) (*dex.StepDecision, error) {
+	outcome, err := outcomeAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	outcome.WasDeleted = true
+	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:record-sync group-label:"Record sync"
 // dex:explanation text:"Record the linked record and read back the fields the link wrote."
 type prepareLinkedReadBack struct {
 	dex.StepDefaultsNoWaitFor[salesforce.UpdateRecordResult]
@@ -449,6 +482,9 @@ func (step completeRecordSync) Execute(ctx dex.Context, result salesforce.GetRec
 	outcome.Record = &record
 	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
+	}
+	if request.DeleteAfterReadBack {
+		return dex.GoTo(sdkgo.StepRef[salesforce.DeleteRecordInput](deleteAfterSyncStepType), salesforce.DeleteRecordInput{SObjectType: outcome.SObjectType, RecordID: outcome.RecordID}), nil
 	}
 	return dex.GracefulComplete(outcome), nil
 }

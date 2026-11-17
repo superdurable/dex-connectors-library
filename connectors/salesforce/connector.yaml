@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: salesforce
   displayName: Salesforce
-  description: Query Salesforce CRM records with typed SOQL bind values, read one record, create or update a record by external ID without duplicates on retry, update a record by ID, and start Flows when records of one object are created or modified.
+  description: Query and search Salesforce CRM records, read, create, update, or delete records, and start Flows when records of one object are created or modified.
   company: Salesforce
   categories: [crm-sales]
-  version: v0.25.0
+  version: v0.26.0
 spec:
   provider: salesforce
   languages:
@@ -829,3 +829,59 @@ spec:
           description: "Updating Contact without edit permission receives INSUFFICIENT_ACCESS."
           output: {providerErrors: [{errorCode: INSUFFICIENT_ACCESS, fields: []}]}
           failure: {kind: AUTHORIZATION, message: "The user cannot edit Contacts."}
+    - name: deleteRecord
+      goName: DeleteRecord
+      inputType: DeleteRecordInput
+      outputType: DeleteRecordOutput
+      kind: mutation
+      description: Delete one record by sObject type and record ID.
+      idempotency: required
+      branches:
+        - {id: deleted, goName: Deleted, description: Salesforce removed the record.}
+        - {id: notFound, goName: NotFound, description: The record was already absent or unavailable., optional: true}
+        - {id: recordRejected, goName: RecordRejected, description: Salesforce rejected deletion because of a record constraint., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Salesforce denied authorization or object access., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connector configuration is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: deletedContact
+          branch: deleted
+          description: Deleting a Contact removes its record.
+          default: true
+          output: {id: 003RM000001AbcdYAC}
+        - name: missingContactForDelete
+          branch: notFound
+          description: The Contact was already absent.
+          failure: {kind: NOT_FOUND, message: Salesforce could not find the Contact.}
+    - name: createRecord
+      goName: CreateRecord
+      inputType: CreateRecordInput
+      outputType: CreateRecordOutput
+      kind: mutation
+      description: Create one record of an existing sObject type with exact JSON field values.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: Salesforce created or confirmed the record.}
+        - {id: recordRejected, goName: RecordRejected, description: Salesforce rejected the field values., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Salesforce denied authorization or object access., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A bounded create may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connector configuration is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        repeatOnUnknown: limited
+        maxSends: 3
+      mocks:
+        - name: createdContact
+          branch: created
+          description: Salesforce created a Contact.
+          default: true
+          output: {id: 003RM000001AbcdYAC}
+        - name: rejectedContactCreate
+          branch: recordRejected
+          description: Salesforce requires a LastName.
+          output: {providerErrors: [{errorCode: REQUIRED_FIELD_MISSING, fields: [LastName]}]}
+          failure: {kind: VALIDATION, message: Salesforce rejected the record values.}

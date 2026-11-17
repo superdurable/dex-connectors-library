@@ -1735,6 +1735,740 @@
       },
       "name": "upsertRecordByExternalId-c1-control-614",
       "operation": "upsertRecordByExternalId"
+    },
+    {
+      "callId": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "003RM000001AbcdYAC"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "input": {
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "deleteRecord-deleted",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"NOT_FOUND\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "providerErrors": [
+            {
+              "errorCode": "NOT_FOUND"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "input": {
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "deleteRecord-not-found",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"DELETE_FAILED\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "recordRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "providerErrors": [
+            {
+              "errorCode": "DELETE_FAILED"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "input": {
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "deleteRecord-record-rejected",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"INSUFFICIENT_ACCESS\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "providerErrors": [
+            {
+              "errorCode": "INSUFFICIENT_ACCESS"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "input": {
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "deleteRecord-provider-rejected",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {},
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "input": {
+        "recordId": "bad",
+        "sObjectType": "Contact"
+      },
+      "name": "deleteRecord-defect",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"REQUEST_LIMIT_EXCEEDED\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "input": {
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "deleteRecord-429",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"SERVER_UNAVAILABLE\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "input": {
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "deleteRecord-503",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6bba702-0d0c-57a9-8062-65097deac38e",
+      "input": {
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "deleteRecord-transport",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"003RM000001AbcdYAC\",\"success\":true,\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/data/v62.0/sobjects/Contact",
+          "requestBody": {
+            "LastName": "Raman"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+          "providerId": "003RM000001AbcdYAC",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "003RM000001AbcdYAC"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "input": {
+        "fields": {
+          "LastName": "Raman"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "createRecord-created",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"REQUIRED_FIELD_MISSING\",\"fields\":[\"LastName\"]}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/data/v62.0/sobjects/Contact",
+          "requestBody": {
+            "LastName": "Raman"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "recordRejected",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "providerErrors": [
+            {
+              "errorCode": "REQUIRED_FIELD_MISSING",
+              "fields": [
+                "LastName"
+              ]
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "input": {
+        "fields": {
+          "LastName": "Raman"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "createRecord-record-rejected",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"INSUFFICIENT_ACCESS\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/data/v62.0/sobjects/Contact",
+          "requestBody": {
+            "LastName": "Raman"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "providerErrors": [
+            {
+              "errorCode": "INSUFFICIENT_ACCESS"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "input": {
+        "fields": {
+          "LastName": "Raman"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "createRecord-provider-rejected",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {},
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "input": {
+        "fields": {
+          "Id": "invalid"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "createRecord-defect",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"REQUEST_LIMIT_EXCEEDED\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/data/v62.0/sobjects/Contact",
+          "requestBody": {
+            "LastName": "Raman"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "input": {
+        "fields": {
+          "LastName": "Raman"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "createRecord-429",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"SERVER_UNAVAILABLE\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/data/v62.0/sobjects/Contact",
+          "requestBody": {
+            "LastName": "Raman"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "input": {
+        "fields": {
+          "LastName": "Raman"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "createRecord-503",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"SERVER_UNAVAILABLE\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/data/v62.0/sobjects/Contact",
+          "requestBody": {
+            "LastName": "Raman"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "input": {
+        "fields": {
+          "LastName": "Raman"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "createRecord-5xx",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/data/v62.0/sobjects/Contact",
+          "requestBody": {
+            "LastName": "Raman"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "input": {
+        "fields": {
+          "LastName": "Raman"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "createRecord-transport",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/data/v62.0/sobjects/Contact",
+          "requestBody": {
+            "LastName": "Raman"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {},
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2192295f-ca23-5c13-b14c-c1d6092306a8",
+      "input": {
+        "fields": {
+          "LastName": "Raman"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "createRecord-uncertain",
+      "operation": "createRecord"
     }
   ],
   "schemaVersion": 1
