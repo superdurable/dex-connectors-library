@@ -1,0 +1,60 @@
+{
+  "connectorId": "dada",
+  "releaseTag": "connectors/dada/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-dada",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newQueryOrderStatusStep",
+      "kind": "query",
+      "operationId": "queryOrderStatus",
+      "inputType": "QueryOrderStatusInput",
+      "description": "Read the current delivery status for one third-party order ID.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryOrderStatusInput identifies a third-party delivery order.",
+        "properties": {
+          "orderID": {
+            "description": "OrderID is the third-party order_id supplied when creating the delivery order.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "orderID"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
