@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -80,6 +81,8 @@ type UpdateTemplateInput struct {
 	TextBody string `json:"textBody,omitempty"`
 	// HtmlBody is complete HTML markup; either it or TextBody is required.
 	HtmlBody string `json:"htmlBody,omitempty"`
+	// Alias optionally replaces the template alias; blank retains the current alias.
+	Alias string `json:"alias,omitempty"`
 }
 
 // DeleteTemplateInput identifies a template to remove.
@@ -173,10 +176,14 @@ func (operation GetTemplateOperation) Invoke(call sdkgo.Call, input GetTemplateI
 
 // Invoke replaces a standard template's editable fields.
 func (operation UpdateTemplateOperation) Invoke(call sdkgo.Call, input UpdateTemplateInput) sdkgo.MutationAttempt[Template] {
-	if strings.TrimSpace(input.TemplateIDOrAlias) == "" || !validTemplateContent(input.Name, input.Subject, input.TextBody, input.HtmlBody) {
-		return mutationFailure[Template]("updateTemplate", UpdateTemplateBranchDefect, sdkgo.FailureValidation, "template ID, name, subject, and a body are required")
+	if strings.TrimSpace(input.TemplateIDOrAlias) == "" || !validTemplateContent(input.Name, input.Subject, input.TextBody, input.HtmlBody) || input.Alias != "" && !templateAliasPattern.MatchString(input.Alias) {
+		return mutationFailure[Template]("updateTemplate", UpdateTemplateBranchDefect, sdkgo.FailureValidation, "template ID, name, subject, and a body are required; alias must start with a letter and contain only letters, digits, periods, underscores, or hyphens")
 	}
-	body, err := json.Marshal(map[string]string{"Name": input.Name, "Subject": input.Subject, "TextBody": input.TextBody, "HtmlBody": input.HtmlBody})
+	requestFields := map[string]string{"Name": input.Name, "Subject": input.Subject, "TextBody": input.TextBody, "HtmlBody": input.HtmlBody}
+	if input.Alias != "" {
+		requestFields["Alias"] = input.Alias
+	}
+	body, err := json.Marshal(requestFields)
 	if err != nil {
 		return mutationFailure[Template]("updateTemplate", UpdateTemplateBranchDefect, sdkgo.FailureLocalDefect, "template request cannot be encoded")
 	}
@@ -203,6 +210,8 @@ func decodeTemplate(body []byte) (Template, error) {
 func validTemplateContent(name, subject, textBody, htmlBody string) bool {
 	return strings.TrimSpace(name) != "" && strings.TrimSpace(subject) != "" && (strings.TrimSpace(textBody) != "" || strings.TrimSpace(htmlBody) != "")
 }
+
+var templateAliasPattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9._-]*$`)
 
 func (client *Client) deleteTemplate(call sdkgo.Call, templateIDOrAlias string) sdkgo.MutationAttempt[DeletedTemplate] {
 	request, err := client.newRequest(call, http.MethodDelete, "/templates/"+url.PathEscape(templateIDOrAlias), nil)

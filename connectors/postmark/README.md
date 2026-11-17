@@ -54,7 +54,8 @@ Keep secrets out of template model values because they enter the Flow input.
 `createTemplate` assigns a unique `dex-<call ID>` alias so a retry can read back
 the exact new template before another possible creation. Supply the template name,
 subject, and a text or HTML body. `updateTemplate` sends the complete replacement
-content; `deleteTemplate` treats an already missing template as deleted.
+content. Set its optional alias to change the provider alias; leave it blank to
+retain the current alias. `deleteTemplate` treats an already missing template as deleted.
 
 `listBounces` and `getBounce` inspect delivery failures for the current server.
 `activateBounce` applies Postmark's recipient reactivation action to a bounce ID;

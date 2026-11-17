@@ -2404,6 +2404,65 @@
       "callId": "228731dd-1f09-547e-96b2-7a412195ac0a",
       "exchanges": [
         {
+          "body": "{\"TemplateId\":1234,\"Name\":\"Welcome revised\",\"Alias\":\"welcome-v2\",\"Active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/templates/welcome-v1",
+          "requestBody": {
+            "Alias": "welcome-v2",
+            "HtmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+            "Name": "Welcome revised",
+            "Subject": "Hello again",
+            "TextBody": "Welcome again"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "Active": true,
+          "Alias": "welcome-v2",
+          "Name": "Welcome revised",
+          "TemplateId": 1234
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "input": {
+        "alias": "welcome-v2",
+        "htmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+        "name": "Welcome revised",
+        "subject": "Hello again",
+        "templateIdOrAlias": "welcome-v1",
+        "textBody": "Welcome again"
+      },
+      "name": "updateTemplate-alias-change",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "exchanges": [
+        {
           "body": "{\"ErrorCode\":1122,\"Message\":\"Invalid request\"}",
           "headers": {},
           "keyMode": "absent",
