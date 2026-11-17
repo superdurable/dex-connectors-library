@@ -3,6 +3,7 @@
 """Replay Go-recorded Gemini requests and outcomes through the Python connector."""
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -19,11 +20,18 @@ from connector_scenarios import ExchangeRecorder, HeartbeatContext, replay  # no
 
 SCENARIOS = [
     scenario
-    for scenario in json.loads((ROOT / "conformance/connectors/google/gemini/scenarios.json").read_text())[
-        "scenarios"
-    ]
+    for scenario in json.loads(
+        Path(
+            os.environ.get(
+                "CONNECTOR_CONFORMANCE_FIXTURE", ROOT / "conformance/connectors/google/gemini/scenarios.json"
+            )
+        ).read_text()
+    )["scenarios"]
     if scenario["operation"] == "generateContent"
 ]
+for scenario in SCENARIOS:
+    if "pending" in scenario:
+        raise ValueError(f"{scenario['name']}: pending conformance scenario")
 CONNECTION = sdk.ConnectionRef("google", "gemini-api")
 
 

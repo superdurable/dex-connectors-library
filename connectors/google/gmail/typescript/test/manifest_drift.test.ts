@@ -12,7 +12,7 @@ import * as gmailmock from '../src/mock/index.js';
 const FailureSchema = z.object({ kind: z.string(), message: z.string() });
 const ManifestSchema = z.object({
   spec: z.object({
-    languages: z.object({ typescript: z.object({ version: z.string() }) }),
+    languages: z.object({ typescript: z.object({ version: z.string(), operations: z.array(z.string()) }) }),
     auth: z.object({ refreshable: z.boolean(), defaultMethod: z.string(), methods: z.array(z.object({
       id: z.string(), type: z.string(), fields: z.array(z.object({ name: z.string() })),
       oauth2: z.object({ tokenEndpoint: z.string(), scopes: z.array(z.string()) }).optional(),
@@ -69,8 +69,9 @@ describe('connector.yaml remains the source of Gmail TypeScript definitions and 
   it('matches every operation identity, branch, and Execute default', async () => {
     const manifest = ManifestSchema.parse(parse(await readFile(new URL('../../connector.yaml', import.meta.url), 'utf8')) as unknown);
     expect(manifest.spec.languages.typescript.version).toBe('v0.4.0');
-    expect(manifest.spec.operations.map(operation => operation.name).sort()).toEqual(Object.keys(definitionByOperation).sort());
-    for (const operation of manifest.spec.operations) {
+    const typescriptOperations = manifest.spec.languages.typescript.operations;
+    expect(typescriptOperations.slice().sort()).toEqual(Object.keys(definitionByOperation).sort());
+    for (const operation of manifest.spec.operations.filter(operation => typescriptOperations.includes(operation.name))) {
       expect(operation.kind).toBe(operation.name === 'getMessage' ? 'query' : 'mutation');
       expect(operation.idempotency).toBe(operation.name === 'getMessage' ? 'none' : 'required');
       const definition = definitionByOperation[operation.name as keyof typeof definitionByOperation];
@@ -108,7 +109,9 @@ describe('connector.yaml remains the source of Gmail TypeScript definitions and 
 
   it('matches every named manifest case, failure, retry, and default', async () => {
     const manifest = ManifestSchema.parse(parse(await readFile(new URL('../../connector.yaml', import.meta.url), 'utf8')) as unknown);
-    const manifestNames = manifest.spec.operations.flatMap(operation => operation.mocks.map(mock => `${operation.name}.${mock.name}`)).sort();
+    const typescriptOperations = manifest.spec.languages.typescript.operations;
+    const manifestNames = manifest.spec.operations.filter(operation => typescriptOperations.includes(operation.name))
+      .flatMap(operation => operation.mocks.map(mock => `${operation.name}.${mock.name}`)).sort();
     expect(cases.map(entry => `${entry.operation}.${entry.name}`).sort()).toEqual(manifestNames);
     for (const entry of cases) {
       const mock = manifest.spec.operations.find(operation => operation.name === entry.operation)?.mocks.find(candidate => candidate.name === entry.name);

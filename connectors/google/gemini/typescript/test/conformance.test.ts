@@ -9,8 +9,12 @@ import { ProviderTransportError, type ProviderRequest } from '@superdurable/conn
 import { GeminiClient } from '../src/client.js';
 import { GenerateContentRequestSchema } from '../src/generated/models.js';
 
-const scenarios = (JSON.parse(readFileSync(new URL('../../../../../conformance/connectors/google/gemini/scenarios.json', import.meta.url), 'utf8')).scenarios as Scenario[])
+const fixture = process.env.CONNECTOR_CONFORMANCE_FIXTURE ?? new URL('../../../../../conformance/connectors/google/gemini/scenarios.json', import.meta.url);
+const scenarios = (JSON.parse(readFileSync(fixture, 'utf8')).scenarios as Scenario[])
   .filter(scenario => scenario.operation === 'generateContent');
+for (const scenario of scenarios) {
+  if ('pending' in scenario) throw new Error(`${scenario.name}: pending conformance scenario`);
+}
 const connection = { provider: 'google', name: 'gemini-default' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeGemini));

@@ -14,7 +14,10 @@ def test_connection_fields_have_complete_guidance() -> None:
 
     fields = manifest["spec"]["configuration"]["fields"]
     assert {field["name"] for field in fields} == {
-        "baseUrl", "appId", "timeout", "maxResponseBytes",
+        "baseUrl",
+        "appId",
+        "timeout",
+        "maxResponseBytes",
     }
     for field in fields:
         assert "Blank" in field["description"]
@@ -24,7 +27,7 @@ def test_connection_fields_have_complete_guidance() -> None:
 
     descriptions = {field["name"]: field["description"] for field in fields}
     assert "https://heapanalytics.com" in descriptions["appId"]
-    assert "Projects > the Main Production environment" in descriptions["appId"]
+    assert "Account > Manage > Projects > the chosen environment" in descriptions["appId"]
     assert "Non-secret" in descriptions["appId"]
     assert "decimal digits" in descriptions["appId"]
     assert "EU project" in descriptions["baseUrl"]

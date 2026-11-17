@@ -92,9 +92,7 @@ def test_python_version_configuration_and_authorization_match_manifest() -> None
     assert methods[GOOGLE_OAUTH_AUTH_METHOD_ID]["type"] == "oauth2"
     assert methods[WORKSPACE_DOMAIN_DELEGATION_AUTH_METHOD_ID]["type"] == "serviceAccount"
     credential_fields = {field.name for field in fields(Credentials)} - {"auth_method_id"}
-    assert credential_fields == {
-        field["name"] for method in methods.values() for field in method["fields"]
-    }
+    assert credential_fields == {field["name"] for method in methods.values() for field in method["fields"]}
     oauth = methods[GOOGLE_OAUTH_AUTH_METHOD_ID]["oauth2"]
     delegated = methods[WORKSPACE_DOMAIN_DELEGATION_AUTH_METHOD_ID]["serviceAccount"]["jwtBearer"]
     assert oauth["tokenEndpoint"] == GOOGLE_TOKEN_ENDPOINT
@@ -113,7 +111,13 @@ def test_python_version_configuration_and_authorization_match_manifest() -> None
 
 def test_python_operation_definitions_match_manifest() -> None:
     """Every operation route, optional flag, and Execute default matches its manifest entry."""
-    operations = {operation["name"]: operation for operation in _manifest()["spec"]["operations"]}
+    spec = _manifest()["spec"]
+    python_operations = set(spec["languages"]["python"]["operations"])
+    operations = {
+        operation["name"]: operation
+        for operation in spec["operations"]
+        if operation["name"] in python_operations
+    }
     assert set(operations) == set(_DEFINITIONS)
     for name, operation in operations.items():
         definition = _DEFINITIONS[name]
@@ -129,9 +133,7 @@ def test_python_operation_definitions_match_manifest() -> None:
         ]
         execution = operation["execution"]
         assert definition.step_defaults.execute_method_timeout == _seconds(execution["executeMethodTimeout"])
-        assert definition.step_defaults.execute_durability == {"async": 2, "sync": 1}[
-            execution["durability"]
-        ]
+        assert definition.step_defaults.execute_durability == {"async": 2, "sync": 1}[execution["durability"]]
         retry = definition.step_defaults.execute_retry
         assert retry is not None
         configured_retry = execution.get("retry")
@@ -148,7 +150,9 @@ def test_python_operation_definitions_match_manifest() -> None:
 
 def test_python_mock_factories_match_every_manifest_scenario() -> None:
     """Every declared mock factory returns the manifest's branch, failure, delay, and output."""
-    operations = _manifest()["spec"]["operations"]
+    spec = _manifest()["spec"]
+    python_operations = set(spec["languages"]["python"]["operations"])
+    operations = [operation for operation in spec["operations"] if operation["name"] in python_operations]
     expected_factory_names = {
         f"{_snake_case(operation['name'])}_{_snake_case(mock['name'])}"
         for operation in operations
