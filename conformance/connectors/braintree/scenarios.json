@@ -3060,6 +3060,2362 @@
           "state": "claimed"
         }
       }
+    },
+    {
+      "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"vaultPaymentMethod\":{\"paymentMethod\":{\"id\":\"payment-method-1\",\"usage\":\"MULTI_USE\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VaultPaymentMethod($input: VaultPaymentMethodInput!) { vaultPaymentMethod(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "0829c13f-d746-5faf-b381-f68951e049bd",
+                "customerId": "customer-1",
+                "paymentMethodId": "single-use-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "vaulted",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "payment-method-1",
+          "usage": "MULTI_USE"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "input": {
+        "customerId": "customer-1",
+        "paymentMethodId": "single-use-1"
+      },
+      "name": "vaultPaymentMethod-success",
+      "operation": "vaultPaymentMethod"
+    },
+    {
+      "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VaultPaymentMethod($input: VaultPaymentMethodInput!) { vaultPaymentMethod(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "0829c13f-d746-5faf-b381-f68951e049bd",
+                "customerId": "customer-1",
+                "paymentMethodId": "single-use-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "input": {
+        "customerId": "customer-1",
+        "paymentMethodId": "single-use-1"
+      },
+      "name": "vaultPaymentMethod-providerRejected",
+      "operation": "vaultPaymentMethod"
+    },
+    {
+      "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VaultPaymentMethod($input: VaultPaymentMethodInput!) { vaultPaymentMethod(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "0829c13f-d746-5faf-b381-f68951e049bd",
+                "customerId": "customer-1",
+                "paymentMethodId": "single-use-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "input": {
+        "customerId": "customer-1",
+        "paymentMethodId": "single-use-1"
+      },
+      "name": "vaultPaymentMethod-notFound",
+      "operation": "vaultPaymentMethod"
+    },
+    {
+      "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VaultPaymentMethod($input: VaultPaymentMethodInput!) { vaultPaymentMethod(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "0829c13f-d746-5faf-b381-f68951e049bd",
+                "customerId": "customer-1",
+                "paymentMethodId": "single-use-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "input": {
+        "customerId": "customer-1",
+        "paymentMethodId": "single-use-1"
+      },
+      "name": "vaultPaymentMethod-final429",
+      "operation": "vaultPaymentMethod"
+    },
+    {
+      "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VaultPaymentMethod($input: VaultPaymentMethodInput!) { vaultPaymentMethod(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "0829c13f-d746-5faf-b381-f68951e049bd",
+                "customerId": "customer-1",
+                "paymentMethodId": "single-use-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "input": {
+        "customerId": "customer-1",
+        "paymentMethodId": "single-use-1"
+      },
+      "name": "vaultPaymentMethod-final503",
+      "operation": "vaultPaymentMethod"
+    },
+    {
+      "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VaultPaymentMethod($input: VaultPaymentMethodInput!) { vaultPaymentMethod(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "0829c13f-d746-5faf-b381-f68951e049bd",
+                "customerId": "customer-1",
+                "paymentMethodId": "single-use-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "input": {
+        "customerId": "customer-1",
+        "paymentMethodId": "single-use-1"
+      },
+      "name": "vaultPaymentMethod-transportFailure",
+      "operation": "vaultPaymentMethod"
+    },
+    {
+      "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation VaultPaymentMethod($input: VaultPaymentMethodInput!) { vaultPaymentMethod(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "0829c13f-d746-5faf-b381-f68951e049bd",
+                "customerId": "customer-1",
+                "paymentMethodId": "single-use-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "input": {
+        "customerId": "customer-1",
+        "paymentMethodId": "single-use-1"
+      },
+      "name": "vaultPaymentMethod-invalidResponse",
+      "operation": "vaultPaymentMethod"
+    },
+    {
+      "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "input": {
+        "customerId": "customer-1",
+        "paymentMethodId": ""
+      },
+      "name": "vaultPaymentMethod-defect",
+      "operation": "vaultPaymentMethod"
+    },
+    {
+      "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0829c13f-d746-5faf-b381-f68951e049bd",
+      "input": {
+        "customerId": "customer-1",
+        "paymentMethodId": "single-use-1"
+      },
+      "name": "vaultPaymentMethod-uncertain",
+      "operation": "vaultPaymentMethod",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "0829c13f-d746-5faf-b381-f68951e049bd",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"updateCreditCardCardholderName\":{\"paymentMethod\":{\"id\":\"payment-method-1\",\"usage\":\"MULTI_USE\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardCardholderName($input: UpdateCreditCardCardholderNameInput!) { updateCreditCardCardholderName(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "cardholderName": "Ada Lovelace",
+                "clientMutationId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "payment-method-1",
+          "usage": "MULTI_USE"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "input": {
+        "cardholderName": "Ada Lovelace",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardCardholderName-success",
+      "operation": "updateCreditCardCardholderName"
+    },
+    {
+      "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardCardholderName($input: UpdateCreditCardCardholderNameInput!) { updateCreditCardCardholderName(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "cardholderName": "Ada Lovelace",
+                "clientMutationId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "input": {
+        "cardholderName": "Ada Lovelace",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardCardholderName-providerRejected",
+      "operation": "updateCreditCardCardholderName"
+    },
+    {
+      "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardCardholderName($input: UpdateCreditCardCardholderNameInput!) { updateCreditCardCardholderName(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "cardholderName": "Ada Lovelace",
+                "clientMutationId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "input": {
+        "cardholderName": "Ada Lovelace",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardCardholderName-notFound",
+      "operation": "updateCreditCardCardholderName"
+    },
+    {
+      "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardCardholderName($input: UpdateCreditCardCardholderNameInput!) { updateCreditCardCardholderName(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "cardholderName": "Ada Lovelace",
+                "clientMutationId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "input": {
+        "cardholderName": "Ada Lovelace",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardCardholderName-final429",
+      "operation": "updateCreditCardCardholderName"
+    },
+    {
+      "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardCardholderName($input: UpdateCreditCardCardholderNameInput!) { updateCreditCardCardholderName(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "cardholderName": "Ada Lovelace",
+                "clientMutationId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "input": {
+        "cardholderName": "Ada Lovelace",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardCardholderName-final503",
+      "operation": "updateCreditCardCardholderName"
+    },
+    {
+      "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardCardholderName($input: UpdateCreditCardCardholderNameInput!) { updateCreditCardCardholderName(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "cardholderName": "Ada Lovelace",
+                "clientMutationId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "input": {
+        "cardholderName": "Ada Lovelace",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardCardholderName-transportFailure",
+      "operation": "updateCreditCardCardholderName"
+    },
+    {
+      "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardCardholderName($input: UpdateCreditCardCardholderNameInput!) { updateCreditCardCardholderName(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "cardholderName": "Ada Lovelace",
+                "clientMutationId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "input": {
+        "cardholderName": "Ada Lovelace",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardCardholderName-invalidResponse",
+      "operation": "updateCreditCardCardholderName"
+    },
+    {
+      "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "input": {
+        "cardholderName": "Ada Lovelace",
+        "paymentMethodId": ""
+      },
+      "name": "updateCreditCardCardholderName-defect",
+      "operation": "updateCreditCardCardholderName"
+    },
+    {
+      "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+      "input": {
+        "cardholderName": "Ada Lovelace",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardCardholderName-uncertain",
+      "operation": "updateCreditCardCardholderName",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "1a53baf4-27c8-5764-9717-e8a806fbdfa3",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"updateCreditCardExpirationDate\":{\"paymentMethod\":{\"id\":\"payment-method-1\",\"usage\":\"MULTI_USE\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardExpirationDate($input: UpdateCreditCardExpirationDateInput!) { updateCreditCardExpirationDate(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+                "expirationMonth": "12",
+                "expirationYear": "2030",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "payment-method-1",
+          "usage": "MULTI_USE"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "input": {
+        "expirationMonth": "12",
+        "expirationYear": "2030",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardExpirationDate-success",
+      "operation": "updateCreditCardExpirationDate"
+    },
+    {
+      "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardExpirationDate($input: UpdateCreditCardExpirationDateInput!) { updateCreditCardExpirationDate(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+                "expirationMonth": "12",
+                "expirationYear": "2030",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "input": {
+        "expirationMonth": "12",
+        "expirationYear": "2030",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardExpirationDate-providerRejected",
+      "operation": "updateCreditCardExpirationDate"
+    },
+    {
+      "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardExpirationDate($input: UpdateCreditCardExpirationDateInput!) { updateCreditCardExpirationDate(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+                "expirationMonth": "12",
+                "expirationYear": "2030",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "input": {
+        "expirationMonth": "12",
+        "expirationYear": "2030",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardExpirationDate-notFound",
+      "operation": "updateCreditCardExpirationDate"
+    },
+    {
+      "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardExpirationDate($input: UpdateCreditCardExpirationDateInput!) { updateCreditCardExpirationDate(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+                "expirationMonth": "12",
+                "expirationYear": "2030",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "input": {
+        "expirationMonth": "12",
+        "expirationYear": "2030",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardExpirationDate-final429",
+      "operation": "updateCreditCardExpirationDate"
+    },
+    {
+      "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardExpirationDate($input: UpdateCreditCardExpirationDateInput!) { updateCreditCardExpirationDate(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+                "expirationMonth": "12",
+                "expirationYear": "2030",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "input": {
+        "expirationMonth": "12",
+        "expirationYear": "2030",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardExpirationDate-final503",
+      "operation": "updateCreditCardExpirationDate"
+    },
+    {
+      "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardExpirationDate($input: UpdateCreditCardExpirationDateInput!) { updateCreditCardExpirationDate(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+                "expirationMonth": "12",
+                "expirationYear": "2030",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "input": {
+        "expirationMonth": "12",
+        "expirationYear": "2030",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardExpirationDate-transportFailure",
+      "operation": "updateCreditCardExpirationDate"
+    },
+    {
+      "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardExpirationDate($input: UpdateCreditCardExpirationDateInput!) { updateCreditCardExpirationDate(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+                "expirationMonth": "12",
+                "expirationYear": "2030",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "input": {
+        "expirationMonth": "12",
+        "expirationYear": "2030",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardExpirationDate-invalidResponse",
+      "operation": "updateCreditCardExpirationDate"
+    },
+    {
+      "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "input": {
+        "expirationMonth": "12",
+        "expirationYear": "2030",
+        "paymentMethodId": ""
+      },
+      "name": "updateCreditCardExpirationDate-defect",
+      "operation": "updateCreditCardExpirationDate"
+    },
+    {
+      "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "724d4d6b-436f-5687-8504-08ebc63626e2",
+      "input": {
+        "expirationMonth": "12",
+        "expirationYear": "2030",
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "updateCreditCardExpirationDate-uncertain",
+      "operation": "updateCreditCardExpirationDate",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "724d4d6b-436f-5687-8504-08ebc63626e2",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"updateCreditCardBillingAddress\":{\"paymentMethod\":{\"id\":\"payment-method-1\",\"usage\":\"MULTI_USE\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardBillingAddress($input: UpdateCreditCardBillingAddressInput!) { updateCreditCardBillingAddress(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "billingAddress": {
+                  "addressLine1": "1 Main St",
+                  "adminArea1": "CA",
+                  "adminArea2": "San Jose",
+                  "countryCode": "US",
+                  "postalCode": "95113"
+                },
+                "clientMutationId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "payment-method-1",
+          "usage": "MULTI_USE"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "input": {
+        "addressLine1": "1 Main St",
+        "city": "San Jose",
+        "countryCode": "US",
+        "paymentMethodId": "payment-method-1",
+        "postalCode": "95113",
+        "state": "CA"
+      },
+      "name": "updateCreditCardBillingAddress-success",
+      "operation": "updateCreditCardBillingAddress"
+    },
+    {
+      "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardBillingAddress($input: UpdateCreditCardBillingAddressInput!) { updateCreditCardBillingAddress(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "billingAddress": {
+                  "addressLine1": "1 Main St",
+                  "adminArea1": "CA",
+                  "adminArea2": "San Jose",
+                  "countryCode": "US",
+                  "postalCode": "95113"
+                },
+                "clientMutationId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "input": {
+        "addressLine1": "1 Main St",
+        "city": "San Jose",
+        "countryCode": "US",
+        "paymentMethodId": "payment-method-1",
+        "postalCode": "95113",
+        "state": "CA"
+      },
+      "name": "updateCreditCardBillingAddress-providerRejected",
+      "operation": "updateCreditCardBillingAddress"
+    },
+    {
+      "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardBillingAddress($input: UpdateCreditCardBillingAddressInput!) { updateCreditCardBillingAddress(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "billingAddress": {
+                  "addressLine1": "1 Main St",
+                  "adminArea1": "CA",
+                  "adminArea2": "San Jose",
+                  "countryCode": "US",
+                  "postalCode": "95113"
+                },
+                "clientMutationId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "input": {
+        "addressLine1": "1 Main St",
+        "city": "San Jose",
+        "countryCode": "US",
+        "paymentMethodId": "payment-method-1",
+        "postalCode": "95113",
+        "state": "CA"
+      },
+      "name": "updateCreditCardBillingAddress-notFound",
+      "operation": "updateCreditCardBillingAddress"
+    },
+    {
+      "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardBillingAddress($input: UpdateCreditCardBillingAddressInput!) { updateCreditCardBillingAddress(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "billingAddress": {
+                  "addressLine1": "1 Main St",
+                  "adminArea1": "CA",
+                  "adminArea2": "San Jose",
+                  "countryCode": "US",
+                  "postalCode": "95113"
+                },
+                "clientMutationId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "input": {
+        "addressLine1": "1 Main St",
+        "city": "San Jose",
+        "countryCode": "US",
+        "paymentMethodId": "payment-method-1",
+        "postalCode": "95113",
+        "state": "CA"
+      },
+      "name": "updateCreditCardBillingAddress-final429",
+      "operation": "updateCreditCardBillingAddress"
+    },
+    {
+      "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardBillingAddress($input: UpdateCreditCardBillingAddressInput!) { updateCreditCardBillingAddress(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "billingAddress": {
+                  "addressLine1": "1 Main St",
+                  "adminArea1": "CA",
+                  "adminArea2": "San Jose",
+                  "countryCode": "US",
+                  "postalCode": "95113"
+                },
+                "clientMutationId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "input": {
+        "addressLine1": "1 Main St",
+        "city": "San Jose",
+        "countryCode": "US",
+        "paymentMethodId": "payment-method-1",
+        "postalCode": "95113",
+        "state": "CA"
+      },
+      "name": "updateCreditCardBillingAddress-final503",
+      "operation": "updateCreditCardBillingAddress"
+    },
+    {
+      "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardBillingAddress($input: UpdateCreditCardBillingAddressInput!) { updateCreditCardBillingAddress(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "billingAddress": {
+                  "addressLine1": "1 Main St",
+                  "adminArea1": "CA",
+                  "adminArea2": "San Jose",
+                  "countryCode": "US",
+                  "postalCode": "95113"
+                },
+                "clientMutationId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "input": {
+        "addressLine1": "1 Main St",
+        "city": "San Jose",
+        "countryCode": "US",
+        "paymentMethodId": "payment-method-1",
+        "postalCode": "95113",
+        "state": "CA"
+      },
+      "name": "updateCreditCardBillingAddress-transportFailure",
+      "operation": "updateCreditCardBillingAddress"
+    },
+    {
+      "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCreditCardBillingAddress($input: UpdateCreditCardBillingAddressInput!) { updateCreditCardBillingAddress(input: $input) { paymentMethod { id usage } } }",
+            "variables": {
+              "input": {
+                "billingAddress": {
+                  "addressLine1": "1 Main St",
+                  "adminArea1": "CA",
+                  "adminArea2": "San Jose",
+                  "countryCode": "US",
+                  "postalCode": "95113"
+                },
+                "clientMutationId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "input": {
+        "addressLine1": "1 Main St",
+        "city": "San Jose",
+        "countryCode": "US",
+        "paymentMethodId": "payment-method-1",
+        "postalCode": "95113",
+        "state": "CA"
+      },
+      "name": "updateCreditCardBillingAddress-invalidResponse",
+      "operation": "updateCreditCardBillingAddress"
+    },
+    {
+      "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "input": {
+        "addressLine1": "1 Main St",
+        "city": "San Jose",
+        "countryCode": "US",
+        "paymentMethodId": "",
+        "postalCode": "95113",
+        "state": "CA"
+      },
+      "name": "updateCreditCardBillingAddress-defect",
+      "operation": "updateCreditCardBillingAddress"
+    },
+    {
+      "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "usage": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+      "input": {
+        "addressLine1": "1 Main St",
+        "city": "San Jose",
+        "countryCode": "US",
+        "paymentMethodId": "payment-method-1",
+        "postalCode": "95113",
+        "state": "CA"
+      },
+      "name": "updateCreditCardBillingAddress-uncertain",
+      "operation": "updateCreditCardBillingAddress",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "fea83a17-6fa6-56a6-b34b-03f69da6483c",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"deletePaymentMethodFromVault\":{\"clientMutationId\":\"done\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeletePaymentMethodFromVault($input: DeletePaymentMethodFromVaultInput!) { deletePaymentMethodFromVault(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "paymentMethodId": "payment-method-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "input": {
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "deletePaymentMethodFromVault-success",
+      "operation": "deletePaymentMethodFromVault"
+    },
+    {
+      "callId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeletePaymentMethodFromVault($input: DeletePaymentMethodFromVaultInput!) { deletePaymentMethodFromVault(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "paymentMethodId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "input": {
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "deletePaymentMethodFromVault-providerRejected",
+      "operation": "deletePaymentMethodFromVault"
+    },
+    {
+      "callId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeletePaymentMethodFromVault($input: DeletePaymentMethodFromVaultInput!) { deletePaymentMethodFromVault(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "paymentMethodId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "input": {
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "deletePaymentMethodFromVault-notFound",
+      "operation": "deletePaymentMethodFromVault"
+    },
+    {
+      "callId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeletePaymentMethodFromVault($input: DeletePaymentMethodFromVaultInput!) { deletePaymentMethodFromVault(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "input": {
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "deletePaymentMethodFromVault-final429",
+      "operation": "deletePaymentMethodFromVault"
+    },
+    {
+      "callId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeletePaymentMethodFromVault($input: DeletePaymentMethodFromVaultInput!) { deletePaymentMethodFromVault(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "input": {
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "deletePaymentMethodFromVault-final503",
+      "operation": "deletePaymentMethodFromVault"
+    },
+    {
+      "callId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeletePaymentMethodFromVault($input: DeletePaymentMethodFromVaultInput!) { deletePaymentMethodFromVault(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "input": {
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "deletePaymentMethodFromVault-transportFailure",
+      "operation": "deletePaymentMethodFromVault"
+    },
+    {
+      "callId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeletePaymentMethodFromVault($input: DeletePaymentMethodFromVaultInput!) { deletePaymentMethodFromVault(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+                "paymentMethodId": "payment-method-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "paymentMethodId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "input": {
+        "paymentMethodId": "payment-method-1"
+      },
+      "name": "deletePaymentMethodFromVault-invalidResponse",
+      "operation": "deletePaymentMethodFromVault"
+    },
+    {
+      "callId": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "paymentMethodId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c44c308-9b7e-5471-9119-5340dc604e36",
+      "input": {
+        "paymentMethodId": ""
+      },
+      "name": "deletePaymentMethodFromVault-defect",
+      "operation": "deletePaymentMethodFromVault"
     }
   ],
   "schemaVersion": 1

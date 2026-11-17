@@ -17,14 +17,19 @@ import (
 
 // Mock is a scripted braintree connection. Script each operation through its accessor.
 type Mock struct {
-	connection       braintree.Connection
-	createCustomer   *connectormock.Mutation[braintree.CreateCustomerInput, braintree.CustomerProfile]
-	updateCustomer   *connectormock.Mutation[braintree.UpdateCustomerInput, braintree.CustomerProfile]
-	deleteCustomer   *connectormock.Mutation[braintree.GetCustomerInput, braintree.CustomerDeleteResult]
-	getCustomer      *connectormock.Query[braintree.GetCustomerInput, braintree.CustomerProfile]
-	getPaymentMethod *connectormock.Query[braintree.GetPaymentMethodInput, braintree.PaymentMethodProfile]
-	getRefund        *connectormock.Query[braintree.GetRefundInput, braintree.RefundProfile]
-	getTransaction   *connectormock.Query[braintree.GetTransactionInput, braintree.TransactionProfile]
+	connection                     braintree.Connection
+	vaultPaymentMethod             *connectormock.Mutation[braintree.VaultPaymentMethodInput, braintree.PaymentMethodProfile]
+	updateCreditCardCardholderName *connectormock.Mutation[braintree.UpdateCreditCardCardholderNameInput, braintree.PaymentMethodProfile]
+	updateCreditCardExpirationDate *connectormock.Mutation[braintree.UpdateCreditCardExpirationDateInput, braintree.PaymentMethodProfile]
+	updateCreditCardBillingAddress *connectormock.Mutation[braintree.UpdateCreditCardBillingAddressInput, braintree.PaymentMethodProfile]
+	deletePaymentMethodFromVault   *connectormock.Mutation[braintree.GetPaymentMethodInput, braintree.PaymentMethodDeleteResult]
+	createCustomer                 *connectormock.Mutation[braintree.CreateCustomerInput, braintree.CustomerProfile]
+	updateCustomer                 *connectormock.Mutation[braintree.UpdateCustomerInput, braintree.CustomerProfile]
+	deleteCustomer                 *connectormock.Mutation[braintree.GetCustomerInput, braintree.CustomerDeleteResult]
+	getCustomer                    *connectormock.Query[braintree.GetCustomerInput, braintree.CustomerProfile]
+	getPaymentMethod               *connectormock.Query[braintree.GetPaymentMethodInput, braintree.PaymentMethodProfile]
+	getRefund                      *connectormock.Query[braintree.GetRefundInput, braintree.RefundProfile]
+	getTransaction                 *connectormock.Query[braintree.GetTransactionInput, braintree.TransactionProfile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -32,14 +37,24 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createCustomer:   connectormock.NewMutation[braintree.CreateCustomerInput, braintree.CustomerProfile](t, braintree.CreateCustomerDefinition),
-		updateCustomer:   connectormock.NewMutation[braintree.UpdateCustomerInput, braintree.CustomerProfile](t, braintree.UpdateCustomerDefinition),
-		deleteCustomer:   connectormock.NewMutation[braintree.GetCustomerInput, braintree.CustomerDeleteResult](t, braintree.DeleteCustomerDefinition),
-		getCustomer:      connectormock.NewQuery[braintree.GetCustomerInput, braintree.CustomerProfile](t, braintree.GetCustomerDefinition),
-		getPaymentMethod: connectormock.NewQuery[braintree.GetPaymentMethodInput, braintree.PaymentMethodProfile](t, braintree.GetPaymentMethodDefinition),
-		getRefund:        connectormock.NewQuery[braintree.GetRefundInput, braintree.RefundProfile](t, braintree.GetRefundDefinition),
-		getTransaction:   connectormock.NewQuery[braintree.GetTransactionInput, braintree.TransactionProfile](t, braintree.GetTransactionDefinition),
+		vaultPaymentMethod:             connectormock.NewMutation[braintree.VaultPaymentMethodInput, braintree.PaymentMethodProfile](t, braintree.VaultPaymentMethodDefinition),
+		updateCreditCardCardholderName: connectormock.NewMutation[braintree.UpdateCreditCardCardholderNameInput, braintree.PaymentMethodProfile](t, braintree.UpdateCreditCardCardholderNameDefinition),
+		updateCreditCardExpirationDate: connectormock.NewMutation[braintree.UpdateCreditCardExpirationDateInput, braintree.PaymentMethodProfile](t, braintree.UpdateCreditCardExpirationDateDefinition),
+		updateCreditCardBillingAddress: connectormock.NewMutation[braintree.UpdateCreditCardBillingAddressInput, braintree.PaymentMethodProfile](t, braintree.UpdateCreditCardBillingAddressDefinition),
+		deletePaymentMethodFromVault:   connectormock.NewMutation[braintree.GetPaymentMethodInput, braintree.PaymentMethodDeleteResult](t, braintree.DeletePaymentMethodFromVaultDefinition),
+		createCustomer:                 connectormock.NewMutation[braintree.CreateCustomerInput, braintree.CustomerProfile](t, braintree.CreateCustomerDefinition),
+		updateCustomer:                 connectormock.NewMutation[braintree.UpdateCustomerInput, braintree.CustomerProfile](t, braintree.UpdateCustomerDefinition),
+		deleteCustomer:                 connectormock.NewMutation[braintree.GetCustomerInput, braintree.CustomerDeleteResult](t, braintree.DeleteCustomerDefinition),
+		getCustomer:                    connectormock.NewQuery[braintree.GetCustomerInput, braintree.CustomerProfile](t, braintree.GetCustomerDefinition),
+		getPaymentMethod:               connectormock.NewQuery[braintree.GetPaymentMethodInput, braintree.PaymentMethodProfile](t, braintree.GetPaymentMethodDefinition),
+		getRefund:                      connectormock.NewQuery[braintree.GetRefundInput, braintree.RefundProfile](t, braintree.GetRefundDefinition),
+		getTransaction:                 connectormock.NewQuery[braintree.GetTransactionInput, braintree.TransactionProfile](t, braintree.GetTransactionDefinition),
 	}
+	mock.vaultPaymentMethod.Default(VaultPaymentMethodDefault())
+	mock.updateCreditCardCardholderName.Default(UpdateCreditCardCardholderNameDefault())
+	mock.updateCreditCardExpirationDate.Default(UpdateCreditCardExpirationDateDefault())
+	mock.updateCreditCardBillingAddress.Default(UpdateCreditCardBillingAddressDefault())
+	mock.deletePaymentMethodFromVault.Default(DeletePaymentMethodFromVaultDefault())
 	mock.createCustomer.Default(CreateCustomerDefault())
 	mock.updateCustomer.Default(UpdateCustomerDefault())
 	mock.deleteCustomer.Default(DeleteCustomerDefault())
@@ -57,6 +72,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() braintree.Connection { return mock.connection }
+
+// VaultPaymentMethod returns the vaultPaymentMethod script.
+func (mock *Mock) VaultPaymentMethod() *connectormock.Mutation[braintree.VaultPaymentMethodInput, braintree.PaymentMethodProfile] {
+	return mock.vaultPaymentMethod
+}
+
+// UpdateCreditCardCardholderName returns the updateCreditCardCardholderName script.
+func (mock *Mock) UpdateCreditCardCardholderName() *connectormock.Mutation[braintree.UpdateCreditCardCardholderNameInput, braintree.PaymentMethodProfile] {
+	return mock.updateCreditCardCardholderName
+}
+
+// UpdateCreditCardExpirationDate returns the updateCreditCardExpirationDate script.
+func (mock *Mock) UpdateCreditCardExpirationDate() *connectormock.Mutation[braintree.UpdateCreditCardExpirationDateInput, braintree.PaymentMethodProfile] {
+	return mock.updateCreditCardExpirationDate
+}
+
+// UpdateCreditCardBillingAddress returns the updateCreditCardBillingAddress script.
+func (mock *Mock) UpdateCreditCardBillingAddress() *connectormock.Mutation[braintree.UpdateCreditCardBillingAddressInput, braintree.PaymentMethodProfile] {
+	return mock.updateCreditCardBillingAddress
+}
+
+// DeletePaymentMethodFromVault returns the deletePaymentMethodFromVault script.
+func (mock *Mock) DeletePaymentMethodFromVault() *connectormock.Mutation[braintree.GetPaymentMethodInput, braintree.PaymentMethodDeleteResult] {
+	return mock.deletePaymentMethodFromVault
+}
 
 // CreateCustomer returns the createCustomer script.
 func (mock *Mock) CreateCustomer() *connectormock.Mutation[braintree.CreateCustomerInput, braintree.CustomerProfile] {
@@ -95,6 +135,21 @@ func (mock *Mock) GetTransaction() *connectormock.Query[braintree.GetTransaction
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) VaultPaymentMethod() sdkgo.Mutation[braintree.VaultPaymentMethodInput, braintree.PaymentMethodProfile] {
+	return operations.mock.vaultPaymentMethod
+}
+func (operations mockOperations) UpdateCreditCardCardholderName() sdkgo.Mutation[braintree.UpdateCreditCardCardholderNameInput, braintree.PaymentMethodProfile] {
+	return operations.mock.updateCreditCardCardholderName
+}
+func (operations mockOperations) UpdateCreditCardExpirationDate() sdkgo.Mutation[braintree.UpdateCreditCardExpirationDateInput, braintree.PaymentMethodProfile] {
+	return operations.mock.updateCreditCardExpirationDate
+}
+func (operations mockOperations) UpdateCreditCardBillingAddress() sdkgo.Mutation[braintree.UpdateCreditCardBillingAddressInput, braintree.PaymentMethodProfile] {
+	return operations.mock.updateCreditCardBillingAddress
+}
+func (operations mockOperations) DeletePaymentMethodFromVault() sdkgo.Mutation[braintree.GetPaymentMethodInput, braintree.PaymentMethodDeleteResult] {
+	return operations.mock.deletePaymentMethodFromVault
+}
 func (operations mockOperations) CreateCustomer() sdkgo.Mutation[braintree.CreateCustomerInput, braintree.CustomerProfile] {
 	return operations.mock.createCustomer
 }
@@ -115,6 +170,211 @@ func (operations mockOperations) GetRefund() sdkgo.Query[braintree.GetRefundInpu
 }
 func (operations mockOperations) GetTransaction() sdkgo.Query[braintree.GetTransactionInput, braintree.TransactionProfile] {
 	return operations.mock.getTransaction
+}
+
+// VaultPaymentMethodVaulted selects the vaulted branch: A vaulted payment method was returned.
+func VaultPaymentMethodVaulted(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.VaultPaymentMethodBranchVaulted, value, failure)
+}
+
+// VaultPaymentMethodNotFound selects the notFound branch: The selected payment method was not found.
+func VaultPaymentMethodNotFound(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.VaultPaymentMethodBranchNotFound, value, failure)
+}
+
+// VaultPaymentMethodProviderRejected selects the providerRejected branch: Braintree definitively rejected the mutation.
+func VaultPaymentMethodProviderRejected(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.VaultPaymentMethodBranchProviderRejected, value, failure)
+}
+
+// VaultPaymentMethodDefect selects the defect branch: Input or credentials are invalid.
+func VaultPaymentMethodDefect(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.VaultPaymentMethodBranchDefect, value, failure)
+}
+
+// VaultPaymentMethodUncertain returns an uncertain vaultPaymentMethod outcome.
+func VaultPaymentMethodUncertain(value braintree.PaymentMethodProfile, failure sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// VaultPaymentMethodRetry asks Dex to retry the vaultPaymentMethod Step, after the delay when it is positive.
+func VaultPaymentMethodRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Retry[braintree.PaymentMethodProfile](failure, after)
+}
+
+// VaultPaymentMethodVaultedDefault is the manifest mock vaultedDefault: One sample payment method is returned.
+func VaultPaymentMethodVaultedDefault() connectormock.Case[braintree.PaymentMethodProfile] {
+	value := connectormock.MustDecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+	return connectormock.Branch(braintree.VaultPaymentMethodBranchVaulted, value, nil)
+}
+
+// VaultPaymentMethodDefault is the manifest default, vaultedDefault, which New installs.
+func VaultPaymentMethodDefault() connectormock.Case[braintree.PaymentMethodProfile] {
+	return VaultPaymentMethodVaultedDefault()
+}
+
+// UpdateCreditCardCardholderNameUpdated selects the updated branch: The cardholder name was updated.
+func UpdateCreditCardCardholderNameUpdated(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.UpdateCreditCardCardholderNameBranchUpdated, value, failure)
+}
+
+// UpdateCreditCardCardholderNameNotFound selects the notFound branch: The selected payment method was not found.
+func UpdateCreditCardCardholderNameNotFound(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.UpdateCreditCardCardholderNameBranchNotFound, value, failure)
+}
+
+// UpdateCreditCardCardholderNameProviderRejected selects the providerRejected branch: Braintree definitively rejected the mutation.
+func UpdateCreditCardCardholderNameProviderRejected(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.UpdateCreditCardCardholderNameBranchProviderRejected, value, failure)
+}
+
+// UpdateCreditCardCardholderNameDefect selects the defect branch: Input or credentials are invalid.
+func UpdateCreditCardCardholderNameDefect(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.UpdateCreditCardCardholderNameBranchDefect, value, failure)
+}
+
+// UpdateCreditCardCardholderNameUncertain returns an uncertain updateCreditCardCardholderName outcome.
+func UpdateCreditCardCardholderNameUncertain(value braintree.PaymentMethodProfile, failure sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// UpdateCreditCardCardholderNameRetry asks Dex to retry the updateCreditCardCardholderName Step, after the delay when it is positive.
+func UpdateCreditCardCardholderNameRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Retry[braintree.PaymentMethodProfile](failure, after)
+}
+
+// UpdateCreditCardCardholderNameUpdatedDefault is the manifest mock updatedDefault: One sample payment method is returned.
+func UpdateCreditCardCardholderNameUpdatedDefault() connectormock.Case[braintree.PaymentMethodProfile] {
+	value := connectormock.MustDecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+	return connectormock.Branch(braintree.UpdateCreditCardCardholderNameBranchUpdated, value, nil)
+}
+
+// UpdateCreditCardCardholderNameDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCreditCardCardholderNameDefault() connectormock.Case[braintree.PaymentMethodProfile] {
+	return UpdateCreditCardCardholderNameUpdatedDefault()
+}
+
+// UpdateCreditCardExpirationDateUpdated selects the updated branch: The expiration date was updated.
+func UpdateCreditCardExpirationDateUpdated(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.UpdateCreditCardExpirationDateBranchUpdated, value, failure)
+}
+
+// UpdateCreditCardExpirationDateNotFound selects the notFound branch: The selected payment method was not found.
+func UpdateCreditCardExpirationDateNotFound(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.UpdateCreditCardExpirationDateBranchNotFound, value, failure)
+}
+
+// UpdateCreditCardExpirationDateProviderRejected selects the providerRejected branch: Braintree definitively rejected the mutation.
+func UpdateCreditCardExpirationDateProviderRejected(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.UpdateCreditCardExpirationDateBranchProviderRejected, value, failure)
+}
+
+// UpdateCreditCardExpirationDateDefect selects the defect branch: Input or credentials are invalid.
+func UpdateCreditCardExpirationDateDefect(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.UpdateCreditCardExpirationDateBranchDefect, value, failure)
+}
+
+// UpdateCreditCardExpirationDateUncertain returns an uncertain updateCreditCardExpirationDate outcome.
+func UpdateCreditCardExpirationDateUncertain(value braintree.PaymentMethodProfile, failure sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// UpdateCreditCardExpirationDateRetry asks Dex to retry the updateCreditCardExpirationDate Step, after the delay when it is positive.
+func UpdateCreditCardExpirationDateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Retry[braintree.PaymentMethodProfile](failure, after)
+}
+
+// UpdateCreditCardExpirationDateUpdatedDefault is the manifest mock updatedDefault: One sample payment method is returned.
+func UpdateCreditCardExpirationDateUpdatedDefault() connectormock.Case[braintree.PaymentMethodProfile] {
+	value := connectormock.MustDecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+	return connectormock.Branch(braintree.UpdateCreditCardExpirationDateBranchUpdated, value, nil)
+}
+
+// UpdateCreditCardExpirationDateDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCreditCardExpirationDateDefault() connectormock.Case[braintree.PaymentMethodProfile] {
+	return UpdateCreditCardExpirationDateUpdatedDefault()
+}
+
+// UpdateCreditCardBillingAddressUpdated selects the updated branch: The billing address was updated.
+func UpdateCreditCardBillingAddressUpdated(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.UpdateCreditCardBillingAddressBranchUpdated, value, failure)
+}
+
+// UpdateCreditCardBillingAddressNotFound selects the notFound branch: The selected payment method was not found.
+func UpdateCreditCardBillingAddressNotFound(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.UpdateCreditCardBillingAddressBranchNotFound, value, failure)
+}
+
+// UpdateCreditCardBillingAddressProviderRejected selects the providerRejected branch: Braintree definitively rejected the mutation.
+func UpdateCreditCardBillingAddressProviderRejected(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.UpdateCreditCardBillingAddressBranchProviderRejected, value, failure)
+}
+
+// UpdateCreditCardBillingAddressDefect selects the defect branch: Input or credentials are invalid.
+func UpdateCreditCardBillingAddressDefect(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.UpdateCreditCardBillingAddressBranchDefect, value, failure)
+}
+
+// UpdateCreditCardBillingAddressUncertain returns an uncertain updateCreditCardBillingAddress outcome.
+func UpdateCreditCardBillingAddressUncertain(value braintree.PaymentMethodProfile, failure sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// UpdateCreditCardBillingAddressRetry asks Dex to retry the updateCreditCardBillingAddress Step, after the delay when it is positive.
+func UpdateCreditCardBillingAddressRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Retry[braintree.PaymentMethodProfile](failure, after)
+}
+
+// UpdateCreditCardBillingAddressUpdatedDefault is the manifest mock updatedDefault: One sample payment method is returned.
+func UpdateCreditCardBillingAddressUpdatedDefault() connectormock.Case[braintree.PaymentMethodProfile] {
+	value := connectormock.MustDecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+	return connectormock.Branch(braintree.UpdateCreditCardBillingAddressBranchUpdated, value, nil)
+}
+
+// UpdateCreditCardBillingAddressDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCreditCardBillingAddressDefault() connectormock.Case[braintree.PaymentMethodProfile] {
+	return UpdateCreditCardBillingAddressUpdatedDefault()
+}
+
+// DeletePaymentMethodFromVaultDeleted selects the deleted branch: The vaulted payment method was deleted.
+func DeletePaymentMethodFromVaultDeleted(value braintree.PaymentMethodDeleteResult, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodDeleteResult] {
+	return connectormock.Branch(braintree.DeletePaymentMethodFromVaultBranchDeleted, value, failure)
+}
+
+// DeletePaymentMethodFromVaultNotFound selects the notFound branch: The payment method was not found.
+func DeletePaymentMethodFromVaultNotFound(value braintree.PaymentMethodDeleteResult, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodDeleteResult] {
+	return connectormock.Branch(braintree.DeletePaymentMethodFromVaultBranchNotFound, value, failure)
+}
+
+// DeletePaymentMethodFromVaultProviderRejected selects the providerRejected branch: Braintree definitively rejected deletion.
+func DeletePaymentMethodFromVaultProviderRejected(value braintree.PaymentMethodDeleteResult, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodDeleteResult] {
+	return connectormock.Branch(braintree.DeletePaymentMethodFromVaultBranchProviderRejected, value, failure)
+}
+
+// DeletePaymentMethodFromVaultInvalidResponse selects the invalidResponse branch: Braintree returned malformed deletion JSON.
+func DeletePaymentMethodFromVaultInvalidResponse(value braintree.PaymentMethodDeleteResult, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodDeleteResult] {
+	return connectormock.Branch(braintree.DeletePaymentMethodFromVaultBranchInvalidResponse, value, failure)
+}
+
+// DeletePaymentMethodFromVaultDefect selects the defect branch: Input or credentials are invalid.
+func DeletePaymentMethodFromVaultDefect(value braintree.PaymentMethodDeleteResult, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodDeleteResult] {
+	return connectormock.Branch(braintree.DeletePaymentMethodFromVaultBranchDefect, value, failure)
+}
+
+// DeletePaymentMethodFromVaultRetry asks Dex to retry the deletePaymentMethodFromVault Step, after the delay when it is positive.
+func DeletePaymentMethodFromVaultRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.PaymentMethodDeleteResult] {
+	return connectormock.Retry[braintree.PaymentMethodDeleteResult](failure, after)
+}
+
+// DeletePaymentMethodFromVaultDeletedDefault is the manifest mock deletedDefault: One sample payment method is deleted.
+func DeletePaymentMethodFromVaultDeletedDefault() connectormock.Case[braintree.PaymentMethodDeleteResult] {
+	value := connectormock.MustDecodeOutput[braintree.PaymentMethodDeleteResult](`{"paymentMethodId":"payment-method-1","deleted":true}`)
+	return connectormock.Branch(braintree.DeletePaymentMethodFromVaultBranchDeleted, value, nil)
+}
+
+// DeletePaymentMethodFromVaultDefault is the manifest default, deletedDefault, which New installs.
+func DeletePaymentMethodFromVaultDefault() connectormock.Case[braintree.PaymentMethodDeleteResult] {
+	return DeletePaymentMethodFromVaultDeletedDefault()
 }
 
 // CreateCustomerCreated selects the created branch: Braintree created the customer.

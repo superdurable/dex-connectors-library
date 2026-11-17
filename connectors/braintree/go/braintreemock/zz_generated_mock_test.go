@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "vaultPaymentMethod/vaultedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+			return err
+		}},
+		{name: "updateCreditCardCardholderName/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+			return err
+		}},
+		{name: "updateCreditCardExpirationDate/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+			return err
+		}},
+		{name: "updateCreditCardBillingAddress/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+			return err
+		}},
+		{name: "deletePaymentMethodFromVault/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.PaymentMethodDeleteResult](`{"paymentMethodId":"payment-method-1","deleted":true}`)
+			return err
+		}},
 		{name: "createCustomer/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[braintree.CustomerProfile](`{"id":"customer-1","firstName":"Ada","lastName":"Lovelace","email":"ada@example.com"}`)
 			return err
@@ -54,6 +74,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.VaultPaymentMethod().Definition().Operation.OperationID != "vaultPaymentMethod" {
+		t.Errorf("vaultPaymentMethod mock has another definition")
+	}
+	if mock.UpdateCreditCardCardholderName().Definition().Operation.OperationID != "updateCreditCardCardholderName" {
+		t.Errorf("updateCreditCardCardholderName mock has another definition")
+	}
+	if mock.UpdateCreditCardExpirationDate().Definition().Operation.OperationID != "updateCreditCardExpirationDate" {
+		t.Errorf("updateCreditCardExpirationDate mock has another definition")
+	}
+	if mock.UpdateCreditCardBillingAddress().Definition().Operation.OperationID != "updateCreditCardBillingAddress" {
+		t.Errorf("updateCreditCardBillingAddress mock has another definition")
+	}
+	if mock.DeletePaymentMethodFromVault().Definition().Operation.OperationID != "deletePaymentMethodFromVault" {
+		t.Errorf("deletePaymentMethodFromVault mock has another definition")
+	}
 	if mock.CreateCustomer().Definition().Operation.OperationID != "createCustomer" {
 		t.Errorf("createCustomer mock has another definition")
 	}

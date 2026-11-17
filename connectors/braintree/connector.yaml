@@ -65,7 +65,113 @@ spec:
         - Choose the sandbox or production Control Panel, open the gear icon > API > API Keys, and generate an API key if needed. Copy its Public Key into publicKey and open View under Private Key to copy the secret into privateKey. Blank prevents calls; never mix sandbox and production keys.
         - Leave baseUrl blank for sandbox, or enter https://payments.braintree-api.com for production. Leave apiVersion, timeout, and maxResponseBytes blank for their displayed defaults. Copy a transaction, customer, payment method, or refund GraphQL ID from a Braintree API result into the matching operation field; blank is invalid. Legacy SDK IDs may differ from GraphQL IDs.
         - For customers, open the matching Braintree Control Panel > Customers or use the GraphQL customer result. Supply optional first and last names as plain text and email in address format; blank on create omits contact data, and blank on update clears those fields. Customer IDs are GraphQL IDs from getCustomer or search, not legacy IDs. Delete requires removing vaulted payment methods first and breaks the customer's transaction association. These are personal data, not credentials; Dex Flow results retain customer details. A repeated create may create a second customer because clientMutationId is only a response correlation ID.
+        - For payment methods, start at https://developer.paypal.com/braintree/graphql/guides/payment_methods and obtain a single-use payment method ID from a client tokenization flow; never enter raw card numbers or CVV in Dex. Vault takes that single-use ID and optional GraphQL customer ID; blank customer ID leaves it unassociated. Update and delete require the resulting multi-use GraphQL ID from vaultPaymentMethod or getPaymentMethod. Cardholder name is non-blank plain text; expiration uses MM and YYYY; billing address uses street, city, state, postal code, and two-letter country code. Blank required update fields are invalid. Braintree verifies vault and card updates by default; a repeated request may repeat verification. Deleting a vaulted method is irreversible, and Venmo deletion can revoke its merchant connection.
   operations:
+    - name: vaultPaymentMethod
+      goName: VaultPaymentMethod
+      inputType: VaultPaymentMethodInput
+      outputType: PaymentMethodProfile
+      kind: mutation
+      description: Vault a single-use payment method for repeat use.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: vaulted, goName: Vaulted, description: A vaulted payment method was returned.}
+        - {id: notFound, goName: NotFound, description: The selected payment method was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the mutation., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: vaultedDefault
+          branch: vaulted
+          default: true
+          description: One sample payment method is returned.
+          output: {id: payment-method-1, usage: MULTI_USE}
+    - name: updateCreditCardCardholderName
+      goName: UpdateCreditCardCardholderName
+      inputType: UpdateCreditCardCardholderNameInput
+      outputType: PaymentMethodProfile
+      kind: mutation
+      description: Update a vaulted cardholder name with verification.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: updated, goName: Updated, description: The cardholder name was updated.}
+        - {id: notFound, goName: NotFound, description: The selected payment method was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the mutation., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample payment method is returned.
+          output: {id: payment-method-1, usage: MULTI_USE}
+    - name: updateCreditCardExpirationDate
+      goName: UpdateCreditCardExpirationDate
+      inputType: UpdateCreditCardExpirationDateInput
+      outputType: PaymentMethodProfile
+      kind: mutation
+      description: Update a vaulted card expiration date with verification.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: updated, goName: Updated, description: The expiration date was updated.}
+        - {id: notFound, goName: NotFound, description: The selected payment method was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the mutation., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample payment method is returned.
+          output: {id: payment-method-1, usage: MULTI_USE}
+    - name: updateCreditCardBillingAddress
+      goName: UpdateCreditCardBillingAddress
+      inputType: UpdateCreditCardBillingAddressInput
+      outputType: PaymentMethodProfile
+      kind: mutation
+      description: Update a vaulted card billing address with verification.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: updated, goName: Updated, description: The billing address was updated.}
+        - {id: notFound, goName: NotFound, description: The selected payment method was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the mutation., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample payment method is returned.
+          output: {id: payment-method-1, usage: MULTI_USE}
+    - name: deletePaymentMethodFromVault
+      goName: DeletePaymentMethodFromVault
+      inputType: GetPaymentMethodInput
+      outputType: PaymentMethodDeleteResult
+      kind: mutation
+      description: Delete a multi-use payment method from the vault.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The vaulted payment method was deleted.}
+        - {id: notFound, goName: NotFound, description: The payment method was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned malformed deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample payment method is deleted.
+          output: {paymentMethodId: payment-method-1, deleted: true}
     - name: createCustomer
       goName: CreateCustomer
       inputType: CreateCustomerInput

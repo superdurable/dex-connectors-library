@@ -42,6 +42,11 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	VaultPaymentMethod() sdkgo.Mutation[VaultPaymentMethodInput, PaymentMethodProfile]
+	UpdateCreditCardCardholderName() sdkgo.Mutation[UpdateCreditCardCardholderNameInput, PaymentMethodProfile]
+	UpdateCreditCardExpirationDate() sdkgo.Mutation[UpdateCreditCardExpirationDateInput, PaymentMethodProfile]
+	UpdateCreditCardBillingAddress() sdkgo.Mutation[UpdateCreditCardBillingAddressInput, PaymentMethodProfile]
+	DeletePaymentMethodFromVault() sdkgo.Mutation[GetPaymentMethodInput, PaymentMethodDeleteResult]
 	CreateCustomer() sdkgo.Mutation[CreateCustomerInput, CustomerProfile]
 	UpdateCustomer() sdkgo.Mutation[UpdateCustomerInput, CustomerProfile]
 	DeleteCustomer() sdkgo.Mutation[GetCustomerInput, CustomerDeleteResult]
@@ -53,6 +58,21 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) VaultPaymentMethod() sdkgo.Mutation[VaultPaymentMethodInput, PaymentMethodProfile] {
+	return operations.client.VaultPaymentMethod()
+}
+func (operations clientOperations) UpdateCreditCardCardholderName() sdkgo.Mutation[UpdateCreditCardCardholderNameInput, PaymentMethodProfile] {
+	return operations.client.UpdateCreditCardCardholderName()
+}
+func (operations clientOperations) UpdateCreditCardExpirationDate() sdkgo.Mutation[UpdateCreditCardExpirationDateInput, PaymentMethodProfile] {
+	return operations.client.UpdateCreditCardExpirationDate()
+}
+func (operations clientOperations) UpdateCreditCardBillingAddress() sdkgo.Mutation[UpdateCreditCardBillingAddressInput, PaymentMethodProfile] {
+	return operations.client.UpdateCreditCardBillingAddress()
+}
+func (operations clientOperations) DeletePaymentMethodFromVault() sdkgo.Mutation[GetPaymentMethodInput, PaymentMethodDeleteResult] {
+	return operations.client.DeletePaymentMethodFromVault()
+}
 func (operations clientOperations) CreateCustomer() sdkgo.Mutation[CreateCustomerInput, CustomerProfile] {
 	return operations.client.CreateCustomer()
 }
@@ -219,6 +239,412 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential privateKey is required")
 	}
 	return nil
+}
+
+const VaultPaymentMethodBranchVaulted sdkgo.BranchID = "vaulted"
+const VaultPaymentMethodBranchNotFound sdkgo.BranchID = "notFound"
+const VaultPaymentMethodBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const VaultPaymentMethodBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const VaultPaymentMethodBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var VaultPaymentMethodDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "vaultPaymentMethod"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: VaultPaymentMethodBranchVaulted, Description: "A vaulted payment method was returned."},
+		{ID: VaultPaymentMethodBranchNotFound, Description: "The selected payment method was not found.", Optional: true},
+		{ID: VaultPaymentMethodBranchProviderRejected, Description: "Braintree definitively rejected the mutation.", Optional: true},
+		{ID: VaultPaymentMethodBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: VaultPaymentMethodBranchUncertain, Description: "The outcome cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type VaultPaymentMethodResult = sdkgo.MutationResult[PaymentMethodProfile]
+
+type VaultPaymentMethodStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                   `connector:"operationId=vaultPaymentMethod"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) VaultPaymentMethodInput                           `connector:"mapToOperationInput"`
+	Vaulted                           sdkgo.Target[VaultPaymentMethodResult]                     `connector:"branch=vaulted"`
+	NotFound                          sdkgo.Target[VaultPaymentMethodResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[VaultPaymentMethodResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[VaultPaymentMethodResult]                     `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[VaultPaymentMethodResult]                     `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentMethodProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewVaultPaymentMethodStep[IN any](config VaultPaymentMethodStepConfig[IN]) sdkgo.MutationStep[IN, VaultPaymentMethodInput, PaymentMethodProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, VaultPaymentMethodInput, PaymentMethodProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.VaultPaymentMethod(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[VaultPaymentMethodResult] {
+			branches := make([]sdkgo.BranchTarget[VaultPaymentMethodResult], 0, 5)
+			if config.Vaulted.HasStep() {
+				branches = append(branches, config.Vaulted.BranchTarget(VaultPaymentMethodBranchVaulted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(VaultPaymentMethodBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(VaultPaymentMethodBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(VaultPaymentMethodBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(VaultPaymentMethodBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCreditCardCardholderNameBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCreditCardCardholderNameBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateCreditCardCardholderNameBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCreditCardCardholderNameBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const UpdateCreditCardCardholderNameBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var UpdateCreditCardCardholderNameDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCreditCardCardholderName"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCreditCardCardholderNameBranchUpdated, Description: "The cardholder name was updated."},
+		{ID: UpdateCreditCardCardholderNameBranchNotFound, Description: "The selected payment method was not found.", Optional: true},
+		{ID: UpdateCreditCardCardholderNameBranchProviderRejected, Description: "Braintree definitively rejected the mutation.", Optional: true},
+		{ID: UpdateCreditCardCardholderNameBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: UpdateCreditCardCardholderNameBranchUncertain, Description: "The outcome cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type UpdateCreditCardCardholderNameResult = sdkgo.MutationResult[PaymentMethodProfile]
+
+type UpdateCreditCardCardholderNameStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                   `connector:"operationId=updateCreditCardCardholderName"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCreditCardCardholderNameInput               `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCreditCardCardholderNameResult]         `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateCreditCardCardholderNameResult]         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateCreditCardCardholderNameResult]         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateCreditCardCardholderNameResult]         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[UpdateCreditCardCardholderNameResult]         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentMethodProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewUpdateCreditCardCardholderNameStep[IN any](config UpdateCreditCardCardholderNameStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCreditCardCardholderNameInput, PaymentMethodProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCreditCardCardholderNameInput, PaymentMethodProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCreditCardCardholderName(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCreditCardCardholderNameResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCreditCardCardholderNameResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCreditCardCardholderNameBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateCreditCardCardholderNameBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCreditCardCardholderNameBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCreditCardCardholderNameBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(UpdateCreditCardCardholderNameBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCreditCardExpirationDateBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCreditCardExpirationDateBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateCreditCardExpirationDateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCreditCardExpirationDateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const UpdateCreditCardExpirationDateBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var UpdateCreditCardExpirationDateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCreditCardExpirationDate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCreditCardExpirationDateBranchUpdated, Description: "The expiration date was updated."},
+		{ID: UpdateCreditCardExpirationDateBranchNotFound, Description: "The selected payment method was not found.", Optional: true},
+		{ID: UpdateCreditCardExpirationDateBranchProviderRejected, Description: "Braintree definitively rejected the mutation.", Optional: true},
+		{ID: UpdateCreditCardExpirationDateBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: UpdateCreditCardExpirationDateBranchUncertain, Description: "The outcome cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type UpdateCreditCardExpirationDateResult = sdkgo.MutationResult[PaymentMethodProfile]
+
+type UpdateCreditCardExpirationDateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                   `connector:"operationId=updateCreditCardExpirationDate"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCreditCardExpirationDateInput               `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCreditCardExpirationDateResult]         `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateCreditCardExpirationDateResult]         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateCreditCardExpirationDateResult]         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateCreditCardExpirationDateResult]         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[UpdateCreditCardExpirationDateResult]         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentMethodProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewUpdateCreditCardExpirationDateStep[IN any](config UpdateCreditCardExpirationDateStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCreditCardExpirationDateInput, PaymentMethodProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCreditCardExpirationDateInput, PaymentMethodProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCreditCardExpirationDate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCreditCardExpirationDateResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCreditCardExpirationDateResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCreditCardExpirationDateBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateCreditCardExpirationDateBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCreditCardExpirationDateBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCreditCardExpirationDateBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(UpdateCreditCardExpirationDateBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCreditCardBillingAddressBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCreditCardBillingAddressBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateCreditCardBillingAddressBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCreditCardBillingAddressBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const UpdateCreditCardBillingAddressBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var UpdateCreditCardBillingAddressDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCreditCardBillingAddress"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCreditCardBillingAddressBranchUpdated, Description: "The billing address was updated."},
+		{ID: UpdateCreditCardBillingAddressBranchNotFound, Description: "The selected payment method was not found.", Optional: true},
+		{ID: UpdateCreditCardBillingAddressBranchProviderRejected, Description: "Braintree definitively rejected the mutation.", Optional: true},
+		{ID: UpdateCreditCardBillingAddressBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: UpdateCreditCardBillingAddressBranchUncertain, Description: "The outcome cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type UpdateCreditCardBillingAddressResult = sdkgo.MutationResult[PaymentMethodProfile]
+
+type UpdateCreditCardBillingAddressStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                   `connector:"operationId=updateCreditCardBillingAddress"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCreditCardBillingAddressInput               `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCreditCardBillingAddressResult]         `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateCreditCardBillingAddressResult]         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateCreditCardBillingAddressResult]         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateCreditCardBillingAddressResult]         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[UpdateCreditCardBillingAddressResult]         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentMethodProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewUpdateCreditCardBillingAddressStep[IN any](config UpdateCreditCardBillingAddressStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCreditCardBillingAddressInput, PaymentMethodProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCreditCardBillingAddressInput, PaymentMethodProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCreditCardBillingAddress(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCreditCardBillingAddressResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCreditCardBillingAddressResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCreditCardBillingAddressBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateCreditCardBillingAddressBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCreditCardBillingAddressBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCreditCardBillingAddressBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(UpdateCreditCardBillingAddressBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const DeletePaymentMethodFromVaultBranchDeleted sdkgo.BranchID = "deleted"
+const DeletePaymentMethodFromVaultBranchNotFound sdkgo.BranchID = "notFound"
+const DeletePaymentMethodFromVaultBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeletePaymentMethodFromVaultBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeletePaymentMethodFromVaultBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeletePaymentMethodFromVaultDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deletePaymentMethodFromVault"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeletePaymentMethodFromVaultBranchDeleted, Description: "The vaulted payment method was deleted."},
+		{ID: DeletePaymentMethodFromVaultBranchNotFound, Description: "The payment method was not found.", Optional: true},
+		{ID: DeletePaymentMethodFromVaultBranchProviderRejected, Description: "Braintree definitively rejected deletion.", Optional: true},
+		{ID: DeletePaymentMethodFromVaultBranchInvalidResponse, Description: "Braintree returned malformed deletion JSON.", Optional: true},
+		{ID: DeletePaymentMethodFromVaultBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeletePaymentMethodFromVaultResult = sdkgo.MutationResult[PaymentMethodDeleteResult]
+
+type DeletePaymentMethodFromVaultStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                        `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                        `connector:"operationId=deletePaymentMethodFromVault"`
+	StepType                          string                                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                           `connector:"annotations"`
+	Connection                        Connection                                                      `connector:"connection"`
+	ConnectionName                    string                                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetPaymentMethodInput                                  `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeletePaymentMethodFromVaultResult]                `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeletePaymentMethodFromVaultResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeletePaymentMethodFromVaultResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeletePaymentMethodFromVaultResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeletePaymentMethodFromVaultResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentMethodDeleteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+}
+
+func NewDeletePaymentMethodFromVaultStep[IN any](config DeletePaymentMethodFromVaultStepConfig[IN]) sdkgo.MutationStep[IN, GetPaymentMethodInput, PaymentMethodDeleteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetPaymentMethodInput, PaymentMethodDeleteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeletePaymentMethodFromVault(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeletePaymentMethodFromVaultResult] {
+			branches := make([]sdkgo.BranchTarget[DeletePaymentMethodFromVaultResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeletePaymentMethodFromVaultBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeletePaymentMethodFromVaultBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeletePaymentMethodFromVaultBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeletePaymentMethodFromVaultBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeletePaymentMethodFromVaultBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const CreateCustomerBranchCreated sdkgo.BranchID = "created"

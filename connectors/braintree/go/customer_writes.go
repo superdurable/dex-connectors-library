@@ -222,6 +222,9 @@ func classifyBraintreeMutationResponse[T any](response providerResponse, operati
 		case graphQLErrorUnavailable:
 			return braintreeMutationRetry[T](operation, sdkgo.FailureAvailability, "Braintree reported a temporary failure", response.retryAfter), true
 		case graphQLErrorNotFound:
+			if hasPriorSend {
+				return braintreeMutationUncertain[T](operation, "an earlier mutation may have completed"), true
+			}
 			if notFound != "" {
 				return braintreeMutationBranch[T](operation, notFound, sdkgo.FailureNotFound, "Braintree did not find the resource"), true
 			}

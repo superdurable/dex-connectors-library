@@ -40,12 +40,17 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			fenceContext.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"getTransaction":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTransaction(), reference),
-		"getCustomer":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCustomer(), reference),
-		"getPaymentMethod": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPaymentMethod(), reference),
-		"getRefund":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetRefund(), reference),
-		"createCustomer":   newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateCustomer(), reference, scenario.CallID),
-		"updateCustomer":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateCustomer(), reference, scenario.CallID),
-		"deleteCustomer":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCustomer(), reference, scenario.CallID),
+		"getTransaction":                 newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTransaction(), reference),
+		"getCustomer":                    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCustomer(), reference),
+		"getPaymentMethod":               newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPaymentMethod(), reference),
+		"getRefund":                      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetRefund(), reference),
+		"createCustomer":                 newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateCustomer(), reference, scenario.CallID),
+		"updateCustomer":                 newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateCustomer(), reference, scenario.CallID),
+		"deleteCustomer":                 newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCustomer(), reference, scenario.CallID),
+		"vaultPaymentMethod":             newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.VaultPaymentMethod(), reference, scenario.CallID),
+		"updateCreditCardCardholderName": newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.UpdateCreditCardCardholderName(), reference, scenario.CallID),
+		"updateCreditCardExpirationDate": newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.UpdateCreditCardExpirationDate(), reference, scenario.CallID),
+		"updateCreditCardBillingAddress": newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.UpdateCreditCardBillingAddress(), reference, scenario.CallID),
+		"deletePaymentMethodFromVault":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeletePaymentMethodFromVault(), reference, scenario.CallID),
 	}}
 }
