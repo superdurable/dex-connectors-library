@@ -1,8 +1,8 @@
 # Amap connector
 
-The Go connector geocodes a structured Chinese address through Amap's
+The Go and TypeScript connectors geocode a structured Chinese address through Amap's
 [Web Service geocoding API](https://lbs.amap.com/api/webservice/guide/api/georegeo).
-It exposes the `GeocodeAddress` Query Step and a runnable
+The Go package exposes the `GeocodeAddress` Query Step and a runnable
 [`address-lookup` Flow](go/examples/address-lookup/README.md).
 
 Install `github.com/superdurable/dex-connectors-library/connectors/amap/go@v0.1.0`
@@ -34,3 +34,5 @@ The provider tests use an HTTP server and do not require a live Key. The
 example's Dex integration test requires `dexcli dev`. A live Amap call requires
 a user-configured Web Service Key in Dex Web Connections; it is not run by the
 provider tests.
+
+The [TypeScript package](typescript/README.md) provides the same Query through `@superdurable/connector-amap`, with a [runnable Flow](typescript/examples/address-lookup/README.md) and Go-recorded conformance replay.
