@@ -43,11 +43,31 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListCampaigns() sdkgo.Query[ListCampaignsInput, CampaignPage]
+	GetCampaign() sdkgo.Query[GetCampaignInput, CampaignRow]
+	CreateCampaign() sdkgo.Mutation[CreateCampaignInput, CampaignMutationResult]
+	UpdateCampaignStatus() sdkgo.Mutation[UpdateCampaignStatusInput, CampaignMutationResult]
+	RemoveCampaign() sdkgo.Mutation[GetCampaignInput, CampaignMutationResult]
 	ListAccessibleCustomers() sdkgo.Query[ListAccessibleCustomersInput, AccessibleCustomers]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListCampaigns() sdkgo.Query[ListCampaignsInput, CampaignPage] {
+	return operations.client.ListCampaigns()
+}
+func (operations clientOperations) GetCampaign() sdkgo.Query[GetCampaignInput, CampaignRow] {
+	return operations.client.GetCampaign()
+}
+func (operations clientOperations) CreateCampaign() sdkgo.Mutation[CreateCampaignInput, CampaignMutationResult] {
+	return operations.client.CreateCampaign()
+}
+func (operations clientOperations) UpdateCampaignStatus() sdkgo.Mutation[UpdateCampaignStatusInput, CampaignMutationResult] {
+	return operations.client.UpdateCampaignStatus()
+}
+func (operations clientOperations) RemoveCampaign() sdkgo.Mutation[GetCampaignInput, CampaignMutationResult] {
+	return operations.client.RemoveCampaign()
+}
 func (operations clientOperations) ListAccessibleCustomers() sdkgo.Query[ListAccessibleCustomersInput, AccessibleCustomers] {
 	return operations.client.ListAccessibleCustomers()
 }
@@ -250,6 +270,374 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const ListCampaignsBranchListed sdkgo.BranchID = "listed"
+const ListCampaignsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCampaignsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCampaignsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCampaignsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCampaigns"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCampaignsBranchListed, Description: "Google Ads returned a campaign page."},
+		{ID: ListCampaignsBranchProviderRejected, Description: "Google Ads rejected the campaign search.", Optional: true},
+		{ID: ListCampaignsBranchInvalidResponse, Description: "Google Ads returned malformed or oversized JSON.", Optional: true},
+		{ID: ListCampaignsBranchDefect, Description: "The customer or manager ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCampaignsResult = sdkgo.QueryResult[CampaignPage]
+
+type ListCampaignsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=google-ads"`
+	operationID                    struct{}                                        `connector:"operationId=listCampaigns"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCampaignsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCampaignsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCampaignsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCampaignsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCampaignsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CampaignPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListCampaignsStep[IN any](config ListCampaignsStepConfig[IN]) sdkgo.QueryStep[IN, ListCampaignsInput, CampaignPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-ads connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCampaignsInput, CampaignPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCampaigns(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCampaignsResult] {
+			branches := make([]sdkgo.BranchTarget[ListCampaignsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCampaignsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCampaignsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCampaignsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCampaignsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCampaignBranchFound sdkgo.BranchID = "found"
+const GetCampaignBranchNotFound sdkgo.BranchID = "notFound"
+const GetCampaignBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCampaignBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCampaignBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCampaignDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCampaign"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCampaignBranchFound, Description: "Google Ads returned the campaign."},
+		{ID: GetCampaignBranchNotFound, Description: "No matching campaign is visible.", Optional: true},
+		{ID: GetCampaignBranchProviderRejected, Description: "Google Ads rejected the campaign search.", Optional: true},
+		{ID: GetCampaignBranchInvalidResponse, Description: "Google Ads returned malformed or oversized JSON.", Optional: true},
+		{ID: GetCampaignBranchDefect, Description: "The customer, manager, or campaign ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCampaignResult = sdkgo.QueryResult[CampaignRow]
+
+type GetCampaignStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=google-ads"`
+	operationID                    struct{}                                       `connector:"operationId=getCampaign"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCampaignInput                      `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCampaignResult]                `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCampaignResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCampaignResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCampaignResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCampaignResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CampaignRow]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetCampaignStep[IN any](config GetCampaignStepConfig[IN]) sdkgo.QueryStep[IN, GetCampaignInput, CampaignRow] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-ads connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCampaignInput, CampaignRow]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCampaign(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCampaignResult] {
+			branches := make([]sdkgo.BranchTarget[GetCampaignResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCampaignBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCampaignBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCampaignBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCampaignBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCampaignBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateCampaignBranchCreated sdkgo.BranchID = "created"
+const CreateCampaignBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCampaignBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateCampaignBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateCampaignDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCampaign"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateCampaignBranchCreated, Description: "Google Ads created the paused campaign."},
+		{ID: CreateCampaignBranchProviderRejected, Description: "Google Ads rejected the create.", Optional: true},
+		{ID: CreateCampaignBranchDefect, Description: "Required campaign fields or credentials are invalid.", Optional: true},
+		{ID: CreateCampaignBranchUncertain, Description: "A prior create may have succeeded.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateCampaignResult = sdkgo.MutationResult[CampaignMutationResult]
+
+type CreateCampaignStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                     `connector:"connectorId=google-ads"`
+	operationID                       struct{}                                                     `connector:"operationId=createCampaign"`
+	StepType                          string                                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                        Connection                                                   `connector:"connection"`
+	ConnectionName                    string                                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateCampaignInput                                 `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateCampaignResult]                           `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateCampaignResult]                           `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateCampaignResult]                           `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateCampaignResult]                           `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CampaignMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateCampaignStep[IN any](config CreateCampaignStepConfig[IN]) sdkgo.MutationStep[IN, CreateCampaignInput, CampaignMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-ads connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCampaignInput, CampaignMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateCampaign(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateCampaignResult] {
+			branches := make([]sdkgo.BranchTarget[CreateCampaignResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateCampaignBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCampaignBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateCampaignBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateCampaignBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCampaignStatusBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCampaignStatusBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCampaignStatusBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateCampaignStatusBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateCampaignStatusDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCampaignStatus"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCampaignStatusBranchUpdated, Description: "Google Ads set the campaign status."},
+		{ID: UpdateCampaignStatusBranchProviderRejected, Description: "Google Ads rejected the update.", Optional: true},
+		{ID: UpdateCampaignStatusBranchInvalidResponse, Description: "Google Ads returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateCampaignStatusBranchDefect, Description: "Campaign identity, status, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateCampaignStatusResult = sdkgo.MutationResult[CampaignMutationResult]
+
+type UpdateCampaignStatusStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                     `connector:"connectorId=google-ads"`
+	operationID                       struct{}                                                     `connector:"operationId=updateCampaignStatus"`
+	StepType                          string                                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                        Connection                                                   `connector:"connection"`
+	ConnectionName                    string                                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCampaignStatusInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCampaignStatusResult]                     `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[UpdateCampaignStatusResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateCampaignStatusResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateCampaignStatusResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CampaignMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateCampaignStatusStep[IN any](config UpdateCampaignStatusStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCampaignStatusInput, CampaignMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-ads connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCampaignStatusInput, CampaignMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCampaignStatus(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCampaignStatusResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCampaignStatusResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCampaignStatusBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCampaignStatusBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateCampaignStatusBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCampaignStatusBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RemoveCampaignBranchRemoved sdkgo.BranchID = "removed"
+const RemoveCampaignBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RemoveCampaignBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const RemoveCampaignBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RemoveCampaignDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "removeCampaign"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RemoveCampaignBranchRemoved, Description: "Google Ads removed the campaign."},
+		{ID: RemoveCampaignBranchProviderRejected, Description: "Google Ads rejected the removal.", Optional: true},
+		{ID: RemoveCampaignBranchInvalidResponse, Description: "Google Ads returned malformed or oversized JSON.", Optional: true},
+		{ID: RemoveCampaignBranchDefect, Description: "Campaign identity or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RemoveCampaignResult = sdkgo.MutationResult[CampaignMutationResult]
+
+type RemoveCampaignStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                     `connector:"connectorId=google-ads"`
+	operationID                       struct{}                                                     `connector:"operationId=removeCampaign"`
+	StepType                          string                                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                        Connection                                                   `connector:"connection"`
+	ConnectionName                    string                                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetCampaignInput                                    `connector:"mapToOperationInput"`
+	Removed                           sdkgo.Target[RemoveCampaignResult]                           `connector:"branch=removed"`
+	ProviderRejected                  sdkgo.Target[RemoveCampaignResult]                           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[RemoveCampaignResult]                           `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[RemoveCampaignResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CampaignMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+}
+
+func NewRemoveCampaignStep[IN any](config RemoveCampaignStepConfig[IN]) sdkgo.MutationStep[IN, GetCampaignInput, CampaignMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-ads connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetCampaignInput, CampaignMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RemoveCampaign(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RemoveCampaignResult] {
+			branches := make([]sdkgo.BranchTarget[RemoveCampaignResult], 0, 4)
+			if config.Removed.HasStep() {
+				branches = append(branches, config.Removed.BranchTarget(RemoveCampaignBranchRemoved))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RemoveCampaignBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RemoveCampaignBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RemoveCampaignBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListAccessibleCustomersBranchListed sdkgo.BranchID = "listed"
