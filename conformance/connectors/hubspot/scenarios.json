@@ -2790,8 +2790,8 @@
       "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
       "exchanges": [],
       "expected": {
-        "branch": "defect",
-        "failureKind": "LOCAL_DEFECT",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
           "archived": false,
           "id": "",
@@ -2800,7 +2800,7 @@
         "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
       "input": {

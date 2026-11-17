@@ -314,6 +314,7 @@ spec:
         - {id: conflict, goName: Conflict, description: A unique property conflicts with an existing record., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: HubSpot conclusively rejected the create., optional: true}
         - {id: defect, goName: Defect, description: The local input or connection is invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A bounded create could not be confirmed after its send cap., optional: true}
       execution:
         repeatOnUnknown: limited
         maxSends: 3

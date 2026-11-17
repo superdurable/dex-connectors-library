@@ -685,6 +685,7 @@ const CreateObjectBranchCreated sdkgo.BranchID = "created"
 const CreateObjectBranchConflict sdkgo.BranchID = "conflict"
 const CreateObjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const CreateObjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateObjectBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 
 var CreateObjectDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createObject"},
@@ -693,6 +694,7 @@ var CreateObjectDefinition = sdkgo.MutationDefinition{
 		{ID: CreateObjectBranchConflict, Description: "A unique property conflicts with an existing record.", Optional: true},
 		{ID: CreateObjectBranchProviderRejected, Description: "HubSpot conclusively rejected the create.", Optional: true},
 		{ID: CreateObjectBranchDefect, Description: "The local input or connection is invalid.", Optional: true},
+		{ID: CreateObjectBranchUncertain, Description: "A bounded create could not be confirmed after its send cap.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -719,6 +721,7 @@ type CreateObjectStepConfig[IN any] struct {
 	Conflict                          sdkgo.Target[CreateObjectResult]                `connector:"branch=conflict,optional"`
 	ProviderRejected                  sdkgo.Target[CreateObjectResult]                `connector:"branch=providerRejected,optional"`
 	Defect                            sdkgo.Target[CreateObjectResult]                `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateObjectResult]                `connector:"branch=uncertain,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CRMObject]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                `connector:"stepOptionsOverride"`
 	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
@@ -738,7 +741,7 @@ func NewCreateObjectStep[IN any](config CreateObjectStepConfig[IN]) sdkgo.Mutati
 		Operation:       config.Connection.operations.CreateObject(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateObjectResult] {
-			branches := make([]sdkgo.BranchTarget[CreateObjectResult], 0, 4)
+			branches := make([]sdkgo.BranchTarget[CreateObjectResult], 0, 5)
 			if config.Created.HasStep() {
 				branches = append(branches, config.Created.BranchTarget(CreateObjectBranchCreated))
 			}
@@ -750,6 +753,9 @@ func NewCreateObjectStep[IN any](config CreateObjectStepConfig[IN]) sdkgo.Mutati
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(CreateObjectBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateObjectBranchUncertain))
 			}
 			return branches
 		}(),

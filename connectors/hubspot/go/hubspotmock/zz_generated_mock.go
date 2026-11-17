@@ -339,6 +339,11 @@ func CreateObjectDefect(value hubspot.CRMObject, failure *sdkgo.Failure) connect
 	return connectormock.Branch(hubspot.CreateObjectBranchDefect, value, failure)
 }
 
+// CreateObjectUncertain returns an uncertain createObject outcome.
+func CreateObjectUncertain(value hubspot.CRMObject, failure sdkgo.Failure) connectormock.Case[hubspot.CRMObject] {
+	return connectormock.Uncertain(value, failure)
+}
+
 // CreateObjectRetry asks Dex to retry the createObject Step, after the delay when it is positive.
 func CreateObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[hubspot.CRMObject] {
 	return connectormock.Retry[hubspot.CRMObject](failure, after)
