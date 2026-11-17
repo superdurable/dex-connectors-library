@@ -26,6 +26,8 @@ type Mock struct {
 	searchFiles    *connectormock.Query[dropbox.SearchFilesInput, dropbox.SearchFilesPage]
 	ensureFolder   *connectormock.Mutation[dropbox.EnsureFolderInput, dropbox.EnsuredFolder]
 	deletePath     *connectormock.Mutation[dropbox.DeletePathInput, dropbox.DeletedPath]
+	copyPath       *connectormock.Mutation[dropbox.TransferPathInput, dropbox.EntryMetadata]
+	movePath       *connectormock.Mutation[dropbox.TransferPathInput, dropbox.EntryMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -41,6 +43,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		searchFiles:    connectormock.NewQuery[dropbox.SearchFilesInput, dropbox.SearchFilesPage](t, dropbox.SearchFilesDefinition),
 		ensureFolder:   connectormock.NewMutation[dropbox.EnsureFolderInput, dropbox.EnsuredFolder](t, dropbox.EnsureFolderDefinition),
 		deletePath:     connectormock.NewMutation[dropbox.DeletePathInput, dropbox.DeletedPath](t, dropbox.DeletePathDefinition),
+		copyPath:       connectormock.NewMutation[dropbox.TransferPathInput, dropbox.EntryMetadata](t, dropbox.CopyPathDefinition),
+		movePath:       connectormock.NewMutation[dropbox.TransferPathInput, dropbox.EntryMetadata](t, dropbox.MovePathDefinition),
 	}
 	mock.listFolder.Default(ListFolderDefault())
 	mock.getMetadata.Default(GetMetadataDefault())
@@ -50,6 +54,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.searchFiles.Default(SearchFilesDefault())
 	mock.ensureFolder.Default(EnsureFolderDefault())
 	mock.deletePath.Default(DeletePathDefault())
+	mock.copyPath.Default(CopyPathDefault())
+	mock.movePath.Default(MovePathDefault())
 	connection, err := dropbox.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "dropbox", Name: connectionName})
 	if err != nil {
 		t.Fatalf("dropbox mock connection: %v", err)
@@ -101,6 +107,16 @@ func (mock *Mock) DeletePath() *connectormock.Mutation[dropbox.DeletePathInput, 
 	return mock.deletePath
 }
 
+// CopyPath returns the copyPath script.
+func (mock *Mock) CopyPath() *connectormock.Mutation[dropbox.TransferPathInput, dropbox.EntryMetadata] {
+	return mock.copyPath
+}
+
+// MovePath returns the movePath script.
+func (mock *Mock) MovePath() *connectormock.Mutation[dropbox.TransferPathInput, dropbox.EntryMetadata] {
+	return mock.movePath
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListFolder() sdkgo.Query[dropbox.ListFolderInput, dropbox.FolderPage] {
@@ -126,6 +142,12 @@ func (operations mockOperations) EnsureFolder() sdkgo.Mutation[dropbox.EnsureFol
 }
 func (operations mockOperations) DeletePath() sdkgo.Mutation[dropbox.DeletePathInput, dropbox.DeletedPath] {
 	return operations.mock.deletePath
+}
+func (operations mockOperations) CopyPath() sdkgo.Mutation[dropbox.TransferPathInput, dropbox.EntryMetadata] {
+	return operations.mock.copyPath
+}
+func (operations mockOperations) MovePath() sdkgo.Mutation[dropbox.TransferPathInput, dropbox.EntryMetadata] {
+	return operations.mock.movePath
 }
 
 // ListFolderListed selects the listed branch: Dropbox returned a folder page.
@@ -432,3 +454,71 @@ func DeletePathDeletedDefault() connectormock.Case[dropbox.DeletedPath] {
 
 // DeletePathDefault is the manifest default, deletedDefault, which New installs.
 func DeletePathDefault() connectormock.Case[dropbox.DeletedPath] { return DeletePathDeletedDefault() }
+
+// CopyPathCopied selects the copied branch: Dropbox confirmed the destination entry.
+func CopyPathCopied(value dropbox.EntryMetadata, failure *sdkgo.Failure) connectormock.Case[dropbox.EntryMetadata] {
+	return connectormock.Branch(dropbox.CopyPathBranchCopied, value, failure)
+}
+
+// CopyPathProviderRejected selects the providerRejected branch: Dropbox conclusively rejected the copy.
+func CopyPathProviderRejected(value dropbox.EntryMetadata, failure *sdkgo.Failure) connectormock.Case[dropbox.EntryMetadata] {
+	return connectormock.Branch(dropbox.CopyPathBranchProviderRejected, value, failure)
+}
+
+// CopyPathUncertain returns an uncertain copyPath outcome.
+func CopyPathUncertain(value dropbox.EntryMetadata, failure sdkgo.Failure) connectormock.Case[dropbox.EntryMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CopyPathDefect selects the defect branch: Local paths, credentials, or dispatch checkpoint are invalid.
+func CopyPathDefect(value dropbox.EntryMetadata, failure *sdkgo.Failure) connectormock.Case[dropbox.EntryMetadata] {
+	return connectormock.Branch(dropbox.CopyPathBranchDefect, value, failure)
+}
+
+// CopyPathRetry asks Dex to retry the copyPath Step, after the delay when it is positive.
+func CopyPathRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dropbox.EntryMetadata] {
+	return connectormock.Retry[dropbox.EntryMetadata](failure, after)
+}
+
+// CopyPathCopiedDefault is the manifest mock copiedDefault: An example file was copied to a fixed path.
+func CopyPathCopiedDefault() connectormock.Case[dropbox.EntryMetadata] {
+	value := connectormock.MustDecodeOutput[dropbox.EntryMetadata](`{"id":"id:copy","name":"copy.txt","pathDisplay":"/copy.txt","kind":"file"}`)
+	return connectormock.Branch(dropbox.CopyPathBranchCopied, value, nil)
+}
+
+// CopyPathDefault is the manifest default, copiedDefault, which New installs.
+func CopyPathDefault() connectormock.Case[dropbox.EntryMetadata] { return CopyPathCopiedDefault() }
+
+// MovePathMoved selects the moved branch: Dropbox confirmed the destination entry.
+func MovePathMoved(value dropbox.EntryMetadata, failure *sdkgo.Failure) connectormock.Case[dropbox.EntryMetadata] {
+	return connectormock.Branch(dropbox.MovePathBranchMoved, value, failure)
+}
+
+// MovePathProviderRejected selects the providerRejected branch: Dropbox conclusively rejected the move.
+func MovePathProviderRejected(value dropbox.EntryMetadata, failure *sdkgo.Failure) connectormock.Case[dropbox.EntryMetadata] {
+	return connectormock.Branch(dropbox.MovePathBranchProviderRejected, value, failure)
+}
+
+// MovePathUncertain returns an uncertain movePath outcome.
+func MovePathUncertain(value dropbox.EntryMetadata, failure sdkgo.Failure) connectormock.Case[dropbox.EntryMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// MovePathDefect selects the defect branch: Local paths, credentials, or dispatch checkpoint are invalid.
+func MovePathDefect(value dropbox.EntryMetadata, failure *sdkgo.Failure) connectormock.Case[dropbox.EntryMetadata] {
+	return connectormock.Branch(dropbox.MovePathBranchDefect, value, failure)
+}
+
+// MovePathRetry asks Dex to retry the movePath Step, after the delay when it is positive.
+func MovePathRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dropbox.EntryMetadata] {
+	return connectormock.Retry[dropbox.EntryMetadata](failure, after)
+}
+
+// MovePathMovedDefault is the manifest mock movedDefault: An example file was moved to a fixed path.
+func MovePathMovedDefault() connectormock.Case[dropbox.EntryMetadata] {
+	value := connectormock.MustDecodeOutput[dropbox.EntryMetadata](`{"id":"id:example","name":"moved.txt","pathDisplay":"/moved.txt","kind":"file"}`)
+	return connectormock.Branch(dropbox.MovePathBranchMoved, value, nil)
+}
+
+// MovePathDefault is the manifest default, movedDefault, which New installs.
+func MovePathDefault() connectormock.Case[dropbox.EntryMetadata] { return MovePathMovedDefault() }

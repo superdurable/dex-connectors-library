@@ -6,6 +6,7 @@ package dropbox
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -77,11 +78,15 @@ var errRefresh = errors.New("Dropbox credential refresh failed")
 var errRequest = errors.New("Dropbox request failed")
 
 func (client *Client) post(call sdkgo.Call, path string, payload []byte) ([]byte, int, time.Duration, error) {
+	return client.postWithContext(call, call.Context, path, payload)
+}
+
+func (client *Client) postWithContext(call sdkgo.Call, requestContext context.Context, path string, payload []byte) ([]byte, int, time.Duration, error) {
 	accessToken, err := client.resolveAccessToken(call)
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+path, bytes.NewReader(payload))
+	request, err := http.NewRequestWithContext(requestContext, http.MethodPost, client.baseURL+path, bytes.NewReader(payload))
 	if err != nil {
 		return nil, 0, 0, errRequest
 	}

@@ -48,6 +48,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[dropbox.DeletedPath](`{"path":"/example.txt"}`)
 			return err
 		}},
+		{name: "copyPath/copiedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropbox.EntryMetadata](`{"id":"id:copy","name":"copy.txt","pathDisplay":"/copy.txt","kind":"file"}`)
+			return err
+		}},
+		{name: "movePath/movedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropbox.EntryMetadata](`{"id":"id:example","name":"moved.txt","pathDisplay":"/moved.txt","kind":"file"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -81,5 +89,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeletePath().Definition().Operation.OperationID != "deletePath" {
 		t.Errorf("deletePath mock has another definition")
+	}
+	if mock.CopyPath().Definition().Operation.OperationID != "copyPath" {
+		t.Errorf("copyPath mock has another definition")
+	}
+	if mock.MovePath().Definition().Operation.OperationID != "movePath" {
+		t.Errorf("movePath mock has another definition")
 	}
 }

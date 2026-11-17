@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: dropbox
   displayName: Dropbox
-  description: Search and list Dropbox files, read metadata, download bounded files, and manage files and folders through typed Dex operations.
+  description: Search, list, download, upload, copy, move, and delete Dropbox files and folders through typed Dex operations.
   company: Dropbox
   categories: [files-documents]
   version: v0.3.0
@@ -270,3 +270,43 @@ spec:
           default: true
           description: One example path is deleted.
           output: {path: /example.txt}
+    - name: copyPath
+      goName: CopyPath
+      inputType: TransferPathInput
+      outputType: EntryMetadata
+      kind: mutation
+      description: Copy a file or folder to a fixed destination without autorename; reconcile uncertain outcomes before bounded resend.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: copied, goName: Copied, description: Dropbox confirmed the destination entry.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the copy., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A copy may have completed but its destination cannot be attributed to this call., optional: true}
+        - {id: defect, goName: Defect, description: "Local paths, credentials, or dispatch checkpoint are invalid.", optional: true}
+      mocks:
+        - name: copiedDefault
+          branch: copied
+          default: true
+          description: An example file was copied to a fixed path.
+          output: {id: 'id:copy', name: copy.txt, pathDisplay: /copy.txt, kind: file}
+    - name: movePath
+      goName: MovePath
+      inputType: TransferPathInput
+      outputType: EntryMetadata
+      kind: mutation
+      description: Move or rename a file or folder to a fixed destination without autorename; reconcile uncertain outcomes before bounded resend.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: moved, goName: Moved, description: Dropbox confirmed the destination entry.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the move., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A move may have completed but its destination cannot be attributed to this call., optional: true}
+        - {id: defect, goName: Defect, description: "Local paths, credentials, or dispatch checkpoint are invalid.", optional: true}
+      mocks:
+        - name: movedDefault
+          branch: moved
+          default: true
+          description: An example file was moved to a fixed path.
+          output: {id: 'id:example', name: moved.txt, pathDisplay: /moved.txt, kind: file}
