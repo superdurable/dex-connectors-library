@@ -17,9 +17,10 @@ import (
 
 // Mock is a scripted lucid connection. Script each operation through its accessor.
 type Mock struct {
-	connection    lucid.Connection
-	listDocuments *connectormock.Query[lucid.ListDocumentsInput, lucid.DocumentsPage]
-	getDocument   *connectormock.Query[lucid.GetDocumentInput, lucid.DocumentDetails]
+	connection      lucid.Connection
+	listDocuments   *connectormock.Query[lucid.ListDocumentsInput, lucid.DocumentsPage]
+	getDocument     *connectormock.Query[lucid.GetDocumentInput, lucid.DocumentDetails]
+	searchDocuments *connectormock.Query[lucid.SearchDocumentsInput, lucid.DocumentsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listDocuments: connectormock.NewQuery[lucid.ListDocumentsInput, lucid.DocumentsPage](t, lucid.ListDocumentsDefinition),
-		getDocument:   connectormock.NewQuery[lucid.GetDocumentInput, lucid.DocumentDetails](t, lucid.GetDocumentDefinition),
+		listDocuments:   connectormock.NewQuery[lucid.ListDocumentsInput, lucid.DocumentsPage](t, lucid.ListDocumentsDefinition),
+		getDocument:     connectormock.NewQuery[lucid.GetDocumentInput, lucid.DocumentDetails](t, lucid.GetDocumentDefinition),
+		searchDocuments: connectormock.NewQuery[lucid.SearchDocumentsInput, lucid.DocumentsPage](t, lucid.SearchDocumentsDefinition),
 	}
 	mock.listDocuments.Default(ListDocumentsDefault())
 	mock.getDocument.Default(GetDocumentDefault())
+	mock.searchDocuments.Default(SearchDocumentsDefault())
 	connection, err := lucid.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "lucid", Name: connectionName})
 	if err != nil {
 		t.Fatalf("lucid mock connection: %v", err)
@@ -53,6 +56,11 @@ func (mock *Mock) GetDocument() *connectormock.Query[lucid.GetDocumentInput, luc
 	return mock.getDocument
 }
 
+// SearchDocuments returns the searchDocuments script.
+func (mock *Mock) SearchDocuments() *connectormock.Query[lucid.SearchDocumentsInput, lucid.DocumentsPage] {
+	return mock.searchDocuments
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListDocuments() sdkgo.Query[lucid.ListDocumentsInput, lucid.DocumentsPage] {
@@ -60,6 +68,9 @@ func (operations mockOperations) ListDocuments() sdkgo.Query[lucid.ListDocuments
 }
 func (operations mockOperations) GetDocument() sdkgo.Query[lucid.GetDocumentInput, lucid.DocumentDetails] {
 	return operations.mock.getDocument
+}
+func (operations mockOperations) SearchDocuments() sdkgo.Query[lucid.SearchDocumentsInput, lucid.DocumentsPage] {
+	return operations.mock.searchDocuments
 }
 
 // ListDocumentsListed selects the listed branch: Lucid returned one document page.
@@ -136,3 +147,39 @@ func GetDocumentFoundDefault() connectormock.Case[lucid.DocumentDetails] {
 
 // GetDocumentDefault is the manifest default, foundDefault, which New installs.
 func GetDocumentDefault() connectormock.Case[lucid.DocumentDetails] { return GetDocumentFoundDefault() }
+
+// SearchDocumentsListed selects the listed branch: Lucid returned one matching document page.
+func SearchDocumentsListed(value lucid.DocumentsPage, failure *sdkgo.Failure) connectormock.Case[lucid.DocumentsPage] {
+	return connectormock.Branch(lucid.SearchDocumentsBranchListed, value, failure)
+}
+
+// SearchDocumentsProviderRejected selects the providerRejected branch: Lucid conclusively rejected the search.
+func SearchDocumentsProviderRejected(value lucid.DocumentsPage, failure *sdkgo.Failure) connectormock.Case[lucid.DocumentsPage] {
+	return connectormock.Branch(lucid.SearchDocumentsBranchProviderRejected, value, failure)
+}
+
+// SearchDocumentsInvalidResponse selects the invalidResponse branch: Lucid returned malformed or oversized search data.
+func SearchDocumentsInvalidResponse(value lucid.DocumentsPage, failure *sdkgo.Failure) connectormock.Case[lucid.DocumentsPage] {
+	return connectormock.Branch(lucid.SearchDocumentsBranchInvalidResponse, value, failure)
+}
+
+// SearchDocumentsDefect selects the defect branch: Keywords, cursor, or credentials are invalid.
+func SearchDocumentsDefect(value lucid.DocumentsPage, failure *sdkgo.Failure) connectormock.Case[lucid.DocumentsPage] {
+	return connectormock.Branch(lucid.SearchDocumentsBranchDefect, value, failure)
+}
+
+// SearchDocumentsRetry asks Dex to retry the searchDocuments Step, after the delay when it is positive.
+func SearchDocumentsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lucid.DocumentsPage] {
+	return connectormock.Retry[lucid.DocumentsPage](failure, after)
+}
+
+// SearchDocumentsListedDefault is the manifest mock listedDefault: One matching document is returned.
+func SearchDocumentsListedDefault() connectormock.Case[lucid.DocumentsPage] {
+	value := connectormock.MustDecodeOutput[lucid.DocumentsPage](`{"documents":[{"id":"110808fd-4553-4316-bccf-4f25ff59a532","title":"Example document"}],"nextPageToken":""}`)
+	return connectormock.Branch(lucid.SearchDocumentsBranchListed, value, nil)
+}
+
+// SearchDocumentsDefault is the manifest default, listedDefault, which New installs.
+func SearchDocumentsDefault() connectormock.Case[lucid.DocumentsPage] {
+	return SearchDocumentsListedDefault()
+}

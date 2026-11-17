@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{documentdiscovery.NewFlow(connection), documentdiscovery.NewDocumentDetailsFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{documentdiscovery.NewFlow(connection), documentdiscovery.NewDocumentDetailsFlow(connection), documentdiscovery.NewDocumentSearchFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Lucid document discovery Flow: %w", err)
 	}

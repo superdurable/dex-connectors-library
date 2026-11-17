@@ -42,6 +42,7 @@ type Connection struct {
 type Operations interface {
 	ListDocuments() sdkgo.Query[ListDocumentsInput, DocumentsPage]
 	GetDocument() sdkgo.Query[GetDocumentInput, DocumentDetails]
+	SearchDocuments() sdkgo.Query[SearchDocumentsInput, DocumentsPage]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +52,9 @@ func (operations clientOperations) ListDocuments() sdkgo.Query[ListDocumentsInpu
 }
 func (operations clientOperations) GetDocument() sdkgo.Query[GetDocumentInput, DocumentDetails] {
 	return operations.client.GetDocument()
+}
+func (operations clientOperations) SearchDocuments() sdkgo.Query[SearchDocumentsInput, DocumentsPage] {
+	return operations.client.SearchDocuments()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -330,6 +334,77 @@ func NewGetDocumentStep[IN any](config GetDocumentStepConfig[IN]) sdkgo.QuerySte
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SearchDocumentsBranchListed sdkgo.BranchID = "listed"
+const SearchDocumentsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchDocumentsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchDocumentsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchDocumentsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchDocuments"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchDocumentsBranchListed, Description: "Lucid returned one matching document page."},
+		{ID: SearchDocumentsBranchProviderRejected, Description: "Lucid conclusively rejected the search.", Optional: true},
+		{ID: SearchDocumentsBranchInvalidResponse, Description: "Lucid returned malformed or oversized search data.", Optional: true},
+		{ID: SearchDocumentsBranchDefect, Description: "Keywords, cursor, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchDocumentsResult = sdkgo.QueryResult[DocumentsPage]
+
+type SearchDocumentsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=lucid"`
+	operationID                    struct{}                                         `connector:"operationId=searchDocuments"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchDocumentsInput                    `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[SearchDocumentsResult]              `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[SearchDocumentsResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchDocumentsResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchDocumentsResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DocumentsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewSearchDocumentsStep[IN any](config SearchDocumentsStepConfig[IN]) sdkgo.QueryStep[IN, SearchDocumentsInput, DocumentsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lucid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchDocumentsInput, DocumentsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchDocuments(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchDocumentsResult] {
+			branches := make([]sdkgo.BranchTarget[SearchDocumentsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(SearchDocumentsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchDocumentsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchDocumentsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchDocumentsBranchDefect))
 			}
 			return branches
 		}(),

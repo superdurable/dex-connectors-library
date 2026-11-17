@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: lucid
   displayName: Lucid
-  description: Search and inspect document metadata through Lucid REST API v1.
+  description: List, search, and inspect document metadata through Lucid REST API v1.
   company: Lucid
   categories: [productivity]
   version: v0.3.0
@@ -33,7 +33,7 @@ spec:
       - name: timeout
         goName: Timeout
         type: duration
-        description: Maximum duration of one search request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow searches.
+        description: Maximum duration of one document request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow requests.
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
@@ -54,7 +54,7 @@ spec:
       steps:
         - Sign in to a licensed Lucid account, open Developer Portal > API Keys, and ask the administrator to enable Developer tools and API keys if the page is unavailable. Click Create API Key, name it, choose an expiration, and grant DocumentReadonly; grants cannot be changed later.
         - Click Generate API key and copy its one-time opaque secret into Dex Web secret api_key. Restrict access to the Dex connection, rotate before expiration, and delete the key in the same portal to revoke it. The key sees only documents its Lucid owner can access.
-        - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Run listDocuments with blank pageToken for the first page; pass the non-secret nextPageToken from a result into pageToken for another page. Use a returned document ID with getDocument.
+        - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Run listDocuments with blank pageToken for the first page; pass the non-secret nextPageToken from a result into pageToken for another page. Run searchDocuments with 1 to 400 keyword characters to match document titles and content, and use a returned document ID with getDocument.
   operations:
     - name: listDocuments
       goName: ListDocuments
@@ -97,3 +97,23 @@ spec:
           default: true
           description: One example document is returned.
           output: {id: "110808fd-4553-4316-bccf-4f25ff59a532", title: Example document, product: lucidchart, version: 2, pageCount: 1, canEdit: false}
+    - name: searchDocuments
+      goName: SearchDocuments
+      inputType: SearchDocumentsInput
+      outputType: DocumentsPage
+      kind: query
+      description: Search accessible non-trashed Lucid documents by title or content keywords.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Lucid returned one matching document page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lucid conclusively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lucid returned malformed or oversized search data., optional: true}
+        - {id: defect, goName: Defect, description: "Keywords, cursor, or credentials are invalid.", optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One matching document is returned.
+          output: {documents: [{id: "110808fd-4553-4316-bccf-4f25ff59a532", title: Example document}], nextPageToken: ""}
