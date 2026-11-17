@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/airtable/go"
 	"github.com/superdurable/dex-connectors-library/connectors/airtable/go/airtablemock"
+	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 func TestRefundDecisionUsesMockDefaultsWithRealDex(t *testing.T) {
@@ -58,4 +59,23 @@ func TestRefundDecisionUsesMockDefaultsWithRealDex(t *testing.T) {
 	require.Equal(t, airtable.GetRecordInput{
 		BaseID: "appRefundBase0001", TableIDOrName: "tblDecisionLog001", RecordID: "recDecisionLog001",
 	}, reads[0].Input)
+}
+
+func TestRecordLifecycleCreatesAndDeletesWithRealDex(t *testing.T) {
+	mock := airtablemock.New(t, ConnectionName)
+	harness := newRefundDecisionHarnessWithConnection(t, mock.Connection())
+	ctx := integrationContext(t, time.Minute)
+	flowID := uniqueFlowID("record-lifecycle")
+	_, err := harness.client.StartFlow(ctx, harness.lifecycleFlow, flowID, RecordLifecycleInput{
+		Fields: map[string]airtable.CellValue{CaseIDField: airtable.TextCellValue("case-created")},
+	}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result := waitForTerminalFlow(t, ctx, harness.client, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var deleted airtable.DeletedRecord
+	require.NoError(t, result.DecodeSingleOutput(&deleted))
+	require.Equal(t, "recReviewCreated1", deleted.RecordID)
+	require.Len(t, mock.CreateRecord().Calls(), 1)
+	require.Len(t, mock.DeleteRecord().Calls(), 1)
+	require.Equal(t, deleted.RecordID, mock.DeleteRecord().Calls()[0].Input.RecordID)
 }

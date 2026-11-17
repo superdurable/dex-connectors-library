@@ -44,12 +44,24 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	GetFunction() sdkgo.Query[GetFunctionInput, FunctionDetails]
+	ListFunctions() sdkgo.Query[ListFunctionsInput, FunctionPage]
+	UpdateFunctionDescription() sdkgo.Mutation[UpdateFunctionDescriptionInput, FunctionDetails]
+	DeleteFunction() sdkgo.Mutation[DeleteFunctionInput, FunctionWriteResult]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) GetFunction() sdkgo.Query[GetFunctionInput, FunctionDetails] {
 	return operations.client.GetFunction()
+}
+func (operations clientOperations) ListFunctions() sdkgo.Query[ListFunctionsInput, FunctionPage] {
+	return operations.client.ListFunctions()
+}
+func (operations clientOperations) UpdateFunctionDescription() sdkgo.Mutation[UpdateFunctionDescriptionInput, FunctionDetails] {
+	return operations.client.UpdateFunctionDescription()
+}
+func (operations clientOperations) DeleteFunction() sdkgo.Mutation[DeleteFunctionInput, FunctionWriteResult] {
+	return operations.client.DeleteFunction()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -265,6 +277,219 @@ func NewGetFunctionStep[IN any](config GetFunctionStepConfig[IN]) sdkgo.QuerySte
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetFunctionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListFunctionsBranchListed sdkgo.BranchID = "listed"
+const ListFunctionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListFunctionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListFunctionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListFunctionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listFunctions"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListFunctionsBranchListed, Description: "AWS returned a page of functions."},
+		{ID: ListFunctionsBranchProviderRejected, Description: "AWS conclusively rejected the request or credentials.", Optional: true},
+		{ID: ListFunctionsBranchInvalidResponse, Description: "AWS returned malformed or oversized function metadata.", Optional: true},
+		{ID: ListFunctionsBranchDefect, Description: "The page input or connection settings are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListFunctionsResult = sdkgo.QueryResult[FunctionPage]
+
+type ListFunctionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=amazon-lambda"`
+	operationID                    struct{}                                        `connector:"operationId=listFunctions"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListFunctionsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListFunctionsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListFunctionsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListFunctionsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListFunctionsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FunctionPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListFunctionsStep[IN any](config ListFunctionsStepConfig[IN]) sdkgo.QueryStep[IN, ListFunctionsInput, FunctionPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-lambda connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListFunctionsInput, FunctionPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListFunctions(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListFunctionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListFunctionsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListFunctionsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListFunctionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListFunctionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListFunctionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateFunctionDescriptionBranchUpdated sdkgo.BranchID = "updated"
+const UpdateFunctionDescriptionBranchMissing sdkgo.BranchID = "missing"
+const UpdateFunctionDescriptionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateFunctionDescriptionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateFunctionDescriptionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateFunctionDescriptionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateFunctionDescription"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateFunctionDescriptionBranchUpdated, Description: "AWS accepted the description update."},
+		{ID: UpdateFunctionDescriptionBranchMissing, Description: "The function does not exist.", Optional: true},
+		{ID: UpdateFunctionDescriptionBranchProviderRejected, Description: "AWS conclusively rejected the update.", Optional: true},
+		{ID: UpdateFunctionDescriptionBranchInvalidResponse, Description: "AWS returned malformed or oversized metadata.", Optional: true},
+		{ID: UpdateFunctionDescriptionBranchDefect, Description: "The update input or connection settings are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateFunctionDescriptionResult = sdkgo.MutationResult[FunctionDetails]
+
+type UpdateFunctionDescriptionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=amazon-lambda"`
+	operationID                       struct{}                                              `connector:"operationId=updateFunctionDescription"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateFunctionDescriptionInput               `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateFunctionDescriptionResult]         `connector:"branch=updated"`
+	Missing                           sdkgo.Target[UpdateFunctionDescriptionResult]         `connector:"branch=missing,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateFunctionDescriptionResult]         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateFunctionDescriptionResult]         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateFunctionDescriptionResult]         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[FunctionDetails]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateFunctionDescriptionStep[IN any](config UpdateFunctionDescriptionStepConfig[IN]) sdkgo.MutationStep[IN, UpdateFunctionDescriptionInput, FunctionDetails] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-lambda connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateFunctionDescriptionInput, FunctionDetails]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateFunctionDescription(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateFunctionDescriptionResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateFunctionDescriptionResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateFunctionDescriptionBranchUpdated))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(UpdateFunctionDescriptionBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateFunctionDescriptionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateFunctionDescriptionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateFunctionDescriptionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteFunctionBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteFunctionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteFunctionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteFunctionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteFunction"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteFunctionBranchDeleted, Description: "The function is absent after deletion."},
+		{ID: DeleteFunctionBranchProviderRejected, Description: "AWS conclusively rejected the deletion.", Optional: true},
+		{ID: DeleteFunctionBranchDefect, Description: "The function name or connection settings are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteFunctionResult = sdkgo.MutationResult[FunctionWriteResult]
+
+type DeleteFunctionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=amazon-lambda"`
+	operationID                       struct{}                                                  `connector:"operationId=deleteFunction"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteFunctionInput                              `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteFunctionResult]                        `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteFunctionResult]                        `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteFunctionResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[FunctionWriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteFunctionStep[IN any](config DeleteFunctionStepConfig[IN]) sdkgo.MutationStep[IN, DeleteFunctionInput, FunctionWriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-lambda connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteFunctionInput, FunctionWriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteFunction(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteFunctionResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteFunctionResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteFunctionBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteFunctionBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteFunctionBranchDefect))
 			}
 			return branches
 		}(),

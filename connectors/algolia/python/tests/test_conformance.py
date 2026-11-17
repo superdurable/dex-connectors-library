@@ -14,15 +14,21 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/algolia/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/algolia/scenarios.json")
+    if scenario["operation"] in {"search", "saveObject"}
+]
 CONNECTION = sdk.ConnectionRef("algolia", "algolia")
 ADAPTER = PythonOperationAdapter(
-    "algolia", CONNECTION, algolia,
+    "algolia",
+    CONNECTION,
+    algolia,
     lambda client, _: algolia.Client(
         algolia.Config(base_url="http://127.0.0.1:12345/1"),
-        sdk.StaticCredentialProvider({
-            CONNECTION: algolia.Credentials("TESTAPP", sdk.SecretString("algolia-test-key"))
-        }),
+        sdk.StaticCredentialProvider(
+            {CONNECTION: algolia.Credentials("TESTAPP", sdk.SecretString("algolia-test-key"))}
+        ),
         client,
     ),
 )

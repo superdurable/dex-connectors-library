@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package queueconsumer demonstrates every Amazon SQS operation in one Flow started from Dex Web Start Flow:
+// Package queueconsumer demonstrates Amazon SQS consuming and sending in Flows started from Dex Web Start Flow:
 // receive one order event, acknowledge it by deleting it once it is processed, or release it back to the
 // queue when it is not a valid order event, so the queue's redrive policy can move it to a dead-letter queue.
 package queueconsumer

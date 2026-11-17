@@ -5,6 +5,7 @@
 package adyen
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -67,6 +68,22 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.request(call, http.MethodGet, path, nil, "")
+}
+
+func (client *Client) patch(call sdkgo.Call, path string, body []byte) providerResponse {
+	return client.request(call, http.MethodPatch, path, body, "")
+}
+
+func (client *Client) post(call sdkgo.Call, path string, body []byte) providerResponse {
+	return client.request(call, http.MethodPost, path, body, string(call.IdempotencyKey))
+}
+
+func (client *Client) queryPost(call sdkgo.Call, path string, body []byte) providerResponse {
+	return client.request(call, http.MethodPost, path, body, "")
+}
+
+func (client *Client) request(call sdkgo.Call, method string, path string, body []byte, idempotencyKey string) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -75,18 +92,24 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(apiKey) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.Header.Set("X-API-Key", apiKey)
+	if idempotencyKey != "" {
+		request.Header.Set("Idempotency-Key", idempotencyKey)
+	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	return providerResponse{body: responseBody, status: response.StatusCode, retryAfter: retryAfter, err: err}
 }

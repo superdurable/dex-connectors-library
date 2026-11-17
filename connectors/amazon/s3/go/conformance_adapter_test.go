@@ -40,9 +40,18 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	context := newDexContext("conformance")
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"listBuckets":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListBuckets(), testConnection),
+		"createBucket":  newConformanceMutationInvocation(t, scenario.Input, context, client.CreateBucket(), testConnection, scenario.CallID),
+		"deleteBucket":  newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteBucket(), testConnection, scenario.CallID),
+		"createFolder":  newConformanceMutationInvocation(t, scenario.Input, context, client.CreateFolder(), testConnection, scenario.CallID),
+		"deleteFolder":  newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteFolder(), testConnection, scenario.CallID),
+		"listFolders":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListFolders(), testConnection),
 		"listObjects":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListObjects(), testConnection),
 		"headObject":    newConformanceQueryInvocation(t, scenario.Input, context, client.HeadObject(), testConnection),
 		"getObjectText": newConformanceQueryInvocation(t, scenario.Input, context, client.GetObjectText(), testConnection),
+		"getObjectBytes": newConformanceQueryInvocation(t, scenario.Input, context, client.GetObjectBytes(), testConnection),
 		"putObject":     newConformanceMutationInvocation(t, scenario.Input, context, client.PutObject(), testConnection, scenario.CallID),
+		"copyObject":    newConformanceMutationInvocation(t, scenario.Input, context, client.CopyObject(), testConnection, scenario.CallID),
+		"deleteObject":  newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteObject(), testConnection, scenario.CallID),
 	}}
 }

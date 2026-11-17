@@ -16,6 +16,46 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listBuckets/ownedBuckets/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.ListBucketsOutput](`{"buckets":[{"name":"acme-reports","creationDate":"2026-10-25T09:00:00Z","region":"eu-west-1"}],"nextContinuationToken":"bucket-page-2"}`)
+			return err
+		}},
+		{name: "listBuckets/ownedBuckets/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.ListBucketsOutput](`{"buckets":[{"name":"acme-archive","creationDate":"2026-10-24T09:00:00Z","region":"eu-west-1"}],"nextContinuationToken":"bucket-page-3"}`)
+			return err
+		}},
+		{name: "listBuckets/ownedBuckets/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.ListBucketsOutput](`{"buckets":[{"name":"acme-backups","creationDate":"2026-10-23T09:00:00Z","region":"eu-west-1"}]}`)
+			return err
+		}},
+		{name: "createBucket/createdBucket/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.CreatedBucket](`{"bucket":"acme-reports","region":"eu-west-1"}`)
+			return err
+		}},
+		{name: "deleteBucket/deletedBucket/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.DeletedBucket](`{"bucket":"acme-reports"}`)
+			return err
+		}},
+		{name: "createFolder/createdFolder/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.CreatedFolder](`{"bucket":"acme-reports","prefix":"reports/2026/"}`)
+			return err
+		}},
+		{name: "deleteFolder/deletedFolder/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.DeletedFolder](`{"bucket":"acme-reports","prefix":"reports/2026/"}`)
+			return err
+		}},
+		{name: "listFolders/childFolders/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.ListFoldersOutput](`{"bucket":"acme-reports","parentPrefix":"reports/","folders":["reports/2024/"],"isTruncated":true,"nextContinuationToken":"folders-page-2"}`)
+			return err
+		}},
+		{name: "listFolders/childFolders/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.ListFoldersOutput](`{"bucket":"acme-reports","parentPrefix":"reports/","folders":["reports/2025/"],"isTruncated":true,"nextContinuationToken":"folders-page-3"}`)
+			return err
+		}},
+		{name: "listFolders/childFolders/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.ListFoldersOutput](`{"bucket":"acme-reports","parentPrefix":"reports/","folders":["reports/2026/"],"isTruncated":false}`)
+			return err
+		}},
 		{name: "listObjects/archivedReports/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[s3.ListObjectsOutput](`{"bucket":"acme-reports","prefix":"reports/","objects":[{"key":"reports/ops-weekly.md","sizeBytes":72,"eTag":"\"eccaf41434e0ed82b7154a7fd586cc58\"","lastModified":"2026-10-25T09:00:00Z"}],"isTruncated":true,"nextContinuationToken":"page-2"}`)
 			return err
@@ -56,12 +96,28 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[s3.ObjectText](`{"bucket":"acme-reports","key":"reports/archive-large.md","contentType":"text/markdown","sizeBytes":5242880}`)
 			return err
 		}},
+		{name: "getObjectBytes/reportBytes/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.ObjectBytes](`{"bucket":"acme-reports","key":"reports/ops-weekly.md","contentType":"text/markdown","sizeBytes":6,"bytes":"d2Vla2x5"}`)
+			return err
+		}},
+		{name: "getObjectBytes/bytesTooLarge/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.ObjectBytes](`{"bucket":"acme-reports","key":"reports/large.bin","sizeBytes":10485760}`)
+			return err
+		}},
 		{name: "putObject/storedOpsReport/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[s3.StoredObject](`{"bucket":"acme-reports","key":"reports/ops-weekly.md","eTag":"\"eccaf41434e0ed82b7154a7fd586cc58\"","sizeBytes":72,"contentType":"text/markdown; charset=utf-8"}`)
 			return err
 		}},
 		{name: "putObject/reportAlreadyExists/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[s3.StoredObject](`{"bucket":"acme-reports","key":"reports/ops-weekly.md","eTag":"\"existing-report\"","sizeBytes":43,"contentType":"text/markdown; charset=utf-8","lastModified":"2026-10-24T09:00:00Z"}`)
+			return err
+		}},
+		{name: "copyObject/copiedReport/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.CopiedObject](`{"sourceBucket":"acme-reports","sourceKey":"reports/ops-weekly.md","destinationBucket":"acme-archive","destinationKey":"reports/ops-weekly.md","eTag":"\"copied-report\""}`)
+			return err
+		}},
+		{name: "deleteObject/deletedReport/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.DeletedObject](`{"bucket":"acme-reports","key":"reports/ops-weekly.md"}`)
 			return err
 		}},
 	}
@@ -74,6 +130,24 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListBuckets().Definition().Operation.OperationID != "listBuckets" {
+		t.Errorf("listBuckets mock has another definition")
+	}
+	if mock.CreateBucket().Definition().Operation.OperationID != "createBucket" {
+		t.Errorf("createBucket mock has another definition")
+	}
+	if mock.DeleteBucket().Definition().Operation.OperationID != "deleteBucket" {
+		t.Errorf("deleteBucket mock has another definition")
+	}
+	if mock.CreateFolder().Definition().Operation.OperationID != "createFolder" {
+		t.Errorf("createFolder mock has another definition")
+	}
+	if mock.DeleteFolder().Definition().Operation.OperationID != "deleteFolder" {
+		t.Errorf("deleteFolder mock has another definition")
+	}
+	if mock.ListFolders().Definition().Operation.OperationID != "listFolders" {
+		t.Errorf("listFolders mock has another definition")
+	}
 	if mock.ListObjects().Definition().Operation.OperationID != "listObjects" {
 		t.Errorf("listObjects mock has another definition")
 	}
@@ -83,7 +157,16 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	if mock.GetObjectText().Definition().Operation.OperationID != "getObjectText" {
 		t.Errorf("getObjectText mock has another definition")
 	}
+	if mock.GetObjectBytes().Definition().Operation.OperationID != "getObjectBytes" {
+		t.Errorf("getObjectBytes mock has another definition")
+	}
 	if mock.PutObject().Definition().Operation.OperationID != "putObject" {
 		t.Errorf("putObject mock has another definition")
+	}
+	if mock.CopyObject().Definition().Operation.OperationID != "copyObject" {
+		t.Errorf("copyObject mock has another definition")
+	}
+	if mock.DeleteObject().Definition().Operation.OperationID != "deleteObject" {
+		t.Errorf("deleteObject mock has another definition")
 	}
 }

@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{agreementinspection.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{agreementinspection.NewFlow(connection), agreementinspection.NewListAgreementsFlow(connection), agreementinspection.NewCancelAgreementFlow(connection), agreementinspection.NewCreateAgreementReminderFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Adobe Acrobat Sign agreement inspection Flow: %w", err)
 	}

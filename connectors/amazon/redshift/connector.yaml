@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: amazon-redshift
   displayName: Amazon Redshift
-  description: Fetch a page of SQL statement results through the Redshift Data API.
+  description: Submit, inspect, list, cancel, and fetch Redshift Data API statements.
   company: Amazon
   categories: [databases-storage, analytics]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: amazon-redshift
   languages:
@@ -38,12 +38,12 @@ spec:
         goName: Timeout
         type: duration
         default: 15s
-        description: Maximum duration of one result-page request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
+        description: Maximum duration of one Data API request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
         default: 2097152
-        description: Maximum complete result page in bytes. Blank uses the displayed default; increase only for a known large page.
+        description: Maximum complete Data API response in bytes. Blank uses the displayed default; increase only for a known large page.
   auth:
     type: apiKey
     connectionKind: amazon-redshift-access-key
@@ -65,9 +65,9 @@ spec:
     guide:
       startURL: https://console.aws.amazon.com/iam
       steps:
-        - Open IAM > Users > Create user for Dex. Grant redshift-data:GetStatementResult. Limit statement access with the statement-owner-iam-userid condition where appropriate; do not use the root user.
+        - Open IAM > Users > Create user for Dex. Grant only the Data API actions used by your Flow (redshift-data:GetStatementResult, redshift-data:ExecuteStatement, redshift-data:DescribeStatement, redshift-data:ListStatements, or redshift-data:CancelStatement), plus redshift-serverless:GetCredentials on the chosen workgroup for submission. Limit statement access with the statement-owner-iam-userid condition where appropriate; do not use the root user.
         - Open the IAM user > Security credentials > Access keys > Create access key > Other. Copy the Access key ID to secret access_key_id and the one-time Secret access key Value to secret_access_key. Leave session_token blank for long-term keys; include it for temporary ASIA keys.
-        - Open https://console.aws.amazon.com/redshiftv2 > Query editor v2 in the statement's Region. Run a query through the Redshift Data API, or use its ExecuteStatement response; copy the UUID Id to the Flow input statementId. Query results must use JSON format. A result page's NextToken is supplied to the next Flow input; blank starts at the first page.
+        - Open https://console.aws.amazon.com/redshiftv2 > Query editor v2 in the workgroup's Region. Find the workgroup name under Serverless > Workgroups and the database name in Query editor v2's connection selector. ExecuteStatement takes these names and one SQL statement; do not include credentials in SQL. Copy its UUID Id to statementId for describe, cancel, and result retrieval. Query results use JSON format; a page's NextToken resumes the next page and blank starts at the first page.
         - Rotate the key under IAM > Users > selected user > Security credentials > Access keys by creating a second key, updating this connection, verifying a Flow, then deactivating and deleting the old key.
   operations:
     - name: getStatementResult
@@ -91,3 +91,86 @@ spec:
           default: true
           description: One example result row is available.
           output: {records: [[{stringValue: example}]], nextToken: '', totalNumRows: 1}
+    - name: executeStatement
+      goName: ExecuteStatement
+      inputType: ExecuteStatementInput
+      outputType: StatementIdentity
+      kind: mutation
+      description: Submit one SQL statement to a serverless workgroup with a Dex-derived client token.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: submitted, goName: Submitted, description: Redshift accepted the SQL statement.}
+        - {id: providerRejected, goName: ProviderRejected, description: Redshift conclusively rejected the submission., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Redshift returned malformed or oversized submission JSON., optional: true}
+        - {id: defect, goName: Defect, description: The workgroup or SQL input or connection settings are invalid., optional: true}
+      mocks:
+        - name: submittedDefault
+          branch: submitted
+          default: true
+          description: One example statement was submitted.
+          output: {id: '123e4567-e89b-12d3-a456-426614174000'}
+    - name: describeStatement
+      goName: DescribeStatement
+      inputType: DescribeStatementInput
+      outputType: StatementStatus
+      kind: query
+      description: Read a submitted statement's current execution status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: described, goName: Described, description: Redshift returned the statement status.}
+        - {id: missing, goName: Missing, description: Redshift does not retain the statement., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Redshift conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Redshift returned malformed or oversized status JSON., optional: true}
+        - {id: defect, goName: Defect, description: The statement ID or connection settings are invalid., optional: true}
+      mocks:
+        - name: describedDefault
+          branch: described
+          default: true
+          description: The example statement finished.
+          output: {id: '123e4567-e89b-12d3-a456-426614174000', status: FINISHED, hasResultSet: true}
+    - name: listStatements
+      goName: ListStatements
+      inputType: ListStatementsInput
+      outputType: StatementPage
+      kind: query
+      description: List one bounded page of statement IDs and statuses.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Redshift returned a statement page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Redshift conclusively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Redshift returned malformed or oversized list JSON., optional: true}
+        - {id: defect, goName: Defect, description: The page input or connection settings are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example statement is listed.
+          output: {statements: [{id: '123e4567-e89b-12d3-a456-426614174000', status: FINISHED, hasResultSet: false}], nextToken: ''}
+    - name: cancelStatement
+      goName: CancelStatement
+      inputType: CancelStatementInput
+      outputType: StatementCancellation
+      kind: mutation
+      description: Request cancellation of a running SQL statement.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: canceled, goName: Canceled, description: Redshift accepted the cancellation.}
+        - {id: notCanceled, goName: NotCanceled, description: The statement was not running or could not be canceled., optional: true}
+        - {id: missing, goName: Missing, description: Redshift does not retain the statement., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Redshift conclusively rejected the cancellation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Redshift returned malformed or oversized cancellation JSON., optional: true}
+        - {id: defect, goName: Defect, description: The statement ID or connection settings are invalid., optional: true}
+      mocks:
+        - name: canceledDefault
+          branch: canceled
+          default: true
+          description: The example statement cancellation was accepted.
+          output: {canceled: true}

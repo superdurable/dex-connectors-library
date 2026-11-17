@@ -40,11 +40,47 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	LookupCardBrandsByBIN() sdkgo.Query[LookupCardBrandsByBINInput, CardBrands]
+	CapturePayment() sdkgo.Mutation[PaymentModificationInput, PaymentModificationReceipt]
+	CancelPayment() sdkgo.Mutation[PaymentReferenceModificationInput, PaymentModificationReceipt]
+	RefundPayment() sdkgo.Mutation[PaymentModificationInput, PaymentModificationReceipt]
+	ReversePayment() sdkgo.Mutation[PaymentReferenceModificationInput, PaymentModificationReceipt]
+	UpdateAuthorisedAmount() sdkgo.Mutation[PaymentModificationInput, PaymentModificationReceipt]
+	ListPaymentMethods() sdkgo.Query[ListPaymentMethodsInput, PaymentMethodPage]
+	CreatePaymentLink() sdkgo.Mutation[CreatePaymentLinkInput, CreatedPaymentLink]
+	ExpirePaymentLink() sdkgo.Mutation[ExpirePaymentLinkInput, PaymentLinkStatus]
 	GetPaymentLink() sdkgo.Query[GetPaymentLinkInput, PaymentLinkStatus]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) LookupCardBrandsByBIN() sdkgo.Query[LookupCardBrandsByBINInput, CardBrands] {
+	return operations.client.LookupCardBrandsByBIN()
+}
+func (operations clientOperations) CapturePayment() sdkgo.Mutation[PaymentModificationInput, PaymentModificationReceipt] {
+	return operations.client.CapturePayment()
+}
+func (operations clientOperations) CancelPayment() sdkgo.Mutation[PaymentReferenceModificationInput, PaymentModificationReceipt] {
+	return operations.client.CancelPayment()
+}
+func (operations clientOperations) RefundPayment() sdkgo.Mutation[PaymentModificationInput, PaymentModificationReceipt] {
+	return operations.client.RefundPayment()
+}
+func (operations clientOperations) ReversePayment() sdkgo.Mutation[PaymentReferenceModificationInput, PaymentModificationReceipt] {
+	return operations.client.ReversePayment()
+}
+func (operations clientOperations) UpdateAuthorisedAmount() sdkgo.Mutation[PaymentModificationInput, PaymentModificationReceipt] {
+	return operations.client.UpdateAuthorisedAmount()
+}
+func (operations clientOperations) ListPaymentMethods() sdkgo.Query[ListPaymentMethodsInput, PaymentMethodPage] {
+	return operations.client.ListPaymentMethods()
+}
+func (operations clientOperations) CreatePaymentLink() sdkgo.Mutation[CreatePaymentLinkInput, CreatedPaymentLink] {
+	return operations.client.CreatePaymentLink()
+}
+func (operations clientOperations) ExpirePaymentLink() sdkgo.Mutation[ExpirePaymentLinkInput, PaymentLinkStatus] {
+	return operations.client.ExpirePaymentLink()
+}
 func (operations clientOperations) GetPaymentLink() sdkgo.Query[GetPaymentLinkInput, PaymentLinkStatus] {
 	return operations.client.GetPaymentLink()
 }
@@ -184,6 +220,621 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const LookupCardBrandsByBINBranchFound sdkgo.BranchID = "found"
+const LookupCardBrandsByBINBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const LookupCardBrandsByBINBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const LookupCardBrandsByBINBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var LookupCardBrandsByBINDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "lookupCardBrandsByBIN"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: LookupCardBrandsByBINBranchFound, Description: "Adyen returned card brands for the issuer BIN."},
+		{ID: LookupCardBrandsByBINBranchProviderRejected, Description: "Adyen conclusively rejected the lookup.", Optional: true},
+		{ID: LookupCardBrandsByBINBranchInvalidResponse, Description: "Adyen returned malformed or oversized JSON.", Optional: true},
+		{ID: LookupCardBrandsByBINBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type LookupCardBrandsByBINResult = sdkgo.QueryResult[CardBrands]
+
+type LookupCardBrandsByBINStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=adyen"`
+	operationID                    struct{}                                      `connector:"operationId=lookupCardBrandsByBIN"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) LookupCardBrandsByBINInput           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[LookupCardBrandsByBINResult]     `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[LookupCardBrandsByBINResult]     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[LookupCardBrandsByBINResult]     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[LookupCardBrandsByBINResult]     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CardBrands]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewLookupCardBrandsByBINStep[IN any](config LookupCardBrandsByBINStepConfig[IN]) sdkgo.QueryStep[IN, LookupCardBrandsByBINInput, CardBrands] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adyen connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, LookupCardBrandsByBINInput, CardBrands]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.LookupCardBrandsByBIN(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[LookupCardBrandsByBINResult] {
+			branches := make([]sdkgo.BranchTarget[LookupCardBrandsByBINResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(LookupCardBrandsByBINBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(LookupCardBrandsByBINBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(LookupCardBrandsByBINBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(LookupCardBrandsByBINBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CapturePaymentBranchReceived sdkgo.BranchID = "received"
+const CapturePaymentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CapturePaymentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CapturePaymentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "capturePayment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CapturePaymentBranchReceived, Description: "Adyen received the modification for asynchronous processing."},
+		{ID: CapturePaymentBranchProviderRejected, Description: "Adyen conclusively rejected the modification.", Optional: true},
+		{ID: CapturePaymentBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CapturePaymentResult = sdkgo.MutationResult[PaymentModificationReceipt]
+
+type CapturePaymentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                         `connector:"connectorId=adyen"`
+	operationID                       struct{}                                                         `connector:"operationId=capturePayment"`
+	StepType                          string                                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                            `connector:"annotations"`
+	Connection                        Connection                                                       `connector:"connection"`
+	ConnectionName                    string                                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) PaymentModificationInput                                `connector:"mapToOperationInput"`
+	Received                          sdkgo.Target[CapturePaymentResult]                               `connector:"branch=received"`
+	ProviderRejected                  sdkgo.Target[CapturePaymentResult]                               `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CapturePaymentResult]                               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentModificationReceipt]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                 `connector:"stepOptionsOverride"`
+}
+
+func NewCapturePaymentStep[IN any](config CapturePaymentStepConfig[IN]) sdkgo.MutationStep[IN, PaymentModificationInput, PaymentModificationReceipt] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adyen connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PaymentModificationInput, PaymentModificationReceipt]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CapturePayment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CapturePaymentResult] {
+			branches := make([]sdkgo.BranchTarget[CapturePaymentResult], 0, 3)
+			if config.Received.HasStep() {
+				branches = append(branches, config.Received.BranchTarget(CapturePaymentBranchReceived))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CapturePaymentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CapturePaymentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CancelPaymentBranchReceived sdkgo.BranchID = "received"
+const CancelPaymentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelPaymentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelPaymentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelPayment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelPaymentBranchReceived, Description: "Adyen received the modification for asynchronous processing."},
+		{ID: CancelPaymentBranchProviderRejected, Description: "Adyen conclusively rejected the modification.", Optional: true},
+		{ID: CancelPaymentBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CancelPaymentResult = sdkgo.MutationResult[PaymentModificationReceipt]
+
+type CancelPaymentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                         `connector:"connectorId=adyen"`
+	operationID                       struct{}                                                         `connector:"operationId=cancelPayment"`
+	StepType                          string                                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                            `connector:"annotations"`
+	Connection                        Connection                                                       `connector:"connection"`
+	ConnectionName                    string                                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) PaymentReferenceModificationInput                       `connector:"mapToOperationInput"`
+	Received                          sdkgo.Target[CancelPaymentResult]                                `connector:"branch=received"`
+	ProviderRejected                  sdkgo.Target[CancelPaymentResult]                                `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CancelPaymentResult]                                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentModificationReceipt]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                 `connector:"stepOptionsOverride"`
+}
+
+func NewCancelPaymentStep[IN any](config CancelPaymentStepConfig[IN]) sdkgo.MutationStep[IN, PaymentReferenceModificationInput, PaymentModificationReceipt] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adyen connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PaymentReferenceModificationInput, PaymentModificationReceipt]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelPayment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelPaymentResult] {
+			branches := make([]sdkgo.BranchTarget[CancelPaymentResult], 0, 3)
+			if config.Received.HasStep() {
+				branches = append(branches, config.Received.BranchTarget(CancelPaymentBranchReceived))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelPaymentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelPaymentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RefundPaymentBranchReceived sdkgo.BranchID = "received"
+const RefundPaymentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RefundPaymentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RefundPaymentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "refundPayment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RefundPaymentBranchReceived, Description: "Adyen received the modification for asynchronous processing."},
+		{ID: RefundPaymentBranchProviderRejected, Description: "Adyen conclusively rejected the modification.", Optional: true},
+		{ID: RefundPaymentBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type RefundPaymentResult = sdkgo.MutationResult[PaymentModificationReceipt]
+
+type RefundPaymentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                         `connector:"connectorId=adyen"`
+	operationID                       struct{}                                                         `connector:"operationId=refundPayment"`
+	StepType                          string                                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                            `connector:"annotations"`
+	Connection                        Connection                                                       `connector:"connection"`
+	ConnectionName                    string                                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) PaymentModificationInput                                `connector:"mapToOperationInput"`
+	Received                          sdkgo.Target[RefundPaymentResult]                                `connector:"branch=received"`
+	ProviderRejected                  sdkgo.Target[RefundPaymentResult]                                `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[RefundPaymentResult]                                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentModificationReceipt]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                 `connector:"stepOptionsOverride"`
+}
+
+func NewRefundPaymentStep[IN any](config RefundPaymentStepConfig[IN]) sdkgo.MutationStep[IN, PaymentModificationInput, PaymentModificationReceipt] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adyen connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PaymentModificationInput, PaymentModificationReceipt]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RefundPayment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RefundPaymentResult] {
+			branches := make([]sdkgo.BranchTarget[RefundPaymentResult], 0, 3)
+			if config.Received.HasStep() {
+				branches = append(branches, config.Received.BranchTarget(RefundPaymentBranchReceived))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RefundPaymentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RefundPaymentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ReversePaymentBranchReceived sdkgo.BranchID = "received"
+const ReversePaymentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ReversePaymentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ReversePaymentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "reversePayment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ReversePaymentBranchReceived, Description: "Adyen received the modification for asynchronous processing."},
+		{ID: ReversePaymentBranchProviderRejected, Description: "Adyen conclusively rejected the modification.", Optional: true},
+		{ID: ReversePaymentBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ReversePaymentResult = sdkgo.MutationResult[PaymentModificationReceipt]
+
+type ReversePaymentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                         `connector:"connectorId=adyen"`
+	operationID                       struct{}                                                         `connector:"operationId=reversePayment"`
+	StepType                          string                                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                            `connector:"annotations"`
+	Connection                        Connection                                                       `connector:"connection"`
+	ConnectionName                    string                                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) PaymentReferenceModificationInput                       `connector:"mapToOperationInput"`
+	Received                          sdkgo.Target[ReversePaymentResult]                               `connector:"branch=received"`
+	ProviderRejected                  sdkgo.Target[ReversePaymentResult]                               `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[ReversePaymentResult]                               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentModificationReceipt]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                 `connector:"stepOptionsOverride"`
+}
+
+func NewReversePaymentStep[IN any](config ReversePaymentStepConfig[IN]) sdkgo.MutationStep[IN, PaymentReferenceModificationInput, PaymentModificationReceipt] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adyen connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PaymentReferenceModificationInput, PaymentModificationReceipt]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ReversePayment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ReversePaymentResult] {
+			branches := make([]sdkgo.BranchTarget[ReversePaymentResult], 0, 3)
+			if config.Received.HasStep() {
+				branches = append(branches, config.Received.BranchTarget(ReversePaymentBranchReceived))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ReversePaymentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ReversePaymentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateAuthorisedAmountBranchReceived sdkgo.BranchID = "received"
+const UpdateAuthorisedAmountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateAuthorisedAmountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateAuthorisedAmountDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateAuthorisedAmount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateAuthorisedAmountBranchReceived, Description: "Adyen received the modification for asynchronous processing."},
+		{ID: UpdateAuthorisedAmountBranchProviderRejected, Description: "Adyen conclusively rejected the modification.", Optional: true},
+		{ID: UpdateAuthorisedAmountBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateAuthorisedAmountResult = sdkgo.MutationResult[PaymentModificationReceipt]
+
+type UpdateAuthorisedAmountStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                         `connector:"connectorId=adyen"`
+	operationID                       struct{}                                                         `connector:"operationId=updateAuthorisedAmount"`
+	StepType                          string                                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                            `connector:"annotations"`
+	Connection                        Connection                                                       `connector:"connection"`
+	ConnectionName                    string                                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) PaymentModificationInput                                `connector:"mapToOperationInput"`
+	Received                          sdkgo.Target[UpdateAuthorisedAmountResult]                       `connector:"branch=received"`
+	ProviderRejected                  sdkgo.Target[UpdateAuthorisedAmountResult]                       `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateAuthorisedAmountResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentModificationReceipt]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                 `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateAuthorisedAmountStep[IN any](config UpdateAuthorisedAmountStepConfig[IN]) sdkgo.MutationStep[IN, PaymentModificationInput, PaymentModificationReceipt] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adyen connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PaymentModificationInput, PaymentModificationReceipt]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateAuthorisedAmount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateAuthorisedAmountResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateAuthorisedAmountResult], 0, 3)
+			if config.Received.HasStep() {
+				branches = append(branches, config.Received.BranchTarget(UpdateAuthorisedAmountBranchReceived))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateAuthorisedAmountBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateAuthorisedAmountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListPaymentMethodsBranchListed sdkgo.BranchID = "listed"
+const ListPaymentMethodsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPaymentMethodsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPaymentMethodsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPaymentMethodsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPaymentMethods"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPaymentMethodsBranchListed, Description: "Adyen returned available payment methods."},
+		{ID: ListPaymentMethodsBranchProviderRejected, Description: "Adyen conclusively rejected the request.", Optional: true},
+		{ID: ListPaymentMethodsBranchInvalidResponse, Description: "Adyen returned malformed or oversized JSON.", Optional: true},
+		{ID: ListPaymentMethodsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPaymentMethodsResult = sdkgo.QueryResult[PaymentMethodPage]
+
+type ListPaymentMethodsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=adyen"`
+	operationID                    struct{}                                             `connector:"operationId=listPaymentMethods"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPaymentMethodsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPaymentMethodsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListPaymentMethodsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPaymentMethodsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPaymentMethodsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PaymentMethodPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewListPaymentMethodsStep[IN any](config ListPaymentMethodsStepConfig[IN]) sdkgo.QueryStep[IN, ListPaymentMethodsInput, PaymentMethodPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adyen connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPaymentMethodsInput, PaymentMethodPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListPaymentMethods(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPaymentMethodsResult] {
+			branches := make([]sdkgo.BranchTarget[ListPaymentMethodsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPaymentMethodsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPaymentMethodsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPaymentMethodsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPaymentMethodsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreatePaymentLinkBranchCreated sdkgo.BranchID = "created"
+const CreatePaymentLinkBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreatePaymentLinkBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreatePaymentLinkBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreatePaymentLinkDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createPaymentLink"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreatePaymentLinkBranchCreated, Description: "Adyen created a payment link."},
+		{ID: CreatePaymentLinkBranchProviderRejected, Description: "Adyen conclusively rejected the payment link request.", Optional: true},
+		{ID: CreatePaymentLinkBranchInvalidResponse, Description: "Adyen returned malformed or oversized JSON.", Optional: true},
+		{ID: CreatePaymentLinkBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CreatePaymentLinkResult = sdkgo.MutationResult[CreatedPaymentLink]
+
+type CreatePaymentLinkStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=adyen"`
+	operationID                       struct{}                                                 `connector:"operationId=createPaymentLink"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreatePaymentLinkInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreatePaymentLinkResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreatePaymentLinkResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreatePaymentLinkResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreatePaymentLinkResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedPaymentLink]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewCreatePaymentLinkStep[IN any](config CreatePaymentLinkStepConfig[IN]) sdkgo.MutationStep[IN, CreatePaymentLinkInput, CreatedPaymentLink] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adyen connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreatePaymentLinkInput, CreatedPaymentLink]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreatePaymentLink(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreatePaymentLinkResult] {
+			branches := make([]sdkgo.BranchTarget[CreatePaymentLinkResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreatePaymentLinkBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreatePaymentLinkBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreatePaymentLinkBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreatePaymentLinkBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ExpirePaymentLinkBranchExpired sdkgo.BranchID = "expired"
+const ExpirePaymentLinkBranchNotFound sdkgo.BranchID = "notFound"
+const ExpirePaymentLinkBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ExpirePaymentLinkBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ExpirePaymentLinkBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ExpirePaymentLinkDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "expirePaymentLink"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ExpirePaymentLinkBranchExpired, Description: "Adyen confirmed the link expired."},
+		{ID: ExpirePaymentLinkBranchNotFound, Description: "Adyen did not expose the payment link.", Optional: true},
+		{ID: ExpirePaymentLinkBranchProviderRejected, Description: "Adyen conclusively rejected expiry.", Optional: true},
+		{ID: ExpirePaymentLinkBranchInvalidResponse, Description: "Adyen returned malformed or oversized JSON.", Optional: true},
+		{ID: ExpirePaymentLinkBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ExpirePaymentLinkResult = sdkgo.MutationResult[PaymentLinkStatus]
+
+type ExpirePaymentLinkStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=adyen"`
+	operationID                       struct{}                                                `connector:"operationId=expirePaymentLink"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) ExpirePaymentLinkInput                         `connector:"mapToOperationInput"`
+	Expired                           sdkgo.Target[ExpirePaymentLinkResult]                   `connector:"branch=expired"`
+	NotFound                          sdkgo.Target[ExpirePaymentLinkResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ExpirePaymentLinkResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ExpirePaymentLinkResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ExpirePaymentLinkResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentLinkStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewExpirePaymentLinkStep[IN any](config ExpirePaymentLinkStepConfig[IN]) sdkgo.MutationStep[IN, ExpirePaymentLinkInput, PaymentLinkStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adyen connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ExpirePaymentLinkInput, PaymentLinkStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ExpirePaymentLink(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ExpirePaymentLinkResult] {
+			branches := make([]sdkgo.BranchTarget[ExpirePaymentLinkResult], 0, 5)
+			if config.Expired.HasStep() {
+				branches = append(branches, config.Expired.BranchTarget(ExpirePaymentLinkBranchExpired))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ExpirePaymentLinkBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ExpirePaymentLinkBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ExpirePaymentLinkBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ExpirePaymentLinkBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetPaymentLinkBranchFound sdkgo.BranchID = "found"

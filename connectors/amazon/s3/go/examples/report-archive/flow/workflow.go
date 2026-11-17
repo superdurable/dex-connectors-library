@@ -39,6 +39,8 @@ const (
 	verifyTextStepType      = "VerifyReportText"
 	listArchiveStepType     = "ListArchivedReports"
 	completeArchiveStepType = "CompleteReportArchive"
+	deleteReportStepType    = "DeleteArchivedReport"
+	completeDeleteStepType = "CompleteReportDeletion"
 	archiveListingPageSize  = 10
 	maxTitleRunes           = 200
 	maxHighlights           = 20
@@ -64,6 +66,8 @@ type Input struct {
 	Bucket string `json:"bucket,omitempty"`
 	// ShouldReplaceExisting replaces a report already archived under the key; false archives it only once.
 	ShouldReplaceExisting bool `json:"shouldReplaceExisting,omitempty"`
+	// ShouldDeleteAfterVerification removes the report after read-back and listing.
+	ShouldDeleteAfterVerification bool `json:"shouldDeleteAfterVerification,omitempty"`
 }
 
 // ArchiveRequest is the validated request and the generated report the Flow archives.
@@ -78,6 +82,8 @@ type ArchiveRequest struct {
 	Text string `json:"text"`
 	// IsCreateOnly archives the report only when no object exists at the key.
 	IsCreateOnly bool `json:"isCreateOnly"`
+	// ShouldDeleteAfterVerification removes the report after its contents are verified.
+	ShouldDeleteAfterVerification bool `json:"shouldDeleteAfterVerification,omitempty"`
 }
 
 // ObjectLocation is the application input of the read-back Steps.
@@ -114,6 +120,8 @@ type Outcome struct {
 	ArchivedReportKeys []string `json:"archivedReportKeys,omitempty"`
 	// HasMoreArchivedReports reports that the archive folder has more keys than the first page.
 	HasMoreArchivedReports bool `json:"hasMoreArchivedReports,omitempty"`
+	// IsDeleted reports that S3 accepted deletion after verification.
+	IsDeleted bool `json:"isDeleted,omitempty"`
 }
 
 // Flow archives one generated report in Amazon S3 and reads it back.
@@ -176,6 +184,16 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Found: sdkgo.GoTo(completeReportArchive{}),
 		})),
 		dex.DefineStep(completeReportArchive{}),
+		dex.DefineStep(s3.NewDeleteObjectStep(s3.DeleteObjectStepConfig[ObjectLocation]{
+			StepType: deleteReportStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{
+				GroupID: "amazon-s3", GroupLabel: "Amazon S3",
+				Explanation: "Remove the verified report when the request asks for cleanup.",
+			},
+			Connection: flow.connection, MapToOperationInput: MapToDeleteObjectInput,
+			Deleted: sdkgo.GoTo(completeReportDeletion{}),
+		})),
+		dex.DefineStep(completeReportDeletion{}),
 	}
 }
 
@@ -249,6 +267,7 @@ func NewArchiveRequest(input Input) (ArchiveRequest, error) {
 	return ArchiveRequest{
 		ReportID: input.ReportID, Bucket: input.Bucket, Key: ReportPrefix + input.ReportID + ".md",
 		Text: report.String(), IsCreateOnly: !input.ShouldReplaceExisting,
+		ShouldDeleteAfterVerification: input.ShouldDeleteAfterVerification,
 	}, nil
 }
 
@@ -274,6 +293,11 @@ func MapToGetObjectTextInput(location ObjectLocation) s3.GetObjectTextInput {
 // MapToListObjectsInput lists the first page of the archive folder in the report's bucket.
 func MapToListObjectsInput(location ObjectLocation) s3.ListObjectsInput {
 	return s3.ListObjectsInput{Bucket: location.Bucket, Prefix: ReportPrefix, Delimiter: "/", MaxKeys: archiveListingPageSize}
+}
+
+// MapToDeleteObjectInput removes one verified report.
+func MapToDeleteObjectInput(location ObjectLocation) s3.DeleteObjectInput {
+	return s3.DeleteObjectInput{Bucket: location.Bucket, Key: location.Key}
 }
 
 func validateReportLine(line string, maxRunes int) error {
@@ -404,6 +428,10 @@ type completeReportArchive struct {
 func (completeReportArchive) GetStepType() string { return completeArchiveStepType }
 
 func (completeReportArchive) Execute(ctx dex.Context, result s3.ListObjectsResult) (*dex.StepDecision, error) {
+	request, err := requestAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
 	outcome, err := outcomeAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -413,6 +441,29 @@ func (completeReportArchive) Execute(ctx dex.Context, result s3.ListObjectsResul
 		outcome.ArchivedReportKeys = append(outcome.ArchivedReportKeys, object.Key)
 	}
 	outcome.HasMoreArchivedReports = result.Value.IsTruncated
+	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	if request.ShouldDeleteAfterVerification {
+		return dex.GoTo(sdkgo.StepRef[ObjectLocation](deleteReportStepType), ObjectLocation{Bucket: request.Bucket, Key: request.Key}), nil
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:report-archive group-label:"Report archive"
+// dex:explanation text:"Record the verified report deletion and complete the Flow."
+type completeReportDeletion struct {
+	dex.StepDefaultsNoWaitFor[s3.DeleteObjectResult]
+}
+
+func (completeReportDeletion) GetStepType() string { return completeDeleteStepType }
+
+func (completeReportDeletion) Execute(ctx dex.Context, _ s3.DeleteObjectResult) (*dex.StepDecision, error) {
+	outcome, err := outcomeAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	outcome.IsDeleted = true
 	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}
