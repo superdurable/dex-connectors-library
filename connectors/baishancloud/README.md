@@ -7,3 +7,5 @@ Ask your BaishanCloud account team for a CDN API token, then enter it in the sec
 See the [runnable Dex Flow](go/examples/domain-detail/README.md) for local mock verification. Live BaishanCloud authorization and API response have not been exercised.
 
 The logo is the original [BaishanCloud portal SVG](https://cdn.portal.baishan.com/theme/manage/images/bsc-logo.svg).
+
+The [Python package](python/README.md) implements the same Query with Go-recorded conformance and a [runnable Flow](python/examples/domain_detail/README.md).

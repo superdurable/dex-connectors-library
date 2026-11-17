@@ -1,0 +1,333 @@
+{
+  "connector": "baishancloud",
+  "scenarios": [
+    {
+      "callId": "4ef402f3-4c89-46b0-a890-403372755f20",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":[{\"id\":\"31335\",\"domain\":\"cdn.example.com\",\"type\":\"download\",\"status\":\"serving\",\"cname\":\"cdn.example.com.qingcdn.com.\",\"config\":{\"origin\":{\"default_master\":\"private.example.com\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/domain",
+          "query": {
+            "domains": [
+              "cdn.example.com"
+            ],
+            "token": [
+              "secretToken"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "cname": "cdn.example.com.qingcdn.com.",
+          "domain": "cdn.example.com",
+          "id": "31335",
+          "status": "serving",
+          "type": "download"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "CDN.Example.Com"
+      },
+      "name": "describeDomain-found",
+      "operation": "describeDomain"
+    },
+    {
+      "callId": "4ef402f3-4c89-46b0-a890-403372755f20",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/domain",
+          "query": {
+            "domains": [
+              "cdn.example.com"
+            ],
+            "token": [
+              "secretToken"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "cname": "",
+          "domain": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "CDN.Example.Com"
+      },
+      "name": "describeDomain-notFound",
+      "operation": "describeDomain"
+    },
+    {
+      "callId": "4ef402f3-4c89-46b0-a890-403372755f20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/domain",
+          "query": {
+            "domains": [
+              "cdn.example.com"
+            ],
+            "token": [
+              "secretToken"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "cname": "",
+          "domain": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "CDN.Example.Com"
+      },
+      "name": "describeDomain-providerRejected",
+      "operation": "describeDomain"
+    },
+    {
+      "callId": "4ef402f3-4c89-46b0-a890-403372755f20",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/domain",
+          "query": {
+            "domains": [
+              "cdn.example.com"
+            ],
+            "token": [
+              "secretToken"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cname": "",
+          "domain": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "CDN.Example.Com"
+      },
+      "name": "describeDomain-invalidResponse",
+      "operation": "describeDomain"
+    },
+    {
+      "callId": "4ef402f3-4c89-46b0-a890-403372755f20",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "cname": "",
+          "domain": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "https://cdn.example.com"
+      },
+      "name": "describeDomain-defect",
+      "operation": "describeDomain"
+    },
+    {
+      "callId": "4ef402f3-4c89-46b0-a890-403372755f20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/domain",
+          "query": {
+            "domains": [
+              "cdn.example.com"
+            ],
+            "token": [
+              "secretToken"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "CDN.Example.Com"
+      },
+      "name": "describeDomain-http429",
+      "operation": "describeDomain"
+    },
+    {
+      "callId": "4ef402f3-4c89-46b0-a890-403372755f20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/domain",
+          "query": {
+            "domains": [
+              "cdn.example.com"
+            ],
+            "token": [
+              "secretToken"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "CDN.Example.Com"
+      },
+      "name": "describeDomain-http503",
+      "operation": "describeDomain"
+    },
+    {
+      "callId": "4ef402f3-4c89-46b0-a890-403372755f20",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/domain",
+          "query": {
+            "domains": [
+              "cdn.example.com"
+            ],
+            "token": [
+              "secretToken"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "CDN.Example.Com"
+      },
+      "name": "describeDomain-transportFailure",
+      "operation": "describeDomain"
+    }
+  ],
+  "schemaVersion": 1
+}

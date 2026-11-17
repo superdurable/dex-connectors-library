@@ -1,0 +1,65 @@
+{
+  "connectorId": "caiyun",
+  "releaseTag": "connectors/caiyun/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-caiyun",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_current_weather_step",
+      "kind": "query",
+      "operationId": "getCurrentWeather",
+      "inputType": "GetCurrentWeatherInput",
+      "description": "Get metric current weather at one longitude and latitude.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "fetched",
+          "field": "fetched",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetCurrentWeatherInput locates one observation; mainland China uses GCJ-02 coordinates, elsewhere WGS84.",
+        "properties": {
+          "latitude": {
+            "description": "Latitude is degrees north from -90 through 90.",
+            "type": "number"
+          },
+          "longitude": {
+            "description": "Longitude is degrees east from -180 through 180.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

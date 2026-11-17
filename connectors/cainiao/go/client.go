@@ -36,6 +36,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	clock            func() time.Time
 }
 
 // New validates Cainiao configuration without contacting TOP.
@@ -55,7 +56,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil || parsedURL.RawQuery != "" || parsedURL.Fragment != "" || (parsedURL.Path != "" && parsedURL.Path != "/router/rest") {
 		return nil, errors.New("Cainiao TOP URL must be a router endpoint without query parameters")
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, clock: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Cainiao client option is required")
@@ -91,7 +92,7 @@ func (client *Client) queryWaybillTrace(call sdkgo.Call, input QueryWaybillTrace
 	}
 	fields := url.Values{
 		"app_key": {appKey}, "method": {"cainiao.waybill.logisticstrace.get"}, "format": {"json"},
-		"session": {sessionKey}, "sign_method": {"hmac"}, "timestamp": {time.Now().In(time.FixedZone("GMT+8", 8*3600)).Format("2006-01-02 15:04:05")}, "v": {"2.0"},
+		"session": {sessionKey}, "sign_method": {"hmac"}, "timestamp": {client.clock().In(time.FixedZone("GMT+8", 8*3600)).Format("2006-01-02 15:04:05")}, "v": {"2.0"},
 		"cp_code": {input.CarrierCode}, "waybill_code": {input.WaybillCode},
 	}
 	fields.Set("sign", signRequest(appSecret, fields))
@@ -107,7 +108,7 @@ func (client *Client) queryWaybillTrace(call sdkgo.Call, input QueryWaybillTrace
 	}
 	defer func() { _ = response.Body.Close() }()
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	return providerResponse{body: body, status: response.StatusCode, retryAfter: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()), err: err}
+	return providerResponse{body: body, status: response.StatusCode, retryAfter: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.clock()), err: err}
 }
 
 func signRequest(appSecret string, fields url.Values) string {

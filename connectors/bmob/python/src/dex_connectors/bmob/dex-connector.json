@@ -1,0 +1,60 @@
+{
+  "connectorId": "bmob",
+  "releaseTag": "connectors/bmob/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-bmob",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_count_class_objects_step",
+      "kind": "query",
+      "operationId": "countClassObjects",
+      "inputType": "CountClassObjectsInput",
+      "description": "Count objects in one Bmob class without returning records.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "counted",
+          "field": "counted",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CountClassObjectsInput identifies one existing Bmob class.",
+        "properties": {
+          "className": {
+            "description": "ClassName is the case-sensitive Bmob class name from the app's Data console.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "className"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

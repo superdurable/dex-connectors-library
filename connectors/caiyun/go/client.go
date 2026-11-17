@@ -5,9 +5,12 @@
 package caiyun
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
@@ -29,6 +32,8 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	clock            func() time.Time
+	nonceSource      io.Reader
 }
 
 // New validates configuration without contacting Caiyun. Rotated credentials take effect on the next call.
@@ -47,7 +52,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Caiyun base URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, clock: time.Now, nonceSource: rand.Reader}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Caiyun client option is required")

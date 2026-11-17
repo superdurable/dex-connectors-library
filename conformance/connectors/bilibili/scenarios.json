@@ -1,0 +1,375 @@
+{
+  "connector": "bilibili",
+  "scenarios": [
+    {
+      "callId": "37dc3fc1-4dae-4766-bc0c-8b6186673fd7",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"face\":\"https://i0.hdslb.com/bfs/face/sample.jpg\",\"name\":\"sample_creator\",\"openid\":\"fc9899b46ff443cea38190d355d49f3a\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/arcopen/fn/user/account/info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "token789"
+            ],
+            "Authorization": [
+              "d2c5a0ff3ad8f2087533bbcd8f65d4047c09854038a1b7dba3515070e7504fb0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Bili-Accesskeyid": [
+              "client123"
+            ],
+            "X-Bili-Content-Md5": [
+              "d41d8cd98f00b204e9800998ecf8427e"
+            ],
+            "X-Bili-Signature-Method": [
+              "HMAC-SHA256"
+            ],
+            "X-Bili-Signature-Nonce": [
+              "00000000000000000000000000000000"
+            ],
+            "X-Bili-Signature-Version": [
+              "2.0"
+            ],
+            "X-Bili-Timestamp": [
+              "1730185575"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "name": "sample_creator",
+          "openID": "fc9899b46ff443cea38190d355d49f3a"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthorizedUser-found",
+      "operation": "getAuthorizedUser"
+    },
+    {
+      "callId": "37dc3fc1-4dae-4766-bc0c-8b6186673fd7",
+      "exchanges": [
+        {
+          "body": "{\"code\":127007}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/arcopen/fn/user/account/info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "token789"
+            ],
+            "Authorization": [
+              "d2c5a0ff3ad8f2087533bbcd8f65d4047c09854038a1b7dba3515070e7504fb0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Bili-Accesskeyid": [
+              "client123"
+            ],
+            "X-Bili-Content-Md5": [
+              "d41d8cd98f00b204e9800998ecf8427e"
+            ],
+            "X-Bili-Signature-Method": [
+              "HMAC-SHA256"
+            ],
+            "X-Bili-Signature-Nonce": [
+              "00000000000000000000000000000000"
+            ],
+            "X-Bili-Signature-Version": [
+              "2.0"
+            ],
+            "X-Bili-Timestamp": [
+              "1730185575"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": "",
+          "openID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthorizedUser-providerRejected",
+      "operation": "getAuthorizedUser"
+    },
+    {
+      "callId": "37dc3fc1-4dae-4766-bc0c-8b6186673fd7",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"openid\":\"x\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/arcopen/fn/user/account/info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "token789"
+            ],
+            "Authorization": [
+              "d2c5a0ff3ad8f2087533bbcd8f65d4047c09854038a1b7dba3515070e7504fb0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Bili-Accesskeyid": [
+              "client123"
+            ],
+            "X-Bili-Content-Md5": [
+              "d41d8cd98f00b204e9800998ecf8427e"
+            ],
+            "X-Bili-Signature-Method": [
+              "HMAC-SHA256"
+            ],
+            "X-Bili-Signature-Nonce": [
+              "00000000000000000000000000000000"
+            ],
+            "X-Bili-Signature-Version": [
+              "2.0"
+            ],
+            "X-Bili-Timestamp": [
+              "1730185575"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "name": "",
+          "openID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthorizedUser-invalidResponse",
+      "operation": "getAuthorizedUser"
+    },
+    {
+      "callId": "37dc3fc1-4dae-4766-bc0c-8b6186673fd7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "name": "",
+          "openID": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthorizedUser-defect",
+      "operation": "getAuthorizedUser"
+    },
+    {
+      "callId": "37dc3fc1-4dae-4766-bc0c-8b6186673fd7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/arcopen/fn/user/account/info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "token789"
+            ],
+            "Authorization": [
+              "d2c5a0ff3ad8f2087533bbcd8f65d4047c09854038a1b7dba3515070e7504fb0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Bili-Accesskeyid": [
+              "client123"
+            ],
+            "X-Bili-Content-Md5": [
+              "d41d8cd98f00b204e9800998ecf8427e"
+            ],
+            "X-Bili-Signature-Method": [
+              "HMAC-SHA256"
+            ],
+            "X-Bili-Signature-Nonce": [
+              "00000000000000000000000000000000"
+            ],
+            "X-Bili-Signature-Version": [
+              "2.0"
+            ],
+            "X-Bili-Timestamp": [
+              "1730185575"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthorizedUser-http429",
+      "operation": "getAuthorizedUser"
+    },
+    {
+      "callId": "37dc3fc1-4dae-4766-bc0c-8b6186673fd7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/arcopen/fn/user/account/info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "token789"
+            ],
+            "Authorization": [
+              "d2c5a0ff3ad8f2087533bbcd8f65d4047c09854038a1b7dba3515070e7504fb0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Bili-Accesskeyid": [
+              "client123"
+            ],
+            "X-Bili-Content-Md5": [
+              "d41d8cd98f00b204e9800998ecf8427e"
+            ],
+            "X-Bili-Signature-Method": [
+              "HMAC-SHA256"
+            ],
+            "X-Bili-Signature-Nonce": [
+              "00000000000000000000000000000000"
+            ],
+            "X-Bili-Signature-Version": [
+              "2.0"
+            ],
+            "X-Bili-Timestamp": [
+              "1730185575"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthorizedUser-http503",
+      "operation": "getAuthorizedUser"
+    },
+    {
+      "callId": "37dc3fc1-4dae-4766-bc0c-8b6186673fd7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/arcopen/fn/user/account/info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "token789"
+            ],
+            "Authorization": [
+              "d2c5a0ff3ad8f2087533bbcd8f65d4047c09854038a1b7dba3515070e7504fb0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Bili-Accesskeyid": [
+              "client123"
+            ],
+            "X-Bili-Content-Md5": [
+              "d41d8cd98f00b204e9800998ecf8427e"
+            ],
+            "X-Bili-Signature-Method": [
+              "HMAC-SHA256"
+            ],
+            "X-Bili-Signature-Nonce": [
+              "00000000000000000000000000000000"
+            ],
+            "X-Bili-Signature-Version": [
+              "2.0"
+            ],
+            "X-Bili-Timestamp": [
+              "1730185575"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthorizedUser-transportFailure",
+      "operation": "getAuthorizedUser"
+    }
+  ],
+  "schemaVersion": 1
+}

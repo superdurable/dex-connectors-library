@@ -9,3 +9,5 @@ At the [Alibaba developer console](https://developer.alibaba.com), open **控制
 TOP's [signature rules](https://developer.alibaba.com/docs/doc.htm?articleId=101617&docType=1) require HMAC-MD5 over sorted request fields. The connector signs each request, sends the token only over HTTPS, and never includes the AppSecret in the request. HTTP 429, HTTP 5xx, and transport failures retry; definite provider errors select optional `providerRejected`, and malformed or oversized responses select optional `invalidResponse`. The example leaves optional branches unwired, so those outcomes fail the Flow.
 
 The runnable Flow is in [`go/examples/waybill-trace`](go/examples/waybill-trace). Provider tests cover signing and response classifications. Live merchant authorization, application permission, and production trace data remain unverified without user-controlled credentials and a qualifying waybill.
+
+The [Python package](python/) includes a runnable waybill-trace Flow and Go-recorded conformance replay.

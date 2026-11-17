@@ -1,0 +1,909 @@
+{
+  "connector": "cainiao",
+  "scenarios": [
+    {
+      "callId": "c3e5a6f8-1400-530e-b6f4-4d39874f09f1",
+      "exchanges": [
+        {
+          "body": "{\"cainiao_waybill_logisticstrace_get_response\":{\"logistics_detail_dto_list\":{\"logistics_detail_dto\":[{\"action\":\"GOT\",\"description\":\"已揽收\",\"time\":\"2016-07-14 17:00:42\"}]}}}",
+          "form": {
+            "app_key": [
+              "123456"
+            ],
+            "cp_code": [
+              "YTO"
+            ],
+            "format": [
+              "json"
+            ],
+            "method": [
+              "cainiao.waybill.logisticstrace.get"
+            ],
+            "session": [
+              "sessionToken"
+            ],
+            "sign": [
+              "D8666C943359C9756A69F6992557452E"
+            ],
+            "sign_method": [
+              "hmac"
+            ],
+            "timestamp": [
+              "2026-10-22 15:26:40"
+            ],
+            "v": [
+              "2.0"
+            ],
+            "waybill_code": [
+              "12345"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/router/rest",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "carrierCode": "YTO",
+          "events": [
+            {
+              "action": "GOT",
+              "description": "已揽收",
+              "time": "2016-07-14 17:00:42"
+            }
+          ],
+          "waybillCode": "12345"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "waybillCode": "12345"
+      },
+      "name": "queryWaybillTrace-found",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "211b5c03-fd17-585c-92ec-fddc9c90bc21",
+      "exchanges": [
+        {
+          "body": "{\"cainiao_waybill_logisticstrace_get_response\":{\"logistics_detail_dto_list\":{\"logistics_detail_dto\":[]}}}",
+          "form": {
+            "app_key": [
+              "123456"
+            ],
+            "cp_code": [
+              "YTO"
+            ],
+            "format": [
+              "json"
+            ],
+            "method": [
+              "cainiao.waybill.logisticstrace.get"
+            ],
+            "session": [
+              "sessionToken"
+            ],
+            "sign": [
+              "D8666C943359C9756A69F6992557452E"
+            ],
+            "sign_method": [
+              "hmac"
+            ],
+            "timestamp": [
+              "2026-10-22 15:26:40"
+            ],
+            "v": [
+              "2.0"
+            ],
+            "waybill_code": [
+              "12345"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/router/rest",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "carrierCode": "YTO",
+          "events": [],
+          "waybillCode": "12345"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "waybillCode": "12345"
+      },
+      "name": "queryWaybillTrace-empty",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "69d133e8-e48d-5caa-9b47-596767f0efe8",
+      "exchanges": [
+        {
+          "body": "{\"error_response\":{\"code\":50,\"msg\":\"Remote service error\"}}",
+          "form": {
+            "app_key": [
+              "123456"
+            ],
+            "cp_code": [
+              "YTO"
+            ],
+            "format": [
+              "json"
+            ],
+            "method": [
+              "cainiao.waybill.logisticstrace.get"
+            ],
+            "session": [
+              "sessionToken"
+            ],
+            "sign": [
+              "D8666C943359C9756A69F6992557452E"
+            ],
+            "sign_method": [
+              "hmac"
+            ],
+            "timestamp": [
+              "2026-10-22 15:26:40"
+            ],
+            "v": [
+              "2.0"
+            ],
+            "waybill_code": [
+              "12345"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/router/rest",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "waybillCode": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "waybillCode": "12345"
+      },
+      "name": "queryWaybillTrace-provider-error",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "bfd8c81b-d3d2-58fa-bffc-5d3fd7c2ec5b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "app_key": [
+              "123456"
+            ],
+            "cp_code": [
+              "YTO"
+            ],
+            "format": [
+              "json"
+            ],
+            "method": [
+              "cainiao.waybill.logisticstrace.get"
+            ],
+            "session": [
+              "sessionToken"
+            ],
+            "sign": [
+              "D8666C943359C9756A69F6992557452E"
+            ],
+            "sign_method": [
+              "hmac"
+            ],
+            "timestamp": [
+              "2026-10-22 15:26:40"
+            ],
+            "v": [
+              "2.0"
+            ],
+            "waybill_code": [
+              "12345"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/router/rest",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "waybillCode": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "waybillCode": "12345"
+      },
+      "name": "queryWaybillTrace-unauthorized",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "5b8e01be-5214-5991-90e5-100e70e021f7",
+      "exchanges": [
+        {
+          "body": "{\"cainiao_waybill_logisticstrace_get_response\":{}}",
+          "form": {
+            "app_key": [
+              "123456"
+            ],
+            "cp_code": [
+              "YTO"
+            ],
+            "format": [
+              "json"
+            ],
+            "method": [
+              "cainiao.waybill.logisticstrace.get"
+            ],
+            "session": [
+              "sessionToken"
+            ],
+            "sign": [
+              "D8666C943359C9756A69F6992557452E"
+            ],
+            "sign_method": [
+              "hmac"
+            ],
+            "timestamp": [
+              "2026-10-22 15:26:40"
+            ],
+            "v": [
+              "2.0"
+            ],
+            "waybill_code": [
+              "12345"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/router/rest",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "waybillCode": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "waybillCode": "12345"
+      },
+      "name": "queryWaybillTrace-invalid-response",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "10091751-20ad-526b-88a9-1d348263cffd",
+      "exchanges": [
+        {
+          "body": "{\"cainiao_waybill_logisticstrace_get_response\":{\"logistics_detail_dto_list\":{\"logistics_detail_dto\":[{\"action\":\"GOT\"}]}}}",
+          "form": {
+            "app_key": [
+              "123456"
+            ],
+            "cp_code": [
+              "YTO"
+            ],
+            "format": [
+              "json"
+            ],
+            "method": [
+              "cainiao.waybill.logisticstrace.get"
+            ],
+            "session": [
+              "sessionToken"
+            ],
+            "sign": [
+              "D8666C943359C9756A69F6992557452E"
+            ],
+            "sign_method": [
+              "hmac"
+            ],
+            "timestamp": [
+              "2026-10-22 15:26:40"
+            ],
+            "v": [
+              "2.0"
+            ],
+            "waybill_code": [
+              "12345"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/router/rest",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "waybillCode": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "waybillCode": "12345"
+      },
+      "name": "queryWaybillTrace-incomplete-event",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "41a9b2d1-07eb-5650-ae0f-77703d977b74",
+      "exchanges": [
+        {
+          "body": "{\"cainiao_waybill_logisticstrace_get_response\":",
+          "form": {
+            "app_key": [
+              "123456"
+            ],
+            "cp_code": [
+              "YTO"
+            ],
+            "format": [
+              "json"
+            ],
+            "method": [
+              "cainiao.waybill.logisticstrace.get"
+            ],
+            "session": [
+              "sessionToken"
+            ],
+            "sign": [
+              "D8666C943359C9756A69F6992557452E"
+            ],
+            "sign_method": [
+              "hmac"
+            ],
+            "timestamp": [
+              "2026-10-22 15:26:40"
+            ],
+            "v": [
+              "2.0"
+            ],
+            "waybill_code": [
+              "12345"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/router/rest",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "waybillCode": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "waybillCode": "12345"
+      },
+      "name": "queryWaybillTrace-malformed",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "d2e3af3e-2411-5725-af44-3d899b576c1c",
+      "exchanges": [
+        {
+          "body": "{\"cainiao_waybill_logisticstrace_get_response\":{\"logistics_detail_dto_list\":{\"logistics_detail_dto\":[]}}} {}",
+          "form": {
+            "app_key": [
+              "123456"
+            ],
+            "cp_code": [
+              "YTO"
+            ],
+            "format": [
+              "json"
+            ],
+            "method": [
+              "cainiao.waybill.logisticstrace.get"
+            ],
+            "session": [
+              "sessionToken"
+            ],
+            "sign": [
+              "D8666C943359C9756A69F6992557452E"
+            ],
+            "sign_method": [
+              "hmac"
+            ],
+            "timestamp": [
+              "2026-10-22 15:26:40"
+            ],
+            "v": [
+              "2.0"
+            ],
+            "waybill_code": [
+              "12345"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/router/rest",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "waybillCode": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "waybillCode": "12345"
+      },
+      "name": "queryWaybillTrace-trailing",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "674e9ffd-619a-5d0f-bf6a-214e6d52eb78",
+      "exchanges": [
+        {
+          "body": "{\"cainiao_waybill_logisticstrace_get_response\":{\"logistics_detail_dto_list\":{\"logistics_detail_dto\":[]}}}",
+          "form": {
+            "app_key": [
+              "123456"
+            ],
+            "cp_code": [
+              "YTO"
+            ],
+            "format": [
+              "json"
+            ],
+            "method": [
+              "cainiao.waybill.logisticstrace.get"
+            ],
+            "session": [
+              "sessionToken"
+            ],
+            "sign": [
+              "D8666C943359C9756A69F6992557452E"
+            ],
+            "sign_method": [
+              "hmac"
+            ],
+            "timestamp": [
+              "2026-10-22 15:26:40"
+            ],
+            "v": [
+              "2.0"
+            ],
+            "waybill_code": [
+              "12345"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/router/rest",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "waybillCode": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "waybillCode": "12345"
+      },
+      "name": "queryWaybillTrace-oversized",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "ef575926-c875-5817-9a7b-41d8105dca09",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "app_key": [
+              "123456"
+            ],
+            "cp_code": [
+              "YTO"
+            ],
+            "format": [
+              "json"
+            ],
+            "method": [
+              "cainiao.waybill.logisticstrace.get"
+            ],
+            "session": [
+              "sessionToken"
+            ],
+            "sign": [
+              "D8666C943359C9756A69F6992557452E"
+            ],
+            "sign_method": [
+              "hmac"
+            ],
+            "timestamp": [
+              "2026-10-22 15:26:40"
+            ],
+            "v": [
+              "2.0"
+            ],
+            "waybill_code": [
+              "12345"
+            ]
+          },
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/router/rest",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "waybillCode": "12345"
+      },
+      "name": "queryWaybillTrace-rate-limited",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "5f1e4166-3647-5cb2-bf5f-4d04412b01f5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "app_key": [
+              "123456"
+            ],
+            "cp_code": [
+              "YTO"
+            ],
+            "format": [
+              "json"
+            ],
+            "method": [
+              "cainiao.waybill.logisticstrace.get"
+            ],
+            "session": [
+              "sessionToken"
+            ],
+            "sign": [
+              "D8666C943359C9756A69F6992557452E"
+            ],
+            "sign_method": [
+              "hmac"
+            ],
+            "timestamp": [
+              "2026-10-22 15:26:40"
+            ],
+            "v": [
+              "2.0"
+            ],
+            "waybill_code": [
+              "12345"
+            ]
+          },
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/router/rest",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "waybillCode": "12345"
+      },
+      "name": "queryWaybillTrace-unavailable",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "9980507a-03f3-5949-b742-8231c8bba908",
+      "exchanges": [
+        {
+          "form": {
+            "app_key": [
+              "123456"
+            ],
+            "cp_code": [
+              "YTO"
+            ],
+            "format": [
+              "json"
+            ],
+            "method": [
+              "cainiao.waybill.logisticstrace.get"
+            ],
+            "session": [
+              "sessionToken"
+            ],
+            "sign": [
+              "D8666C943359C9756A69F6992557452E"
+            ],
+            "sign_method": [
+              "hmac"
+            ],
+            "timestamp": [
+              "2026-10-22 15:26:40"
+            ],
+            "v": [
+              "2.0"
+            ],
+            "waybill_code": [
+              "12345"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/router/rest",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "waybillCode": "12345"
+      },
+      "name": "queryWaybillTrace-transport-failure",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "a0dbfc7f-9938-5e5b-838d-03dda12d64c5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "waybillCode": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "",
+        "waybillCode": "12345"
+      },
+      "name": "queryWaybillTrace-invalid-input",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "e309262b-e9d0-5ffb-9461-a4d8a32a0b55",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "waybillCode": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "waybillCode": "12345"
+      },
+      "name": "queryWaybillTrace-missing-credentials",
+      "operation": "queryWaybillTrace"
+    }
+  ],
+  "schemaVersion": 1
+}

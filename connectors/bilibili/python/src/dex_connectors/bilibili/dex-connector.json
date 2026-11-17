@@ -1,0 +1,52 @@
+{
+  "connectorId": "bilibili",
+  "releaseTag": "connectors/bilibili/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-bilibili",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_authorized_user_step",
+      "kind": "query",
+      "operationId": "getAuthorizedUser",
+      "inputType": "GetAuthorizedUserInput",
+      "description": "Read the nickname and application-scoped open ID of the authorized user.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAuthorizedUserInput has no fields because the access token identifies the user.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
