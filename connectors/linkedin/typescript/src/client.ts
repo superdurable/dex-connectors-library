@@ -3,7 +3,7 @@
 
 import { BodyTooLargeError, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { resolveCredential, resolveCredentialAfterRejection, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call } from '@superdurable/connectors-sdk';
 import { isIP } from 'node:net';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
@@ -12,7 +12,7 @@ import { GetAuthenticatedProfileOperation } from './operations.js';
 const defaultUserInfoURL = 'https://api.linkedin.com/v2/userinfo';
 
 /** Transport override for deterministic provider tests. */
-export interface LinkedInClientOptions { send?: (request: ProviderRequest) => Promise<ProviderResponse>; }
+export interface LinkedInClientOptions { send?: (request: ProviderRequest) => Promise<ProviderResponse>; now?: () => Date; }
 /** Bounded UserInfo response. */
 export interface LinkedInResponse { status: number; headers: ProviderResponse['headers']; body: Uint8Array; isTooLarge: boolean; }
 
@@ -21,6 +21,10 @@ export class LinkedInClient {
   private readonly userInfoURL: string;
   private readonly maxResponseBytes: number;
   private readonly timeoutMs: number;
+  /** Interval between UserInfo profile polls, in milliseconds. */
+  readonly pollIntervalMs: number;
+  /** Current clock for recorded Trigger event times and provider rate limits. */
+  readonly now: () => Date;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
   private readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'LinkedIn', auth: Authorization, credentialFields: CredentialFields });
 
@@ -35,8 +39,11 @@ export class LinkedInClient {
     this.userInfoURL = url.toString();
     this.maxResponseBytes = config.maxResponseBytes || 1_048_576;
     this.timeoutMs = config.timeoutMs || 15_000;
+    this.pollIntervalMs = config.pollIntervalMs || 900_000;
+    this.now = options.now ?? (() => new Date());
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('LinkedIn response limit is invalid');
     if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0) throw new TypeError('LinkedIn timeout is invalid');
+    if (!Number.isSafeInteger(this.pollIntervalMs) || this.pollIntervalMs < 60_000) throw new TypeError('LinkedIn poll interval must be at least one minute');
     this.send = options.send ?? sendProviderRequest;
   }
 
@@ -49,6 +56,19 @@ export class LinkedInClient {
       const credential = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
       return credential.accessToken.reveal() || undefined;
     } catch { return undefined; }
+  }
+
+  /** Resolve renewable Trigger credentials and retain the reauthorization outcome. */
+  async resolveTriggerAccessToken(call: Call): Promise<string> {
+    let credentials: Credentials;
+    try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
+    catch (error) {
+      if (error instanceof ReauthorizationRequiredError) throw new Error('LinkedIn connection requires reauthorization; reconnect the connection');
+      throw new Error('LinkedIn Trigger credentials are unavailable');
+    }
+    const token = credentials.accessToken?.reveal();
+    if (!token) throw new Error('LinkedIn Trigger credentials are unavailable');
+    return token;
   }
 
   /** Request UserInfo and refresh once after a rejected credential if supported. */

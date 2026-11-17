@@ -8,3 +8,7 @@ export { Connection, newConnection, newConnectionWithOperations } from './genera
 export { newProjectConnection } from './project.js';
 export { LinkedInClient, type LinkedInClientOptions } from './client.js';
 export { GetAuthenticatedProfileOperation } from './operations.js';
+export * from './profile_change.js';
+export * from './profile_cursor.js';
+export * from './profile_fetcher.js';
+export * from './trigger.js';

@@ -33,7 +33,7 @@ function stringField(source: Record<string, unknown>, key: string): string {
   const value = source[key];
   if (value === undefined || value === null) return '';
   if (typeof value !== 'string') throw new TypeError('invalid LinkedIn claim');
-  return value;
+  return value.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '�');
 }
 function safeURL(value: string): string {
   value = bounded(value, 2048);
@@ -80,6 +80,23 @@ function decodeProfile(body: Uint8Array): AuthenticatedProfile | 'emailMissing' 
   if (pictureUrl) profile.pictureUrl = pictureUrl;
   if (localeValue) profile.locale = localeValue;
   return profile;
+}
+
+/** Decode bounded UserInfo claims for the profileChanged Trigger, including an unverified email. */
+export function decodeProfileClaims(body: Uint8Array): import('./profile_change.js').ProfileClaims {
+  const claims: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(body));
+  if (!claims || typeof claims !== 'object' || Array.isArray(claims)) throw new TypeError('invalid LinkedIn UserInfo');
+  const source = claims as Record<string, unknown>;
+  const subject = stringField(source, 'sub').trim();
+  if (!subject || encoder.encode(subject).length > 255) throw new RangeError('invalid LinkedIn subject');
+  if (source.email_verified !== undefined && source.email_verified !== null && typeof source.email_verified !== 'boolean') throw new TypeError('invalid LinkedIn verification');
+  const name = bounded(stringField(source, 'name'), 256);
+  const givenName = bounded(stringField(source, 'given_name'), 128);
+  const familyName = bounded(stringField(source, 'family_name'), 128);
+  const email = verifiedEmail(stringField(source, 'email'), true);
+  const pictureUrl = safeURL(stringField(source, 'picture'));
+  const localeValue = locale(source.locale);
+  return { subject, ...(name ? { name } : {}), ...(givenName ? { givenName } : {}), ...(familyName ? { familyName } : {}), ...(email ? { email } : {}), emailVerified: source.email_verified === true, ...(pictureUrl ? { pictureUrl } : {}), ...(localeValue ? { locale: localeValue } : {}) };
 }
 
 /** LinkedIn authenticated UserInfo query. */

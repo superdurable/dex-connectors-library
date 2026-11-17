@@ -16,10 +16,10 @@ spec:
       operations: [getAuthenticatedProfile]
       triggers: [profileChanged]
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-linkedin'
       operations: [getAuthenticatedProfile]
-      triggers: []
+      triggers: [profileChanged]
   codegen:
     go:
       package: linkedin

@@ -38,6 +38,8 @@ connection configuration uses the standard `defect` branch.
 
 ## profileChanged Trigger
 
+Go, Python, and TypeScript packages implement this Trigger. The [TypeScript runnable Flow](typescript/examples/profile-changed/README.md) declares the fieldless binding and starts one Flow per stable event ID.
+
 `profileChanged` delivers one event whenever the connected member's own
 profile claims change. It watches only the member who authorized the
 connection; it cannot watch other members, connections, or companies. LinkedIn

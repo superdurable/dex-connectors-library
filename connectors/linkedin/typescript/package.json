@@ -1,7 +1,7 @@
 {
   "name": "@superdurable/connector-linkedin",
-  "version": "0.1.0",
-  "description": "LinkedIn authenticated profile queries for Dex Flows",
+  "version": "0.2.0",
+  "description": "LinkedIn authenticated profile queries and profile change Triggers for Dex Flows",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/superdurable/dex-connectors-library.git",
@@ -42,10 +42,11 @@
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
     "check": "npm test && npm run typecheck && npm run lint",
     "example:profile": "npm run build && tsx examples/authenticated-profile/main.ts",
-    "example:profile:start": "npm run build && tsx examples/authenticated-profile/start.ts"
+    "example:profile:start": "npm run build && tsx examples/authenticated-profile/start.ts",
+    "example:profile-changed": "npm run build && tsx examples/profile-changed/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
+    "@superdurable/connectors-sdk": "0.12.0",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },
