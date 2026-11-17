@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: gitlab
   displayName: GitLab
-  description: "Use the GitLab REST API through typed Dex connector Steps."
+  description: "Manage GitLab projects, issues, releases, repository trees, and user projects through typed Dex Steps."
   company: GitLab
   categories: [developer-tools]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: gitlab
   languages:
@@ -46,14 +46,113 @@ spec:
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: "Secret GitLab personal access token from User Settings > Access Tokens at https://gitlab.com/-/user_settings/personal_access_tokens. Create a token with read_api for reads or api for label updates, and copy it. Blank prevents requests."
+        description: "Secret GitLab personal access token from User Settings > Access Tokens at https://gitlab.com/-/user_settings/personal_access_tokens. Create a token with read_api for reads or api for issue, release, or repository writes, and copy it. Blank prevents requests."
         required: true
     guide:
       startURL: https://gitlab.com/-/user_settings/personal_access_tokens
       steps:
         - "Open https://gitlab.com/-/user_settings/personal_access_tokens and select User Settings > Access Tokens."
-        - "Create a personal token with read_api for read-only use or api for updateIssueLabels, then copy it into secret access_token. Leave baseUrl, timeout, and maxResponseBytes blank unless changing their displayed defaults."
+        - "Create a personal token with read_api for read-only use or api for issue, release, and repository writes, then copy it into secret access_token. Leave baseUrl, timeout, and maxResponseBytes blank unless changing their displayed defaults."
   operations:
+    - name: createIssue
+      goName: CreateIssue
+      inputType: CreateIssueInput
+      outputType: Issue
+      kind: mutation
+      description: Create a project issue with a title and optional description.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: GitLab created the issue.}
+        - {id: providerRejected, goName: ProviderRejected, description: GitLab definitively rejected the issue., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: An earlier issue creation may have succeeded., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: A sample issue was created., output: {id: 123, iid: 7, title: Review release notes, labels: [], web_url: 'https://gitlab.com/meridian/web/-/issues/7'}}
+    - name: createIssueComment
+      goName: CreateIssueComment
+      inputType: CreateIssueCommentInput
+      outputType: IssueComment
+      kind: mutation
+      description: Add a comment to a project issue.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: GitLab created the comment.}
+        - {id: providerRejected, goName: ProviderRejected, description: GitLab definitively rejected the comment., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: An earlier comment creation may have succeeded., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: A sample comment was created., output: {id: 45, body: Reviewed}}
+    - name: getIssue
+      goName: GetIssue
+      inputType: GetIssueInput
+      outputType: Issue
+      kind: query
+      description: Read one project issue by IID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: GitLab returned the issue.}
+        - {id: notFound, goName: NotFound, description: The issue does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitLab definitively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitLab returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One sample issue was found., output: {id: 123, iid: 7, title: Review release notes, labels: [], web_url: 'https://gitlab.com/meridian/web/-/issues/7'}}
+    - name: editIssue
+      goName: EditIssue
+      inputType: EditIssueInput
+      outputType: Issue
+      kind: mutation
+      description: Set an issue's title, description, or state to supplied absolute values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: GitLab updated the issue.}
+        - {id: notFound, goName: NotFound, description: The issue does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitLab definitively rejected the edit., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitLab returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: A sample issue was updated., output: {id: 123, iid: 7, title: Revised release notes, labels: [], web_url: 'https://gitlab.com/meridian/web/-/issues/7'}}
+    - name: lockIssue
+      goName: LockIssue
+      inputType: GetIssueInput
+      outputType: Issue
+      kind: mutation
+      description: Lock discussion on a project issue.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: locked, goName: Locked, description: GitLab locked the issue.}
+        - {id: notFound, goName: NotFound, description: The issue does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitLab definitively rejected the lock., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitLab returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: lockedDefault, branch: locked, default: true, description: A sample issue was locked., output: {id: 123, iid: 7, title: Review release notes, labels: [], web_url: 'https://gitlab.com/meridian/web/-/issues/7'}}
+    - name: deleteIssue
+      goName: DeleteIssue
+      inputType: GetIssueInput
+      outputType: DeleteIssueOutput
+      kind: mutation
+      description: Permanently delete a project issue by IID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: GitLab deleted the issue.}
+        - {id: notFound, goName: NotFound, description: The issue does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitLab definitively rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: A sample issue was deleted., output: {projectId: meridian/web, issueIid: 7}}
     - name: getProject
       goName: GetProject
       inputType: GetProjectInput
@@ -123,3 +222,121 @@ spec:
           description: "A Meridian example returns a representative Issue."
           default: true
           output: {"id":123,"iid":7,"title":"Review release notes","labels":["review","ready"],"web_url":"https://gitlab.com/meridian/web/-/issues/7"}
+    - name: createRelease
+      goName: CreateRelease
+      inputType: CreateReleaseInput
+      outputType: Release
+      kind: mutation
+      description: Create a release for a Git tag, optionally creating the tag from a ref.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: GitLab created the release.}
+        - {id: providerRejected, goName: ProviderRejected, description: GitLab definitively rejected the release., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A previous release create may have succeeded., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: A sample release was created., output: {tag_name: v1.2.0, name: Release 1.2, description: Notes}}
+    - name: getRelease
+      goName: GetRelease
+      inputType: GetReleaseInput
+      outputType: Release
+      kind: query
+      description: Read one project release by tag.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: GitLab returned the release.}
+        - {id: notFound, goName: NotFound, description: No release with this tag is visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitLab definitively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitLab returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: A sample release was found., output: {tag_name: v1.2.0, name: Release 1.2, description: Notes}}
+    - name: listReleases
+      goName: ListReleases
+      inputType: ListReleasesInput
+      outputType: ReleasesPage
+      kind: query
+      description: List one page of project releases.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: GitLab returned a release page.}
+        - {id: notFound, goName: NotFound, description: The project is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitLab definitively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitLab returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One sample release was listed., output: {releases: [{tag_name: v1.2.0, name: Release 1.2, description: Notes}]}}
+    - name: updateRelease
+      goName: UpdateRelease
+      inputType: UpdateReleaseInput
+      outputType: Release
+      kind: mutation
+      description: Replace selected release fields with absolute values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: GitLab updated the release.}
+        - {id: notFound, goName: NotFound, description: No release with this tag is visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitLab definitively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitLab returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: A sample release was updated., output: {tag_name: v1.2.0, name: Release 1.2 revised, description: Notes}}
+    - name: deleteRelease
+      goName: DeleteRelease
+      inputType: GetReleaseInput
+      outputType: DeleteReleaseOutput
+      kind: mutation
+      description: Delete a release while keeping its Git tag.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: GitLab deleted the release.}
+        - {id: notFound, goName: NotFound, description: No release with this tag is visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitLab definitively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitLab returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: A sample release was deleted., output: {projectId: meridian/web, tagName: v1.2.0}}
+    - name: listRepositoryTree
+      goName: ListRepositoryTree
+      inputType: ListRepositoryTreeInput
+      outputType: RepositoryTreePage
+      kind: query
+      description: List files and directories in one project repository path.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: GitLab returned repository entries.}
+        - {id: notFound, goName: NotFound, description: The project or path is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitLab definitively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitLab returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: A source file was listed., output: {entries: [{id: abc123, name: main.go, path: cmd/main.go, type: blob}]}}
+    - name: listUserProjects
+      goName: ListUserProjects
+      inputType: ListUserProjectsInput
+      outputType: UserProjectsPage
+      kind: query
+      description: List one page of a user's personal projects.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: GitLab returned user projects.}
+        - {id: notFound, goName: NotFound, description: The user is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GitLab definitively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitLab returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: A personal project was listed., output: {projects: [{id: 123, name: web, path_with_namespace: meridian/web, web_url: 'https://gitlab.com/meridian/web'}]}}
