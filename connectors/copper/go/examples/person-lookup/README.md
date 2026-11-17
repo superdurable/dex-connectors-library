@@ -1,6 +1,6 @@
 # Copper person discovery Flow
 
-This runnable example registers `CopperPersonLookup` for `getPerson`, `CopperPeopleSearch` for `listPeople`, `CopperCompanySearch` for `listCompanies`, `CopperLeadSearch` for `listLeads`, `CopperLeadCreation` for `createLead`, `CopperOpportunitySearch` for `listOpportunities`, `CopperOpportunityCreation` for `createOpportunity`, `CopperProjectSearch` for `listProjects`, `CopperProjectCreation` for `createProject`, `CopperTaskSearch` for `listTasks`, and `CopperTaskCreation` for `createTask` with the static `copper` Dex Web connection. Each Flow stores its public result in an Attribute and completes with the typed result. Optional branches are unwired and fail the Flow when selected. Credentials do not enter Flow state.
+This runnable example registers `CopperPersonLookup` for `getPerson`, `CopperPeopleSearch` for `listPeople`, `CopperCompanySearch` for `listCompanies`, `CopperLeadSearch` for `listLeads`, `CopperLeadCreation` for `createLead`, `CopperOpportunitySearch` for `listOpportunities`, `CopperOpportunityCreation` for `createOpportunity`, `CopperProjectSearch` for `listProjects`, `CopperProjectCreation` for `createProject`, `CopperTaskSearch` for `listTasks`, `CopperTaskCreation` for `createTask`, and `CopperUserSearch` for `listUsers` with the static `copper` Dex Web connection. Each Flow stores its public result in an Attribute and completes with the typed result. Optional branches are unwired and fail the Flow when selected. Credentials do not enter Flow state.
 
 ## Strict FDG 2.0 generation
 
@@ -18,6 +18,7 @@ dexcli visualize ./examples/person-lookup/flow/list_projects.go --schema-version
 dexcli visualize ./examples/person-lookup/flow/create_project.go --schema-version 2.0 --lint app --json --out /tmp/copper-project-creation-fdg
 dexcli visualize ./examples/person-lookup/flow/list_tasks.go --schema-version 2.0 --lint app --json --out /tmp/copper-task-search-fdg
 dexcli visualize ./examples/person-lookup/flow/create_task.go --schema-version 2.0 --lint app --json --out /tmp/copper-task-creation-fdg
+dexcli visualize ./examples/person-lookup/flow/list_users.go --schema-version 2.0 --lint app --json --out /tmp/copper-user-search-fdg
 ```
 
 The command must report `valid: true`. Before the first release, `connector_release_required` warns that automatic Dex Web configuration requires a published release.
@@ -53,5 +54,7 @@ Start `CopperProjectCreation` with a unique Flow ID and input `{"name":"Sample P
 Start `CopperTaskSearch` with a unique Flow ID and input `{"pageNumber":1,"pageSize":25,"status":"Open"}`. Omit the status to list all tasks.
 
 Start `CopperTaskCreation` with a unique Flow ID and input `{"name":"Sample Task"}`. Copper does not offer a task-name search filter, so only a saved provider ID can confirm a prior send.
+
+Start `CopperUserSearch` with a unique Flow ID and input `{"pageNumber":1,"pageSize":25}`. Request subsequent pages until Copper returns fewer users than the page size.
 
 With `dexcli dev` serving at `127.0.0.1:8905`, run `DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8905 GOWORK=off go test -race -tags=integration ./examples/person-lookup/flow -count=1`. Live provider authorization remains unverified.

@@ -64,6 +64,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[copper.LeadStatusesList](`{"statuses":[{"id":208231,"name":"New"}]}`)
 			return err
 		}},
+		{name: "listUsers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.UsersPage](`{"users":[{"id":137658,"name":"John Doe","email":"johndoe@copper.com"}]}`)
+			return err
+		}},
 		{name: "createTask/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[copper.TaskMetadata](`{"id":3726701,"name":"Sample Task","status":"Open"}`)
 			return err
@@ -189,6 +193,9 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListLeadStatuses().Definition().Operation.OperationID != "listLeadStatuses" {
 		t.Errorf("listLeadStatuses mock has another definition")
+	}
+	if mock.ListUsers().Definition().Operation.OperationID != "listUsers" {
+		t.Errorf("listUsers mock has another definition")
 	}
 	if mock.CreateTask().Definition().Operation.OperationID != "createTask" {
 		t.Errorf("createTask mock has another definition")

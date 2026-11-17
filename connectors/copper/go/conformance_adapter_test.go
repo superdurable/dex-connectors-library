@@ -57,6 +57,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listTasks":         newConformanceQueryInvocation(t, scenario.Input, context, client.ListTasks(), reference),
 		"updateTask":        newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateTask(), reference, scenario.CallID),
 		"deleteTask":        newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteTask(), reference, scenario.CallID),
+		"listUsers":         newConformanceQueryInvocation(t, scenario.Input, context, client.ListUsers(), reference),
 		"listCustomerSources": newConformanceQueryInvocation(t, scenario.Input, context, client.ListCustomerSources(), reference),
 		"createCompany":       newConformanceMutationInvocation(t, scenario.Input, context, client.CreateCompany(), reference, scenario.CallID),
 		"getCompany":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetCompany(), reference),

@@ -30,6 +30,7 @@ type Mock struct {
 	deletePerson        *connectormock.Mutation[copper.DeletePersonInput, copper.DeletePersonOutput]
 	listCustomerSources *connectormock.Query[copper.ListCustomerSourcesInput, copper.CustomerSourcesList]
 	listLeadStatuses    *connectormock.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList]
+	listUsers           *connectormock.Query[copper.ListUsersInput, copper.UsersPage]
 	createTask          *connectormock.Mutation[copper.CreateTaskInput, copper.TaskMetadata]
 	listTasks           *connectormock.Query[copper.ListTasksInput, copper.TasksPage]
 	updateTask          *connectormock.Mutation[copper.UpdateTaskInput, copper.TaskMetadata]
@@ -69,6 +70,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		deletePerson:        connectormock.NewMutation[copper.DeletePersonInput, copper.DeletePersonOutput](t, copper.DeletePersonDefinition),
 		listCustomerSources: connectormock.NewQuery[copper.ListCustomerSourcesInput, copper.CustomerSourcesList](t, copper.ListCustomerSourcesDefinition),
 		listLeadStatuses:    connectormock.NewQuery[copper.ListLeadStatusesInput, copper.LeadStatusesList](t, copper.ListLeadStatusesDefinition),
+		listUsers:           connectormock.NewQuery[copper.ListUsersInput, copper.UsersPage](t, copper.ListUsersDefinition),
 		createTask:          connectormock.NewMutation[copper.CreateTaskInput, copper.TaskMetadata](t, copper.CreateTaskDefinition),
 		listTasks:           connectormock.NewQuery[copper.ListTasksInput, copper.TasksPage](t, copper.ListTasksDefinition),
 		updateTask:          connectormock.NewMutation[copper.UpdateTaskInput, copper.TaskMetadata](t, copper.UpdateTaskDefinition),
@@ -102,6 +104,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.deletePerson.Default(DeletePersonDefault())
 	mock.listCustomerSources.Default(ListCustomerSourcesDefault())
 	mock.listLeadStatuses.Default(ListLeadStatusesDefault())
+	mock.listUsers.Default(ListUsersDefault())
 	mock.createTask.Default(CreateTaskDefault())
 	mock.listTasks.Default(ListTasksDefault())
 	mock.updateTask.Default(UpdateTaskDefault())
@@ -191,6 +194,11 @@ func (mock *Mock) ListCustomerSources() *connectormock.Query[copper.ListCustomer
 // ListLeadStatuses returns the listLeadStatuses script.
 func (mock *Mock) ListLeadStatuses() *connectormock.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList] {
 	return mock.listLeadStatuses
+}
+
+// ListUsers returns the listUsers script.
+func (mock *Mock) ListUsers() *connectormock.Query[copper.ListUsersInput, copper.UsersPage] {
+	return mock.listUsers
 }
 
 // CreateTask returns the createTask script.
@@ -330,6 +338,9 @@ func (operations mockOperations) ListCustomerSources() sdkgo.Query[copper.ListCu
 }
 func (operations mockOperations) ListLeadStatuses() sdkgo.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList] {
 	return operations.mock.listLeadStatuses
+}
+func (operations mockOperations) ListUsers() sdkgo.Query[copper.ListUsersInput, copper.UsersPage] {
+	return operations.mock.listUsers
 }
 func (operations mockOperations) CreateTask() sdkgo.Mutation[copper.CreateTaskInput, copper.TaskMetadata] {
 	return operations.mock.createTask
@@ -827,6 +838,40 @@ func ListLeadStatusesListedDefault() connectormock.Case[copper.LeadStatusesList]
 func ListLeadStatusesDefault() connectormock.Case[copper.LeadStatusesList] {
 	return ListLeadStatusesListedDefault()
 }
+
+// ListUsersListed selects the listed branch: Copper returned a page of users.
+func ListUsersListed(value copper.UsersPage, failure *sdkgo.Failure) connectormock.Case[copper.UsersPage] {
+	return connectormock.Branch(copper.ListUsersBranchListed, value, failure)
+}
+
+// ListUsersProviderRejected selects the providerRejected branch: Copper rejected the search.
+func ListUsersProviderRejected(value copper.UsersPage, failure *sdkgo.Failure) connectormock.Case[copper.UsersPage] {
+	return connectormock.Branch(copper.ListUsersBranchProviderRejected, value, failure)
+}
+
+// ListUsersInvalidResponse selects the invalidResponse branch: Copper returned malformed or oversized users JSON.
+func ListUsersInvalidResponse(value copper.UsersPage, failure *sdkgo.Failure) connectormock.Case[copper.UsersPage] {
+	return connectormock.Branch(copper.ListUsersBranchInvalidResponse, value, failure)
+}
+
+// ListUsersDefect selects the defect branch: Input or credentials are invalid.
+func ListUsersDefect(value copper.UsersPage, failure *sdkgo.Failure) connectormock.Case[copper.UsersPage] {
+	return connectormock.Branch(copper.ListUsersBranchDefect, value, failure)
+}
+
+// ListUsersRetry asks Dex to retry the listUsers Step, after the delay when it is positive.
+func ListUsersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.UsersPage] {
+	return connectormock.Retry[copper.UsersPage](failure, after)
+}
+
+// ListUsersListedDefault is the manifest mock listedDefault: A sample users page is returned.
+func ListUsersListedDefault() connectormock.Case[copper.UsersPage] {
+	value := connectormock.MustDecodeOutput[copper.UsersPage](`{"users":[{"id":137658,"name":"John Doe","email":"johndoe@copper.com"}]}`)
+	return connectormock.Branch(copper.ListUsersBranchListed, value, nil)
+}
+
+// ListUsersDefault is the manifest default, listedDefault, which New installs.
+func ListUsersDefault() connectormock.Case[copper.UsersPage] { return ListUsersListedDefault() }
 
 // CreateTaskCreated selects the created branch: Copper created the task.
 func CreateTaskCreated(value copper.TaskMetadata, failure *sdkgo.Failure) connectormock.Case[copper.TaskMetadata] {

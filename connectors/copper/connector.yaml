@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: copper
   displayName: Copper CRM
-  description: Manage Copper leads, people, companies, opportunities, projects, and tasks without custom fields.
+  description: Manage Copper CRM records and list account users without custom fields.
   company: Copper
   categories: [crm-sales]
   version: v0.2.0
@@ -302,6 +302,26 @@ spec:
           default: true
           description: One sample lead status is listed.
           output: {statuses: [{id: 208231, name: New}]}
+    - name: listUsers
+      goName: ListUsers
+      inputType: ListUsersInput
+      outputType: UsersPage
+      kind: query
+      description: List one bounded page of Copper users.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Copper returned a page of users.}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Copper returned malformed or oversized users JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample users page is returned.
+          output: {users: [{id: 137658, name: John Doe, email: johndoe@copper.com}]}
     - name: createTask
       goName: CreateTask
       inputType: CreateTaskInput
