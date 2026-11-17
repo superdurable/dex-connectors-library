@@ -1,0 +1,9 @@
+# Cloopen connector for Dex TypeScript
+
+`@superdurable/connector-cloopen` implements the read-only `getBalance` Query. It calls the official [AccountInfo endpoint](https://doc.yuntongxun.com/p/5a533b4b3b8496dd00dce034) and returns only Cloopen's exact decimal balance string. The connector does not infer currency or units, and it omits account names, status, dates, and provider error text from Flow results.
+
+Create a Dex Web connection named `cloopen`. Sign in at <https://console.yuntongxun.com>, open the management console account information, and copy the main-account 32-character `ACCOUNT SID` and `AUTH TOKEN` into the protected connection fields. Leave `baseUrl`, `timeout`, and `maxResponseBytes` blank for their production defaults unless an approved override is needed. Credentials never belong in Flow input.
+
+Each request uses one UTC timestamp for an uppercase MD5 `sig` of `ACCOUNT SID + AUTH TOKEN + timestamp` and Base64 `Authorization` of `ACCOUNT SID + : + timestamp`, following the [REST authentication contract](https://doc.yuntongxun.com/p/5a533ac73b8496dd00dce025). A successful `statusCode` of `000000` selects `fetched`. Definite provider errors select the optional `providerRejected` branch; malformed or oversized data selects `invalidResponse`; invalid credentials select `defect` before any request. HTTP 408, 429, 5xx, transport errors, concurrency errors, and documented internal errors Retry through Dex.
+
+[Run the balance Flow](examples/balance/README.md). Its real Dex integration test exercises a signed provider 503 followed by success and verifies persistence. Fourteen Go-recorded [conformance scenarios](../../../conformance/connectors/cloopen/scenarios.json) check exact signatures, requests, and outcomes. A real Cloopen account and live balance lookup have not been verified.

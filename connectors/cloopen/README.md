@@ -16,3 +16,7 @@ same Go-recorded signed requests and outcomes. Its
 Worker and Client and persists only the decimal balance string. The local
 integration test uses inert credentials and a fake provider; live Cloopen
 authorization remains unverified.
+
+## TypeScript package
+
+The `@superdurable/connector-cloopen` package implements `getBalance` with the same signature, request, and outcomes as Go. Its [runnable balance Flow](typescript/examples/balance/README.md) passed a real local Dex Worker, Client, retry, and persistence test against a provider stand-in. Fourteen Go-recorded scenarios verify exact signed requests and outcomes. Live Cloopen account access remains unverified.
