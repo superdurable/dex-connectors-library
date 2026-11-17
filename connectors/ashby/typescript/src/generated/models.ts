@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret Ashby API key from Admin > API Keys. Grant Candidates read permission; copy the complete opaque value once. Blank prevents calls. Dex uses it as the Basic username with an empty password. */
+  /** Secret Ashby API key from Admin > API Keys. Grant Candidates read/write permissions for the operations used; copy the complete opaque value once. Blank prevents calls. Dex uses it as the Basic username with an empty password. */
   apiKey: SecretString;
 }
 

@@ -371,6 +371,615 @@
       },
       "name": "getCandidate-transportFailure",
       "operation": "getCandidate"
+    },
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":[{\"id\":\"e9ed20fd-d45f-4aad-8a00-a19bfba0083e\",\"name\":\"Example Candidate\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"updatedAt\":\"2024-01-16T10:30:00.000Z\"}],\"nextCursor\":\"next\",\"moreDataAvailable\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.list",
+          "requestBody": {
+            "cursor": "start",
+            "limit": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "candidates": [
+            {
+              "createdAt": "2024-01-15T10:30:00.000Z",
+              "id": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+              "name": "Example Candidate",
+              "updatedAt": "2024-01-16T10:30:00.000Z"
+            }
+          ],
+          "moreDataAvailable": true,
+          "nextCursor": "next"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "start",
+        "limit": 25
+      },
+      "name": "listCandidates-listed",
+      "operation": "listCandidates"
+    },
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.list",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "candidates": [],
+          "moreDataAvailable": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCandidates-providerRejected",
+      "operation": "listCandidates"
+    },
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.list",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "candidates": [],
+          "moreDataAvailable": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCandidates-invalidResponse",
+      "operation": "listCandidates"
+    },
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "candidates": [],
+          "moreDataAvailable": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 101
+      },
+      "name": "listCandidates-defect",
+      "operation": "listCandidates"
+    },
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.list",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCandidates-rateLimit",
+      "operation": "listCandidates"
+    },
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.list",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCandidates-unavailable",
+      "operation": "listCandidates"
+    },
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.list",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCandidates-transportFailure",
+      "operation": "listCandidates"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"e9ed20fd-d45f-4aad-8a00-a19bfba0083e\",\"name\":\"Updated Candidate\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"updatedAt\":\"2024-01-16T10:30:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.update",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "name": "Updated Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2024-01-15T10:30:00.000Z",
+          "id": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+          "name": "Updated Candidate",
+          "updatedAt": "2024-01-16T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "name": "Updated Candidate"
+      },
+      "name": "updateCandidate-updated",
+      "operation": "updateCandidate"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.update",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "name": "Updated Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "name": "Updated Candidate"
+      },
+      "name": "updateCandidate-notFound",
+      "operation": "updateCandidate"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.update",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "name": "Updated Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "name": "Updated Candidate"
+      },
+      "name": "updateCandidate-providerRejected",
+      "operation": "updateCandidate"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.update",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "name": "Updated Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "name": "Updated Candidate"
+      },
+      "name": "updateCandidate-invalidResponse",
+      "operation": "updateCandidate"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "input": {
+        "candidateId": "invalid",
+        "name": "Updated Candidate"
+      },
+      "name": "updateCandidate-defect",
+      "operation": "updateCandidate"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.update",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "name": "Updated Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "name": "Updated Candidate"
+      },
+      "name": "updateCandidate-rateLimit",
+      "operation": "updateCandidate"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.update",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "name": "Updated Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "name": "Updated Candidate"
+      },
+      "name": "updateCandidate-unavailable",
+      "operation": "updateCandidate"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.update",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "name": "Updated Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "name": "Updated Candidate"
+      },
+      "name": "updateCandidate-transportFailure",
+      "operation": "updateCandidate"
     }
   ],
   "schemaVersion": 1

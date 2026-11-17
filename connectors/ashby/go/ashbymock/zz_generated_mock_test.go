@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listCandidates/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidatePage](`{"candidates":[{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}],"moreDataAvailable":false}`)
+			return err
+		}},
+		{name: "updateCandidate/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Updated Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
 		{name: "getCandidate/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
 			return err
@@ -30,6 +38,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListCandidates().Definition().Operation.OperationID != "listCandidates" {
+		t.Errorf("listCandidates mock has another definition")
+	}
+	if mock.UpdateCandidate().Definition().Operation.OperationID != "updateCandidate" {
+		t.Errorf("updateCandidate mock has another definition")
+	}
 	if mock.GetCandidate().Definition().Operation.OperationID != "getCandidate" {
 		t.Errorf("getCandidate mock has another definition")
 	}

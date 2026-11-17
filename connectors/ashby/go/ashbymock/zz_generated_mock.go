@@ -17,8 +17,10 @@ import (
 
 // Mock is a scripted ashby connection. Script each operation through its accessor.
 type Mock struct {
-	connection   ashby.Connection
-	getCandidate *connectormock.Query[ashby.GetCandidateInput, ashby.CandidateProfile]
+	connection      ashby.Connection
+	listCandidates  *connectormock.Query[ashby.ListCandidatesInput, ashby.CandidatePage]
+	updateCandidate *connectormock.Mutation[ashby.UpdateCandidateInput, ashby.CandidateProfile]
+	getCandidate    *connectormock.Query[ashby.GetCandidateInput, ashby.CandidateProfile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +28,12 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getCandidate: connectormock.NewQuery[ashby.GetCandidateInput, ashby.CandidateProfile](t, ashby.GetCandidateDefinition),
+		listCandidates:  connectormock.NewQuery[ashby.ListCandidatesInput, ashby.CandidatePage](t, ashby.ListCandidatesDefinition),
+		updateCandidate: connectormock.NewMutation[ashby.UpdateCandidateInput, ashby.CandidateProfile](t, ashby.UpdateCandidateDefinition),
+		getCandidate:    connectormock.NewQuery[ashby.GetCandidateInput, ashby.CandidateProfile](t, ashby.GetCandidateDefinition),
 	}
+	mock.listCandidates.Default(ListCandidatesDefault())
+	mock.updateCandidate.Default(UpdateCandidateDefault())
 	mock.getCandidate.Default(GetCandidateDefault())
 	connection, err := ashby.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "ashby", Name: connectionName})
 	if err != nil {
@@ -40,6 +46,16 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() ashby.Connection { return mock.connection }
 
+// ListCandidates returns the listCandidates script.
+func (mock *Mock) ListCandidates() *connectormock.Query[ashby.ListCandidatesInput, ashby.CandidatePage] {
+	return mock.listCandidates
+}
+
+// UpdateCandidate returns the updateCandidate script.
+func (mock *Mock) UpdateCandidate() *connectormock.Mutation[ashby.UpdateCandidateInput, ashby.CandidateProfile] {
+	return mock.updateCandidate
+}
+
 // GetCandidate returns the getCandidate script.
 func (mock *Mock) GetCandidate() *connectormock.Query[ashby.GetCandidateInput, ashby.CandidateProfile] {
 	return mock.getCandidate
@@ -47,8 +63,91 @@ func (mock *Mock) GetCandidate() *connectormock.Query[ashby.GetCandidateInput, a
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListCandidates() sdkgo.Query[ashby.ListCandidatesInput, ashby.CandidatePage] {
+	return operations.mock.listCandidates
+}
+func (operations mockOperations) UpdateCandidate() sdkgo.Mutation[ashby.UpdateCandidateInput, ashby.CandidateProfile] {
+	return operations.mock.updateCandidate
+}
 func (operations mockOperations) GetCandidate() sdkgo.Query[ashby.GetCandidateInput, ashby.CandidateProfile] {
 	return operations.mock.getCandidate
+}
+
+// ListCandidatesListed selects the listed branch: Ashby returned the candidate page.
+func ListCandidatesListed(value ashby.CandidatePage, failure *sdkgo.Failure) connectormock.Case[ashby.CandidatePage] {
+	return connectormock.Branch(ashby.ListCandidatesBranchListed, value, failure)
+}
+
+// ListCandidatesProviderRejected selects the providerRejected branch: Ashby conclusively rejected the list request.
+func ListCandidatesProviderRejected(value ashby.CandidatePage, failure *sdkgo.Failure) connectormock.Case[ashby.CandidatePage] {
+	return connectormock.Branch(ashby.ListCandidatesBranchProviderRejected, value, failure)
+}
+
+// ListCandidatesInvalidResponse selects the invalidResponse branch: Ashby returned malformed or oversized JSON.
+func ListCandidatesInvalidResponse(value ashby.CandidatePage, failure *sdkgo.Failure) connectormock.Case[ashby.CandidatePage] {
+	return connectormock.Branch(ashby.ListCandidatesBranchInvalidResponse, value, failure)
+}
+
+// ListCandidatesDefect selects the defect branch: Local page input or credentials are invalid.
+func ListCandidatesDefect(value ashby.CandidatePage, failure *sdkgo.Failure) connectormock.Case[ashby.CandidatePage] {
+	return connectormock.Branch(ashby.ListCandidatesBranchDefect, value, failure)
+}
+
+// ListCandidatesRetry asks Dex to retry the listCandidates Step, after the delay when it is positive.
+func ListCandidatesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.CandidatePage] {
+	return connectormock.Retry[ashby.CandidatePage](failure, after)
+}
+
+// ListCandidatesListedDefault is the manifest mock listedDefault: One sample candidate is listed.
+func ListCandidatesListedDefault() connectormock.Case[ashby.CandidatePage] {
+	value := connectormock.MustDecodeOutput[ashby.CandidatePage](`{"candidates":[{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}],"moreDataAvailable":false}`)
+	return connectormock.Branch(ashby.ListCandidatesBranchListed, value, nil)
+}
+
+// ListCandidatesDefault is the manifest default, listedDefault, which New installs.
+func ListCandidatesDefault() connectormock.Case[ashby.CandidatePage] {
+	return ListCandidatesListedDefault()
+}
+
+// UpdateCandidateUpdated selects the updated branch: Ashby returned the updated candidate.
+func UpdateCandidateUpdated(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.UpdateCandidateBranchUpdated, value, failure)
+}
+
+// UpdateCandidateNotFound selects the notFound branch: Ashby did not expose the candidate.
+func UpdateCandidateNotFound(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.UpdateCandidateBranchNotFound, value, failure)
+}
+
+// UpdateCandidateProviderRejected selects the providerRejected branch: Ashby conclusively rejected the update.
+func UpdateCandidateProviderRejected(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.UpdateCandidateBranchProviderRejected, value, failure)
+}
+
+// UpdateCandidateInvalidResponse selects the invalidResponse branch: Ashby returned malformed or oversized JSON.
+func UpdateCandidateInvalidResponse(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.UpdateCandidateBranchInvalidResponse, value, failure)
+}
+
+// UpdateCandidateDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateCandidateDefect(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.UpdateCandidateBranchDefect, value, failure)
+}
+
+// UpdateCandidateRetry asks Dex to retry the updateCandidate Step, after the delay when it is positive.
+func UpdateCandidateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Retry[ashby.CandidateProfile](failure, after)
+}
+
+// UpdateCandidateUpdatedDefault is the manifest mock updatedDefault: One sample candidate is renamed.
+func UpdateCandidateUpdatedDefault() connectormock.Case[ashby.CandidateProfile] {
+	value := connectormock.MustDecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Updated Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+	return connectormock.Branch(ashby.UpdateCandidateBranchUpdated, value, nil)
+}
+
+// UpdateCandidateDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCandidateDefault() connectormock.Case[ashby.CandidateProfile] {
+	return UpdateCandidateUpdatedDefault()
 }
 
 // GetCandidateFound selects the found branch: Ashby returned the candidate.

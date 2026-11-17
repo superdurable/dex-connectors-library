@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: ashby
   displayName: Ashby
-  description: Read selected candidate profile fields from Ashby.
+  description: Read candidate identities and replace candidate display names in Ashby.
   company: Ashby
   categories: [hr-recruiting]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: ashby
   languages:
@@ -48,13 +48,54 @@ spec:
         goName: APIKey
         type: secretString
         required: true
-        description: Secret Ashby API key from Admin > API Keys. Grant Candidates read permission; copy the complete opaque value once. Blank prevents calls. Dex uses it as the Basic username with an empty password.
+        description: Secret Ashby API key from Admin > API Keys. Grant Candidates read/write permissions for the operations used; copy the complete opaque value once. Blank prevents calls. Dex uses it as the Basic username with an empty password.
     guide:
       startURL: https://app.ashbyhq.com
       steps:
-        - In Ashby, open Admin > API Keys and create or select an API key with Candidates read permission. Copy the complete opaque secret into Dex Web api_key; blank is invalid. Revoke or rotate it on the same page. Confidential candidates require the separate confidential jobs and projects permission.
+        - In Ashby, open Admin > API Keys and create or select an API key with Candidates read/write permissions for these operations. Copy the complete opaque secret into Dex Web api_key; blank is invalid. Revoke or rotate it on the same page. Confidential candidates require the separate confidential jobs and projects permission.
         - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret candidate UUID in Ashby or from candidate.list and pass it as candidateId; blank is invalid. This operation does not return email, phone, or resume data.
   operations:
+    - name: listCandidates
+      goName: ListCandidates
+      inputType: ListCandidatesInput
+      outputType: CandidatePage
+      kind: query
+      description: List a bounded page of candidate identities without contact information.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Ashby returned the candidate page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local page input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample candidate is listed.
+          output: {candidates: [{id: e9ed20fd-d45f-4aad-8a00-a19bfba0083e, name: Example Candidate, createdAt: '2024-01-15T10:30:00.000Z', updatedAt: '2024-01-16T10:30:00.000Z'}], moreDataAvailable: false}
+    - name: updateCandidate
+      goName: UpdateCandidate
+      inputType: UpdateCandidateInput
+      outputType: CandidateProfile
+      kind: mutation
+      description: Replace a candidate's display name by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Ashby returned the updated candidate.}
+        - {id: notFound, goName: NotFound, description: Ashby did not expose the candidate., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample candidate is renamed.
+          output: {id: e9ed20fd-d45f-4aad-8a00-a19bfba0083e, name: Updated Candidate, createdAt: '2024-01-15T10:30:00.000Z', updatedAt: '2024-01-16T10:30:00.000Z'}
     - name: getCandidate
       goName: GetCandidate
       inputType: GetCandidateInput

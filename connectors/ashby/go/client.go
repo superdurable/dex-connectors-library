@@ -5,7 +5,9 @@
 package ashby
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -78,6 +80,36 @@ func (client *Client) postCandidateInfo(call sdkgo.Call, candidateID string) pro
 		return providerResponse{err: errCredential}
 	}
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+"/candidate.info", strings.NewReader(`{"id":"`+candidateID+`"}`))
+	if err != nil {
+		return providerResponse{err: errRequest}
+	}
+	request.Header.Set("Accept", "application/json; version=1")
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(apiKey+":")))
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return providerResponse{err: errRequest}
+	}
+	defer func() { _ = response.Body.Close() }()
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+}
+
+func (client *Client) postOperation(call sdkgo.Call, operationPath string, payload any) providerResponse {
+	credentials, err := client.credentials.Resolve(call)
+	if err != nil || credentials.Validate() != nil {
+		return providerResponse{err: errCredential}
+	}
+	apiKey := credentials.APIKey.Reveal()
+	if !providerhttp.IsHeaderSafeCredential(apiKey) || strings.Contains(apiKey, ":") {
+		return providerResponse{err: errCredential}
+	}
+	requestBody, err := json.Marshal(payload)
+	if err != nil {
+		return providerResponse{err: errRequest}
+	}
+	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+operationPath, bytes.NewReader(requestBody))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
