@@ -1396,6 +1396,2049 @@
       ],
       "name": "sendEmail-cap-uncertain",
       "operation": "sendEmail"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"TotalCount\":1,\"Templates\":[{\"TemplateId\":1234,\"Name\":\"Welcome\",\"Alias\":\"welcome-v1\",\"Active\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "Templates": [
+            {
+              "Active": true,
+              "Alias": "welcome-v1",
+              "Name": "Welcome",
+              "TemplateId": 1234
+            }
+          ],
+          "TotalCount": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1
+      },
+      "name": "listTemplates-success",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":1122,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "Templates": [],
+          "TotalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1
+      },
+      "name": "listTemplates-provider-rejected",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1
+      },
+      "name": "listTemplates-rate-limited",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1
+      },
+      "name": "listTemplates-service-unavailable",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1
+      },
+      "name": "listTemplates-unknown-5xx",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1
+      },
+      "name": "listTemplates-transport",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "Templates": [],
+          "TotalCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": -1,
+        "offset": 0
+      },
+      "name": "listTemplates-defect",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"TemplateId\":1234,\"Name\":\"Welcome\",\"Alias\":\"welcome-v1\",\"Active\":true,\"Subject\":\"Hello\",\"TextBody\":\"Welcome\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/welcome-v1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "Active": true,
+          "Alias": "welcome-v1",
+          "Name": "Welcome",
+          "Subject": "Hello",
+          "TemplateId": 1234,
+          "TextBody": "Welcome"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateIdOrAlias": "welcome-v1"
+      },
+      "name": "getTemplate-success",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":1122,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/welcome-v1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "Active": false,
+          "Alias": "",
+          "Name": "",
+          "TemplateId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateIdOrAlias": "welcome-v1"
+      },
+      "name": "getTemplate-provider-rejected",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/welcome-v1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateIdOrAlias": "welcome-v1"
+      },
+      "name": "getTemplate-rate-limited",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/welcome-v1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateIdOrAlias": "welcome-v1"
+      },
+      "name": "getTemplate-service-unavailable",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/welcome-v1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateIdOrAlias": "welcome-v1"
+      },
+      "name": "getTemplate-unknown-5xx",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/welcome-v1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateIdOrAlias": "welcome-v1"
+      },
+      "name": "getTemplate-transport",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "Active": false,
+          "Alias": "",
+          "Name": "",
+          "TemplateId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateIdOrAlias": ""
+      },
+      "name": "getTemplate-defect",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "exchanges": [
+        {
+          "body": "{\"TemplateId\":1234,\"Name\":\"Welcome\",\"Alias\":\"dex-75afc211-9212-5632-ae5d-3fae448efd1a\",\"Active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "Alias": "dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+            "HtmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+            "Name": "Welcome",
+            "Subject": "Hello",
+            "TextBody": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+          "providerId": "1234",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "Active": true,
+          "Alias": "dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+          "Name": "Welcome",
+          "TemplateId": 1234
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+        "name": "Welcome",
+        "subject": "Hello",
+        "textBody": "Welcome"
+      },
+      "name": "createTemplate-success",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":1122,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "Alias": "dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+            "HtmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+            "Name": "Welcome",
+            "Subject": "Hello",
+            "TextBody": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "Active": false,
+          "Alias": "",
+          "Name": "",
+          "TemplateId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+        "name": "Welcome",
+        "subject": "Hello",
+        "textBody": "Welcome"
+      },
+      "name": "createTemplate-provider-rejected",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "Alias": "dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+            "HtmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+            "Name": "Welcome",
+            "Subject": "Hello",
+            "TextBody": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+        "name": "Welcome",
+        "subject": "Hello",
+        "textBody": "Welcome"
+      },
+      "name": "createTemplate-rate-limited",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "Alias": "dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+            "HtmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+            "Name": "Welcome",
+            "Subject": "Hello",
+            "TextBody": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+        "name": "Welcome",
+        "subject": "Hello",
+        "textBody": "Welcome"
+      },
+      "name": "createTemplate-service-unavailable",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "Alias": "dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+            "HtmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+            "Name": "Welcome",
+            "Subject": "Hello",
+            "TextBody": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+        "name": "Welcome",
+        "subject": "Hello",
+        "textBody": "Welcome"
+      },
+      "name": "createTemplate-unknown-5xx",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "Alias": "dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+            "HtmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+            "Name": "Welcome",
+            "Subject": "Hello",
+            "TextBody": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+        "name": "Welcome",
+        "subject": "Hello",
+        "textBody": "Welcome"
+      },
+      "name": "createTemplate-transport",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "Active": false,
+          "Alias": "",
+          "Name": "",
+          "TemplateId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+        "name": "",
+        "subject": "Hello",
+        "textBody": "Welcome"
+      },
+      "name": "createTemplate-defect",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "exchanges": [
+        {
+          "body": "{\"TemplateId\":1234,\"Name\":\"Welcome revised\",\"Alias\":\"welcome-v1\",\"Active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/templates/welcome-v1",
+          "requestBody": {
+            "HtmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+            "Name": "Welcome revised",
+            "Subject": "Hello again",
+            "TextBody": "Welcome again"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "Active": true,
+          "Alias": "welcome-v1",
+          "Name": "Welcome revised",
+          "TemplateId": 1234
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+        "name": "Welcome revised",
+        "subject": "Hello again",
+        "templateIdOrAlias": "welcome-v1",
+        "textBody": "Welcome again"
+      },
+      "name": "updateTemplate-success",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":1122,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/templates/welcome-v1",
+          "requestBody": {
+            "HtmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+            "Name": "Welcome revised",
+            "Subject": "Hello again",
+            "TextBody": "Welcome again"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "Active": false,
+          "Alias": "",
+          "Name": "",
+          "TemplateId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+        "name": "Welcome revised",
+        "subject": "Hello again",
+        "templateIdOrAlias": "welcome-v1",
+        "textBody": "Welcome again"
+      },
+      "name": "updateTemplate-provider-rejected",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/templates/welcome-v1",
+          "requestBody": {
+            "HtmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+            "Name": "Welcome revised",
+            "Subject": "Hello again",
+            "TextBody": "Welcome again"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+        "name": "Welcome revised",
+        "subject": "Hello again",
+        "templateIdOrAlias": "welcome-v1",
+        "textBody": "Welcome again"
+      },
+      "name": "updateTemplate-rate-limited",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/templates/welcome-v1",
+          "requestBody": {
+            "HtmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+            "Name": "Welcome revised",
+            "Subject": "Hello again",
+            "TextBody": "Welcome again"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+        "name": "Welcome revised",
+        "subject": "Hello again",
+        "templateIdOrAlias": "welcome-v1",
+        "textBody": "Welcome again"
+      },
+      "name": "updateTemplate-service-unavailable",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/templates/welcome-v1",
+          "requestBody": {
+            "HtmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+            "Name": "Welcome revised",
+            "Subject": "Hello again",
+            "TextBody": "Welcome again"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+        "name": "Welcome revised",
+        "subject": "Hello again",
+        "templateIdOrAlias": "welcome-v1",
+        "textBody": "Welcome again"
+      },
+      "name": "updateTemplate-unknown-5xx",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/templates/welcome-v1",
+          "requestBody": {
+            "HtmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+            "Name": "Welcome revised",
+            "Subject": "Hello again",
+            "TextBody": "Welcome again"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+        "name": "Welcome revised",
+        "subject": "Hello again",
+        "templateIdOrAlias": "welcome-v1",
+        "textBody": "Welcome again"
+      },
+      "name": "updateTemplate-transport",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "Active": false,
+          "Alias": "",
+          "Name": "",
+          "TemplateId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+        "name": "Welcome",
+        "subject": "Hello",
+        "templateIdOrAlias": "",
+        "textBody": "Welcome"
+      },
+      "name": "updateTemplate-defect",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0,\"Message\":\"Template removed.\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/templates/welcome-v1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "input": {
+        "templateIdOrAlias": "welcome-v1"
+      },
+      "name": "deleteTemplate-success",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":1122,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/templates/welcome-v1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "input": {
+        "templateIdOrAlias": "welcome-v1"
+      },
+      "name": "deleteTemplate-provider-rejected",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/templates/welcome-v1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "input": {
+        "templateIdOrAlias": "welcome-v1"
+      },
+      "name": "deleteTemplate-rate-limited",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/templates/welcome-v1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "input": {
+        "templateIdOrAlias": "welcome-v1"
+      },
+      "name": "deleteTemplate-service-unavailable",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/templates/welcome-v1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "input": {
+        "templateIdOrAlias": "welcome-v1"
+      },
+      "name": "deleteTemplate-unknown-5xx",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/templates/welcome-v1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "input": {
+        "templateIdOrAlias": "welcome-v1"
+      },
+      "name": "deleteTemplate-transport",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "input": {
+        "templateIdOrAlias": ""
+      },
+      "name": "deleteTemplate-defect",
+      "operation": "deleteTemplate"
+    },
+    {
+      "attempts": 2,
+      "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "Alias": "dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+            "HtmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+            "Name": "Welcome",
+            "Subject": "Hello",
+            "TextBody": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"TemplateId\":1234,\"Name\":\"Welcome\",\"Alias\":\"dex-75afc211-9212-5632-ae5d-3fae448efd1a\",\"Subject\":\"Hello\",\"TextBody\":\"Welcome\",\"HtmlBody\":\"\u003cp\u003eWelcome\u003c/p\u003e\",\"Active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "Active": true,
+          "Alias": "dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+          "HtmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+          "Name": "Welcome",
+          "Subject": "Hello",
+          "TemplateId": 1234,
+          "TextBody": "Welcome"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+        "name": "Welcome",
+        "subject": "Hello",
+        "textBody": "Welcome"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTemplate-confirm-after-unknown",
+      "operation": "createTemplate"
+    },
+    {
+      "attempts": 4,
+      "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "Alias": "dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+            "HtmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+            "Name": "Welcome",
+            "Subject": "Hello",
+            "TextBody": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"ErrorCode\":1101,\"Message\":\"Template not found\"}",
+          "headers": {
+            "X-PM-ApiErrorCode": "1101"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        },
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "Alias": "dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+            "HtmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+            "Name": "Welcome",
+            "Subject": "Hello",
+            "TextBody": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"ErrorCode\":1101,\"Message\":\"Template not found\"}",
+          "headers": {
+            "X-PM-ApiErrorCode": "1101"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        },
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "Alias": "dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+            "HtmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+            "Name": "Welcome",
+            "Subject": "Hello",
+            "TextBody": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"ErrorCode\":1101,\"Message\":\"Template not found\"}",
+          "headers": {
+            "X-PM-ApiErrorCode": "1101"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/dex-75afc211-9212-5632-ae5d-3fae448efd1a",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "Active": false,
+          "Alias": "",
+          "Name": "",
+          "TemplateId": 0
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "75afc211-9212-5632-ae5d-3fae448efd1a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome\u003c/p\u003e",
+        "name": "Welcome",
+        "subject": "Hello",
+        "textBody": "Welcome"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 5,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "75afc211-9212-5632-ae5d-3fae448efd1a",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTemplate-cap-uncertain",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "Templates": [],
+          "TotalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1
+      },
+      "name": "listTemplates-invalid-response",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/welcome-v1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "Active": false,
+          "Alias": "",
+          "Name": "",
+          "TemplateId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateIdOrAlias": "welcome-v1"
+      },
+      "name": "getTemplate-invalid-response",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/templates/welcome-v1",
+          "requestBody": {
+            "HtmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+            "Name": "Welcome revised",
+            "Subject": "Hello again",
+            "TextBody": "Welcome again"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "Active": false,
+          "Alias": "",
+          "Name": "",
+          "TemplateId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "228731dd-1f09-547e-96b2-7a412195ac0a",
+      "input": {
+        "htmlBody": "\u003cp\u003eWelcome again\u003c/p\u003e",
+        "name": "Welcome revised",
+        "subject": "Hello again",
+        "templateIdOrAlias": "welcome-v1",
+        "textBody": "Welcome again"
+      },
+      "name": "updateTemplate-invalid-response",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":1101}",
+          "headers": {
+            "X-PM-ApiErrorCode": "1101"
+          },
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/templates/welcome-v1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c2e35c67-d95b-57e2-ab58-503500920383",
+      "input": {
+        "templateIdOrAlias": "welcome-v1"
+      },
+      "name": "deleteTemplate-already-absent",
+      "operation": "deleteTemplate"
     }
   ],
   "schemaVersion": 1

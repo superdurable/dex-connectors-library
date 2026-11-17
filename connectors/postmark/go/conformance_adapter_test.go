@@ -46,5 +46,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listOutboundMessages": newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListOutboundMessages(), connection),
 		"getMessageDetails":    newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetMessageDetails(), connection),
 		"sendEmail":            newConformanceMutationInvocation(t, scenario.Input, sendContext, client.SendEmail(), connection, scenario.CallID),
+		"listTemplates":        newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListTemplates(), connection),
+		"getTemplate":          newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetTemplate(), connection),
+		"createTemplate":       newConformanceMutationInvocation(t, scenario.Input, sendContext, client.CreateTemplate(), connection, scenario.CallID),
+		"updateTemplate":       newConformanceMutationInvocation(t, scenario.Input, sendContext, client.UpdateTemplate(), connection, scenario.CallID),
+		"deleteTemplate":       newConformanceMutationInvocation(t, scenario.Input, sendContext, client.DeleteTemplate(), connection, scenario.CallID),
 	}}
 }

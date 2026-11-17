@@ -24,6 +24,11 @@ uses the static `postmark` connection and a real Dex Worker and Client.
 | `listOutboundMessages` | query | MessagePage |
 | `getMessageDetails` | query | MessageDetails |
 | `sendEmail` | limited mutation | SentEmail |
+| `listTemplates` | query | TemplatePage |
+| `getTemplate` | query | Template |
+| `createTemplate` | limited mutation | Template |
+| `updateTemplate` | safe mutation | Template |
+| `deleteTemplate` | safe mutation | DeletedTemplate |
 
 `sendEmail` accepts one plain text message from a verified sender. Postmark does
 not document a deduplication key for sends, so the connector uses Dex's durable
@@ -31,6 +36,11 @@ dispatch fence and a call-specific `dex_call_id` metadata marker. After an unkno
 outcome it searches outbound activity for that marker before another possible send.
 It permits up to three possible sends and selects `uncertain` if the cap is reached
 without confirmation. Outbound messages expire after the server's retention period.
+
+`createTemplate` assigns a unique `dex-<call ID>` alias so a retry can read back
+the exact new template before another possible creation. Supply the template name,
+subject, and a text or HTML body. `updateTemplate` sends the complete replacement
+content; `deleteTemplate` treats an already missing template as deleted.
 
 ## Authorization
 
@@ -74,6 +84,7 @@ flow := NewFlow(mock.Connection())
 
 - [https://postmarkapp.com/developer/api/messages-api](https://postmarkapp.com/developer/api/messages-api)
 - [https://postmarkapp.com/developer/api/email-api](https://postmarkapp.com/developer/api/email-api)
+- [https://postmarkapp.com/developer/api/templates-api](https://postmarkapp.com/developer/api/templates-api)
 - [https://postmarkapp.com/developer/api/overview](https://postmarkapp.com/developer/api/overview)
 
 The HTTP unit tests verify request shapes and local classification against

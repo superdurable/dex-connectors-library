@@ -21,6 +21,11 @@ type Mock struct {
 	listOutboundMessages *connectormock.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage]
 	getMessageDetails    *connectormock.Query[postmark.GetMessageDetailsInput, postmark.MessageDetails]
 	sendEmail            *connectormock.Mutation[postmark.SendEmailInput, postmark.SentEmail]
+	listTemplates        *connectormock.Query[postmark.ListTemplatesInput, postmark.TemplatePage]
+	getTemplate          *connectormock.Query[postmark.GetTemplateInput, postmark.Template]
+	createTemplate       *connectormock.Mutation[postmark.CreateTemplateInput, postmark.Template]
+	updateTemplate       *connectormock.Mutation[postmark.UpdateTemplateInput, postmark.Template]
+	deleteTemplate       *connectormock.Mutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -31,10 +36,20 @@ func New(t testing.TB, connectionName string) *Mock {
 		listOutboundMessages: connectormock.NewQuery[postmark.ListOutboundMessagesInput, postmark.MessagePage](t, postmark.ListOutboundMessagesDefinition),
 		getMessageDetails:    connectormock.NewQuery[postmark.GetMessageDetailsInput, postmark.MessageDetails](t, postmark.GetMessageDetailsDefinition),
 		sendEmail:            connectormock.NewMutation[postmark.SendEmailInput, postmark.SentEmail](t, postmark.SendEmailDefinition),
+		listTemplates:        connectormock.NewQuery[postmark.ListTemplatesInput, postmark.TemplatePage](t, postmark.ListTemplatesDefinition),
+		getTemplate:          connectormock.NewQuery[postmark.GetTemplateInput, postmark.Template](t, postmark.GetTemplateDefinition),
+		createTemplate:       connectormock.NewMutation[postmark.CreateTemplateInput, postmark.Template](t, postmark.CreateTemplateDefinition),
+		updateTemplate:       connectormock.NewMutation[postmark.UpdateTemplateInput, postmark.Template](t, postmark.UpdateTemplateDefinition),
+		deleteTemplate:       connectormock.NewMutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate](t, postmark.DeleteTemplateDefinition),
 	}
 	mock.listOutboundMessages.Default(ListOutboundMessagesDefault())
 	mock.getMessageDetails.Default(GetMessageDetailsDefault())
 	mock.sendEmail.Default(SendEmailDefault())
+	mock.listTemplates.Default(ListTemplatesDefault())
+	mock.getTemplate.Default(GetTemplateDefault())
+	mock.createTemplate.Default(CreateTemplateDefault())
+	mock.updateTemplate.Default(UpdateTemplateDefault())
+	mock.deleteTemplate.Default(DeleteTemplateDefault())
 	connection, err := postmark.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "postmark", Name: connectionName})
 	if err != nil {
 		t.Fatalf("postmark mock connection: %v", err)
@@ -61,6 +76,31 @@ func (mock *Mock) SendEmail() *connectormock.Mutation[postmark.SendEmailInput, p
 	return mock.sendEmail
 }
 
+// ListTemplates returns the listTemplates script.
+func (mock *Mock) ListTemplates() *connectormock.Query[postmark.ListTemplatesInput, postmark.TemplatePage] {
+	return mock.listTemplates
+}
+
+// GetTemplate returns the getTemplate script.
+func (mock *Mock) GetTemplate() *connectormock.Query[postmark.GetTemplateInput, postmark.Template] {
+	return mock.getTemplate
+}
+
+// CreateTemplate returns the createTemplate script.
+func (mock *Mock) CreateTemplate() *connectormock.Mutation[postmark.CreateTemplateInput, postmark.Template] {
+	return mock.createTemplate
+}
+
+// UpdateTemplate returns the updateTemplate script.
+func (mock *Mock) UpdateTemplate() *connectormock.Mutation[postmark.UpdateTemplateInput, postmark.Template] {
+	return mock.updateTemplate
+}
+
+// DeleteTemplate returns the deleteTemplate script.
+func (mock *Mock) DeleteTemplate() *connectormock.Mutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate] {
+	return mock.deleteTemplate
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOutboundMessages() sdkgo.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage] {
@@ -71,6 +111,21 @@ func (operations mockOperations) GetMessageDetails() sdkgo.Query[postmark.GetMes
 }
 func (operations mockOperations) SendEmail() sdkgo.Mutation[postmark.SendEmailInput, postmark.SentEmail] {
 	return operations.mock.sendEmail
+}
+func (operations mockOperations) ListTemplates() sdkgo.Query[postmark.ListTemplatesInput, postmark.TemplatePage] {
+	return operations.mock.listTemplates
+}
+func (operations mockOperations) GetTemplate() sdkgo.Query[postmark.GetTemplateInput, postmark.Template] {
+	return operations.mock.getTemplate
+}
+func (operations mockOperations) CreateTemplate() sdkgo.Mutation[postmark.CreateTemplateInput, postmark.Template] {
+	return operations.mock.createTemplate
+}
+func (operations mockOperations) UpdateTemplate() sdkgo.Mutation[postmark.UpdateTemplateInput, postmark.Template] {
+	return operations.mock.updateTemplate
+}
+func (operations mockOperations) DeleteTemplate() sdkgo.Mutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate] {
+	return operations.mock.deleteTemplate
 }
 
 // ListOutboundMessagesListed selects the listed branch: Postmark returned the requested result.
@@ -183,3 +238,178 @@ func SendEmailSendEmailDefault() connectormock.Case[postmark.SentEmail] {
 
 // SendEmailDefault is the manifest default, sendEmailDefault, which New installs.
 func SendEmailDefault() connectormock.Case[postmark.SentEmail] { return SendEmailSendEmailDefault() }
+
+// ListTemplatesListed selects the listed branch: ListTemplates listed outcome.
+func ListTemplatesListed(value postmark.TemplatePage, failure *sdkgo.Failure) connectormock.Case[postmark.TemplatePage] {
+	return connectormock.Branch(postmark.ListTemplatesBranchListed, value, failure)
+}
+
+// ListTemplatesProviderRejected selects the providerRejected branch: ListTemplates providerRejected outcome.
+func ListTemplatesProviderRejected(value postmark.TemplatePage, failure *sdkgo.Failure) connectormock.Case[postmark.TemplatePage] {
+	return connectormock.Branch(postmark.ListTemplatesBranchProviderRejected, value, failure)
+}
+
+// ListTemplatesInvalidResponse selects the invalidResponse branch: ListTemplates invalidResponse outcome.
+func ListTemplatesInvalidResponse(value postmark.TemplatePage, failure *sdkgo.Failure) connectormock.Case[postmark.TemplatePage] {
+	return connectormock.Branch(postmark.ListTemplatesBranchInvalidResponse, value, failure)
+}
+
+// ListTemplatesDefect selects the defect branch: ListTemplates defect outcome.
+func ListTemplatesDefect(value postmark.TemplatePage, failure *sdkgo.Failure) connectormock.Case[postmark.TemplatePage] {
+	return connectormock.Branch(postmark.ListTemplatesBranchDefect, value, failure)
+}
+
+// ListTemplatesRetry asks Dex to retry the listTemplates Step, after the delay when it is positive.
+func ListTemplatesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.TemplatePage] {
+	return connectormock.Retry[postmark.TemplatePage](failure, after)
+}
+
+// ListTemplatesListTemplatesDefault is the manifest mock listTemplatesDefault: Representative Postmark template response.
+func ListTemplatesListTemplatesDefault() connectormock.Case[postmark.TemplatePage] {
+	value := connectormock.MustDecodeOutput[postmark.TemplatePage](`{"totalCount":1,"templates":[{"templateId":1234,"name":"Welcome","alias":"welcome-v1","active":true}]}`)
+	return connectormock.Branch(postmark.ListTemplatesBranchListed, value, nil)
+}
+
+// ListTemplatesDefault is the manifest default, listTemplatesDefault, which New installs.
+func ListTemplatesDefault() connectormock.Case[postmark.TemplatePage] {
+	return ListTemplatesListTemplatesDefault()
+}
+
+// GetTemplateFound selects the found branch: GetTemplate found outcome.
+func GetTemplateFound(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.GetTemplateBranchFound, value, failure)
+}
+
+// GetTemplateProviderRejected selects the providerRejected branch: GetTemplate providerRejected outcome.
+func GetTemplateProviderRejected(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.GetTemplateBranchProviderRejected, value, failure)
+}
+
+// GetTemplateInvalidResponse selects the invalidResponse branch: GetTemplate invalidResponse outcome.
+func GetTemplateInvalidResponse(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.GetTemplateBranchInvalidResponse, value, failure)
+}
+
+// GetTemplateDefect selects the defect branch: GetTemplate defect outcome.
+func GetTemplateDefect(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.GetTemplateBranchDefect, value, failure)
+}
+
+// GetTemplateRetry asks Dex to retry the getTemplate Step, after the delay when it is positive.
+func GetTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.Template] {
+	return connectormock.Retry[postmark.Template](failure, after)
+}
+
+// GetTemplateGetTemplateDefault is the manifest mock getTemplateDefault: Representative Postmark template response.
+func GetTemplateGetTemplateDefault() connectormock.Case[postmark.Template] {
+	value := connectormock.MustDecodeOutput[postmark.Template](`{"templateId":1234,"name":"Welcome","alias":"welcome-v1","active":true}`)
+	return connectormock.Branch(postmark.GetTemplateBranchFound, value, nil)
+}
+
+// GetTemplateDefault is the manifest default, getTemplateDefault, which New installs.
+func GetTemplateDefault() connectormock.Case[postmark.Template] {
+	return GetTemplateGetTemplateDefault()
+}
+
+// CreateTemplateCreated selects the created branch: CreateTemplate created outcome.
+func CreateTemplateCreated(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.CreateTemplateBranchCreated, value, failure)
+}
+
+// CreateTemplateProviderRejected selects the providerRejected branch: CreateTemplate providerRejected outcome.
+func CreateTemplateProviderRejected(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.CreateTemplateBranchProviderRejected, value, failure)
+}
+
+// CreateTemplateUncertain returns an uncertain createTemplate outcome.
+func CreateTemplateUncertain(value postmark.Template, failure sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateTemplateDefect selects the defect branch: CreateTemplate defect outcome.
+func CreateTemplateDefect(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.CreateTemplateBranchDefect, value, failure)
+}
+
+// CreateTemplateRetry asks Dex to retry the createTemplate Step, after the delay when it is positive.
+func CreateTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.Template] {
+	return connectormock.Retry[postmark.Template](failure, after)
+}
+
+// CreateTemplateCreateTemplateDefault is the manifest mock createTemplateDefault: Representative Postmark template response.
+func CreateTemplateCreateTemplateDefault() connectormock.Case[postmark.Template] {
+	value := connectormock.MustDecodeOutput[postmark.Template](`{"templateId":1234,"name":"Welcome","alias":"dex-1234","active":true}`)
+	return connectormock.Branch(postmark.CreateTemplateBranchCreated, value, nil)
+}
+
+// CreateTemplateDefault is the manifest default, createTemplateDefault, which New installs.
+func CreateTemplateDefault() connectormock.Case[postmark.Template] {
+	return CreateTemplateCreateTemplateDefault()
+}
+
+// UpdateTemplateUpdated selects the updated branch: UpdateTemplate updated outcome.
+func UpdateTemplateUpdated(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.UpdateTemplateBranchUpdated, value, failure)
+}
+
+// UpdateTemplateProviderRejected selects the providerRejected branch: UpdateTemplate providerRejected outcome.
+func UpdateTemplateProviderRejected(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.UpdateTemplateBranchProviderRejected, value, failure)
+}
+
+// UpdateTemplateInvalidResponse selects the invalidResponse branch: UpdateTemplate invalidResponse outcome.
+func UpdateTemplateInvalidResponse(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.UpdateTemplateBranchInvalidResponse, value, failure)
+}
+
+// UpdateTemplateDefect selects the defect branch: UpdateTemplate defect outcome.
+func UpdateTemplateDefect(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.UpdateTemplateBranchDefect, value, failure)
+}
+
+// UpdateTemplateRetry asks Dex to retry the updateTemplate Step, after the delay when it is positive.
+func UpdateTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.Template] {
+	return connectormock.Retry[postmark.Template](failure, after)
+}
+
+// UpdateTemplateUpdateTemplateDefault is the manifest mock updateTemplateDefault: Representative Postmark template response.
+func UpdateTemplateUpdateTemplateDefault() connectormock.Case[postmark.Template] {
+	value := connectormock.MustDecodeOutput[postmark.Template](`{"templateId":1234,"name":"Welcome revised","alias":"welcome-v1","active":true}`)
+	return connectormock.Branch(postmark.UpdateTemplateBranchUpdated, value, nil)
+}
+
+// UpdateTemplateDefault is the manifest default, updateTemplateDefault, which New installs.
+func UpdateTemplateDefault() connectormock.Case[postmark.Template] {
+	return UpdateTemplateUpdateTemplateDefault()
+}
+
+// DeleteTemplateDeleted selects the deleted branch: DeleteTemplate deleted outcome.
+func DeleteTemplateDeleted(value postmark.DeletedTemplate, failure *sdkgo.Failure) connectormock.Case[postmark.DeletedTemplate] {
+	return connectormock.Branch(postmark.DeleteTemplateBranchDeleted, value, failure)
+}
+
+// DeleteTemplateProviderRejected selects the providerRejected branch: DeleteTemplate providerRejected outcome.
+func DeleteTemplateProviderRejected(value postmark.DeletedTemplate, failure *sdkgo.Failure) connectormock.Case[postmark.DeletedTemplate] {
+	return connectormock.Branch(postmark.DeleteTemplateBranchProviderRejected, value, failure)
+}
+
+// DeleteTemplateDefect selects the defect branch: DeleteTemplate defect outcome.
+func DeleteTemplateDefect(value postmark.DeletedTemplate, failure *sdkgo.Failure) connectormock.Case[postmark.DeletedTemplate] {
+	return connectormock.Branch(postmark.DeleteTemplateBranchDefect, value, failure)
+}
+
+// DeleteTemplateRetry asks Dex to retry the deleteTemplate Step, after the delay when it is positive.
+func DeleteTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.DeletedTemplate] {
+	return connectormock.Retry[postmark.DeletedTemplate](failure, after)
+}
+
+// DeleteTemplateDeleteTemplateDefault is the manifest mock deleteTemplateDefault: Representative Postmark template response.
+func DeleteTemplateDeleteTemplateDefault() connectormock.Case[postmark.DeletedTemplate] {
+	value := connectormock.MustDecodeOutput[postmark.DeletedTemplate](`{"deleted":true}`)
+	return connectormock.Branch(postmark.DeleteTemplateBranchDeleted, value, nil)
+}
+
+// DeleteTemplateDefault is the manifest default, deleteTemplateDefault, which New installs.
+func DeleteTemplateDefault() connectormock.Case[postmark.DeletedTemplate] {
+	return DeleteTemplateDeleteTemplateDefault()
+}

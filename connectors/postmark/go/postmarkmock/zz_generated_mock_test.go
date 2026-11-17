@@ -28,6 +28,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[postmark.SentEmail](`{"messageId":"0ac29aee-e1cd-480d-b08d-4f48548ff48d","to":"recipient@example.com"}`)
 			return err
 		}},
+		{name: "listTemplates/listTemplatesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.TemplatePage](`{"totalCount":1,"templates":[{"templateId":1234,"name":"Welcome","alias":"welcome-v1","active":true}]}`)
+			return err
+		}},
+		{name: "getTemplate/getTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.Template](`{"templateId":1234,"name":"Welcome","alias":"welcome-v1","active":true}`)
+			return err
+		}},
+		{name: "createTemplate/createTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.Template](`{"templateId":1234,"name":"Welcome","alias":"dex-1234","active":true}`)
+			return err
+		}},
+		{name: "updateTemplate/updateTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.Template](`{"templateId":1234,"name":"Welcome revised","alias":"welcome-v1","active":true}`)
+			return err
+		}},
+		{name: "deleteTemplate/deleteTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.DeletedTemplate](`{"deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -46,5 +66,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.SendEmail().Definition().Operation.OperationID != "sendEmail" {
 		t.Errorf("sendEmail mock has another definition")
+	}
+	if mock.ListTemplates().Definition().Operation.OperationID != "listTemplates" {
+		t.Errorf("listTemplates mock has another definition")
+	}
+	if mock.GetTemplate().Definition().Operation.OperationID != "getTemplate" {
+		t.Errorf("getTemplate mock has another definition")
+	}
+	if mock.CreateTemplate().Definition().Operation.OperationID != "createTemplate" {
+		t.Errorf("createTemplate mock has another definition")
+	}
+	if mock.UpdateTemplate().Definition().Operation.OperationID != "updateTemplate" {
+		t.Errorf("updateTemplate mock has another definition")
+	}
+	if mock.DeleteTemplate().Definition().Operation.OperationID != "deleteTemplate" {
+		t.Errorf("deleteTemplate mock has another definition")
 	}
 }
