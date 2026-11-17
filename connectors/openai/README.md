@@ -21,7 +21,7 @@ connection.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/openai/go@v0.24.0
+go get github.com/superdurable/dex-connectors-library/connectors/openai/go@v0.25.0
 ```
 
 
@@ -211,6 +211,11 @@ stale checkpoint never permits a new request; the next attempt selects
 | `retrieveResponse` | `providerRejected` | Another conclusive refusal. |
 | `retrieveResponse` | `invalidResponse` | The response is malformed or larger than `maxResponseBytes`. |
 | `retrieveResponse` | `defect` | The Response ID, credentials, or connection configuration is invalid. |
+| `deleteResponse` | `deleted` (required) | OpenAI confirms removal of the stored Response. |
+| `deleteResponse` | `notFound` | The Response was already absent. |
+| `deleteResponse` | `providerRejected` | OpenAI conclusively refused deletion. |
+| `deleteResponse` | `invalidResponse` | The deletion receipt was malformed, inconsistent, or oversized. |
+| `deleteResponse` | `defect` | The Response ID or credentials are invalid. |
 
 HTTP 429 returns Retry for both operations, honoring a `Retry-After` given in
 seconds or as an HTTP date, up to one hour. `retrieveResponse` also returns
@@ -233,6 +238,7 @@ copy OpenAI's `x-ratelimit-{limit,remaining,reset}-{requests,tokens}` headers.
 | --- | --- | --- | --- |
 | `createResponse` | `sync` | 150 seconds | 2-second initial interval, backoff 2, 30-second maximum interval, 3 attempts, 5 minutes total |
 | `retrieveResponse` | `async` | 30 seconds | 1-second initial interval, backoff 2, 5-minute maximum interval, unlimited attempts, 1 hour total |
+| `deleteResponse` | `async` | 30 seconds | Default retry policy; safe repeat on unknown outcomes |
 
 The `createResponse` Step must keep `sync` durability, and its Flow must record
 no heartbeats of its own in that Step. An async attempt that runs locally keeps

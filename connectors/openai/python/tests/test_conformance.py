@@ -17,12 +17,17 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/openai/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/openai/scenarios.json")
+    if scenario["operation"] in {"createResponse", "retrieveResponse"}
+]
 CONNECTION = sdk.ConnectionRef("openai", "openai")
 
 
-async def invoke_openai(scenario: dict[str, Any], recorder: conformance.ExchangeRecorder,
-                        context: conformance.HeartbeatContext) -> object:
+async def invoke_openai(
+    scenario: dict[str, Any], recorder: conformance.ExchangeRecorder, context: conformance.HeartbeatContext
+) -> object:
     """Construct a real operation and use the SDK mutation path."""
     async with httpx.AsyncClient(transport=httpx.MockTransport(recorder.answer)) as http_client:
         client = openai.Client(
@@ -34,18 +39,30 @@ async def invoke_openai(scenario: dict[str, Any], recorder: conformance.Exchange
         )
         operation_name = scenario["operation"]
         request = scenario["input"]
-        call = sdk.Call(sdk.CallID(scenario["callId"]), CONNECTION,
-                        sdk.OperationRef("openai", operation_name), sdk.IdempotencyKey(""),
-                        context=context)  # type: ignore[arg-type]
+        call = sdk.Call(
+            sdk.CallID(scenario["callId"]),
+            CONNECTION,
+            sdk.OperationRef("openai", operation_name),
+            sdk.IdempotencyKey(""),
+            context=context,
+        )  # type: ignore[arg-type]
         if operation_name == "createResponse":
             structured = request.get("StructuredOutput")
-            output = (openai.StructuredOutput(
-                name=structured["name"], description=structured.get("description", ""),
-                schema=structured["schema"], strict=structured["strict"],
-            ) if structured else None)
+            output = (
+                openai.StructuredOutput(
+                    name=structured["name"],
+                    description=structured.get("description", ""),
+                    schema=structured["schema"],
+                    strict=structured["strict"],
+                )
+                if structured
+                else None
+            )
             create_request = openai.CreateRequest(
-                input=request.get("Input"), model=request.get("Model", ""),
-                instructions=request.get("Instructions", ""), structured_output=output,
+                input=request.get("Input"),
+                model=request.get("Model", ""),
+                instructions=request.get("Instructions", ""),
+                structured_output=output,
             )
             return await conformance.invoke_production_mutation(
                 client.create_response(), call, create_request, scenario["idempotencyKey"]

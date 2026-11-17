@@ -16,7 +16,11 @@ The example leaves `failed`, `providerRejected`, `uncertain`, and `defect` unwir
 those outcomes fail the Flow. For example, a project without credits gets
 HTTP 429, which `createResponse` retries until its retry policy ends. An
 `uncertain` outcome means OpenAI may have stored the Response; reconcile it
-with `retrieveResponse` when the Response ID is known. Generation Steps that
+with `retrieveResponse` when the Response ID is known.
+
+Set `deleteAfterSummary` to `true` in Dex Web Start Flow to remove the stored
+Response after recording its summary. The `DeleteStoredResponse` Step uses
+`deleteResponse`; its `deleted` output confirms cleanup. Generation Steps that
 need no stored Response use the
 [llm connector](../../../../superdurable/llm/README.md) instead.
 
@@ -62,7 +66,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/openai/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/openai/go \
-  --version v0.24.0 --tag connectors/openai/go/v0.24.0 \
+  --version v0.25.0 --tag connectors/openai/go/v0.25.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/openai-release/connector-ui.tgz \
   --ui-digest /tmp/openai-release/connector-ui.tgz.sha256 \

@@ -41,6 +41,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, actions: map[string]conformanceOperationInvocation{
 		"createResponse":   newConformanceMutationInvocation(t, scenario.Input, context, client.CreateResponse(), reference, scenario.CallID),
 		"retrieveResponse": newConformanceQueryInvocation(t, scenario.Input, context, client.RetrieveResponse(), reference),
+		"deleteResponse":   newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteResponse(), reference, scenario.CallID),
 	}}
 }
 

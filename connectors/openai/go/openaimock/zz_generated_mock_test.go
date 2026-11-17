@@ -28,6 +28,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[openai.Response](`{"id":"resp_mocksummary001","model":"gpt-6-sol","status":"completed","outputText":"The connector shipped today.","usage":{"inputTokens":30,"outputTokens":7,"totalTokens":37}}`)
 			return err
 		}},
+		{name: "deleteResponse/responseDeleted/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[openai.DeletedResponse](`{"id":"resp_mocksummary001","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -43,5 +47,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.RetrieveResponse().Definition().Operation.OperationID != "retrieveResponse" {
 		t.Errorf("retrieveResponse mock has another definition")
+	}
+	if mock.DeleteResponse().Definition().Operation.OperationID != "deleteResponse" {
+		t.Errorf("deleteResponse mock has another definition")
 	}
 }

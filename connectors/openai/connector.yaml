@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: openai
   displayName: OpenAI
-  description: "OpenAI Responses API stored responses: create a model response with JSON Schema structured output, streamed text and progress, token usage, and explicit uncertainty, and retrieve it by ID for recovery. Text generation Steps use the llm connector."
+  description: "OpenAI Responses API stored responses: create, retrieve, and delete model responses with structured output, streamed text and progress, token usage, and explicit uncertainty. Text generation Steps use the llm connector."
   company: OpenAI
   categories: [ai]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: openai
   languages:
@@ -168,3 +168,30 @@ spec:
           branch: providerRejected
           description: OpenAI rejects the stored response lookup.
           failure: {kind: AUTHORIZATION, message: OpenAI rejected the response lookup.}
+    - name: deleteResponse
+      goName: DeleteResponse
+      inputType: DeleteResponseRequest
+      outputType: DeletedResponse
+      kind: mutation
+      description: Delete a stored model response by provider response ID.
+      idempotency: required
+      branches:
+        - {id: deleted, goName: Deleted, description: OpenAI deleted the stored response.}
+        - {id: notFound, goName: NotFound, description: The response no longer exists., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OpenAI rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OpenAI returned an invalid deletion receipt., optional: true}
+        - {id: defect, goName: Defect, description: The response ID or connection is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: responseDeleted
+          branch: deleted
+          description: A stored response was deleted.
+          default: true
+          output: {id: resp_mocksummary001, deleted: true}
+        - name: responseAlreadyAbsent
+          branch: notFound
+          description: The stored response is absent.
+          failure: {kind: NOT_FOUND, message: The stored response was not found.}

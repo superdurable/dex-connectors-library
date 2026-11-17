@@ -20,6 +20,7 @@ type Mock struct {
 	connection       openai.Connection
 	createResponse   *connectormock.Mutation[openai.CreateRequest, openai.Response]
 	retrieveResponse *connectormock.Query[openai.RetrieveRequest, openai.Response]
+	deleteResponse   *connectormock.Mutation[openai.DeleteResponseRequest, openai.DeletedResponse]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,9 +30,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock := &Mock{
 		createResponse:   connectormock.NewMutation[openai.CreateRequest, openai.Response](t, openai.CreateResponseDefinition, connectormock.WithRequestCheck[openai.CreateRequest, openai.Response](openai.ValidateCreateResponseRequest), connectormock.WithAnswerCheck[openai.CreateRequest, openai.Response](openai.CreateResponseBranchCompleted, openai.ValidateCreateResponseAnswer)),
 		retrieveResponse: connectormock.NewQuery[openai.RetrieveRequest, openai.Response](t, openai.RetrieveResponseDefinition),
+		deleteResponse:   connectormock.NewMutation[openai.DeleteResponseRequest, openai.DeletedResponse](t, openai.DeleteResponseDefinition),
 	}
 	mock.createResponse.Default(CreateResponseDefault())
 	mock.retrieveResponse.Default(RetrieveResponseDefault())
+	mock.deleteResponse.Default(DeleteResponseDefault())
 	connection, err := openai.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "openai", Name: connectionName})
 	if err != nil {
 		t.Fatalf("openai mock connection: %v", err)
@@ -53,6 +56,11 @@ func (mock *Mock) RetrieveResponse() *connectormock.Query[openai.RetrieveRequest
 	return mock.retrieveResponse
 }
 
+// DeleteResponse returns the deleteResponse script.
+func (mock *Mock) DeleteResponse() *connectormock.Mutation[openai.DeleteResponseRequest, openai.DeletedResponse] {
+	return mock.deleteResponse
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateResponse() sdkgo.Mutation[openai.CreateRequest, openai.Response] {
@@ -60,6 +68,9 @@ func (operations mockOperations) CreateResponse() sdkgo.Mutation[openai.CreateRe
 }
 func (operations mockOperations) RetrieveResponse() sdkgo.Query[openai.RetrieveRequest, openai.Response] {
 	return operations.mock.retrieveResponse
+}
+func (operations mockOperations) DeleteResponse() sdkgo.Mutation[openai.DeleteResponseRequest, openai.DeletedResponse] {
+	return operations.mock.deleteResponse
 }
 
 // CreateResponseCompleted selects the completed branch: OpenAI completed the response.
@@ -166,4 +177,51 @@ func RetrieveResponseRetrieveRejected() connectormock.Case[openai.Response] {
 // RetrieveResponseDefault is the manifest default, storedResponse, which New installs.
 func RetrieveResponseDefault() connectormock.Case[openai.Response] {
 	return RetrieveResponseStoredResponse()
+}
+
+// DeleteResponseDeleted selects the deleted branch: OpenAI deleted the stored response.
+func DeleteResponseDeleted(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteResponseBranchDeleted, value, failure)
+}
+
+// DeleteResponseNotFound selects the notFound branch: The response no longer exists.
+func DeleteResponseNotFound(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteResponseBranchNotFound, value, failure)
+}
+
+// DeleteResponseProviderRejected selects the providerRejected branch: OpenAI rejected deletion.
+func DeleteResponseProviderRejected(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteResponseBranchProviderRejected, value, failure)
+}
+
+// DeleteResponseInvalidResponse selects the invalidResponse branch: OpenAI returned an invalid deletion receipt.
+func DeleteResponseInvalidResponse(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteResponseBranchInvalidResponse, value, failure)
+}
+
+// DeleteResponseDefect selects the defect branch: The response ID or connection is invalid.
+func DeleteResponseDefect(value openai.DeletedResponse, failure *sdkgo.Failure) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Branch(openai.DeleteResponseBranchDefect, value, failure)
+}
+
+// DeleteResponseRetry asks Dex to retry the deleteResponse Step, after the delay when it is positive.
+func DeleteResponseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[openai.DeletedResponse] {
+	return connectormock.Retry[openai.DeletedResponse](failure, after)
+}
+
+// DeleteResponseResponseDeleted is the manifest mock responseDeleted: A stored response was deleted.
+func DeleteResponseResponseDeleted() connectormock.Case[openai.DeletedResponse] {
+	value := connectormock.MustDecodeOutput[openai.DeletedResponse](`{"id":"resp_mocksummary001","deleted":true}`)
+	return connectormock.Branch(openai.DeleteResponseBranchDeleted, value, nil)
+}
+
+// DeleteResponseResponseAlreadyAbsent is the manifest mock responseAlreadyAbsent: The stored response is absent.
+func DeleteResponseResponseAlreadyAbsent() connectormock.Case[openai.DeletedResponse] {
+	var value openai.DeletedResponse
+	return connectormock.Branch(openai.DeleteResponseBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "The stored response was not found."})
+}
+
+// DeleteResponseDefault is the manifest default, responseDeleted, which New installs.
+func DeleteResponseDefault() connectormock.Case[openai.DeletedResponse] {
+	return DeleteResponseResponseDeleted()
 }

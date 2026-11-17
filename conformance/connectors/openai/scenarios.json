@@ -2041,6 +2041,287 @@
       ],
       "name": "create-cancelled-then-resend",
       "operation": "createResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp_001\",\"object\":\"response.deleted\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "resp_001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "resp_001"
+      },
+      "name": "delete-deleted",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "resp_001"
+      },
+      "name": "delete-not-found",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "resp_001"
+      },
+      "name": "delete-rejected",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp_other\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "resp_001"
+      },
+      "name": "delete-invalid",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "bad/id"
+      },
+      "name": "delete-defect",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "resp_001"
+      },
+      "name": "delete-retry-429",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "resp_001"
+      },
+      "name": "delete-retry-5xx",
+      "operation": "deleteResponse"
+    },
+    {
+      "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
+      "input": {
+        "responseId": "resp_001"
+      },
+      "name": "delete-transport",
+      "operation": "deleteResponse"
     }
   ],
   "schemaVersion": 1

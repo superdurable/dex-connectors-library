@@ -48,6 +48,7 @@ type Connection struct {
 type Operations interface {
 	CreateResponse() sdkgo.Mutation[CreateRequest, Response]
 	RetrieveResponse() sdkgo.Query[RetrieveRequest, Response]
+	DeleteResponse() sdkgo.Mutation[DeleteResponseRequest, DeletedResponse]
 }
 
 type clientOperations struct{ client *Client }
@@ -57,6 +58,9 @@ func (operations clientOperations) CreateResponse() sdkgo.Mutation[CreateRequest
 }
 func (operations clientOperations) RetrieveResponse() sdkgo.Query[RetrieveRequest, Response] {
 	return operations.client.RetrieveResponse()
+}
+func (operations clientOperations) DeleteResponse() sdkgo.Mutation[DeleteResponseRequest, DeletedResponse] {
+	return operations.client.DeleteResponse()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -355,6 +359,85 @@ func NewRetrieveResponseStep[IN any](config RetrieveResponseStepConfig[IN]) sdkg
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(RetrieveResponseBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteResponseBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteResponseBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteResponseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteResponseBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteResponseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteResponseDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteResponse"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteResponseBranchDeleted, Description: "OpenAI deleted the stored response."},
+		{ID: DeleteResponseBranchNotFound, Description: "The response no longer exists.", Optional: true},
+		{ID: DeleteResponseBranchProviderRejected, Description: "OpenAI rejected deletion.", Optional: true},
+		{ID: DeleteResponseBranchInvalidResponse, Description: "OpenAI returned an invalid deletion receipt.", Optional: true},
+		{ID: DeleteResponseBranchDefect, Description: "The response ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteResponseResult = sdkgo.MutationResult[DeletedResponse]
+
+type DeleteResponseStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=openai"`
+	operationID                       struct{}                                              `connector:"operationId=deleteResponse"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                        `connector:"configurationUI"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteResponseRequest                        `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteResponseResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteResponseResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteResponseResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteResponseResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteResponseResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedResponse]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteResponseStep[IN any](config DeleteResponseStepConfig[IN]) sdkgo.MutationStep[IN, DeleteResponseRequest, DeletedResponse] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("openai connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteResponseRequest, DeletedResponse]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteResponse(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteResponseResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteResponseResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteResponseBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteResponseBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteResponseBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteResponseBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteResponseBranchDefect))
 			}
 			return branches
 		}(),
