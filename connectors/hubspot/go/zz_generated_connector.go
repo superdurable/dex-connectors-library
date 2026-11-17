@@ -58,6 +58,8 @@ type Operations interface {
 	GetObject() sdkgo.Query[GetObjectInput, CRMObject]
 	UpsertObject() sdkgo.Mutation[UpsertObjectInput, UpsertedObject]
 	UpdateObject() sdkgo.Mutation[UpdateObjectInput, CRMObject]
+	CreateObject() sdkgo.Mutation[CreateObjectInput, CRMObject]
+	DeleteObject() sdkgo.Mutation[DeleteObjectInput, DeletedObject]
 }
 
 type clientOperations struct{ client *Client }
@@ -73,6 +75,12 @@ func (operations clientOperations) UpsertObject() sdkgo.Mutation[UpsertObjectInp
 }
 func (operations clientOperations) UpdateObject() sdkgo.Mutation[UpdateObjectInput, CRMObject] {
 	return operations.client.UpdateObject()
+}
+func (operations clientOperations) CreateObject() sdkgo.Mutation[CreateObjectInput, CRMObject] {
+	return operations.client.CreateObject()
+}
+func (operations clientOperations) DeleteObject() sdkgo.Mutation[DeleteObjectInput, DeletedObject] {
+	return operations.client.DeleteObject()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -670,5 +678,151 @@ func NewUpdateObjectStep[IN any](config UpdateObjectStepConfig[IN]) sdkgo.Mutati
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 		MaxSends:            config.MaxSends,
+	})
+}
+
+const CreateObjectBranchCreated sdkgo.BranchID = "created"
+const CreateObjectBranchConflict sdkgo.BranchID = "conflict"
+const CreateObjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateObjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateObjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createObject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateObjectBranchCreated, Description: "HubSpot created the CRM record."},
+		{ID: CreateObjectBranchConflict, Description: "A unique property conflicts with an existing record.", Optional: true},
+		{ID: CreateObjectBranchProviderRejected, Description: "HubSpot conclusively rejected the create.", Optional: true},
+		{ID: CreateObjectBranchDefect, Description: "The local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateObjectResult = sdkgo.MutationResult[CRMObject]
+
+type CreateObjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                        `connector:"connectorId=hubspot"`
+	operationID                       struct{}                                        `connector:"operationId=createObject"`
+	StepType                          string                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                           `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                  `connector:"configurationUI"`
+	Connection                        Connection                                      `connector:"connection"`
+	ConnectionName                    string                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateObjectInput                      `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateObjectResult]                `connector:"branch=created"`
+	Conflict                          sdkgo.Target[CreateObjectResult]                `connector:"branch=conflict,optional"`
+	ProviderRejected                  sdkgo.Target[CreateObjectResult]                `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateObjectResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CRMObject]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateObjectStep[IN any](config CreateObjectStepConfig[IN]) sdkgo.MutationStep[IN, CreateObjectInput, CRMObject] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("hubspot connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateObjectInput, CRMObject]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreateObject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateObjectResult] {
+			branches := make([]sdkgo.BranchTarget[CreateObjectResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateObjectBranchCreated))
+			}
+			if config.Conflict.HasStep() {
+				branches = append(branches, config.Conflict.BranchTarget(CreateObjectBranchConflict))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateObjectBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateObjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const DeleteObjectBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteObjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteObjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteObjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteObject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteObjectBranchDeleted, Description: "The record is archived or was already absent."},
+		{ID: DeleteObjectBranchProviderRejected, Description: "HubSpot conclusively rejected the archive.", Optional: true},
+		{ID: DeleteObjectBranchDefect, Description: "The local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteObjectResult = sdkgo.MutationResult[DeletedObject]
+
+type DeleteObjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=hubspot"`
+	operationID                       struct{}                                            `connector:"operationId=deleteObject"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                      `connector:"configurationUI"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteObjectInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteObjectResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteObjectResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteObjectResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedObject]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteObjectStep[IN any](config DeleteObjectStepConfig[IN]) sdkgo.MutationStep[IN, DeleteObjectInput, DeletedObject] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("hubspot connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteObjectInput, DeletedObject]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteObject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteObjectResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteObjectResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteObjectBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteObjectBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteObjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }

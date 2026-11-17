@@ -1,7 +1,6 @@
 # HubSpot lead qualification example
 
-This operation-only example qualifies one inbound lead in HubSpot and uses all
-four HubSpot operations:
+The main Flow qualifies one inbound lead in HubSpot and uses four HubSpot operations:
 
 1. `UpsertHubSpotLeadContact` runs `upsertObject` on contacts with `email` as
    the unique ID property, sets the supplied name and company, and assigns the
@@ -13,6 +12,11 @@ four HubSpot operations:
    to the configured stage; and
 4. `ReadBackHubSpotDeal` runs `getObject` and completes only when HubSpot
    returns the configured stage.
+
+The same Worker also registers `HubSpotRecordLifecycle`. It accepts a
+`CreateObjectInput`, creates that contact, company, or deal, then archives the
+new record by its returned ID. Use this Flow only for a record you intend to
+archive. The checked-in real Dex mock test exercises both connector Steps.
 
 The Flow completes with `phase` `dealAdvanced`, or `noOpenDeal` when the contact
 has no open deal in the pipeline. A rejected contact upsert fails the Flow
@@ -45,7 +49,7 @@ change.
 
 ## Release baseline
 
-- HubSpot Connector `v0.25.0`
+- HubSpot Connector `v0.26.0`
 - dexcli `cli-v1.1.0` or a later stable release
 
 ## 1. Prepare a clean local test project
@@ -60,12 +64,12 @@ cd hubspot-lead-qualification-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/hubspot/go/v0.25.0/connectors/hubspot/go/examples/lead-qualification/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/hubspot/go/v0.26.0/connectors/hubspot/go/examples/lead-qualification/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/hubspot-lead-qualification-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/hubspot/go@v0.25.0
+go get github.com/superdurable/dex-connectors-library/connectors/hubspot/go@v0.26.0
 go mod tidy
 ```
 
@@ -138,7 +142,7 @@ connection.
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/hubspot/go/examples/lead-qualification@v0.25.0
+  github.com/superdurable/dex-connectors-library/connectors/hubspot/go/examples/lead-qualification@v0.26.0
 ```
 
 Set
@@ -189,8 +193,8 @@ expired OAuth connection that refreshes before the first call, and retried
 writes. When HubSpot accepts an upsert or update but its answer is lost,
 Dex retries it; the test proves one contact and the configured stage remain.
 
-Before `v0.25.0` is published, build a local release artifact with
+Before `v0.26.0` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override hubspot=DIRECTORY`.
-The test project must still resolve `connectors/hubspot/go@v0.25.0` without a
+The test project must still resolve `connectors/hubspot/go@v0.26.0` without a
 `replace`, as the compatibility gate does with a local module proxy.
