@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { newFence, CheckpointError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
 import { isIP } from 'node:net';
 import type { CalendlyClient, CalendlyCredentialResult, CalendlyExchange } from './client.js';
@@ -9,6 +9,8 @@ import { failure } from './client.js';
 import { ListScheduledEventsDefinition, GetScheduledEventDefinition, ListEventInviteesDefinition, CancelScheduledEventDefinition, CreateSchedulingLinkDefinition, CreateWebhookSubscriptionDefinition } from './generated/definitions.js';
 import type { ListScheduledEventsInput, ScheduledEventPage, GetScheduledEventInput, ScheduledEvent, ListEventInviteesInput, EventInviteePage, Invitee, Cancellation, CancelScheduledEventInput, ScheduledEventCancellation, CreateSchedulingLinkInput, SchedulingLink, CreateWebhookSubscriptionInput, WebhookSubscription, Credentials } from './generated/models.js';
 
+/** Statuses that prove Calendly refused a write; any other failure leaves its outcome unknown. */
+const DefiniteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 const base = 'https://api.calendly.com';
 const resourceId = /^[A-Za-z0-9_-]{1,64}$/;
 const pageTokenPattern = /^[A-Za-z0-9_\-.~=+/]{1,512}$/;
@@ -333,16 +335,19 @@ export class CancelScheduledEventOperation implements Mutation<CancelScheduledEv
     const credentialAttempt = credentialMutation('cancelScheduledEvent', resolved, output); if (credentialAttempt) return credentialAttempt;
     const credentials = (resolved as { credentials: Credentials }).credentials;
     const exchange = await this.client.exchange(call, credentials, 'POST', `/scheduled_events/${id}/cancellation`, undefined, input.reason ? { reason: input.reason } : {});
+    if (exchange.kind === 'tooLarge') return newMutationRetry(failure('cancelScheduledEvent', 'RESPONSE_TOO_LARGE', "Calendly's cancellation answer exceeds maxResponseBytes; the retry reads the event back"));
     const errorAttempt = classifyCancellationError(this.client, call, exchange, output); if (errorAttempt) return errorAttempt;
     const response = (exchange as Extract<CalendlyExchange, { kind: 'response' }>).response;
     if (response.status === 200 || response.status === 201) {
       try { output.cancellation = decodeCancellation(responseResource(exchange)); return newMutationBranch('canceled', output, this.client.receipt(call, input.scheduledEventUri)); }
-      catch { return newMutationBranch('invalidResponse', output, this.client.receipt(call, input.scheduledEventUri), failure('cancelScheduledEvent', 'PROTOCOL', 'Calendly returned a malformed response')); }
+      // The cancellation may have applied; the retry's 403 reads the canceled event back.
+      catch { return newMutationRetry(failure('cancelScheduledEvent', 'PROTOCOL', "Calendly's cancellation answer is malformed; the retry reads the event back")); }
     }
     if (response.status === 403) return this.readBackRefusedCancellation(call, credentials, id, output, exchange);
     if (response.status === 404) return newMutationBranch('notFound', output, this.client.receipt(call, input.scheduledEventUri), failure('cancelScheduledEvent', 'NOT_FOUND', 'the Calendly scheduled event was not found'));
     const outcome = this.client.failure('cancelScheduledEvent', response);
-    return outcome.isRetry ? newMutationRetry(outcome.failure, outcome.retryAfterMs) : newMutationBranch('providerRejected', output, this.client.receipt(call, input.scheduledEventUri), outcome.failure);
+    // A status that does not prove a refusal, such as 409 or 408, leaves the cancellation unknown.
+    return outcome.isRetry || !DefiniteRefusalStatuses.has(response.status) ? newMutationRetry(outcome.failure, outcome.retryAfterMs) : newMutationBranch('providerRejected', output, this.client.receipt(call, input.scheduledEventUri), outcome.failure);
   }
 
   private async readBackRefusedCancellation(call: Call, credentials: Credentials, id: string, output: ScheduledEventCancellation, refusal: CalendlyExchange): Promise<MutationAttempt<ScheduledEventCancellation>> {
@@ -375,18 +380,35 @@ export class CreateSchedulingLinkOperation implements Mutation<CreateSchedulingL
   /** Bind the Calendly client. */ constructor(private readonly client: CalendlyClient) {}
   /** Return the manifest definition. */ definition() { return CreateSchedulingLinkDefinition; }
   /** Correlate the unsafe write with the Dex Call ID. */ idempotencyKey(callId: string) { return callId; }
-  /** Dispatch once and classify an unconfirmable write as uncertain. */
+  /** Dispatch below the send cap and classify an unconfirmable write at the cap as uncertain. */
   async invoke(call: Call, input: CreateSchedulingLinkInput): Promise<MutationAttempt<SchedulingLink>> {
     const output = zeroLink(input.eventTypeUri);
+    const operationMaxSends = definitionMaxSends(CreateSchedulingLinkDefinition);
     let fence;
-    try { fence = newFence(call, CreateSchedulingLinkDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { writeWindowFraction: 5 / 6 }); }
+    try { fence = newFence(call, CreateSchedulingLinkDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { writeWindowFraction: 5 / 6, maxSends: operationMaxSends }); }
     catch (error) { return newMutationBranch('defect', output, {}, failure('createSchedulingLink', 'LOCAL_DEFECT', (error as Error).message)); }
     const decision = fence.decide();
-    if (decision.kind === 'failClosed') return newMutationUncertain(output, failure('createSchedulingLink', 'PROTOCOL', 'the scheduling link dispatch checkpoint cannot be trusted'), this.client.receipt(call));
-    if (decision.kind === 'readBackRequired') return newMutationUncertain(output, failure('createSchedulingLink', decision.marker?.callId === call.id ? 'TRANSPORT' : 'PROTOCOL', decision.marker?.callId === call.id ? 'a prior scheduling link request may have been accepted, and Calendly offers no link read-back' : 'no confirmable prior scheduling link checkpoint exists'), this.client.receipt(call));
+    if (decision.kind === 'failClosed') return newMutationRetry(failure('createSchedulingLink', 'AVAILABILITY', 'the scheduling link dispatch checkpoint could not be read; nothing was sent'));
+    const savedBookingUrl = decision.marker?.callId === call.id ? decision.marker.providerId : undefined;
+    if (decision.kind !== 'sendAllowed' && savedBookingUrl) {
+      // Calendly returned this booking URL for an accepted earlier send, so it is never resent.
+      if (isUsableBookingUrl(savedBookingUrl)) return newMutationBranch('created', { bookingUrl: savedBookingUrl, eventTypeUri: input.eventTypeUri }, this.client.receipt(call, savedBookingUrl));
+      return newMutationUncertain(output, failure('createSchedulingLink', 'PROTOCOL', 'the saved scheduling link checkpoint is invalid'), this.client.receipt(call));
+    }
+    if (decision.kind === 'readBackRequired') return newMutationUncertain(output, failure('createSchedulingLink', 'TRANSPORT', 'earlier scheduling link requests up to the send cap may have been accepted, and Calendly offers no link read-back'), this.client.receipt(call));
+    const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
+    const canResendUnknownOutcome = priorSendUpperBound + 1 < (operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1);
+    const hasPossibleEarlierSend = priorSendUpperBound > 0;
+    const resendOrSelectUncertain = (unknownFailure: Failure, retryAfterMs?: number): MutationAttempt<SchedulingLink> =>
+      canResendUnknownOutcome ? newMutationRetry(unknownFailure, retryAfterMs) : newMutationUncertain(output, unknownFailure, this.client.receipt(call));
     try { parseResourceURI(input.eventTypeUri, 'event_types', 'event type'); }
     catch (error) { return newMutationBranch('defect', output, {}, failure('createSchedulingLink', 'VALIDATION', (error as Error).message)); }
     const resolved = await this.client.resolveCredentials(call);
+    if (resolved.kind !== 'resolved' && decision.kind === 'readBackThenResendAllowed') {
+      // notSent would hide the earlier possible send, so nothing is recorded.
+      if (resolved.kind === 'transient') return newMutationRetry(failure('createSchedulingLink', 'AVAILABILITY', resolved.message));
+      return newMutationUncertain(output, failure('createSchedulingLink', 'AUTHENTICATION', 'an earlier scheduling link request may have been accepted, and the connection credentials are unavailable to resend it; reconnect the connection'), this.client.receipt(call));
+    }
     if (resolved.kind !== 'resolved') {
       try { await fence.recordNotSent(); }
       catch { return newMutationRetry(failure('createSchedulingLink', 'AVAILABILITY', 'Calendly credentials and a safe retry checkpoint are unavailable')); }
@@ -396,16 +418,20 @@ export class CreateSchedulingLinkOperation implements Mutation<CreateSchedulingL
     try { exchange = await fence.dispatch(signal => this.client.exchange(call, resolved.credentials, 'POST', '/scheduling_links', undefined, { max_event_count: 1, owner: input.eventTypeUri, owner_type: 'EventType' }, signal, false)); }
     catch (error) {
       if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(failure('createSchedulingLink', 'AVAILABILITY', 'the scheduling link request was not sent before its safe deadline'));
-      return newMutationUncertain(output, failure('createSchedulingLink', 'TRANSPORT', "Calendly's scheduling link answer was lost after the request may have been sent"), this.client.receipt(call));
+      return resendOrSelectUncertain(failure('createSchedulingLink', 'TRANSPORT', "Calendly's scheduling link answer was lost after the request may have been sent"));
     }
     if (exchange.kind === 'notSent') {
       try { await fence.recordCanResend(); }
       catch { return newMutationRetry(failure('createSchedulingLink', 'AVAILABILITY', 'Calendly could not be reached and the retry checkpoint failed')); }
       return newMutationRetry(failure('createSchedulingLink', 'AVAILABILITY', 'Calendly could not be reached before a connection was obtained'));
     }
-    if (exchange.kind === 'transport') return newMutationUncertain(output, failure('createSchedulingLink', 'TRANSPORT', "Calendly's scheduling link answer was lost after the request may have been sent"), this.client.receipt(call));
+    if (exchange.kind === 'transport') return resendOrSelectUncertain(failure('createSchedulingLink', 'TRANSPORT', "Calendly's scheduling link answer was lost after the request may have been sent"));
+    // The client reports tooLarge only for a 2xx, which accepted the link.
     if (exchange.kind === 'tooLarge') return newMutationUncertain(output, failure('createSchedulingLink', 'RESPONSE_TOO_LARGE', "Calendly's scheduling link response exceeds maxResponseBytes"), this.client.receipt(call));
-    if (exchange.kind === 'defect') return newMutationBranch('defect', output, {}, failure('createSchedulingLink', 'LOCAL_DEFECT', 'Calendly request could not be built'));
+    if (exchange.kind === 'defect') {
+      const defectFailure = failure('createSchedulingLink', 'LOCAL_DEFECT', 'Calendly request could not be built');
+      return hasPossibleEarlierSend ? resendOrSelectUncertain(defectFailure) : newMutationBranch('defect', output, {}, defectFailure);
+    }
     const response = (exchange as Extract<CalendlyExchange, { kind: 'response' }>).response;
     if (response.status >= 200 && response.status < 300) {
       try {
@@ -423,10 +449,24 @@ export class CreateSchedulingLinkOperation implements Mutation<CreateSchedulingL
       catch { return newMutationRetry(failure('createSchedulingLink', 'AVAILABILITY', 'Calendly declined the request but the retry checkpoint failed')); }
       return newMutationRetry(outcome.failure, outcome.retryAfterMs);
     }
-    if (response.status === 409) return newMutationUncertain(output, failure('createSchedulingLink', 'CONFLICT', 'Calendly reported a link conflict without a way to identify the existing link'), this.client.receipt(call));
-    if (response.status >= 500) return newMutationUncertain(output, failure('createSchedulingLink', 'AVAILABILITY', "Calendly's response does not prove whether a scheduling link was created"), this.client.receipt(call));
-    return newMutationBranch('providerRejected', output, this.client.receipt(call), outcome.failure);
+    if (DefiniteRefusalStatuses.has(response.status)) {
+      // An earlier send may have created a link, so a refusal of this resend proves nothing.
+      if (hasPossibleEarlierSend) return newMutationUncertain(output, outcome.failure, this.client.receipt(call));
+      try { await fence.recordCanResend(); }
+      catch { return newMutationRetry(failure('createSchedulingLink', 'AVAILABILITY', 'Calendly refused the request but the refusal checkpoint failed')); }
+      return newMutationBranch('providerRejected', output, this.client.receipt(call), outcome.failure);
+    }
+    // A 5xx, 409, 408, or other status does not prove whether a link was created.
+    return resendOrSelectUncertain(outcome.failure, outcome.retryAfterMs);
   }
+}
+
+/** Require an absolute HTTPS booking URL without user information. */
+function isUsableBookingUrl(bookingUrl: string): boolean {
+  try {
+    const parsed = new URL(bookingUrl);
+    return parsed.protocol === 'https:' && Boolean(parsed.hostname) && !parsed.username && !parsed.password;
+  } catch { return false; }
 }
 
 interface WebhookRequest { callbackURL: string; scope: string; events: string[]; userURI: string; organizationURI: string; }
@@ -454,6 +494,13 @@ function decodeSubscription(value: unknown): WebhookSubscription {
   const events = arrayField(record, 'events').map(value => { if (typeof value !== 'string') throw new TypeError('invalid event'); return value; });
   return { uri, callbackUrl, state, events, scope, organizationUri: stringField(record, 'organization'),
     ...(stringField(record, 'user') ? { userUri: stringField(record, 'user') } : {}), ...(optionalTimestamp(record, 'created_at') ? { createdAt: optionalTimestamp(record, 'created_at') } : {}), wasCreated: false };
+}
+
+/** Report an oversized or malformed POST answer, or a 3xx or 4xx other than 429 or a definite refusal. */
+function isUnknownWebhookCreateOutcome(exchange: CalendlyExchange): boolean {
+  if (exchange.kind !== 'response') return exchange.kind === 'tooLarge' || exchange.kind === 'malformed';
+  const status = exchange.response.status;
+  return (status < 200 || status >= 300) && status !== 429 && status < 500 && !DefiniteRefusalStatuses.has(status);
 }
 
 /** Register or reuse one Calendly webhook subscription. */
@@ -487,12 +534,14 @@ export class CreateWebhookSubscriptionOperation implements Mutation<CreateWebhoo
       const retryList = await this.reuseListedSubscription(call, credentials, request); if (retryList) return retryList;
       return newMutationBranch('conflictingSubscription', zeroSubscription(), this.client.receipt(call), failure('createWebhookSubscription', 'CONFLICT', 'Calendly already has a subscription for this callback URL in another scope or for another user; delete it or use another URL'));
     }
+    // The POST may have created the subscription; the retry's list reuses it.
+    if (isUnknownWebhookCreateOutcome(exchange)) return newMutationRetry(failure('createWebhookSubscription', 'AVAILABILITY', "Calendly's answer does not show whether the subscription was created; the retry lists subscriptions before creating one"));
     const attempted = this.failedExchange(call, exchange); if (attempted) return attempted;
     try {
       const subscription = decodeSubscription(responseResource(exchange));
       if (subscription.callbackUrl !== request.callbackURL) throw new TypeError('wrong callback');
       return newMutationBranch('subscribed', { ...subscription, wasCreated: true }, this.client.receipt(call, subscription.uri));
-    } catch { return newMutationBranch('invalidResponse', zeroSubscription(), this.client.receipt(call), failure('createWebhookSubscription', 'PROTOCOL', 'Calendly returned a malformed response')); }
+    } catch { return newMutationRetry(failure('createWebhookSubscription', 'PROTOCOL', "Calendly's subscription answer is malformed; the retry lists subscriptions before creating one")); }
   }
 
   private async reuseListedSubscription(call: Call, credentials: Credentials, request: WebhookRequest): Promise<MutationAttempt<WebhookSubscription> | undefined> {

@@ -109,7 +109,7 @@ export interface CancelScheduledEventStepConfig<StepInput, OperationInput = Canc
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Calendly refused to cancel an active event, such as one that already started or one the token may not cancel. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Calendly returned a malformed or oversized response. */
+  /** Calendly returned a malformed or oversized scheduled event when the connector read it back after a 403. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -136,9 +136,9 @@ export interface CreateSchedulingLinkStepConfig<StepInput, OperationInput = Crea
   connectionName: string;
   /** Calendly created the single-use scheduling link. */
   created: StepTarget<MutationResult<OperationOutput>>;
-  /** Calendly conclusively rejected the request, such as an event type the token cannot use. */
+  /** Calendly conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an event type the token cannot use. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but Calendly's answer was lost, a server error, or unreadable, so a link may exist that this Result does not name. */
+  /** Sends up to the send cap had a lost, server-error, conflicting, or unreadable answer, or Calendly accepted the link without a usable URL, so a link may exist that this Result does not name. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -168,7 +168,7 @@ export interface CreateWebhookSubscriptionStepConfig<StepInput, OperationInput =
   conflictingSubscription?: StepTarget<MutationResult<OperationOutput>>;
   /** Calendly conclusively rejected the request, such as a plan without webhooks or a token that is not an organization admin. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Calendly returned a malformed or oversized response. */
+  /** Calendly returned a malformed or oversized user or subscription list before the connector created anything. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

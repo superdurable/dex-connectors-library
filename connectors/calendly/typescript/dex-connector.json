@@ -1,10 +1,10 @@
 {
   "connectorId": "calendly",
-  "releaseTag": "connectors/calendly/go/v0.24.0",
+  "releaseTag": "connectors/calendly/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-calendly",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -278,7 +278,7 @@
       "kind": "mutation",
       "operationId": "createSchedulingLink",
       "inputType": "CreateSchedulingLinkInput",
-      "description": "Create one single-use scheduling link for an event type. Calendly has no idempotency key or link lookup. A single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoints; an unconfirmed accepted write selects uncertain.",
+      "description": "Create one single-use scheduling link for an event type. Calendly has no idempotency key or link lookup. A single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoints; an unknown outcome is resent while possible sends stay below the send cap, and an unconfirmed accepted write selects uncertain.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

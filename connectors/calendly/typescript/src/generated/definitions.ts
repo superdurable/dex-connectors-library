@@ -118,7 +118,7 @@ export const CancelScheduledEventBranchCanceled = CancelScheduledEventBranch.Can
 export const CancelScheduledEventBranchNotFound = CancelScheduledEventBranch.NotFound;
 /** Calendly refused to cancel an active event, such as one that already started or one the token may not cancel. */
 export const CancelScheduledEventBranchProviderRejected = CancelScheduledEventBranch.ProviderRejected;
-/** Calendly returned a malformed or oversized response. */
+/** Calendly returned a malformed or oversized scheduled event when the connector read it back after a 403. */
 export const CancelScheduledEventBranchInvalidResponse = CancelScheduledEventBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CancelScheduledEventBranchDefect = CancelScheduledEventBranch.Defect;
@@ -129,12 +129,11 @@ export const CancelScheduledEventDefinition: MutationDefinition = {
     { id: "canceled", description: "The scheduled event is canceled, by this call or earlier; alreadyCanceled tells which." },
     { id: "notFound", description: "The scheduled event does not exist or is not visible to the token.", optional: true },
     { id: "providerRejected", description: "Calendly refused to cancel an active event, such as one that already started or one the token may not cancel.", optional: true },
-    { id: "invalidResponse", description: "Calendly returned a malformed or oversized response.", optional: true },
+    { id: "invalidResponse", description: "Calendly returned a malformed or oversized scheduled event when the connector read it back after a 403.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for cancelScheduledEvent. */
 export const CancelScheduledEventMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -148,9 +147,9 @@ export const CreateSchedulingLinkBranch = {
 } as const;
 /** Calendly created the single-use scheduling link. */
 export const CreateSchedulingLinkBranchCreated = CreateSchedulingLinkBranch.Created;
-/** Calendly conclusively rejected the request, such as an event type the token cannot use. */
+/** Calendly conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an event type the token cannot use. */
 export const CreateSchedulingLinkBranchProviderRejected = CreateSchedulingLinkBranch.ProviderRejected;
-/** The request was sent but Calendly's answer was lost, a server error, or unreadable, so a link may exist that this Result does not name. */
+/** Sends up to the send cap had a lost, server-error, conflicting, or unreadable answer, or Calendly accepted the link without a usable URL, so a link may exist that this Result does not name. */
 export const CreateSchedulingLinkBranchUncertain = CreateSchedulingLinkBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateSchedulingLinkBranchDefect = CreateSchedulingLinkBranch.Defect;
@@ -159,8 +158,8 @@ export const CreateSchedulingLinkDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "createSchedulingLink" },
   branches: [
     { id: "created", description: "Calendly created the single-use scheduling link." },
-    { id: "providerRejected", description: "Calendly conclusively rejected the request, such as an event type the token cannot use.", optional: true },
-    { id: "uncertain", description: "The request was sent but Calendly's answer was lost, a server error, or unreadable, so a link may exist that this Result does not name.", optional: true },
+    { id: "providerRejected", description: "Calendly conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an event type the token cannot use.", optional: true },
+    { id: "uncertain", description: "Sends up to the send cap had a lost, server-error, conflicting, or unreadable answer, or Calendly accepted the link without a usable URL, so a link may exist that this Result does not name.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 300000 } },
@@ -184,7 +183,7 @@ export const CreateWebhookSubscriptionBranchSubscribed = CreateWebhookSubscripti
 export const CreateWebhookSubscriptionBranchConflictingSubscription = CreateWebhookSubscriptionBranch.ConflictingSubscription;
 /** Calendly conclusively rejected the request, such as a plan without webhooks or a token that is not an organization admin. */
 export const CreateWebhookSubscriptionBranchProviderRejected = CreateWebhookSubscriptionBranch.ProviderRejected;
-/** Calendly returned a malformed or oversized response. */
+/** Calendly returned a malformed or oversized user or subscription list before the connector created anything. */
 export const CreateWebhookSubscriptionBranchInvalidResponse = CreateWebhookSubscriptionBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateWebhookSubscriptionBranchDefect = CreateWebhookSubscriptionBranch.Defect;
@@ -195,12 +194,11 @@ export const CreateWebhookSubscriptionDefinition: MutationDefinition = {
     { id: "subscribed", description: "An active subscription with this callback URL covers the requested events; wasCreated tells whether this attempt created it." },
     { id: "conflictingSubscription", description: "A subscription with this callback URL already exists but is disabled, lacks a requested event, or belongs to another scope or user; delete it in Calendly and run again.", optional: true },
     { id: "providerRejected", description: "Calendly conclusively rejected the request, such as a plan without webhooks or a token that is not an organization admin.", optional: true },
-    { id: "invalidResponse", description: "Calendly returned a malformed or oversized response.", optional: true },
+    { id: "invalidResponse", description: "Calendly returned a malformed or oversized user or subscription list before the connector created anything.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 300000 } },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for createWebhookSubscription. */
 export const CreateWebhookSubscriptionMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

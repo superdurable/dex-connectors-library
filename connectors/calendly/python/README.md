@@ -3,12 +3,12 @@
 Calendly scheduled events, invitees, cancellation, scheduling links, webhook subscriptions, and signed invitee webhooks for Dex Flows.
 
 ```bash
-pip install dex-connector-calendly==0.2.0
+pip install dex-connector-calendly==0.2.1
 ```
 
 The package implements six operations: `listScheduledEvents`, `getScheduledEvent`, `listEventInvitees`, `cancelScheduledEvent`, `createSchedulingLink`, and `createWebhookSubscription`. OAuth and personal access token decoding, refresh, and project connection wiring are manifest-generated. From 0.2.0 it also implements the `inviteeEventReceived` Trigger at parity with Go, and it requires `dex-connectors-sdk` 0.12.0 or newer.
 
-See [the scheduled event example](examples/scheduled_event/README.md) for the static `calendly-scheduling` connection and Worker entrypoint. The connector source defines every operation's request and result type; the generated Step factories expose the stable branches. The `createSchedulingLink` Mutation uses Dex's single-dispatch fence and returns `uncertain` when a possibly accepted write cannot be confirmed.
+See [the scheduled event example](examples/scheduled_event/README.md) for the static `calendly-scheduling` connection and Worker entrypoint. The connector source defines every operation's request and result type; the generated Step factories expose the stable branches. The `createSchedulingLink` Mutation uses Dex's single-dispatch fence, resends an unknown outcome while possible sends stay below the Step's send cap, and returns `uncertain` at the cap. Version 0.2.1 adds that bounded resend, returns Retry for an unreadable dispatch checkpoint, and retries `cancelScheduledEvent` and `createWebhookSubscription` outcomes that Calendly did not definitely refuse.
 
 ## inviteeEventReceived Trigger
 

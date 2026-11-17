@@ -404,6 +404,18 @@ func (client *Client) classifyCalendlyFailure(operationID string, response calen
 	}
 }
 
+// isDefiniteRefusalStatus reports a status that proves Calendly refused a write; any other
+// failure status leaves the write's outcome unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
 // isCalendlyInsufficientScope matches the documented InsufficientScopeError title exactly.
 func isCalendlyInsufficientScope(body []byte) bool {
 	var decoded calendlyErrorBody

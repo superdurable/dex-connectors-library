@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 from dex_connectors.sdk import (
     Call,
     CallID,
+    Failure,
     FailureKind,
     IdempotencyKey,
     MutationAttempt,
@@ -58,6 +59,9 @@ from .models import (
     SchedulingLink,
     WebhookSubscription,
 )
+
+DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+"""Statuses that prove Calendly refused a write; any other failure leaves its outcome unknown."""
 
 _RESOURCE_ID = re.compile(r"[A-Za-z0-9_-]{1,64}\Z")
 _PAGE_TOKEN = re.compile(r"[A-Za-z0-9_\-.~=+/]{1,512}\Z")
@@ -650,6 +654,14 @@ class CancelScheduledEventOperation:
             f"/scheduled_events/{event_id}/cancellation",
             payload={"reason": input.reason} if input.reason else {},
         )
+        if exchange.error == "tooLarge":
+            return MutationAttempt.retry(
+                failure(
+                    operation,
+                    FailureKind.RESPONSE_TOO_LARGE,
+                    "Calendly's cancellation answer exceeds maxResponseBytes; the retry reads the event back",
+                )
+            )
         attempted = self._exchange_error(call, exchange, output)
         if attempted is not None:
             return attempted
@@ -662,11 +674,13 @@ class CancelScheduledEventOperation:
                     self.client.receipt(call, input.scheduled_event_uri),
                 )
             except (ValueError, TypeError, KeyError, OverflowError):
-                return MutationAttempt.branch_result(
-                    "invalidResponse",
-                    output,
-                    self.client.receipt(call, input.scheduled_event_uri),
-                    failure(operation, FailureKind.PROTOCOL, "Calendly returned a malformed response"),
+                # The cancellation may have applied; the retry's 403 reads the canceled event back.
+                return MutationAttempt.retry(
+                    failure(
+                        operation,
+                        FailureKind.PROTOCOL,
+                        "Calendly's cancellation answer is malformed; the retry reads the event back",
+                    )
                 )
         if exchange.status == 403:
             return await self._read_back(call, credentials, event_id, output, exchange)
@@ -678,9 +692,10 @@ class CancelScheduledEventOperation:
                 failure(operation, FailureKind.NOT_FOUND, "the Calendly scheduled event was not found"),
             )
         problem, delay, is_retry = self.client.classify(operation, exchange)
+        # A status that does not prove a refusal, such as 409 or 408, leaves the cancellation unknown.
         return (
             MutationAttempt.retry(problem, delay)
-            if is_retry
+            if is_retry or exchange.status not in DEFINITE_REFUSAL_STATUSES
             else MutationAttempt.branch_result(
                 "providerRejected", output, self.client.receipt(call, input.scheduled_event_uri), problem
             )
@@ -800,36 +815,53 @@ class CreateSchedulingLinkOperation:
         operation = "createSchedulingLink"
         output = SchedulingLink(event_type_uri=input.event_type_uri)
         try:
-            fence = Fence(call, timedelta(seconds=30), write_window_fraction=5 / 6)
+            fence = Fence(call, timedelta(seconds=30), write_window_fraction=5 / 6, max_sends=call.max_sends)
         except ValueError as error:
             return MutationAttempt.branch_result(
                 "defect", output, Receipt(), failure(operation, FailureKind.LOCAL_DEFECT, str(error))
             )
         decision = await fence.decide()
         if decision.kind == DecisionKind.FAIL_CLOSED:
+            return MutationAttempt.retry(
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "the scheduling link dispatch checkpoint could not be read; nothing was sent",
+                )
+            )
+        marker = decision.marker
+        if (
+            decision.kind != DecisionKind.SEND_ALLOWED
+            and marker is not None
+            and marker.call_id == call.id
+            and marker.provider_id
+        ):
+            # Calendly returned this booking URL for an accepted earlier send, so it is never resent.
+            if _is_usable_booking_url(marker.provider_id):
+                link = SchedulingLink(marker.provider_id, input.event_type_uri)
+                return MutationAttempt.branch_result(
+                    "created", link, self.client.receipt(call, marker.provider_id)
+                )
+            return MutationAttempt.uncertain(
+                output,
+                failure(operation, FailureKind.PROTOCOL, "the saved scheduling link checkpoint is invalid"),
+                self.client.receipt(call),
+            )
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
             return MutationAttempt.uncertain(
                 output,
                 failure(
                     operation,
-                    FailureKind.PROTOCOL,
-                    "the scheduling link dispatch checkpoint cannot be trusted",
+                    FailureKind.TRANSPORT,
+                    (
+                        "earlier scheduling link requests up to the send cap may have been accepted, "
+                        "and Calendly offers no link read-back"
+                    ),
                 ),
                 self.client.receipt(call),
             )
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
-            is_same_call = decision.marker is not None and decision.marker.call_id == call.id
-            decision_kind = FailureKind.TRANSPORT if is_same_call else FailureKind.PROTOCOL
-            message = (
-                (
-                    "a prior scheduling link request may have been accepted, "
-                    "and Calendly offers no link read-back"
-                )
-                if is_same_call
-                else "no confirmable prior scheduling link checkpoint exists"
-            )
-            return MutationAttempt.uncertain(
-                output, failure(operation, decision_kind, message), self.client.receipt(call)
-            )
+        can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
         try:
             _resource_id(input.event_type_uri, "event_types", "event type")
         except ValueError as error:
@@ -837,6 +869,22 @@ class CreateSchedulingLinkOperation:
                 "defect", output, Receipt(), failure(operation, FailureKind.VALIDATION, str(error))
             )
         credentials, kind, message = await self.client.resolve_credentials(call)
+        if kind is not None and decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED:
+            # notSent would hide the earlier possible send, so nothing is recorded.
+            if kind == FailureKind.AVAILABILITY:
+                return MutationAttempt.retry(failure(operation, kind, message))
+            return MutationAttempt.uncertain(
+                output,
+                failure(
+                    operation,
+                    FailureKind.AUTHENTICATION,
+                    (
+                        "an earlier scheduling link request may have been accepted, and the connection "
+                        "credentials are unavailable to resend it; reconnect the connection"
+                    ),
+                ),
+                self.client.receipt(call),
+            )
         if kind is not None:
             try:
                 await fence.record_not_sent()
@@ -872,14 +920,15 @@ class CreateSchedulingLinkOperation:
                 )
             )
         except Exception:
-            return MutationAttempt.uncertain(
+            return self._resend_or_select_uncertain(
+                call,
+                can_resend_unknown_outcome,
                 output,
                 failure(
                     operation,
                     FailureKind.TRANSPORT,
                     "Calendly's scheduling link answer was lost after the request may have been sent",
                 ),
-                self.client.receipt(call),
             )
         if exchange.error == "notSent":
             try:
@@ -899,17 +948,30 @@ class CreateSchedulingLinkOperation:
                     "Calendly could not be reached before a connection was obtained",
                 )
             )
-        if exchange.error == "transport":
+        if exchange.error == "transport" and 200 <= exchange.status < 300:
+            # Calendly accepted this POST, so a resend would create another link.
             return MutationAttempt.uncertain(
+                output,
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "Calendly accepted a scheduling link but its answer cannot be read",
+                ),
+                self.client.receipt(call),
+            )
+        if exchange.error == "transport":
+            return self._resend_or_select_uncertain(
+                call,
+                can_resend_unknown_outcome,
                 output,
                 failure(
                     operation,
                     FailureKind.TRANSPORT,
                     "Calendly's scheduling link answer was lost after the request may have been sent",
                 ),
-                self.client.receipt(call),
             )
         if exchange.error == "tooLarge":
+            # The client reports tooLarge only for a 2xx, which accepted the link.
             return MutationAttempt.uncertain(
                 output,
                 failure(
@@ -920,6 +982,13 @@ class CreateSchedulingLinkOperation:
                 self.client.receipt(call),
             )
         if exchange.error == "defect":
+            if has_possible_earlier_send:
+                return self._resend_or_select_uncertain(
+                    call,
+                    can_resend_unknown_outcome,
+                    output,
+                    failure(operation, FailureKind.LOCAL_DEFECT, "Calendly request could not be built"),
+                )
             return MutationAttempt.branch_result(
                 "defect",
                 output,
@@ -968,27 +1037,62 @@ class CreateSchedulingLinkOperation:
                     )
                 )
             return MutationAttempt.retry(problem, delay)
-        if exchange.status == 409:
-            return MutationAttempt.uncertain(
-                output,
-                failure(
-                    operation,
-                    FailureKind.CONFLICT,
-                    "Calendly reported a link conflict without a way to identify the existing link",
-                ),
-                self.client.receipt(call),
+        if exchange.status in DEFINITE_REFUSAL_STATUSES:
+            # An earlier send may have created a link, so a refusal of this resend proves nothing.
+            if has_possible_earlier_send:
+                return MutationAttempt.uncertain(output, problem, self.client.receipt(call))
+            try:
+                await fence.record_can_resend()
+            except Exception:
+                return MutationAttempt.retry(
+                    failure(
+                        operation,
+                        FailureKind.AVAILABILITY,
+                        "Calendly refused the request but the refusal checkpoint failed",
+                    )
+                )
+            return MutationAttempt.branch_result(
+                "providerRejected", output, self.client.receipt(call), problem
             )
-        if exchange.status >= 500:
-            return MutationAttempt.uncertain(
-                output,
-                failure(
-                    operation,
-                    FailureKind.AVAILABILITY,
-                    "Calendly's response does not prove whether a scheduling link was created",
-                ),
-                self.client.receipt(call),
-            )
-        return MutationAttempt.branch_result("providerRejected", output, self.client.receipt(call), problem)
+        # A 5xx, 409, 408, or other status does not prove whether a link was created.
+        return self._resend_or_select_uncertain(call, can_resend_unknown_outcome, output, problem, delay)
+
+    def _resend_or_select_uncertain(
+        self,
+        call: Call,
+        can_resend_unknown_outcome: bool,
+        output: SchedulingLink,
+        problem: Failure,
+        delay: float = 0,
+    ) -> MutationAttempt[SchedulingLink]:
+        if can_resend_unknown_outcome:
+            # The claim stays the last marker, so the next attempt counts this send.
+            return MutationAttempt.retry(problem, delay)
+        return MutationAttempt.uncertain(output, problem, self.client.receipt(call))
+
+
+def _is_usable_booking_url(booking_url: str) -> bool:
+    """Require an absolute HTTPS booking URL without user information."""
+    parsed = urlsplit(booking_url)
+    return (
+        parsed.scheme == "https"
+        and bool(parsed.hostname)
+        and parsed.username is None
+        and parsed.password is None
+    )
+
+
+def _is_unknown_webhook_create_outcome(exchange: Exchange) -> bool:
+    """Report an oversized or malformed POST answer, or a 3xx or 4xx other than 429 or a refusal."""
+    if exchange.error:
+        return exchange.error in ("tooLarge", "malformed")
+    status = exchange.status
+    return (
+        not 200 <= status < 300
+        and status != 429
+        and status < 500
+        and status not in DEFINITE_REFUSAL_STATUSES
+    )
 
 
 class CreateWebhookSubscriptionOperation:
@@ -1104,6 +1208,18 @@ class CreateWebhookSubscriptionOperation:
                     ),
                 ),
             )
+        if _is_unknown_webhook_create_outcome(exchange):
+            # The POST may have created the subscription; the retry's list reuses it.
+            return MutationAttempt.retry(
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    (
+                        "Calendly's answer does not show whether the subscription was created; "
+                        "the retry lists subscriptions before creating one"
+                    ),
+                )
+            )
         attempted = self._failed_exchange(call, exchange)
         if attempted is not None:
             return attempted
@@ -1116,11 +1232,15 @@ class CreateWebhookSubscriptionOperation:
                 "subscribed", subscription, self.client.receipt(call, subscription.uri)
             )
         except (ValueError, TypeError, KeyError, OverflowError):
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                zero,
-                self.client.receipt(call),
-                failure(operation, FailureKind.PROTOCOL, "Calendly returned a malformed response"),
+            return MutationAttempt.retry(
+                failure(
+                    operation,
+                    FailureKind.PROTOCOL,
+                    (
+                        "Calendly's subscription answer is malformed; "
+                        "the retry lists subscriptions before creating one"
+                    ),
+                )
             )
 
     async def _reuse(

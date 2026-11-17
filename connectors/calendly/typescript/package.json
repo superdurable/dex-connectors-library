@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-calendly",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Calendly scheduled event operations and invitee webhook Triggers for Dex Flows",
   "repository": {
     "type": "git",

@@ -1376,7 +1376,7 @@
       "callId": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
       "exchanges": [
         {
-          "body": "not-json",
+          "body": "{\"title\":\"Permission Denied\",\"message\":\"You do not have permission\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1395,7 +1395,23 @@
               "application/json"
             ]
           },
-          "status": 201
+          "status": 403
+        },
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
         }
       ],
       "expected": {
@@ -1406,7 +1422,7 @@
           "cancellation": {},
           "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
         },
-        "requestCount": 1,
+        "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
@@ -1667,6 +1683,7 @@
           "attempt": 1,
           "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
           "providerId": "https://calendly.com/d/abcd-1234/30-minute-meeting",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -1719,7 +1736,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "bookingUrl": "",
@@ -1766,21 +1783,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "bookingUrl": "",
-          "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
       "input": {
@@ -1982,21 +1996,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "bookingUrl": "",
-          "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
       "input": {
@@ -3640,11 +3651,133 @@
       "input": {
         "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
       },
-      "name": "createSchedulingLink-prior-claimed",
+      "name": "createSchedulingLink-uncertain-at-send-cap",
+      "operation": "createSchedulingLink",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+        "sendCount": 3,
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Internal Server Error\",\"message\":\"boom\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduling_links",
+          "requestBody": {
+            "max_event_count": 1,
+            "owner": "https://api.calendly.com/event_types/TYPE0001",
+            "owner_type": "EventType"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"resource\": {\"booking_url\": \"https://calendly.com/d/abcd-5678/30-minute-meeting\", \"owner\": \"https://api.calendly.com/event_types/TYPE0001\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduling_links",
+          "requestBody": {
+            "max_event_count": 1,
+            "owner": "https://api.calendly.com/event_types/TYPE0001",
+            "owner_type": "EventType"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "providerId": "https://calendly.com/d/abcd-5678/30-minute-meeting",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "bookingUrl": "https://calendly.com/d/abcd-5678/30-minute-meeting",
+          "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "input": {
+        "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createSchedulingLink-resend-below-send-cap",
+      "operation": "createSchedulingLink"
+    },
+    {
+      "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "exchanges": [],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "bookingUrl": "https://calendly.com/d/abcd-1234/30-minute-meeting",
+          "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "input": {
+        "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+      },
+      "name": "createSchedulingLink-saved-booking-url",
       "operation": "createSchedulingLink",
       "priorHeartbeat": {
         "attempt": 1,
         "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+        "providerId": "https://calendly.com/d/abcd-1234/30-minute-meeting",
+        "sendCount": 1,
         "state": "claimed"
       }
     },
@@ -3791,6 +3924,7 @@
           "attempt": 2,
           "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
           "providerId": "https://calendly.com/d/abcd-1234/30-minute-meeting",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {

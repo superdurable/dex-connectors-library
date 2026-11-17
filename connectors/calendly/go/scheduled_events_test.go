@@ -308,3 +308,17 @@ func TestCancelScheduledEventSelectsNotFoundAndRetriesALostAnswer(t *testing.T) 
 	require.Equal(t, calendly.CancelScheduledEventBranchDefect, tooLong.Branch)
 	require.Contains(t, tooLong.Failure.Message, strconv.Itoa(10000))
 }
+
+func TestCancelScheduledEventRetriesAnAnswerThatDoesNotProveTheOutcome(t *testing.T) {
+	fake := newFakeCalendly(t, map[string]http.HandlerFunc{
+		"POST /scheduled_events/EVENT0004/cancellation": respondJSON(http.StatusConflict, providerError("Conflict", "busy")),
+		"POST /scheduled_events/EVENT0005/cancellation": respondJSON(http.StatusCreated, `{"resource":`),
+	})
+	client := newTestClient(t, fake.redirectingClient(), personalAccessTokenCredentials(""), calendly.Config{})
+	for _, eventID := range []string{"EVENT0004", "EVENT0005"} {
+		_, err := sdkgo.RunMutation(newStepContext("cancel"), client.CancelScheduledEvent(), testConnection,
+			calendly.CancelScheduledEventInput{ScheduledEventURI: "https://api.calendly.com/scheduled_events/" + eventID})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "%s: the safe cancellation repeats and reads the event back", eventID)
+	}
+}

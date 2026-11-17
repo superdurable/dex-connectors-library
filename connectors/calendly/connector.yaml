@@ -6,17 +6,17 @@ metadata:
   description: "Read Calendly scheduled events and invitees, cancel events, create single-use scheduling links, register webhook subscriptions, and receive signed invitee.created and invitee.canceled webhooks."
   company: Calendly
   categories: [productivity]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: calendly
   languages:
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: '@superdurable/connector-calendly'
       operations: [listScheduledEvents, getScheduledEvent, listEventInvitees, cancelScheduledEvent, createSchedulingLink, createWebhookSubscription]
       triggers: [inviteeEventReceived]
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-calendly
       operations: [listScheduledEvents, getScheduledEvent, listEventInvitees, cancelScheduledEvent, createSchedulingLink, createWebhookSubscription]
       triggers: [inviteeEventReceived]
@@ -281,11 +281,13 @@ spec:
         - {id: canceled, goName: Canceled, description: "The scheduled event is canceled, by this call or earlier; alreadyCanceled tells which."}
         - {id: notFound, goName: NotFound, description: "The scheduled event does not exist or is not visible to the token.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Calendly refused to cancel an active event, such as one that already started or one the token may not cancel.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized response.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized scheduled event when the connector read it back after a 403.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A repeated cancellation of a canceled event gets a 403 that reads the event back as canceled.
+        repeatOnUnknown: safe
       mocks:
         - name: canceledDiscoveryCall
           branch: canceled
@@ -309,12 +311,12 @@ spec:
       inputType: CreateSchedulingLinkInput
       outputType: SchedulingLink
       kind: mutation
-      description: "Create one single-use scheduling link for an event type. Calendly has no idempotency key or link lookup. A single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoints; an unconfirmed accepted write selects uncertain."
+      description: "Create one single-use scheduling link for an event type. Calendly has no idempotency key or link lookup. A single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoints; an unknown outcome is resent while possible sends stay below the send cap, and an unconfirmed accepted write selects uncertain."
       idempotency: required
       branches:
         - {id: created, goName: Created, description: "Calendly created the single-use scheduling link."}
-        - {id: providerRejected, goName: ProviderRejected, description: "Calendly conclusively rejected the request, such as an event type the token cannot use.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was sent but Calendly's answer was lost, a server error, or unreadable, so a link may exist that this Result does not name.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Calendly conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an event type the token cannot use.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Sends up to the send cap had a lost, server-error, conflicting, or unreadable answer, or Calendly accepted the link without a usable URL, so a link may exist that this Result does not name.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -342,11 +344,13 @@ spec:
         - {id: subscribed, goName: Subscribed, description: "An active subscription with this callback URL covers the requested events; wasCreated tells whether this attempt created it."}
         - {id: conflictingSubscription, goName: ConflictingSubscription, description: "A subscription with this callback URL already exists but is disabled, lacks a requested event, or belongs to another scope or user; delete it in Calendly and run again.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Calendly conclusively rejected the request, such as a plan without webhooks or a token that is not an organization admin.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized response.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized user or subscription list before the connector created anything.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Calendly keeps one subscription per callback URL, and each attempt lists and reuses it first.
+        repeatOnUnknown: safe
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Calendly has no webhook-create key, so a stale subscription list can allow a second POST under the same Step."}}
       mocks:
         - name: activeInviteeWebhook
