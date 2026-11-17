@@ -400,85 +400,84 @@ def mutation_self_test(connectors: list[Path]) -> None:
             cwd=ROOT, env={**os.environ, "GOWORK": "off"}, text=True,
         )
         declared_operations = json.loads(operation_output)
-        scenario = next((item for item in original["scenarios"]
-                         if item["exchanges"] and not item["expected"]["retry"]), None)
-        if scenario is None:
-            raise ValueError(f"{relative} has no completed provider scenario to mutate")
         commands = {"go": (["go", "test", ".", "-run", "^TestConnectorConformance$", "-count=1"],
                            connector / "go")}
-        supported_operations = {"go": set(declared_operations)}
         python_package = connector / "python"
         if (python_package / "pyproject.toml").is_file():
             subprocess.run(["uv", "sync", "--locked", "--project", str(python_package)], cwd=ROOT, check=True)
             commands["python"] = (["uv", "run", "--project", str(python_package), "pytest",
                                     str(python_package / "tests/test_conformance.py"), "-q"], ROOT)
-            python_descriptor, = (python_package / "src/dex_connectors").glob("*/dex-connector.json")
-            supported_operations["python"] = {factory["operationId"] for factory in
-                                              json.loads(python_descriptor.read_text())["factories"]
-                                              if "operationId" in factory}
         typescript_package = connector / "typescript"
         if (typescript_package / "package.json").is_file():
             subprocess.run(["npm", "ci", "--prefix", str(typescript_package)], cwd=ROOT, check=True)
             subprocess.run(["npm", "run", "build", "--prefix", str(typescript_package)], cwd=ROOT, check=True)
             commands["typescript"] = ([str(typescript_package / "node_modules/.bin/vitest"), "run",
                                         "test/conformance.test.ts"], typescript_package)
-            typescript_descriptor = typescript_package / "dex-connector.json"
-            supported_operations["typescript"] = {factory["operationId"] for factory in
-                                                  json.loads(typescript_descriptor.read_text())["factories"]
-                                                  if "operationId" in factory}
+        implemented_operations = {
+            language: set(json.loads(subprocess.check_output(
+                ["go", "run", "./cmd/connectorctl", "language-capabilities", str(connector / "connector.yaml"), language],
+                cwd=ROOT, env={**os.environ, "GOWORK": "off"}, text=True,
+            ))["operations"])
+            for language in commands if language != "go"
+        }
+        candidates = scenarios_every_port_replays_first(original["scenarios"], implemented_operations)
+        scenario = next((item for item in candidates
+                         if item["exchanges"] and not item["expected"]["retry"]), None)
+        if scenario is None:
+            raise ValueError(f"{relative} has no completed provider scenario to mutate")
         mutation_sources = [("classification", scenario), ("exchange", scenario),
                             ("wrong-output-field", scenario), ("pending-passing-go", scenario)]
-        list_output_scenario = next((item for item in original["scenarios"]
+        list_output_scenario = next((item for item in candidates
                                      if isinstance(item["expected"].get("output"), dict)
                                      and any(isinstance(value, list)
                                              for value in item["expected"]["output"].values())), None)
-        query_scenario = next((item for item in original["scenarios"]
+        query_scenario = next((item for item in candidates
                                if any(exchange.get("query") for exchange in item["exchanges"])), None)
-        optional_query_scenario = next((item for item in original["scenarios"]
+        optional_query_scenario = next((item for item in candidates
                                         if any(field in item["input"] and field in exchange.get("query", {})
                                                for field in declared_operations[item["operation"]]["optionalInputFields"]
                                                for exchange in item["exchanges"])), None)
-        form_scenario = next((item for item in original["scenarios"]
+        form_scenario = next((item for item in candidates
                               if any(exchange.get("form") for exchange in item["exchanges"])), None)
-        header_scenario = next((item for item in original["scenarios"]
+        header_scenario = next((item for item in candidates
                                 if any(exchange.get("requestHeaders") for exchange in item["exchanges"])), None)
-        read_server_error = next((item for item in original["scenarios"] if item["expected"]["retry"]
+        read_server_error = next((item for item in candidates if item["expected"]["retry"]
                                   and declared_operations[item["operation"]]["kind"] == "query"
                                   and any(500 <= exchange.get("status", 0) <= 599
                                           for exchange in item["exchanges"])), None)
-        mime_scenario = next((item for item in original["scenarios"]
+        mime_scenario = next((item for item in candidates
                               if any("$rawMime" in exchange.get("requestBody", {})
                                       for exchange in item["exchanges"])), None)
-        multipart_scenario = next((item for item in original["scenarios"]
+        multipart_scenario = next((item for item in candidates
                                    if any(isinstance(exchange.get("requestBody"), dict)
                                           and len(exchange["requestBody"].get("$multipart", [])) >= 2
                                           for exchange in item["exchanges"])), None)
-        multipart_named_scenario = next((item for item in original["scenarios"]
+        multipart_named_scenario = next((item for item in candidates
                                          if any(isinstance(exchange.get("requestBody"), dict)
                                                 and len(exchange["requestBody"].get("$multipart", [])) >= 2
                                                 and any("Content-Disposition" in part["headers"]
                                                         for part in exchange["requestBody"].get("$multipart", []))
                                                 for exchange in item["exchanges"])), None)
-        multipart_related_scenario = next((item for item in original["scenarios"]
+        multipart_related_scenario = next((item for item in candidates
                                            if any(isinstance(exchange.get("requestBody"), dict)
                                                   and len(exchange["requestBody"].get("$multipart", [])) >= 2
                                                   and "multipart/related" in str(exchange.get("requestHeaders", {}).get("Content-Type", ""))
                                                   for exchange in item["exchanges"])), None)
-        keyed_scenario = next((item for item in original["scenarios"]
+        keyed_scenario = next((item for item in candidates
                                if item.get("idempotencyKey")), None)
-        synthetic_random_scenario = next((item for item in original["scenarios"]
+        synthetic_random_scenario = next((item for item in candidates
                                           if item.get("randomRequestFields") and any(
                                               exchange.get("requestBody") for exchange in item["exchanges"])), None)
-        heartbeat_scenario = next((item for item in original["scenarios"]
+        heartbeat_scenario = next((item for item in candidates
                                    if any("heartbeat" in intermediate
                                           for intermediate in item.get("intermediate", []))), None)
-        final_heartbeat_scenario = next((item for item in original["scenarios"]
+        final_heartbeat_scenario = next((item for item in candidates
                                          if "heartbeat" in item["expected"]), None)
-        cleared_heartbeat_scenario = next((item for item in original["scenarios"]
+        cleared_heartbeat_scenario = next((item for item in candidates
                                            if item["expected"].get("heartbeat") == {"cleared": True}
                                            or any(value.get("heartbeat") == {"cleared": True}
                                                   for value in item.get("intermediate", []))), None)
-        no_heartbeat_scenario = next((item for item in original["scenarios"]
+        no_heartbeat_scenario = next((item for item in candidates
                                       if declared_operations[item["operation"]]["kind"] == "mutation"
                                       and "priorHeartbeat" in item and "heartbeat" not in item["expected"]), None)
         mutation_sources.extend((name, source) for name, source in (
@@ -602,13 +601,13 @@ def mutation_self_test(connectors: list[Path]) -> None:
             with tempfile.TemporaryDirectory(prefix="connector-conformance-") as directory:
                 fixture = Path(directory) / "scenarios.json"
                 fixture.write_text(json.dumps(document))
-                selected_commands = {
-                    language: value for language, value in commands.items()
-                    if changed["operation"] in supported_operations[language]
-                    and (mutation not in ("port-heartbeat-shape", "present-null-for-clear", "extra-heartbeat")
-                         or language != "go")
-                }
+                selected_commands = ({language: value for language, value in commands.items() if language != "go"}
+                                     if mutation in ("port-heartbeat-shape", "present-null-for-clear", "extra-heartbeat") else commands)
                 for language, (command, cwd) in selected_commands.items():
+                    if not does_language_replay(language, changed["operation"], implemented_operations):
+                        print(f"Mutation {mutation}: {relative} {language} runner skipped; its package does not "
+                              f"implement {changed['operation']}", flush=True)
+                        continue
                     result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=False,
                                             env={**os.environ, "GOWORK": "off",
                                                  "CONNECTOR_CONFORMANCE_FIXTURE": str(fixture),
@@ -623,6 +622,17 @@ def mutation_self_test(connectors: list[Path]) -> None:
                     if mutation != "pending-passing-go" and changed["name"] not in result.stdout + result.stderr:
                         raise AssertionError(f"{relative} {language} runner did not exercise {changed['name']}")
                     print(f"Mutation {mutation}: {relative} {language} runner rejected fixture", flush=True)
+
+
+def scenarios_every_port_replays_first(scenarios: list[dict], implemented_operations: dict[str, set[str]]) -> list[dict]:
+    """Order scenarios so mutations prefer ones that every language package replays, keeping fixture order."""
+    return sorted(scenarios, key=lambda item: not all(
+        item["operation"] in operations for operations in implemented_operations.values()))
+
+
+def does_language_replay(language: str, operation: str, implemented_operations: dict[str, set[str]]) -> bool:
+    """Report whether a runner replays an operation; Go replays all, and ports only what their package implements."""
+    return language == "go" or operation in implemented_operations[language]
 
 
 def main() -> None:

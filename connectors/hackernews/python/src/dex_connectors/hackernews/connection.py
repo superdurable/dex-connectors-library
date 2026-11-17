@@ -97,13 +97,15 @@ def new_project_connection(
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"baseUrl", "timeout", "maxResponseBytes"}:
+    if set(value) - {"baseUrl", "timeout", "maxResponseBytes", "searchBaseUrl"}:
         raise ValueError("Hacker News configuration has unknown fields")
     base_url = value.get("baseUrl", "")
     timeout = value.get("timeout", 0)
     max_response_bytes = value.get("maxResponseBytes", 0)
-    if not isinstance(base_url, str):
-        raise ValueError("Hacker News configuration baseUrl must be a string")
+    # Only the Go package implements searchStories; this package accepts its setting and does not use it.
+    search_base_url = value.get("searchBaseUrl", "")
+    if not isinstance(base_url, str) or not isinstance(search_base_url, str):
+        raise ValueError("Hacker News configuration baseUrl and searchBaseUrl must be strings")
     if type(timeout) is not int or type(max_response_bytes) is not int:
         raise ValueError("Hacker News configuration timeout and maxResponseBytes must be integers")
-    return Config(base_url, timeout / 1_000_000_000, max_response_bytes)
+    return Config(base_url, timeout / 1_000_000_000, max_response_bytes, search_base_url)

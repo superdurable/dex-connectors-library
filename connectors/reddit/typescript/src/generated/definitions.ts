@@ -41,3 +41,69 @@ export const GetPostDefinition: QueryDefinition = {
 };
 /** Manifest metadata for getPost. */
 export const GetPostMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
+/** Branch IDs for listSubredditPosts. */
+export const ListSubredditPostsBranch = {
+  Listed: "listed",
+  SubredditUnavailable: "subredditUnavailable",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** Reddit returned one bounded page of posts; the page may be empty. */
+export const ListSubredditPostsBranchListed = ListSubredditPostsBranch.Listed;
+/** Reddit reports the subreddit missing, banned, private, quarantined, or otherwise closed to the account. */
+export const ListSubredditPostsBranchSubredditUnavailable = ListSubredditPostsBranch.SubredditUnavailable;
+/** Reddit conclusively rejected the listing or app access. */
+export const ListSubredditPostsBranchProviderRejected = ListSubredditPostsBranch.ProviderRejected;
+/** Reddit returned a malformed or oversized listing. */
+export const ListSubredditPostsBranchInvalidResponse = ListSubredditPostsBranch.InvalidResponse;
+/** The subreddit, sort, time window, limit, cursor, username, or OAuth credentials are invalid. */
+export const ListSubredditPostsBranchDefect = ListSubredditPostsBranch.Defect;
+/** Manifest definition for listSubredditPosts. */
+export const ListSubredditPostsDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "listSubredditPosts" },
+  branches: [
+    { id: "listed", description: "Reddit returned one bounded page of posts; the page may be empty." },
+    { id: "subredditUnavailable", description: "Reddit reports the subreddit missing, banned, private, quarantined, or otherwise closed to the account.", optional: true },
+    { id: "providerRejected", description: "Reddit conclusively rejected the listing or app access.", optional: true },
+    { id: "invalidResponse", description: "Reddit returned a malformed or oversized listing.", optional: true },
+    { id: "defect", description: "The subreddit, sort, time window, limit, cursor, username, or OAuth credentials are invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for listSubredditPosts. */
+export const ListSubredditPostsMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
+/** Branch IDs for searchPosts. */
+export const SearchPostsBranch = {
+  Searched: "searched",
+  SubredditUnavailable: "subredditUnavailable",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** Reddit returned one bounded page of matching posts; the page may be empty. */
+export const SearchPostsBranchSearched = SearchPostsBranch.Searched;
+/** Reddit reports the subreddit that restricts the search missing, banned, private, quarantined, or otherwise closed to the account. */
+export const SearchPostsBranchSubredditUnavailable = SearchPostsBranch.SubredditUnavailable;
+/** Reddit conclusively rejected the search or app access. */
+export const SearchPostsBranchProviderRejected = SearchPostsBranch.ProviderRejected;
+/** Reddit returned malformed or oversized search results. */
+export const SearchPostsBranchInvalidResponse = SearchPostsBranch.InvalidResponse;
+/** The query, subreddit, sort, time window, limit, cursor, username, or OAuth credentials are invalid. */
+export const SearchPostsBranchDefect = SearchPostsBranch.Defect;
+/** Manifest definition for searchPosts. */
+export const SearchPostsDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "searchPosts" },
+  branches: [
+    { id: "searched", description: "Reddit returned one bounded page of matching posts; the page may be empty." },
+    { id: "subredditUnavailable", description: "Reddit reports the subreddit that restricts the search missing, banned, private, quarantined, or otherwise closed to the account.", optional: true },
+    { id: "providerRejected", description: "Reddit conclusively rejected the search or app access.", optional: true },
+    { id: "invalidResponse", description: "Reddit returned malformed or oversized search results.", optional: true },
+    { id: "defect", description: "The query, subreddit, sort, time window, limit, cursor, username, or OAuth credentials are invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for searchPosts. */
+export const SearchPostsMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
