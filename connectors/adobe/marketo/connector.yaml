@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: adobe-marketo
   displayName: Adobe Marketo Engage
-  description: Read, find, create, upsert, and update selected lead profile fields in a Marketo Engage subscription.
+  description: Read activity metadata and read, find, create, upsert, and update selected lead profile fields in a Marketo Engage subscription.
   company: Adobe
   categories: [marketing]
   version: v0.2.0
@@ -67,7 +67,7 @@ spec:
     guide:
       startURL: https://app.marketo.com/
       steps:
-        - Sign in to Marketo, open Admin > Users & Roles > Roles, and create an API role with Access API > Read-Only Lead. Grant Read-Write Lead for createLead, upsertLeadByEmail, or updateLead. Add an API-Only user assigned this role in Admin > Users & Roles > Users. No browser redirect URI or consent screen is needed for this client credentials grant.
+        - Sign in to Marketo, open Admin > Users & Roles > Roles, and create an API role with Access API > Read-Only Lead. Grant Read-Write Lead for createLead, upsertLeadByEmail, or updateLead, and Read-Only Activity for activity queries. Add an API-Only user assigned this role in Admin > Users & Roles > Users. No browser redirect URI or consent screen is needed for this client credentials grant.
         - Open Admin > Integration > LaunchPoint > New Service, choose Custom, select the API-Only user, and create the service. Open View Details to copy its Client ID and Client Secret; keep the secret in Dex Web only.
         - Open Admin > Integration > Web Services. Copy REST API > Endpoint into restEndpoint. Copy REST API > Identity and append /oauth/token into tokenEndpoint. Both HTTPS URLs must use the same subscription host ending in .mktorest.com.
         - Save the connection; Dex mints and refreshes the access token. Leave access_token, timeout, and maxResponseBytes blank. Revoke the Custom service in LaunchPoint to stop this connection.
@@ -83,6 +83,54 @@ spec:
         - {credential: access_token, source: access_token}
       terminalErrorCodes: [invalid_client, unauthorized_client, invalid_scope]
   operations:
+    - name: getActivityPagingToken
+      goName: GetActivityPagingToken
+      inputType: GetActivityPagingTokenInput
+      outputType: ActivityPagingToken
+      kind: query
+      idempotency: none
+      description: Get an activity cursor for an ISO 8601 date and time.
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Marketo returned an activity cursor.}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo rejected the date or activity permission., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Marketo returned malformed activity cursor JSON., optional: true}
+        - {id: defect, goName: Defect, description: The date and time is invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: A sample activity cursor is returned., output: {nextPageToken: SAMPLE_ACTIVITY_CURSOR}}
+    - name: listActivityTypes
+      goName: ListActivityTypes
+      inputType: ListActivityTypesInput
+      outputType: ActivityTypes
+      kind: query
+      idempotency: none
+      description: List activity type IDs and names without provider attributes.
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Marketo returned activity types.}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo rejected the activity type request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Marketo returned malformed activity type JSON., optional: true}
+        - {id: defect, goName: Defect, description: The connection configuration is invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One sample activity type is returned., output: {types: [{id: 2, name: Fill Out Form}]}}
+    - name: listActivities
+      goName: ListActivities
+      inputType: ListActivitiesInput
+      outputType: ActivityPage
+      kind: query
+      idempotency: none
+      description: Read one page of activity IDs, lead IDs, types, and dates without activity attributes.
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Marketo returned an activity page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo rejected the cursor or activity type IDs., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Marketo returned malformed activity JSON., optional: true}
+        - {id: defect, goName: Defect, description: The cursor or activity type IDs are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One sample activity is returned., output: {activities: [{marketoGUID: '102988', leadId: 318581, activityTypeId: 2, activityDate: '2026-01-01T00:00:00Z'}], nextPageToken: SAMPLE_NEXT_CURSOR, moreResult: false}}
     - name: createLead
       goName: CreateLead
       inputType: CreateLeadInput

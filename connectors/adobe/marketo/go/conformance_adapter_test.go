@@ -29,10 +29,13 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getLead": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetLead(), reference),
-		"findLeadsByEmail": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.FindLeadsByEmail(), reference),
-		"updateLead": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateLead(), reference, scenario.CallID),
-		"createLead": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateLead(), reference, scenario.CallID),
-		"upsertLeadByEmail": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpsertLeadByEmail(), reference, scenario.CallID),
+		"getLead":                newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetLead(), reference),
+		"findLeadsByEmail":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.FindLeadsByEmail(), reference),
+		"updateLead":             newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateLead(), reference, scenario.CallID),
+		"createLead":             newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateLead(), reference, scenario.CallID),
+		"upsertLeadByEmail":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpsertLeadByEmail(), reference, scenario.CallID),
+		"getActivityPagingToken": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetActivityPagingToken(), reference),
+		"listActivityTypes":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListActivityTypes(), reference),
+		"listActivities":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListActivities(), reference),
 	}}
 }

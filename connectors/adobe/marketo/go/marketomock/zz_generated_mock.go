@@ -17,12 +17,15 @@ import (
 
 // Mock is a scripted adobe-marketo connection. Script each operation through its accessor.
 type Mock struct {
-	connection        marketo.Connection
-	createLead        *connectormock.Mutation[marketo.CreateLeadInput, marketo.CreatedLead]
-	upsertLeadByEmail *connectormock.Mutation[marketo.UpsertLeadByEmailInput, marketo.SyncedLead]
-	getLead           *connectormock.Query[marketo.GetLeadInput, marketo.LeadProfile]
-	findLeadsByEmail  *connectormock.Query[marketo.FindLeadsByEmailInput, marketo.LeadProfilesPage]
-	updateLead        *connectormock.Mutation[marketo.UpdateLeadInput, marketo.UpdatedLead]
+	connection             marketo.Connection
+	getActivityPagingToken *connectormock.Query[marketo.GetActivityPagingTokenInput, marketo.ActivityPagingToken]
+	listActivityTypes      *connectormock.Query[marketo.ListActivityTypesInput, marketo.ActivityTypes]
+	listActivities         *connectormock.Query[marketo.ListActivitiesInput, marketo.ActivityPage]
+	createLead             *connectormock.Mutation[marketo.CreateLeadInput, marketo.CreatedLead]
+	upsertLeadByEmail      *connectormock.Mutation[marketo.UpsertLeadByEmailInput, marketo.SyncedLead]
+	getLead                *connectormock.Query[marketo.GetLeadInput, marketo.LeadProfile]
+	findLeadsByEmail       *connectormock.Query[marketo.FindLeadsByEmailInput, marketo.LeadProfilesPage]
+	updateLead             *connectormock.Mutation[marketo.UpdateLeadInput, marketo.UpdatedLead]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -30,12 +33,18 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createLead:        connectormock.NewMutation[marketo.CreateLeadInput, marketo.CreatedLead](t, marketo.CreateLeadDefinition),
-		upsertLeadByEmail: connectormock.NewMutation[marketo.UpsertLeadByEmailInput, marketo.SyncedLead](t, marketo.UpsertLeadByEmailDefinition),
-		getLead:           connectormock.NewQuery[marketo.GetLeadInput, marketo.LeadProfile](t, marketo.GetLeadDefinition),
-		findLeadsByEmail:  connectormock.NewQuery[marketo.FindLeadsByEmailInput, marketo.LeadProfilesPage](t, marketo.FindLeadsByEmailDefinition),
-		updateLead:        connectormock.NewMutation[marketo.UpdateLeadInput, marketo.UpdatedLead](t, marketo.UpdateLeadDefinition),
+		getActivityPagingToken: connectormock.NewQuery[marketo.GetActivityPagingTokenInput, marketo.ActivityPagingToken](t, marketo.GetActivityPagingTokenDefinition),
+		listActivityTypes:      connectormock.NewQuery[marketo.ListActivityTypesInput, marketo.ActivityTypes](t, marketo.ListActivityTypesDefinition),
+		listActivities:         connectormock.NewQuery[marketo.ListActivitiesInput, marketo.ActivityPage](t, marketo.ListActivitiesDefinition),
+		createLead:             connectormock.NewMutation[marketo.CreateLeadInput, marketo.CreatedLead](t, marketo.CreateLeadDefinition),
+		upsertLeadByEmail:      connectormock.NewMutation[marketo.UpsertLeadByEmailInput, marketo.SyncedLead](t, marketo.UpsertLeadByEmailDefinition),
+		getLead:                connectormock.NewQuery[marketo.GetLeadInput, marketo.LeadProfile](t, marketo.GetLeadDefinition),
+		findLeadsByEmail:       connectormock.NewQuery[marketo.FindLeadsByEmailInput, marketo.LeadProfilesPage](t, marketo.FindLeadsByEmailDefinition),
+		updateLead:             connectormock.NewMutation[marketo.UpdateLeadInput, marketo.UpdatedLead](t, marketo.UpdateLeadDefinition),
 	}
+	mock.getActivityPagingToken.Default(GetActivityPagingTokenDefault())
+	mock.listActivityTypes.Default(ListActivityTypesDefault())
+	mock.listActivities.Default(ListActivitiesDefault())
 	mock.createLead.Default(CreateLeadDefault())
 	mock.upsertLeadByEmail.Default(UpsertLeadByEmailDefault())
 	mock.getLead.Default(GetLeadDefault())
@@ -51,6 +60,21 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() marketo.Connection { return mock.connection }
+
+// GetActivityPagingToken returns the getActivityPagingToken script.
+func (mock *Mock) GetActivityPagingToken() *connectormock.Query[marketo.GetActivityPagingTokenInput, marketo.ActivityPagingToken] {
+	return mock.getActivityPagingToken
+}
+
+// ListActivityTypes returns the listActivityTypes script.
+func (mock *Mock) ListActivityTypes() *connectormock.Query[marketo.ListActivityTypesInput, marketo.ActivityTypes] {
+	return mock.listActivityTypes
+}
+
+// ListActivities returns the listActivities script.
+func (mock *Mock) ListActivities() *connectormock.Query[marketo.ListActivitiesInput, marketo.ActivityPage] {
+	return mock.listActivities
+}
 
 // CreateLead returns the createLead script.
 func (mock *Mock) CreateLead() *connectormock.Mutation[marketo.CreateLeadInput, marketo.CreatedLead] {
@@ -79,6 +103,15 @@ func (mock *Mock) UpdateLead() *connectormock.Mutation[marketo.UpdateLeadInput, 
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetActivityPagingToken() sdkgo.Query[marketo.GetActivityPagingTokenInput, marketo.ActivityPagingToken] {
+	return operations.mock.getActivityPagingToken
+}
+func (operations mockOperations) ListActivityTypes() sdkgo.Query[marketo.ListActivityTypesInput, marketo.ActivityTypes] {
+	return operations.mock.listActivityTypes
+}
+func (operations mockOperations) ListActivities() sdkgo.Query[marketo.ListActivitiesInput, marketo.ActivityPage] {
+	return operations.mock.listActivities
+}
 func (operations mockOperations) CreateLead() sdkgo.Mutation[marketo.CreateLeadInput, marketo.CreatedLead] {
 	return operations.mock.createLead
 }
@@ -93,6 +126,114 @@ func (operations mockOperations) FindLeadsByEmail() sdkgo.Query[marketo.FindLead
 }
 func (operations mockOperations) UpdateLead() sdkgo.Mutation[marketo.UpdateLeadInput, marketo.UpdatedLead] {
 	return operations.mock.updateLead
+}
+
+// GetActivityPagingTokenFound selects the found branch: Marketo returned an activity cursor.
+func GetActivityPagingTokenFound(value marketo.ActivityPagingToken, failure *sdkgo.Failure) connectormock.Case[marketo.ActivityPagingToken] {
+	return connectormock.Branch(marketo.GetActivityPagingTokenBranchFound, value, failure)
+}
+
+// GetActivityPagingTokenProviderRejected selects the providerRejected branch: Marketo rejected the date or activity permission.
+func GetActivityPagingTokenProviderRejected(value marketo.ActivityPagingToken, failure *sdkgo.Failure) connectormock.Case[marketo.ActivityPagingToken] {
+	return connectormock.Branch(marketo.GetActivityPagingTokenBranchProviderRejected, value, failure)
+}
+
+// GetActivityPagingTokenInvalidResponse selects the invalidResponse branch: Marketo returned malformed activity cursor JSON.
+func GetActivityPagingTokenInvalidResponse(value marketo.ActivityPagingToken, failure *sdkgo.Failure) connectormock.Case[marketo.ActivityPagingToken] {
+	return connectormock.Branch(marketo.GetActivityPagingTokenBranchInvalidResponse, value, failure)
+}
+
+// GetActivityPagingTokenDefect selects the defect branch: The date and time is invalid.
+func GetActivityPagingTokenDefect(value marketo.ActivityPagingToken, failure *sdkgo.Failure) connectormock.Case[marketo.ActivityPagingToken] {
+	return connectormock.Branch(marketo.GetActivityPagingTokenBranchDefect, value, failure)
+}
+
+// GetActivityPagingTokenRetry asks Dex to retry the getActivityPagingToken Step, after the delay when it is positive.
+func GetActivityPagingTokenRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[marketo.ActivityPagingToken] {
+	return connectormock.Retry[marketo.ActivityPagingToken](failure, after)
+}
+
+// GetActivityPagingTokenFoundDefault is the manifest mock foundDefault: A sample activity cursor is returned.
+func GetActivityPagingTokenFoundDefault() connectormock.Case[marketo.ActivityPagingToken] {
+	value := connectormock.MustDecodeOutput[marketo.ActivityPagingToken](`{"nextPageToken":"SAMPLE_ACTIVITY_CURSOR"}`)
+	return connectormock.Branch(marketo.GetActivityPagingTokenBranchFound, value, nil)
+}
+
+// GetActivityPagingTokenDefault is the manifest default, foundDefault, which New installs.
+func GetActivityPagingTokenDefault() connectormock.Case[marketo.ActivityPagingToken] {
+	return GetActivityPagingTokenFoundDefault()
+}
+
+// ListActivityTypesFound selects the found branch: Marketo returned activity types.
+func ListActivityTypesFound(value marketo.ActivityTypes, failure *sdkgo.Failure) connectormock.Case[marketo.ActivityTypes] {
+	return connectormock.Branch(marketo.ListActivityTypesBranchFound, value, failure)
+}
+
+// ListActivityTypesProviderRejected selects the providerRejected branch: Marketo rejected the activity type request.
+func ListActivityTypesProviderRejected(value marketo.ActivityTypes, failure *sdkgo.Failure) connectormock.Case[marketo.ActivityTypes] {
+	return connectormock.Branch(marketo.ListActivityTypesBranchProviderRejected, value, failure)
+}
+
+// ListActivityTypesInvalidResponse selects the invalidResponse branch: Marketo returned malformed activity type JSON.
+func ListActivityTypesInvalidResponse(value marketo.ActivityTypes, failure *sdkgo.Failure) connectormock.Case[marketo.ActivityTypes] {
+	return connectormock.Branch(marketo.ListActivityTypesBranchInvalidResponse, value, failure)
+}
+
+// ListActivityTypesDefect selects the defect branch: The connection configuration is invalid.
+func ListActivityTypesDefect(value marketo.ActivityTypes, failure *sdkgo.Failure) connectormock.Case[marketo.ActivityTypes] {
+	return connectormock.Branch(marketo.ListActivityTypesBranchDefect, value, failure)
+}
+
+// ListActivityTypesRetry asks Dex to retry the listActivityTypes Step, after the delay when it is positive.
+func ListActivityTypesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[marketo.ActivityTypes] {
+	return connectormock.Retry[marketo.ActivityTypes](failure, after)
+}
+
+// ListActivityTypesFoundDefault is the manifest mock foundDefault: One sample activity type is returned.
+func ListActivityTypesFoundDefault() connectormock.Case[marketo.ActivityTypes] {
+	value := connectormock.MustDecodeOutput[marketo.ActivityTypes](`{"types":[{"id":2,"name":"Fill Out Form"}]}`)
+	return connectormock.Branch(marketo.ListActivityTypesBranchFound, value, nil)
+}
+
+// ListActivityTypesDefault is the manifest default, foundDefault, which New installs.
+func ListActivityTypesDefault() connectormock.Case[marketo.ActivityTypes] {
+	return ListActivityTypesFoundDefault()
+}
+
+// ListActivitiesFound selects the found branch: Marketo returned an activity page.
+func ListActivitiesFound(value marketo.ActivityPage, failure *sdkgo.Failure) connectormock.Case[marketo.ActivityPage] {
+	return connectormock.Branch(marketo.ListActivitiesBranchFound, value, failure)
+}
+
+// ListActivitiesProviderRejected selects the providerRejected branch: Marketo rejected the cursor or activity type IDs.
+func ListActivitiesProviderRejected(value marketo.ActivityPage, failure *sdkgo.Failure) connectormock.Case[marketo.ActivityPage] {
+	return connectormock.Branch(marketo.ListActivitiesBranchProviderRejected, value, failure)
+}
+
+// ListActivitiesInvalidResponse selects the invalidResponse branch: Marketo returned malformed activity JSON.
+func ListActivitiesInvalidResponse(value marketo.ActivityPage, failure *sdkgo.Failure) connectormock.Case[marketo.ActivityPage] {
+	return connectormock.Branch(marketo.ListActivitiesBranchInvalidResponse, value, failure)
+}
+
+// ListActivitiesDefect selects the defect branch: The cursor or activity type IDs are invalid.
+func ListActivitiesDefect(value marketo.ActivityPage, failure *sdkgo.Failure) connectormock.Case[marketo.ActivityPage] {
+	return connectormock.Branch(marketo.ListActivitiesBranchDefect, value, failure)
+}
+
+// ListActivitiesRetry asks Dex to retry the listActivities Step, after the delay when it is positive.
+func ListActivitiesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[marketo.ActivityPage] {
+	return connectormock.Retry[marketo.ActivityPage](failure, after)
+}
+
+// ListActivitiesFoundDefault is the manifest mock foundDefault: One sample activity is returned.
+func ListActivitiesFoundDefault() connectormock.Case[marketo.ActivityPage] {
+	value := connectormock.MustDecodeOutput[marketo.ActivityPage](`{"activities":[{"marketoGUID":"102988","leadId":318581,"activityTypeId":2,"activityDate":"2026-01-01T00:00:00Z"}],"nextPageToken":"SAMPLE_NEXT_CURSOR","moreResult":false}`)
+	return connectormock.Branch(marketo.ListActivitiesBranchFound, value, nil)
+}
+
+// ListActivitiesDefault is the manifest default, foundDefault, which New installs.
+func ListActivitiesDefault() connectormock.Case[marketo.ActivityPage] {
+	return ListActivitiesFoundDefault()
 }
 
 // CreateLeadCreated selects the created branch: Marketo created the lead.

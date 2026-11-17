@@ -2122,6 +2122,784 @@
       },
       "name": "upsertLeadByEmail-transport-before-send",
       "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"nextPageToken\":\"CURSOR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/pagingtoken.json",
+          "query": {
+            "sinceDatetime": [
+              "2026-01-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "CURSOR"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sinceDatetime": "2026-01-01T00:00:00Z"
+      },
+      "name": "getActivityPagingToken-found",
+      "operation": "getActivityPagingToken"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/pagingtoken.json",
+          "query": {
+            "sinceDatetime": [
+              "2026-01-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sinceDatetime": "2026-01-01T00:00:00Z"
+      },
+      "name": "getActivityPagingToken-providerRejected",
+      "operation": "getActivityPagingToken"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/pagingtoken.json",
+          "query": {
+            "sinceDatetime": [
+              "2026-01-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sinceDatetime": "2026-01-01T00:00:00Z"
+      },
+      "name": "getActivityPagingToken-invalidResponse",
+      "operation": "getActivityPagingToken"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sinceDatetime": "bad"
+      },
+      "name": "getActivityPagingToken-defect",
+      "operation": "getActivityPagingToken"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/pagingtoken.json",
+          "query": {
+            "sinceDatetime": [
+              "2026-01-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sinceDatetime": "2026-01-01T00:00:00Z"
+      },
+      "name": "getActivityPagingToken-rateLimit",
+      "operation": "getActivityPagingToken"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/pagingtoken.json",
+          "query": {
+            "sinceDatetime": [
+              "2026-01-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sinceDatetime": "2026-01-01T00:00:00Z"
+      },
+      "name": "getActivityPagingToken-unavailable",
+      "operation": "getActivityPagingToken"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/pagingtoken.json",
+          "query": {
+            "sinceDatetime": [
+              "2026-01-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sinceDatetime": "2026-01-01T00:00:00Z"
+      },
+      "name": "getActivityPagingToken-transportFailure",
+      "operation": "getActivityPagingToken"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":2,\"name\":\"Fill Out Form\",\"attributes\":[{\"name\":\"Secret\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/types.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "types": [
+            {
+              "id": 2,
+              "name": "Fill Out Form"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listActivityTypes-found",
+      "operation": "listActivityTypes"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/types.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "types": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listActivityTypes-providerRejected",
+      "operation": "listActivityTypes"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/types.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "types": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listActivityTypes-invalidResponse",
+      "operation": "listActivityTypes"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/types.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listActivityTypes-rateLimit",
+      "operation": "listActivityTypes"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/types.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listActivityTypes-unavailable",
+      "operation": "listActivityTypes"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/types.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listActivityTypes-transportFailure",
+      "operation": "listActivityTypes"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"nextPageToken\":\"NEXT\",\"moreResult\":false,\"result\":[{\"id\":42,\"leadId\":318581,\"activityTypeId\":2,\"activityDate\":\"2026-01-01T00:00:00Z\",\"attributes\":[{\"value\":\"secret\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities.json",
+          "query": {
+            "activityTypeIds": [
+              "2"
+            ],
+            "nextPageToken": [
+              "CURSOR"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "activities": [
+            {
+              "activityDate": "2026-01-01T00:00:00Z",
+              "activityTypeId": 2,
+              "leadId": 318581,
+              "marketoGUID": "42"
+            }
+          ],
+          "moreResult": false,
+          "nextPageToken": "NEXT"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityTypeIds": [
+          2
+        ],
+        "nextPageToken": "CURSOR"
+      },
+      "name": "listActivities-found",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities.json",
+          "query": {
+            "activityTypeIds": [
+              "2"
+            ],
+            "nextPageToken": [
+              "CURSOR"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "activities": [],
+          "moreResult": false,
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityTypeIds": [
+          2
+        ],
+        "nextPageToken": "CURSOR"
+      },
+      "name": "listActivities-providerRejected",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities.json",
+          "query": {
+            "activityTypeIds": [
+              "2"
+            ],
+            "nextPageToken": [
+              "CURSOR"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "activities": [],
+          "moreResult": false,
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityTypeIds": [
+          2
+        ],
+        "nextPageToken": "CURSOR"
+      },
+      "name": "listActivities-invalidResponse",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "activities": [],
+          "moreResult": false,
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityTypeIds": [],
+        "nextPageToken": "CURSOR"
+      },
+      "name": "listActivities-defect",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities.json",
+          "query": {
+            "activityTypeIds": [
+              "2"
+            ],
+            "nextPageToken": [
+              "CURSOR"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityTypeIds": [
+          2
+        ],
+        "nextPageToken": "CURSOR"
+      },
+      "name": "listActivities-rateLimit",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities.json",
+          "query": {
+            "activityTypeIds": [
+              "2"
+            ],
+            "nextPageToken": [
+              "CURSOR"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityTypeIds": [
+          2
+        ],
+        "nextPageToken": "CURSOR"
+      },
+      "name": "listActivities-unavailable",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities.json",
+          "query": {
+            "activityTypeIds": [
+              "2"
+            ],
+            "nextPageToken": [
+              "CURSOR"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityTypeIds": [
+          2
+        ],
+        "nextPageToken": "CURSOR"
+      },
+      "name": "listActivities-transportFailure",
+      "operation": "listActivities"
     }
   ],
   "schemaVersion": 1

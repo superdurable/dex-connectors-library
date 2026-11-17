@@ -43,6 +43,9 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetActivityPagingToken() sdkgo.Query[GetActivityPagingTokenInput, ActivityPagingToken]
+	ListActivityTypes() sdkgo.Query[ListActivityTypesInput, ActivityTypes]
+	ListActivities() sdkgo.Query[ListActivitiesInput, ActivityPage]
 	CreateLead() sdkgo.Mutation[CreateLeadInput, CreatedLead]
 	UpsertLeadByEmail() sdkgo.Mutation[UpsertLeadByEmailInput, SyncedLead]
 	GetLead() sdkgo.Query[GetLeadInput, LeadProfile]
@@ -52,6 +55,15 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetActivityPagingToken() sdkgo.Query[GetActivityPagingTokenInput, ActivityPagingToken] {
+	return operations.client.GetActivityPagingToken()
+}
+func (operations clientOperations) ListActivityTypes() sdkgo.Query[ListActivityTypesInput, ActivityTypes] {
+	return operations.client.ListActivityTypes()
+}
+func (operations clientOperations) ListActivities() sdkgo.Query[ListActivitiesInput, ActivityPage] {
+	return operations.client.ListActivities()
+}
 func (operations clientOperations) CreateLead() sdkgo.Mutation[CreateLeadInput, CreatedLead] {
 	return operations.client.CreateLead()
 }
@@ -264,6 +276,219 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const GetActivityPagingTokenBranchFound sdkgo.BranchID = "found"
+const GetActivityPagingTokenBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetActivityPagingTokenBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetActivityPagingTokenBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetActivityPagingTokenDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getActivityPagingToken"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetActivityPagingTokenBranchFound, Description: "Marketo returned an activity cursor."},
+		{ID: GetActivityPagingTokenBranchProviderRejected, Description: "Marketo rejected the date or activity permission.", Optional: true},
+		{ID: GetActivityPagingTokenBranchInvalidResponse, Description: "Marketo returned malformed activity cursor JSON.", Optional: true},
+		{ID: GetActivityPagingTokenBranchDefect, Description: "The date and time is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetActivityPagingTokenResult = sdkgo.QueryResult[ActivityPagingToken]
+
+type GetActivityPagingTokenStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=adobe-marketo"`
+	operationID                    struct{}                                               `connector:"operationId=getActivityPagingToken"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetActivityPagingTokenInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetActivityPagingTokenResult]             `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetActivityPagingTokenResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetActivityPagingTokenResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetActivityPagingTokenResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ActivityPagingToken]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewGetActivityPagingTokenStep[IN any](config GetActivityPagingTokenStepConfig[IN]) sdkgo.QueryStep[IN, GetActivityPagingTokenInput, ActivityPagingToken] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adobe-marketo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetActivityPagingTokenInput, ActivityPagingToken]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetActivityPagingToken(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetActivityPagingTokenResult] {
+			branches := make([]sdkgo.BranchTarget[GetActivityPagingTokenResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetActivityPagingTokenBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetActivityPagingTokenBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetActivityPagingTokenBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetActivityPagingTokenBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListActivityTypesBranchFound sdkgo.BranchID = "found"
+const ListActivityTypesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListActivityTypesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListActivityTypesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListActivityTypesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listActivityTypes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListActivityTypesBranchFound, Description: "Marketo returned activity types."},
+		{ID: ListActivityTypesBranchProviderRejected, Description: "Marketo rejected the activity type request.", Optional: true},
+		{ID: ListActivityTypesBranchInvalidResponse, Description: "Marketo returned malformed activity type JSON.", Optional: true},
+		{ID: ListActivityTypesBranchDefect, Description: "The connection configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListActivityTypesResult = sdkgo.QueryResult[ActivityTypes]
+
+type ListActivityTypesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=adobe-marketo"`
+	operationID                    struct{}                                         `connector:"operationId=listActivityTypes"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListActivityTypesInput                  `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[ListActivityTypesResult]            `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[ListActivityTypesResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListActivityTypesResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListActivityTypesResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ActivityTypes]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListActivityTypesStep[IN any](config ListActivityTypesStepConfig[IN]) sdkgo.QueryStep[IN, ListActivityTypesInput, ActivityTypes] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adobe-marketo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListActivityTypesInput, ActivityTypes]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListActivityTypes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListActivityTypesResult] {
+			branches := make([]sdkgo.BranchTarget[ListActivityTypesResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(ListActivityTypesBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListActivityTypesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListActivityTypesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListActivityTypesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListActivitiesBranchFound sdkgo.BranchID = "found"
+const ListActivitiesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListActivitiesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListActivitiesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListActivitiesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listActivities"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListActivitiesBranchFound, Description: "Marketo returned an activity page."},
+		{ID: ListActivitiesBranchProviderRejected, Description: "Marketo rejected the cursor or activity type IDs.", Optional: true},
+		{ID: ListActivitiesBranchInvalidResponse, Description: "Marketo returned malformed activity JSON.", Optional: true},
+		{ID: ListActivitiesBranchDefect, Description: "The cursor or activity type IDs are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListActivitiesResult = sdkgo.QueryResult[ActivityPage]
+
+type ListActivitiesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=adobe-marketo"`
+	operationID                    struct{}                                        `connector:"operationId=listActivities"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListActivitiesInput                    `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[ListActivitiesResult]              `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[ListActivitiesResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListActivitiesResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListActivitiesResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ActivityPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListActivitiesStep[IN any](config ListActivitiesStepConfig[IN]) sdkgo.QueryStep[IN, ListActivitiesInput, ActivityPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adobe-marketo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListActivitiesInput, ActivityPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListActivities(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListActivitiesResult] {
+			branches := make([]sdkgo.BranchTarget[ListActivitiesResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(ListActivitiesBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListActivitiesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListActivitiesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListActivitiesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const CreateLeadBranchCreated sdkgo.BranchID = "created"

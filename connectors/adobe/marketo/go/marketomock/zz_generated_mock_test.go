@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getActivityPagingToken/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.ActivityPagingToken](`{"nextPageToken":"SAMPLE_ACTIVITY_CURSOR"}`)
+			return err
+		}},
+		{name: "listActivityTypes/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.ActivityTypes](`{"types":[{"id":2,"name":"Fill Out Form"}]}`)
+			return err
+		}},
+		{name: "listActivities/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.ActivityPage](`{"activities":[{"marketoGUID":"102988","leadId":318581,"activityTypeId":2,"activityDate":"2026-01-01T00:00:00Z"}],"nextPageToken":"SAMPLE_NEXT_CURSOR","moreResult":false}`)
+			return err
+		}},
 		{name: "createLead/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[marketo.CreatedLead](`{"id":318582,"status":"created"}`)
 			return err
@@ -46,6 +58,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetActivityPagingToken().Definition().Operation.OperationID != "getActivityPagingToken" {
+		t.Errorf("getActivityPagingToken mock has another definition")
+	}
+	if mock.ListActivityTypes().Definition().Operation.OperationID != "listActivityTypes" {
+		t.Errorf("listActivityTypes mock has another definition")
+	}
+	if mock.ListActivities().Definition().Operation.OperationID != "listActivities" {
+		t.Errorf("listActivities mock has another definition")
+	}
 	if mock.CreateLead().Definition().Operation.OperationID != "createLead" {
 		t.Errorf("createLead mock has another definition")
 	}
