@@ -20,13 +20,14 @@ authorization and provider behavior have not been verified.
 
 | Factory | Endpoint | Input | Output | Required branch | Optional branches |
 | --- | --- | --- | --- | --- | --- |
+| NewCreateMonitorStep | POST /api/v1/monitor | metric alert `Name`, Datadog metric `Query`, and notification `Message` | created monitor ID, name, type, and state | `created` | `providerRejected`, `uncertain`, `defect` |
 | NewQueryMetricsStep | GET /api/v1/query | `From`, `To` (Unix seconds), and Datadog `Query` expression | `MetricsQuery.Status` and `Series` with millisecond timestamps in `Pointlist` | `queried` | `providerRejected`, `invalidResponse`, `defect` |
 | NewListMonitorsStep | GET /api/v1/monitor | zero-based `Page` and `PageSize` (zero selects 100) | `MonitorsPage.Monitors` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | NewGetMonitorStep | GET /api/v1/monitor/{id} | positive `MonitorID` from Monitors > select a monitor | monitor ID, name, type, and state | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | NewUpdateMonitorStep | PUT /api/v1/monitor/{id} | positive `MonitorID` and at least one absolute `Name`, `Message`, or `Query` value | updated monitor summary | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | NewDeleteMonitorStep | DELETE /api/v1/monitor/{id} | positive `MonitorID`; does not force dependent resource deletion | deleted monitor ID | `deleted` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
-`queryMetrics`, `listMonitors`, and `getMonitor` are read-only Queries. `updateMonitor` and `deleteMonitor` are safe-to-repeat Mutations. `Page` and `PageSize` are optional in the
+`queryMetrics`, `listMonitors`, and `getMonitor` are read-only Queries. `updateMonitor` and `deleteMonitor` are safe-to-repeat Mutations. `createMonitor` can send at most twice after an unknown outcome. Datadog supplies no creation deduplication key, so an unconfirmed creation selects `uncertain` at the cap; an ID saved from a confirmed response is read back before reporting success. `Page` and `PageSize` are optional in the
 input schema, so `{}` lists the first page of 100 monitors.
 
 ## Authorization
@@ -40,6 +41,7 @@ Create an API key in [Organization Settings > API Keys](https://app.datadoghq.co
 | Response | Outcome |
 | --- | --- |
 | HTTP 200 with a valid provider result | Required success branch |
+| Create request with a confirmed ID | `created`; an unknown result may retry once, then selects `uncertain` |
 | HTTP 404 for a named resource | `notFound` when declared, otherwise `providerRejected` |
 | Other conclusive 4xx or redirects | `providerRejected` |
 | HTTP 408, 409, 429, 5xx, or transport failure | Retry under the default one-hour policy |
@@ -54,13 +56,15 @@ The generated `datadogmock` package installs these default answers:
 
 - `queryMetrics`: one `system.cpu.user` series with a 0.23 point.
 - `listMonitors`: monitor 12345 named Meridian API latency.
+- `createMonitor`: monitor 12345 named Dex latency alert.
 
-The [mock-backed example test](go/examples/datadog-lookup/flow/workflow_mock_integration_test.go) runs the metric query and `getMonitor` defaults through a real Dex Worker and Client in CI.
+The [mock-backed example test](go/examples/datadog-lookup/flow/workflow_mock_integration_test.go) runs the metric query, `getMonitor`, and `createMonitor` defaults through a real Dex Worker and Client in CI.
 
 ## Official API references
 
 - [https://docs.datadoghq.com/api/latest/metrics/query-timeseries-points/](https://docs.datadoghq.com/api/latest/metrics/query-timeseries-points/)
 - [https://docs.datadoghq.com/api/latest/monitors/get-all-monitors/](https://docs.datadoghq.com/api/latest/monitors/get-all-monitors/)
+- [https://docs.datadoghq.com/api/latest/monitors/create-a-monitor/](https://docs.datadoghq.com/api/latest/monitors/create-a-monitor/)
 - [https://docs.datadoghq.com/api/latest/monitors/get-a-monitors-details/](https://docs.datadoghq.com/api/latest/monitors/get-a-monitors-details/)
 - [https://docs.datadoghq.com/api/latest/monitors/edit-a-monitor/](https://docs.datadoghq.com/api/latest/monitors/edit-a-monitor/)
 - [https://docs.datadoghq.com/api/latest/monitors/delete-a-monitor/](https://docs.datadoghq.com/api/latest/monitors/delete-a-monitor/)

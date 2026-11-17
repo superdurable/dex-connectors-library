@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createMonitor/latencyMonitorCreated/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[datadog.Monitor](`{"id":12345,"name":"Dex latency alert","type":"metric alert","overall_state":"OK"}`)
+			return err
+		}},
 		{name: "queryMetrics/queriedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[datadog.MetricsQuery](`{"status":"ok","series":[{"metric":"system.cpu.user","pointlist":[[1761436800000,0.23]]}]}`)
 			return err
@@ -46,6 +50,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateMonitor().Definition().Operation.OperationID != "createMonitor" {
+		t.Errorf("createMonitor mock has another definition")
+	}
 	if mock.QueryMetrics().Definition().Operation.OperationID != "queryMetrics" {
 		t.Errorf("queryMetrics mock has another definition")
 	}

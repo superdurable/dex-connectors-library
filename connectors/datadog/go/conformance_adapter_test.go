@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = ""
@@ -19,10 +20,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		testConnection: {APIKey: sdkgo.NewSecretString("test-apikey"), ApplicationKey: sdkgo.NewSecretString("test-applicationkey")},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"queryMetrics": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.QueryMetrics(), testConnection),
-		"listMonitors": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListMonitors(), testConnection),
-		"getMonitor": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.GetMonitor(), testConnection),
+	createContext := singledispatchtest.NewContext("datadog-conformance", "create-monitor")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if scenario.Operation == "createMonitor" && attempt > 1 {
+			createContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"createMonitor": newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateMonitor(), testConnection, scenario.CallID),
+		"queryMetrics":  newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.QueryMetrics(), testConnection),
+		"listMonitors":  newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListMonitors(), testConnection),
+		"getMonitor":    newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.GetMonitor(), testConnection),
 		"updateMonitor": newConformanceMutationInvocation(t, scenario.Input, testContext{}, client.UpdateMonitor(), testConnection, scenario.CallID),
 		"deleteMonitor": newConformanceMutationInvocation(t, scenario.Input, testContext{}, client.DeleteMonitor(), testConnection, scenario.CallID),
 	}}

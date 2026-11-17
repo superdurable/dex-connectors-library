@@ -1,6 +1,6 @@
 # Datadog lookup example
 
-This worker registers the metric lookup Flow and `DatadogMonitorInspection`, which calls `datadog.NewGetMonitorStep` with the static connection name `datadog`. Each completes with its typed provider summary. Optional branches are unwired and fail the Flow if selected. Its [mock-backed integration test](flow/workflow_mock_integration_test.go) uses a real Dex Worker and Client in CI.
+This worker registers the metric lookup Flow, `DatadogMonitorInspection`, and `DatadogMonitorCreation`, which call typed Datadog Steps with the static connection name `datadog`. Each completes with its typed provider summary. Optional branches are unwired and fail the Flow if selected. Its [mock-backed integration test](flow/workflow_mock_integration_test.go) uses a real Dex Worker and Client in CI.
 
 ## Generate the strict Flow Definition
 
@@ -10,6 +10,7 @@ From `connectors/datadog`, use the latest stable dexcli:
 mkdir -p build
 dexcli visualize ./examples/datadog-lookup/flow/workflow.go --schema-version 2.0 --json --out ./build/datadog-lookup
 dexcli visualize ./examples/datadog-lookup/flow/monitor_inspection.go --schema-version 2.0 --json --out ./build/datadog-monitor-inspection
+dexcli visualize ./examples/datadog-lookup/flow/monitor_creation.go --schema-version 2.0 --json --out ./build/datadog-monitor-creation
 ```
 
 The definition must report `valid: true`. The local module can warn that a connector release is required.
@@ -43,5 +44,7 @@ In Dex Web **Connections**, select `datadog / datadog`, follow the authorization
 The sample window is October 28, 2026, 00:00–01:00 UTC. Replace `from` and `to` with a recent window in Unix seconds when running against Datadog. The Worker accepts `DEX_FLOW_SERVICE_ADDRESS` and `DEX_BLOB_CACHE_DIR` overrides.
 
 Start `DatadogMonitorInspection` with a unique Flow ID and input `{"monitorId":12345}` after finding the monitor's numeric ID under **Monitors > Manage Monitors > select monitor**.
+
+Start `DatadogMonitorCreation` with a unique Flow ID and input `{"name":"Dex latency alert","query":"avg(last_5m):avg:system.cpu.user{*} > 0.9","message":"Investigate CPU usage"}`. This creates a metric alert that can notify people depending on its message; review the message before using a live Datadog account. An unknown creation result can be sent twice and may select `uncertain` without a confirmed ID.
 
 Live provider authorization and the real Dex example have not been exercised locally; CI runs the mock-backed integration test.

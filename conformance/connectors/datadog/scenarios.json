@@ -2,6 +2,529 @@
   "connector": "datadog",
   "scenarios": [
     {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "body": "{\"id\":12345,\"name\":\"Dex latency alert\",\"type\":\"metric alert\",\"overall_state\":\"OK\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "providerId": "12345",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 12345,
+          "name": "Dex latency alert",
+          "overall_state": "OK",
+          "type": "metric alert"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-success",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[\"bad query\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "name": "",
+          "overall_state": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-provider-rejected",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "overall_state": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-defect",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-rate-limit",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-unavailable",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-server-error",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-transport",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "body": "{\"id\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-invalid-response",
+      "operation": "createMonitor"
+    },
+    {
+      "attempts": 2,
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "name": "",
+          "overall_state": "",
+          "type": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createMonitor-uncertain-after-cap",
+      "operation": "createMonitor"
+    },
+    {
       "callId": "11111111-1111-4111-8111-111111111111",
       "exchanges": [
         {

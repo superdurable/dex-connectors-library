@@ -41,6 +41,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateMonitor() sdkgo.Mutation[CreateMonitorInput, Monitor]
 	QueryMetrics() sdkgo.Query[QueryMetricsInput, MetricsQuery]
 	ListMonitors() sdkgo.Query[ListMonitorsInput, MonitorsPage]
 	GetMonitor() sdkgo.Query[GetMonitorInput, Monitor]
@@ -50,6 +51,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateMonitor() sdkgo.Mutation[CreateMonitorInput, Monitor] {
+	return operations.client.CreateMonitor()
+}
 func (operations clientOperations) QueryMetrics() sdkgo.Query[QueryMetricsInput, MetricsQuery] {
 	return operations.client.QueryMetrics()
 }
@@ -206,6 +210,82 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential application_key is required")
 	}
 	return nil
+}
+
+const CreateMonitorBranchCreated sdkgo.BranchID = "created"
+const CreateMonitorBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateMonitorBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateMonitorBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateMonitorDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createMonitor"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateMonitorBranchCreated, Description: "Datadog created the monitor and returned its ID."},
+		{ID: CreateMonitorBranchProviderRejected, Description: "Datadog definitively rejected creation.", Optional: true},
+		{ID: CreateMonitorBranchUncertain, Description: "A monitor may have been created without a confirmed ID after bounded sends.", Optional: true},
+		{ID: CreateMonitorBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        2,
+}
+
+type CreateMonitorResult = sdkgo.MutationResult[Monitor]
+
+type CreateMonitorStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=datadog"`
+	operationID                       struct{}                                      `connector:"operationId=createMonitor"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateMonitorInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateMonitorResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateMonitorResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateMonitorResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateMonitorResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Monitor]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateMonitorStep[IN any](config CreateMonitorStepConfig[IN]) sdkgo.MutationStep[IN, CreateMonitorInput, Monitor] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("datadog connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateMonitorInput, Monitor]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateMonitor(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateMonitorResult] {
+			branches := make([]sdkgo.BranchTarget[CreateMonitorResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateMonitorBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateMonitorBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateMonitorBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateMonitorBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
 }
 
 const QueryMetricsBranchQueried sdkgo.BranchID = "queried"
@@ -447,6 +527,7 @@ var UpdateMonitorDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateMonitorResult = sdkgo.MutationResult[Monitor]
@@ -524,6 +605,7 @@ var DeleteMonitorDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteMonitorResult = sdkgo.MutationResult[DeletedMonitor]

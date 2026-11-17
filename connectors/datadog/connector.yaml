@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: datadog
   displayName: Datadog
-  description: "Query Datadog metrics and list, read, update, and delete monitors through typed Dex Steps."
+  description: "Query Datadog metrics and create, list, read, update, and delete monitors through typed Dex Steps."
   company: Datadog
   categories: [developer-tools]
   version: v0.4.0
@@ -60,6 +60,26 @@ spec:
         - "Open https://app.datadoghq.com/organization-settings/application-keys, select New Key in Organization Settings > Application Keys, and grant timeseries_query, monitors_read, and monitors_write permissions."
         - "Copy both secret values into api_key and application_key; leave baseUrl, timeout, and maxResponseBytes blank unless changing their displayed defaults."
   operations:
+    - name: createMonitor
+      goName: CreateMonitor
+      inputType: CreateMonitorInput
+      outputType: Monitor
+      kind: mutation
+      description: Create a Datadog metric alert monitor.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Datadog created the monitor and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Datadog definitively rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A monitor may have been created without a confirmed ID after bounded sends., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 2}
+      mocks:
+        - name: latencyMonitorCreated
+          branch: created
+          description: Create a metric alert monitor for the example.
+          default: true
+          output: {id: 12345, name: "Dex latency alert", type: "metric alert", overall_state: "OK"}
     - name: queryMetrics
       goName: QueryMetrics
       inputType: QueryMetricsInput
