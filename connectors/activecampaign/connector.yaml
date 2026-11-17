@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: activecampaign
   displayName: ActiveCampaign
-  description: List, inspect, upsert, and update contacts through the ActiveCampaign API.
+  description: List contacts and lists, and inspect, upsert, and update contacts through the ActiveCampaign API.
   company: ActiveCampaign
   categories: [marketing, crm-sales]
   version: v0.3.0
@@ -55,6 +55,47 @@ spec:
         - Copy the account's full API URL into non-secret baseUrl; it ends in /api/3 and is unique to the account. Copy the current user's API Key into secret api_key and save the connection.
         - Ensure this API user can view the intended contacts. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: listLists
+      goName: ListLists
+      inputType: ListListsInput
+      outputType: ListsPage
+      kind: query
+      description: List one page of email contact lists and their subscriber counts.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign returned the selected list page.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample email list is returned.
+          output: {lists: [{id: '11', name: Newsletter, activeSubscribers: 7, nonDeletedSubscribers: 8}], offset: 0, limit: 20, total: 1}
+    - name: getList
+      goName: GetList
+      inputType: GetListInput
+      outputType: ListMetadata
+      kind: query
+      description: Read one contact list by numeric ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign returned list metadata.}
+        - {id: notFound, goName: NotFound, description: No list with this ID is visible to the API user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample email list is returned.
+          output: {id: '11', name: Newsletter, activeSubscribers: 0, nonDeletedSubscribers: 0}
     - name: listContacts
       goName: ListContacts
       inputType: ListContactsInput

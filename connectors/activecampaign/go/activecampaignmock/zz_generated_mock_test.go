@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listLists/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ListsPage](`{"lists":[{"id":"11","name":"Newsletter","activeSubscribers":7,"nonDeletedSubscribers":8}],"offset":0,"limit":20,"total":1}`)
+			return err
+		}},
+		{name: "getList/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ListMetadata](`{"id":"11","name":"Newsletter","activeSubscribers":0,"nonDeletedSubscribers":0}`)
+			return err
+		}},
 		{name: "listContacts/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[activecampaign.ContactsPage](`{"contacts":[{"id":"68","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace"}],"offset":0,"limit":20,"total":1}`)
 			return err
@@ -42,6 +50,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListLists().Definition().Operation.OperationID != "listLists" {
+		t.Errorf("listLists mock has another definition")
+	}
+	if mock.GetList().Definition().Operation.OperationID != "getList" {
+		t.Errorf("getList mock has another definition")
+	}
 	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
 		t.Errorf("listContacts mock has another definition")
 	}

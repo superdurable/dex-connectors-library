@@ -18,6 +18,8 @@ import (
 // Mock is a scripted activecampaign connection. Script each operation through its accessor.
 type Mock struct {
 	connection    activecampaign.Connection
+	listLists     *connectormock.Query[activecampaign.ListListsInput, activecampaign.ListsPage]
+	getList       *connectormock.Query[activecampaign.GetListInput, activecampaign.ListMetadata]
 	listContacts  *connectormock.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage]
 	getContact    *connectormock.Query[activecampaign.GetContactInput, activecampaign.ContactMetadata]
 	syncContact   *connectormock.Mutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata]
@@ -29,11 +31,15 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listLists:     connectormock.NewQuery[activecampaign.ListListsInput, activecampaign.ListsPage](t, activecampaign.ListListsDefinition),
+		getList:       connectormock.NewQuery[activecampaign.GetListInput, activecampaign.ListMetadata](t, activecampaign.GetListDefinition),
 		listContacts:  connectormock.NewQuery[activecampaign.ListContactsInput, activecampaign.ContactsPage](t, activecampaign.ListContactsDefinition),
 		getContact:    connectormock.NewQuery[activecampaign.GetContactInput, activecampaign.ContactMetadata](t, activecampaign.GetContactDefinition),
 		syncContact:   connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
 		updateContact: connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
 	}
+	mock.listLists.Default(ListListsDefault())
+	mock.getList.Default(GetListDefault())
 	mock.listContacts.Default(ListContactsDefault())
 	mock.getContact.Default(GetContactDefault())
 	mock.syncContact.Default(SyncContactDefault())
@@ -48,6 +54,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() activecampaign.Connection { return mock.connection }
+
+// ListLists returns the listLists script.
+func (mock *Mock) ListLists() *connectormock.Query[activecampaign.ListListsInput, activecampaign.ListsPage] {
+	return mock.listLists
+}
+
+// GetList returns the getList script.
+func (mock *Mock) GetList() *connectormock.Query[activecampaign.GetListInput, activecampaign.ListMetadata] {
+	return mock.getList
+}
 
 // ListContacts returns the listContacts script.
 func (mock *Mock) ListContacts() *connectormock.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage] {
@@ -71,6 +87,12 @@ func (mock *Mock) UpdateContact() *connectormock.Mutation[activecampaign.UpdateC
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListLists() sdkgo.Query[activecampaign.ListListsInput, activecampaign.ListsPage] {
+	return operations.mock.listLists
+}
+func (operations mockOperations) GetList() sdkgo.Query[activecampaign.GetListInput, activecampaign.ListMetadata] {
+	return operations.mock.getList
+}
 func (operations mockOperations) ListContacts() sdkgo.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage] {
 	return operations.mock.listContacts
 }
@@ -83,6 +105,79 @@ func (operations mockOperations) SyncContact() sdkgo.Mutation[activecampaign.Syn
 func (operations mockOperations) UpdateContact() sdkgo.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata] {
 	return operations.mock.updateContact
 }
+
+// ListListsListed selects the listed branch: ActiveCampaign returned the selected list page.
+func ListListsListed(value activecampaign.ListsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.ListsPage] {
+	return connectormock.Branch(activecampaign.ListListsBranchListed, value, failure)
+}
+
+// ListListsProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func ListListsProviderRejected(value activecampaign.ListsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.ListsPage] {
+	return connectormock.Branch(activecampaign.ListListsBranchProviderRejected, value, failure)
+}
+
+// ListListsInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func ListListsInvalidResponse(value activecampaign.ListsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.ListsPage] {
+	return connectormock.Branch(activecampaign.ListListsBranchInvalidResponse, value, failure)
+}
+
+// ListListsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListListsDefect(value activecampaign.ListsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.ListsPage] {
+	return connectormock.Branch(activecampaign.ListListsBranchDefect, value, failure)
+}
+
+// ListListsRetry asks Dex to retry the listLists Step, after the delay when it is positive.
+func ListListsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.ListsPage] {
+	return connectormock.Retry[activecampaign.ListsPage](failure, after)
+}
+
+// ListListsListedDefault is the manifest mock listedDefault: One sample email list is returned.
+func ListListsListedDefault() connectormock.Case[activecampaign.ListsPage] {
+	value := connectormock.MustDecodeOutput[activecampaign.ListsPage](`{"lists":[{"id":"11","name":"Newsletter","activeSubscribers":7,"nonDeletedSubscribers":8}],"offset":0,"limit":20,"total":1}`)
+	return connectormock.Branch(activecampaign.ListListsBranchListed, value, nil)
+}
+
+// ListListsDefault is the manifest default, listedDefault, which New installs.
+func ListListsDefault() connectormock.Case[activecampaign.ListsPage] { return ListListsListedDefault() }
+
+// GetListFound selects the found branch: ActiveCampaign returned list metadata.
+func GetListFound(value activecampaign.ListMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.ListMetadata] {
+	return connectormock.Branch(activecampaign.GetListBranchFound, value, failure)
+}
+
+// GetListNotFound selects the notFound branch: No list with this ID is visible to the API user.
+func GetListNotFound(value activecampaign.ListMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.ListMetadata] {
+	return connectormock.Branch(activecampaign.GetListBranchNotFound, value, failure)
+}
+
+// GetListProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func GetListProviderRejected(value activecampaign.ListMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.ListMetadata] {
+	return connectormock.Branch(activecampaign.GetListBranchProviderRejected, value, failure)
+}
+
+// GetListInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func GetListInvalidResponse(value activecampaign.ListMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.ListMetadata] {
+	return connectormock.Branch(activecampaign.GetListBranchInvalidResponse, value, failure)
+}
+
+// GetListDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetListDefect(value activecampaign.ListMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.ListMetadata] {
+	return connectormock.Branch(activecampaign.GetListBranchDefect, value, failure)
+}
+
+// GetListRetry asks Dex to retry the getList Step, after the delay when it is positive.
+func GetListRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.ListMetadata] {
+	return connectormock.Retry[activecampaign.ListMetadata](failure, after)
+}
+
+// GetListFoundDefault is the manifest mock foundDefault: One sample email list is returned.
+func GetListFoundDefault() connectormock.Case[activecampaign.ListMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.ListMetadata](`{"id":"11","name":"Newsletter","activeSubscribers":0,"nonDeletedSubscribers":0}`)
+	return connectormock.Branch(activecampaign.GetListBranchFound, value, nil)
+}
+
+// GetListDefault is the manifest default, foundDefault, which New installs.
+func GetListDefault() connectormock.Case[activecampaign.ListMetadata] { return GetListFoundDefault() }
 
 // ListContactsListed selects the listed branch: ActiveCampaign returned the selected contact page.
 func ListContactsListed(value activecampaign.ContactsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactsPage] {
