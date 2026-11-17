@@ -30,6 +30,8 @@ export type BambooHRExchange =
 /** Credential outcome before any provider request. */
 /** Statuses that prove BambooHR refused a write; any other failure leaves its outcome unknown. */
 export const DefiniteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+/** A definite refusal or BambooHR's documented business conflict: 409 answers only an email another employee holds. */
+export const DefiniteWriteStatuses: ReadonlySet<number> = new Set([...DefiniteRefusalStatuses, 409]);
 export type BambooHRCredentialResult = { kind: 'resolved'; key: string } | { kind: 'terminal' | 'transient' };
 
 /** Authenticated BambooHR API v1 client. */

@@ -3,7 +3,7 @@
 
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { newFence, CheckpointError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
-import { DefiniteRefusalStatuses, type BambooHRClient, type BambooHRExchange } from './client.js';
+import { DefiniteWriteStatuses, type BambooHRClient, type BambooHRExchange } from './client.js';
 import { AddEmployeeDefinition, FindEmployeeByEmailDefinition, GetEmployeeDefinition, ListEmployeeChangesDefinition, ListTimeOffRequestsDefinition, UpdateEmployeeDefinition } from './generated/definitions.js';
 import type { AddEmployeeInput, AddEmployeeOutput, EmployeeChange, EmployeeRecord, EmployeeSummary, FindEmployeeByEmailInput, FindEmployeeByEmailOutput, GetEmployeeInput, ListEmployeeChangesInput, ListEmployeeChangesOutput, ListTimeOffRequestsInput, ListTimeOffRequestsOutput, TimeOffRequest, UpdateEmployeeInput, UpdateEmployeeOutput } from './generated/models.js';
 
@@ -177,7 +177,7 @@ export class UpdateEmployeeOperation implements Mutation<UpdateEmployeeInput, Up
     if (Object.keys(changed).length === 0) return newMutationBranch('updated', { employee: current, wasAlreadyApplied: true }, receipt);
     const write = await this.client.exchange(call, 'updateEmployee', key, 'POST', `/employees/${input.employeeId}`, undefined, changed);
     // A write without a definite refusal may have applied; the next attempt reads first.
-    if (write.kind === 'invalid' || ((write.kind === 'rejected' || write.kind === 'notFound') && !DefiniteRefusalStatuses.has(write.status ?? 0))) return newMutationRetry(write.failure, write.retryAfterMs);
+    if (write.kind === 'invalid' || ((write.kind === 'rejected' || write.kind === 'notFound') && !DefiniteWriteStatuses.has(write.status ?? 0))) return newMutationRetry(write.failure, write.retryAfterMs);
     const writeTerminal = exchangeMutation(this.client, call, write, { employee: current }, input.employeeId, true);
     if (writeTerminal) return writeTerminal;
     const writtenFields = Object.keys(changed).sort();
@@ -266,14 +266,14 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
     // An invalid result is an unreadable 2xx: BambooHR accepted this POST, so a resend would duplicate it.
     if (result.kind === 'invalid') return newMutationUncertain(zeroAdd, result.failure, receipt);
     if (result.kind === 'defect' && !hasPossibleEarlierSend) return newMutationBranch('defect', zeroAdd, receipt, result.failure);
-    if ((result.kind === 'rejected' || result.kind === 'notFound') && DefiniteRefusalStatuses.has(result.status ?? 0)) {
+    if ((result.kind === 'rejected' || result.kind === 'notFound') && DefiniteWriteStatuses.has(result.status ?? 0)) {
       // An earlier send may have added the employee, so a refusal of this resend proves nothing.
       if (hasPossibleEarlierSend) return newMutationUncertain(zeroAdd, result.failure, receipt);
       try { await fence.recordCanResend(); }
       catch { return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'BambooHR refused the request, but the refusal checkpoint failed')); }
       return newMutationBranch('providerRejected', zeroAdd, receipt, result.failure);
     }
-    // A timeout, 5xx, 408, 409, redirect, or other status leaves the outcome unknown.
+    // A timeout, 5xx, 408, redirect, or other status leaves the outcome unknown.
     return resendOrSelectAddEmployeeUncertain(canResendUnknownOutcome, receipt, result.failure, result.retryAfterMs);
   }
 }

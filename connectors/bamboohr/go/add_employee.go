@@ -165,8 +165,10 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 		return sdkgo.NewMutationRetry[AddEmployeeOutput](result.failure, result.retryAfter)
 	case result.outcome == exchangeDefect && !hasPossibleEarlierSend:
 		return sdkgo.NewMutationBranch(AddEmployeeBranchDefect, AddEmployeeOutput{}, &result.failure, receipt)
-	case (result.outcome == exchangeRejected || result.outcome == exchangeNotFound) && isDefiniteRefusalStatus(result.response.statusCode):
-		// An earlier send may have added the employee, so a refusal of this resend proves nothing.
+	case (result.outcome == exchangeRejected || result.outcome == exchangeNotFound) &&
+		(isDefiniteRefusalStatus(result.response.statusCode) || isDocumentedConflictStatus(result.response.statusCode)):
+		// An earlier send may have added the employee, so a refusal or a duplicate-email conflict
+		// of this resend proves nothing; resending would only meet the same conflict.
 		if hasPossibleEarlierSend {
 			return sdkgo.NewMutationUncertain(AddEmployeeOutput{}, result.failure, receipt)
 		}
@@ -175,7 +177,7 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 		}
 		return sdkgo.NewMutationBranch(AddEmployeeBranchProviderRejected, AddEmployeeOutput{}, &result.failure, receipt)
 	default:
-		// A timeout, 5xx, 408, 409, redirect, or other status leaves the outcome unknown.
+		// A timeout, 5xx, 408, redirect, or other status leaves the outcome unknown.
 		return resendOrSelectAddEmployeeUncertain(canResendUnknownOutcome, receipt, result.failure, result.retryAfter)
 	}
 }

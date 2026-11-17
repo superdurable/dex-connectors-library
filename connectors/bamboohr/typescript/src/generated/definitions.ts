@@ -149,7 +149,7 @@ export const UpdateEmployeeBranch = {
 export const UpdateEmployeeBranchUpdated = UpdateEmployeeBranch.Updated;
 /** No employee has this internal ID. */
 export const UpdateEmployeeBranchNotFound = UpdateEmployeeBranch.NotFound;
-/** BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit. */
+/** BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit, or with its documented duplicate-email 409. */
 export const UpdateEmployeeBranchProviderRejected = UpdateEmployeeBranch.ProviderRejected;
 /** BambooHR returned an invalid or oversized employee record, so the change may have been applied. */
 export const UpdateEmployeeBranchInvalidResponse = UpdateEmployeeBranch.InvalidResponse;
@@ -161,7 +161,7 @@ export const UpdateEmployeeDefinition: MutationDefinition = {
   branches: [
     { id: "updated", description: "The employee holds the requested values, written now or by an earlier attempt, as read back from BambooHR." },
     { id: "notFound", description: "No employee has this internal ID.", optional: true },
-    { id: "providerRejected", description: "BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit.", optional: true },
+    { id: "providerRejected", description: "BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit, or with its documented duplicate-email 409.", optional: true },
     { id: "invalidResponse", description: "BambooHR returned an invalid or oversized employee record, so the change may have been applied.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
@@ -180,7 +180,7 @@ export const AddEmployeeBranch = {
 } as const;
 /** BambooHR added the employee and returned its internal ID. */
 export const AddEmployeeBranchCreated = AddEmployeeBranch.Created;
-/** BambooHR conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid field value; no employee was added. */
+/** BambooHR conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid field value, or with its documented duplicate-email 409; no employee was added. */
 export const AddEmployeeBranchProviderRejected = AddEmployeeBranch.ProviderRejected;
 /** Sends up to the send cap may have added the employee, or BambooHR accepted it without a usable ID, and read-back cannot confirm it; the employee may exist. */
 export const AddEmployeeBranchUncertain = AddEmployeeBranch.Uncertain;
@@ -191,7 +191,7 @@ export const AddEmployeeDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "addEmployee" },
   branches: [
     { id: "created", description: "BambooHR added the employee and returned its internal ID." },
-    { id: "providerRejected", description: "BambooHR conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid field value; no employee was added.", optional: true },
+    { id: "providerRejected", description: "BambooHR conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid field value, or with its documented duplicate-email 409; no employee was added.", optional: true },
     { id: "uncertain", description: "Sends up to the send cap may have added the employee, or BambooHR accepted it without a usable ID, and read-back cannot confirm it; the employee may exist.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],

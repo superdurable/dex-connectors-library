@@ -81,9 +81,9 @@ func TestAddEmployeeResendsAnUnknownOutcomeOnlyBelowTheSendCap(t *testing.T) {
 			writeBambooHRError(t, response, http.StatusInternalServerError, `SENTINEL`)
 		}, kind: sdkgo.FailureAvailability},
 		{name: "lost response", reply: func(response http.ResponseWriter) { dropConnection(t, response) }, kind: sdkgo.FailureTransport},
-		{name: "duplicate email conflict", reply: func(response http.ResponseWriter) {
-			writeBambooHRError(t, response, http.StatusConflict, ``)
-		}, kind: sdkgo.FailureConflict},
+		{name: "request timeout", reply: func(response http.ResponseWriter) {
+			writeBambooHRError(t, response, http.StatusRequestTimeout, ``)
+		}, kind: sdkgo.FailureAvailability},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(response) })
@@ -128,6 +128,9 @@ func TestAddEmployeeNeverResendsAnAcceptedOrDefinitelyRefusedRequest(t *testing.
 		{name: "invalid value", reply: func(response http.ResponseWriter) {
 			writeBambooHRError(t, response, http.StatusBadRequest, ``)
 		}, branch: bamboohr.AddEmployeeBranchProviderRejected, kind: sdkgo.FailureValidation, state: "canResend"},
+		{name: "documented duplicate email", reply: func(response http.ResponseWriter) {
+			writeBambooHRError(t, response, http.StatusConflict, ``)
+		}, branch: bamboohr.AddEmployeeBranchProviderRejected, kind: sdkgo.FailureConflict, state: "canResend"},
 		{name: "not permitted", reply: func(response http.ResponseWriter) {
 			writeBambooHRError(t, response, http.StatusForbidden, ``)
 		}, branch: bamboohr.AddEmployeeBranchProviderRejected, kind: sdkgo.FailureAuthorization, state: "canResend"},
@@ -147,21 +150,25 @@ func TestAddEmployeeNeverResendsAnAcceptedOrDefinitelyRefusedRequest(t *testing.
 }
 
 func TestAddEmployeeSelectsUncertainForARefusalAfterAPossibleSend(t *testing.T) {
-	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, index int) {
-		if index == 0 {
-			writeBambooHRError(t, response, http.StatusBadGateway, ``)
-			return
-		}
-		writeBambooHRError(t, response, http.StatusBadRequest, ``)
-	})
-	ctx := newBambooHRDexContext("add-refused-after-send")
-	_, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
-	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry)
-	result, err := sdkgo.RunMutation(ctx.nextAttempt(), newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
-	require.NoError(t, err)
-	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch, "the first send may have added the employee")
-	require.Equal(t, 2, provider.requestCount())
+	for _, status := range []int{http.StatusBadRequest, http.StatusConflict} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+				if index == 0 {
+					writeBambooHRError(t, response, http.StatusBadGateway, ``)
+					return
+				}
+				writeBambooHRError(t, response, status, ``)
+			})
+			ctx := newBambooHRDexContext("add-refused-after-send")
+			_, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			result, err := sdkgo.RunMutation(ctx.nextAttempt(), newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+			require.NoError(t, err)
+			require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch, "the first send may have added the employee; a duplicate-email conflict may be our own write")
+			require.Equal(t, 2, provider.requestCount())
+		})
+	}
 }
 
 func TestAddEmployeeRetriesOnlyWhatBambooHRProvablyDidNotApply(t *testing.T) {

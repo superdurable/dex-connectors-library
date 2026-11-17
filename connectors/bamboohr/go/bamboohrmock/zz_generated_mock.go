@@ -346,7 +346,7 @@ func UpdateEmployeeNotFound(value bamboohr.UpdateEmployeeOutput, failure *sdkgo.
 	return connectormock.Branch(bamboohr.UpdateEmployeeBranchNotFound, value, failure)
 }
 
-// UpdateEmployeeProviderRejected selects the providerRejected branch: BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit.
+// UpdateEmployeeProviderRejected selects the providerRejected branch: BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit, or with its documented duplicate-email 409.
 func UpdateEmployeeProviderRejected(value bamboohr.UpdateEmployeeOutput, failure *sdkgo.Failure) connectormock.Case[bamboohr.UpdateEmployeeOutput] {
 	return connectormock.Branch(bamboohr.UpdateEmployeeBranchProviderRejected, value, failure)
 }
@@ -400,7 +400,7 @@ func AddEmployeeCreated(value bamboohr.AddEmployeeOutput, failure *sdkgo.Failure
 	return connectormock.Branch(bamboohr.AddEmployeeBranchCreated, value, failure)
 }
 
-// AddEmployeeProviderRejected selects the providerRejected branch: BambooHR conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid field value; no employee was added.
+// AddEmployeeProviderRejected selects the providerRejected branch: BambooHR conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid field value, or with its documented duplicate-email 409; no employee was added.
 func AddEmployeeProviderRejected(value bamboohr.AddEmployeeOutput, failure *sdkgo.Failure) connectormock.Case[bamboohr.AddEmployeeOutput] {
 	return connectormock.Branch(bamboohr.AddEmployeeBranchProviderRejected, value, failure)
 }

@@ -47,7 +47,7 @@ async function add(client: BambooHRClient, context: AttemptContext): Promise<Mut
 }
 
 describe('BambooHR addEmployee bounded resend', () => {
-  it.each([500, 409])('resends an unknown HTTP %i until the send cap, then selects uncertain', async status => {
+  it.each([500, 408])('resends an unknown HTTP %i until the send cap, then selects uncertain', async status => {
     const { client, requests } = newClient(() => ({ status, body: '{}' }));
     const context = new AttemptContext();
     for (let attempt = 1; attempt < AddEmployeeDefinition.maxSends!; attempt++) {
@@ -62,17 +62,17 @@ describe('BambooHR addEmployee bounded resend', () => {
     expect(requests).toHaveLength(AddEmployeeDefinition.maxSends!);
   });
 
-  it('records canResend before selecting providerRejected for a definite first-send refusal', async () => {
-    const { client, requests } = newClient(() => ({ status: 400, body: '{}' }));
+  it.each([400, 409])('records canResend before selecting providerRejected for a definite first-send HTTP %i', async status => {
+    const { client, requests } = newClient(() => ({ status, body: '{}' }));
     const context = new AttemptContext();
     expect(await add(client, context)).toMatchObject({ branch: 'providerRejected' });
     expect(context.marker).toMatchObject({ state: 'canResend' });
     expect(requests).toHaveLength(1);
   });
 
-  it('selects uncertain for a refusal after a possible send', async () => {
+  it.each([400, 409])('selects uncertain for HTTP %i after a possible send', async status => {
     let index = 0;
-    const { client, requests } = newClient(() => ({ status: index++ === 0 ? 502 : 400, body: '{}' }));
+    const { client, requests } = newClient(() => ({ status: index++ === 0 ? 502 : status, body: '{}' }));
     const context = new AttemptContext();
     expect(await add(client, context)).toBeInstanceOf(RetryError);
     context.attempt = 2;

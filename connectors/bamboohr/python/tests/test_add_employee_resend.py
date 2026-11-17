@@ -78,7 +78,7 @@ async def add(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("status", [500, 409])
+@pytest.mark.parametrize("status", [500, 408])
 async def test_unknown_outcome_resends_until_the_send_cap(status: int) -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()
@@ -98,22 +98,25 @@ async def test_unknown_outcome_resends_until_the_send_cap(status: int) -> None:
 
 
 @pytest.mark.asyncio
-async def test_definite_refusal_of_first_send_records_can_resend() -> None:
+@pytest.mark.parametrize("status", [400, 409])
+async def test_definite_refusal_of_first_send_records_can_resend(status: int) -> None:
+    """A 400, or the documented duplicate-email 409, is a definite outcome of a first send."""
     requests: list[httpx.Request] = []
     context = AttemptContext()
-    result = await add(400, {}, context, requests)
+    result = await add(status, {}, context, requests)
     assert isinstance(result, MutationResult) and result.branch == "providerRejected"
     assert context.marker is not None and context.marker.state == "canResend"
     assert len(requests) == 1
 
 
 @pytest.mark.asyncio
-async def test_refusal_after_a_possible_send_selects_uncertain() -> None:
+@pytest.mark.parametrize("status", [400, 409])
+async def test_refusal_after_a_possible_send_selects_uncertain(status: int) -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()
     assert isinstance(await add(502, {}, context, requests), RetryError)
     context.attempt = 2
-    result = await add(400, {}, context, requests)
+    result = await add(status, {}, context, requests)
     assert isinstance(result, MutationResult) and result.branch == "uncertain"
     assert len(requests) == 2
 

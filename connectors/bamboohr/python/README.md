@@ -8,10 +8,11 @@ fence that resends an unknown outcome only while possible sends stay below the
 Step's send cap, and selects `uncertain` at the cap. All other optional branches
 fail an example Flow unless the application wires them for a business reaction.
 
-Version `0.2.1` resends an `addEmployee` outcome that is unknown, such as a 5xx,
-409, or lost response, below the send cap; returns Retry for an unreadable
-dispatch checkpoint; and retries an `updateEmployee` write that BambooHR did not
-definitely refuse.
+Version `0.2.1` resends an `addEmployee` outcome that is unknown, such as a 5xx
+or lost response, below the send cap; returns Retry for an unreadable dispatch
+checkpoint; selects `providerRejected` for the documented duplicate-email 409 of
+a first send (`uncertain` after an earlier possible send); and retries an
+`updateEmployee` write that BambooHR did not definitely refuse.
 
 Version `0.2.0` adds the `employeeChanged` poll Trigger on `dex-connectors-sdk`
 0.12.0's poll Trigger kit. `new_project_employee_changed_trigger_runner` loads

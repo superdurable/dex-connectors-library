@@ -3041,6 +3041,59 @@
       "operation": "addEmployee"
     },
     {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees",
+          "requestBody": {
+            "firstName": "Sam",
+            "lastName": "Park",
+            "workEmail": "ava.nguyen@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "CONFLICT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+          "state": "canResend"
+        },
+        "output": {
+          "employeeId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "firstName": "Sam",
+        "lastName": "Park",
+        "workEmail": "ava.nguyen@example.com"
+      },
+      "name": "addEmployee-duplicate-email",
+      "operation": "addEmployee"
+    },
+    {
       "attempts": 2,
       "callId": "040acc95-2028-5ed8-8c49-215b4fa87426",
       "exchanges": [

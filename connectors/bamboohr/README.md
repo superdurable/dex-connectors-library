@@ -256,10 +256,10 @@ compensation, or employment status history tables (`jobTitle`, `department`,
 documents that writing `jobTitle` creates a position-history row and writing
 `employmentHistoryStatus` appends an employment status record, so a repeated
 attempt could append a second row. A write answered with 400, 401, 403, 404,
-411, 413, 414, 415, or 422 is a definite refusal and selects its branch. Any
-other write status, including the 409 BambooHR returns for a duplicate email,
-does not prove the write was refused, so the attempt is retried; a duplicate
-email therefore retries until the Step retry policy is exhausted.
+411, 413, 414, 415, or 422 is a definite refusal and selects its branch, and so
+is the 409 BambooHR documents for an email another employee holds: it selects
+`providerRejected` with `CONFLICT`. Any other write status does not prove the
+write was refused, so the attempt is retried and the next attempt reads first.
 
 ### addEmployee
 
@@ -391,15 +391,16 @@ take these positions:
   describes 429 as throttling and 503 as endpoint unavailability. A 429 without
   `Retry-After` also retries; the provider says the header should be present,
   so the missing-header case has not been verified live.
-- An unknown outcome, such as a 500, 408, 409, redirect, unlisted 4xx, or
+- An unknown outcome, such as a 500, 408, redirect, unlisted 4xx, or
   ambiguous transport failure, returns Retry, and the next attempt posts again
   while the possible sends stay below the cap; at the cap it selects
   `uncertain`. A resend can therefore add a second employee when the work email
-  is blank; with a work email, BambooHR answers the resend with 409.
-- A definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) of the
-  first send records `canResend` and selects `providerRejected`. After an
-  earlier possible send, a refusal cannot prove nothing was added, so it
-  selects `uncertain`. An accepted 2xx without a usable employee ID also selects
+  is blank.
+- A definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the
+  documented duplicate-email 409, of the first send records `canResend` and
+  selects `providerRejected`. After an earlier possible send, a refusal cannot
+  prove nothing was added, and a duplicate-email 409 may come from that earlier
+  send succeeding, so both select `uncertain` without another POST. An accepted 2xx without a usable employee ID also selects
   `uncertain`, because a resend would add a second employee. The connector
   cannot associate an email or name lookup with its specific POST. The
   onboarding example looks up the hire by personal email; a missing or
@@ -427,7 +428,8 @@ the API key is dropped. An oversized error body contributes no code.
 | 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same | as 400 |
 | 404 | `notFound` where declared, otherwise `providerRejected` | `notFound` | as 400 |
 | 411, 413, 414, 415 | `providerRejected` | `providerRejected` | as 400 |
-| 406, 409, other 4xx | `providerRejected` | Retry | Retry below the send cap, then `uncertain` |
+| 409, the documented duplicate email | `providerRejected`, `CONFLICT` | same | `providerRejected`, `CONFLICT`; `uncertain` after an earlier possible send |
+| 406, other 4xx | `providerRejected` | Retry | Retry below the send cap, then `uncertain` |
 | 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | Retry | Retry below the send cap, then `uncertain` |
 | 429 with `Retry-After` | Retry after `Retry-After` | same | Retry after `Retry-After` |
 | 429 without `Retry-After` | Retry | Retry | Retry |

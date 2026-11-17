@@ -127,13 +127,14 @@ func updateEmployeeAttemptForExchange(result bambooHRExchange, receipt sdkgo.Rec
 }
 
 // updateEmployeeAttemptForWrite retries a write whose outcome is unknown, such as an unreadable
-// 2xx, a 409, or another status that does not prove a refusal; the next attempt reads first.
+// 2xx or a status that does not prove a refusal; the next attempt reads first.
 func updateEmployeeAttemptForWrite(result bambooHRExchange, receipt sdkgo.Receipt, value UpdateEmployeeOutput) (sdkgo.MutationAttempt[UpdateEmployeeOutput], bool) {
 	switch result.outcome {
 	case exchangeInvalid:
 		return sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
 	case exchangeRejected, exchangeNotFound:
-		if !isDefiniteRefusalStatus(result.response.statusCode) {
+		// The documented duplicate-email 409 is a definite business outcome, not an unknown one.
+		if !isDefiniteRefusalStatus(result.response.statusCode) && !isDocumentedConflictStatus(result.response.statusCode) {
 			return sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
 		}
 	}

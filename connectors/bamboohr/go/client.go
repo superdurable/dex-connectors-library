@@ -324,6 +324,10 @@ func isDefiniteRefusalStatus(status int) bool {
 	return false
 }
 
+// isDocumentedConflictStatus reports BambooHR's documented business conflict: it answers 409
+// only for an email another employee already holds.
+func isDocumentedConflictStatus(status int) bool { return status == http.StatusConflict }
+
 func rejectionFailureKind(status int) sdkgo.FailureKind {
 	switch status {
 	case http.StatusUnauthorized:

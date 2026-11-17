@@ -29,7 +29,13 @@ from dex_connectors.sdk.singledispatch import (
 )
 
 from ._generated import definitions
-from .client import DEFINITE_REFUSAL_STATUSES, Client, Exchange, bamboohr_failure
+from .client import (
+    DEFINITE_REFUSAL_STATUSES,
+    DOCUMENTED_CONFLICT_STATUSES,
+    Client,
+    Exchange,
+    bamboohr_failure,
+)
 from .models import (
     AddEmployeeInput,
     AddEmployeeOutput,
@@ -50,6 +56,8 @@ from .models import (
     UpdateEmployeeOutput,
 )
 
+# A definite refusal or BambooHR's documented duplicate-email conflict.
+_DEFINITE_WRITE_STATUSES = DEFINITE_REFUSAL_STATUSES | DOCUMENTED_CONFLICT_STATUSES
 _EMPLOYEE_ID = re.compile(r"^[1-9][0-9]{0,18}$")
 _FIELD_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
 _FIELD_ID = re.compile(r"^[1-9][0-9]{0,9}$")
@@ -631,7 +639,7 @@ def _mutation_write_exchange(
     # A write without a definite refusal may have applied; the next attempt reads first.
     is_unknown_outcome = exchange.outcome == "invalid" or (
         exchange.outcome in ("rejected", "not_found")
-        and exchange.status_code not in DEFINITE_REFUSAL_STATUSES
+        and exchange.status_code not in _DEFINITE_WRITE_STATUSES
     )
     if is_unknown_outcome:
         assert exchange.failure is not None
@@ -920,7 +928,7 @@ class AddEmployeeOperation:
             return MutationAttempt.branch_result("defect", empty, receipt, exchange.failure)
         if (
             exchange.outcome in ("rejected", "not_found")
-            and exchange.status_code in DEFINITE_REFUSAL_STATUSES
+            and exchange.status_code in _DEFINITE_WRITE_STATUSES
         ):
             # An earlier send may have added the employee, so a refusal of this resend proves nothing.
             if has_possible_earlier_send:
@@ -936,7 +944,7 @@ class AddEmployeeOperation:
                     )
                 )
             return MutationAttempt.branch_result("providerRejected", empty, receipt, exchange.failure)
-        # A timeout, 5xx, 408, 409, redirect, or other status leaves the outcome unknown.
+        # A timeout, 5xx, 408, redirect, or other status leaves the outcome unknown.
         return _resend_or_select_add_uncertain(
             can_resend_unknown_outcome, receipt, exchange.failure, exchange.retry_after
         )

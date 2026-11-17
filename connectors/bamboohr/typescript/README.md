@@ -45,9 +45,10 @@ Every other declared branch is optional. An unwired optional branch fails the
 Flow. `updateEmployee` reads before writing, sends only changed plain field
 values, and reads back; repeated writes are safe. `addEmployee` uses the SDK's
 single-dispatch fence because BambooHR documents no provider idempotency key.
-It reads back a known accepted ID, resends an unknown outcome, such as a 5xx,
-409, or lost response, while possible sends stay below the Step's send cap, and
-returns `uncertain` at the cap or when an accepted write cannot be confirmed.
+It reads back a known accepted ID, resends an unknown outcome, such as a 5xx or
+lost response, while possible sends stay below the Step's send cap, and returns
+`uncertain` at the cap or when an accepted write cannot be confirmed. The
+documented duplicate-email 409 of a first send selects `providerRejected`.
 Version `0.2.1` adds that bounded resend, returns Retry for an unreadable
 dispatch checkpoint, and retries an `updateEmployee` write that BambooHR did
 not definitely refuse. Neither mutation sends an idempotency header; its Dex
