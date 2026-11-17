@@ -1,10 +1,10 @@
 {
   "connectorId": "docusign",
-  "releaseTag": "connectors/docusign/go/v0.24.0",
+  "releaseTag": "connectors/docusign/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-docusign",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -12,7 +12,7 @@
       "kind": "mutation",
       "operationId": "createEnvelopeFromTemplate",
       "inputType": "CreateEnvelopeFromTemplateInput",
-      "description": "Create one envelope from a server template, filling its roles in their routing order, and send it or keep it as a draft. DocuSign has no idempotency key, so the call runs with sync durability, tags the envelope with a hidden custom field derived from the Step's idempotency key, and on every later attempt looks for that envelope by the field before sending again; an outcome it cannot confirm selects uncertain.",
+      "description": "Create one envelope from a server template, filling its roles in their routing order, and send it or keep it as a draft. DocuSign has no idempotency key, so the call runs with sync durability, tags the envelope with a hidden custom field derived from the Step's idempotency key, and on every later attempt looks for that envelope by the field before sending again. An outcome it cannot confirm resends on a later attempt while possible sends stay below maxSends, and selects uncertain at the cap.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

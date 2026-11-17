@@ -4,7 +4,7 @@ This package implements `createEnvelopeFromTemplate`, `getEnvelope`,
 `listEnvelopeRecipients`, `voidEnvelope`, and `downloadCombinedDocument` for
 Dex Python Flows, and the `envelopeEventReceived` DocuSign Connect Trigger.
 The manifest owns operation identities, retry policies, branches, configuration,
-and OAuth methods. The Python package version is `v0.2.0` and requires
+and OAuth methods. The Python package version is `v0.2.1` and requires
 `dex-connectors-sdk>=0.11.0`.
 
 `new_project_connection` loads the static connection name from Dex project

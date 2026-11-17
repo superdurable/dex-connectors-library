@@ -363,7 +363,7 @@ var CreateEnvelopeFromTemplateDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateEnvelopeFromTemplateBranchCreated, Description: "DocuSign holds the envelope this Step execution created; wasRecovered tells whether a later attempt found it by its custom field after an interrupted one."},
 		{ID: CreateEnvelopeFromTemplateBranchProviderRejected, Description: "DocuSign conclusively rejected the envelope, such as an unknown template, an unfilled or unknown role, an invalid email address, an exhausted envelope allowance, or a user who may not send; nothing was created.", Optional: true},
-		{ID: CreateEnvelopeFromTemplateBranchUncertain, Description: "The create request was sent but DocuSign's answer was lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, so an envelope may exist that this Result does not name; do not create another automatically.", Optional: true},
+		{ID: CreateEnvelopeFromTemplateBranchUncertain, Description: "The send cap was reached with DocuSign's answer lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, or several envelopes carry it, so an envelope may exist that this Result does not name; do not create another automatically.", Optional: true},
 		{ID: CreateEnvelopeFromTemplateBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -371,6 +371,8 @@ var CreateEnvelopeFromTemplateDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(3900000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateEnvelopeFromTemplateResult = sdkgo.MutationResult[CreatedEnvelope]
@@ -390,6 +392,8 @@ type CreateEnvelopeFromTemplateStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateEnvelopeFromTemplateResult]        `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedEnvelope]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateEnvelopeFromTemplateStep[IN any](config CreateEnvelopeFromTemplateStepConfig[IN]) sdkgo.MutationStep[IN, CreateEnvelopeFromTemplateInput, CreatedEnvelope] {
@@ -421,6 +425,7 @@ func NewCreateEnvelopeFromTemplateStep[IN any](config CreateEnvelopeFromTemplate
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -600,6 +605,8 @@ var VoidEnvelopeDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3900000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type VoidEnvelopeResult = sdkgo.MutationResult[VoidedEnvelope]
@@ -621,6 +628,8 @@ type VoidEnvelopeStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[VoidEnvelopeResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[VoidedEnvelope]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewVoidEnvelopeStep[IN any](config VoidEnvelopeStepConfig[IN]) sdkgo.MutationStep[IN, VoidEnvelopeInput, VoidedEnvelope] {
@@ -658,6 +667,7 @@ func NewVoidEnvelopeStep[IN any](config VoidEnvelopeStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 

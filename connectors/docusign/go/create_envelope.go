@@ -130,11 +130,10 @@ func (CreateEnvelopeFromTemplateOperation) IdempotencyKey(callID sdkgo.CallID, _
 }
 
 // Invoke creates the envelope and guards against a second one. It records a dispatch checkpoint
-// before the POST; an attempt that finds one, or whose own answer was lost or unreadable, reads the
-// envelope back by its custom field instead of creating another, and reports uncertain when it cannot
-// find it. A later attempt without a checkpoint also reads back before it sends, because Dex does not
-// confirm that a heartbeat was stored. Only a rate-limit refusal or a request that provably never left
-// the Worker is retried.
+// before the POST. Every attempt after the first reads the envelope back by its custom field before
+// sending, because Dex does not confirm that a heartbeat was stored. Each attempt sends at most once,
+// so attempt - 1 bounds the earlier sends: an unknown outcome resends on a later attempt while that
+// bound stays below call.MaxSends(), and selects uncertain at the cap.
 func (operation CreateEnvelopeFromTemplateOperation) Invoke(
 	call sdkgo.Call, input CreateEnvelopeFromTemplateInput,
 ) sdkgo.MutationAttempt[CreatedEnvelope] {
@@ -148,21 +147,21 @@ func (operation CreateEnvelopeFromTemplateOperation) Invoke(
 		return sdkgo.NewMutationBranch(CreateEnvelopeFromTemplateBranchDefect, CreatedEnvelope{}, docusignFailurePointer(createEnvelopeFromTemplateOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
 	checkpoint, hasCheckpoint := earlierCreateDispatch(call)
+	sends := newCreateSendBudget(call)
 	session, sessionFailure := client.openSession(call, createEnvelopeFromTemplateOperationID)
 	switch {
-	case sessionFailure != nil && hasCheckpoint:
-		return client.reportSessionFailureAfterDispatch(call, checkpoint, sessionFailure)
+	case sessionFailure != nil && (hasCheckpoint || sends.hasPossibleEarlierSend()):
+		return client.reportSessionFailureAfterPossibleSend(call, checkpoint, hasCheckpoint, sends, sessionFailure)
 	case sessionFailure != nil:
 		return mutationSessionFailure[CreatedEnvelope](sessionFailure, CreateEnvelopeFromTemplateBranchProviderRejected, CreateEnvelopeFromTemplateBranchProviderRejected, CreateEnvelopeFromTemplateBranchDefect)
-	case hasCheckpoint:
-		return client.recoverCreatedEnvelope(call, &session, marker, checkpoint, true,
-			docusignFailure(createEnvelopeFromTemplateOperationID, sdkgo.FailureTransport, "an earlier attempt sent the DocuSign create request and its outcome is unknown"))
-	case call.Context.Attempt() > 1:
-		if attempt, isDecided := client.findEnvelopeBeforeResend(call, &session, marker); isDecided {
+	case hasCheckpoint || sends.hasPossibleEarlierSend():
+		if attempt, isDecided := client.findEnvelopeBeforeResend(call, &session, marker, checkpoint, hasCheckpoint, sends); isDecided {
 			return attempt
 		}
 	}
-	checkpoint = createDispatchCheckpoint{IsDispatched: true, DispatchedAt: client.now().UTC()}
+	if !hasCheckpoint {
+		checkpoint = createDispatchCheckpoint{IsDispatched: true, DispatchedAt: client.now().UTC()}
+	}
 	if err := call.Context.RecordHeartbeat(checkpoint); err != nil {
 		return sdkgo.NewMutationRetry[CreatedEnvelope](docusignFailure(createEnvelopeFromTemplateOperationID, sdkgo.FailureAvailability, "the create checkpoint could not be recorded, so nothing was sent to DocuSign"), 0)
 	}
@@ -175,15 +174,15 @@ func (operation CreateEnvelopeFromTemplateOperation) Invoke(
 		clearCreateDispatch(call)
 		return sdkgo.NewMutationBranch(CreateEnvelopeFromTemplateBranchDefect, CreatedEnvelope{}, docusignFailurePointer(createEnvelopeFromTemplateOperationID, sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
 	case err != nil && !errors.Is(err, errDocuSignResponseTooLarge) && !isDispatched.Load():
-		clearCreateDispatch(call)
+		releaseCreateDispatch(call, checkpoint, hasCheckpoint)
 		return sdkgo.NewMutationRetry[CreatedEnvelope](docusignFailure(createEnvelopeFromTemplateOperationID, sdkgo.FailureTransport, "DocuSign could not be reached, so no envelope was created"), 0)
 	case err != nil:
-		return client.recoverCreatedEnvelope(call, &session, marker, checkpoint, false,
+		return client.recoverCreatedEnvelope(call, &session, marker, checkpoint, sends,
 			docusignFailure(createEnvelopeFromTemplateOperationID, sdkgo.FailureTransport, "DocuSign's answer to the create request was lost"))
 	case response.statusCode == http.StatusCreated || response.statusCode == http.StatusOK:
 		created, decodeErr := decodeCreatedEnvelope(response.body, input.IsDraft)
 		if decodeErr != nil {
-			return client.recoverCreatedEnvelope(call, &session, marker, checkpoint, false,
+			return client.recoverCreatedEnvelope(call, &session, marker, checkpoint, sends,
 				docusignFailure(createEnvelopeFromTemplateOperationID, sdkgo.FailureProtocol, "DocuSign accepted the create request but returned an unusable envelope summary"))
 		}
 		return sdkgo.NewMutationBranch(CreateEnvelopeFromTemplateBranchCreated, created, nil, client.receipt(created.EnvelopeID, ""))
@@ -192,80 +191,148 @@ func (operation CreateEnvelopeFromTemplateOperation) Invoke(
 	switch {
 	case outcome.isRetry && response.statusCode < 500 && response.statusCode != http.StatusRequestTimeout:
 		// A rate-limit refusal is answered before DocuSign processes the request.
-		clearCreateDispatch(call)
+		releaseCreateDispatch(call, checkpoint, hasCheckpoint)
 		return sdkgo.NewMutationRetry[CreatedEnvelope](outcome.failure, outcome.retryAfter)
-	case response.statusCode >= 400 && response.statusCode < 500 && response.statusCode != http.StatusRequestTimeout:
+	case isDefiniteDocuSignRefusal(response.statusCode) && hasCheckpoint:
+		// This send was refused, but an earlier attempt's create may still exist.
+		return sdkgo.NewMutationUncertain(CreatedEnvelope{}, outcome.failure, client.receipt("", outcome.errorCode))
+	case isDefiniteDocuSignRefusal(response.statusCode):
 		return sdkgo.NewMutationBranch(CreateEnvelopeFromTemplateBranchProviderRejected, CreatedEnvelope{}, &outcome.failure, client.receipt("", outcome.errorCode))
 	default:
-		// A 3xx, 408, or 5xx can follow a create DocuSign already applied.
-		return client.recoverCreatedEnvelope(call, &session, marker, checkpoint, false, outcome.failure)
+		// A 3xx, 408, 409, other 4xx, or 5xx can follow a create DocuSign already applied.
+		return client.recoverCreatedEnvelope(call, &session, marker, checkpoint, sends, outcome.failure)
 	}
 }
 
-// reportSessionFailureAfterDispatch never claims nothing was created, since an earlier attempt sent the create.
-func (client *Client) reportSessionFailureAfterDispatch(
-	call sdkgo.Call, checkpoint createDispatchCheckpoint, failure *sessionFailure,
+// createSendBudget bounds possibly effective creates: each attempt sends at most once, so attempt - 1
+// bounds the earlier ones whatever checkpoints Dex kept.
+type createSendBudget struct {
+	attempt  int32
+	maxSends int32
+}
+
+func newCreateSendBudget(call sdkgo.Call) createSendBudget {
+	return createSendBudget{attempt: call.Context.Attempt(), maxSends: call.MaxSends()}
+}
+
+// hasPossibleEarlierSend reports whether an earlier attempt of this Step execution may have sent the create.
+func (budget createSendBudget) hasPossibleEarlierSend() bool {
+	return budget.attempt > 1
+}
+
+// canSendNow reports whether this attempt may send without exceeding the cap.
+func (budget createSendBudget) canSendNow() bool {
+	return budget.attempt-1 < budget.maxSends
+}
+
+// canResendLater reports whether a later attempt may send after this one possibly sent.
+func (budget createSendBudget) canResendLater() bool {
+	return budget.attempt < budget.maxSends
+}
+
+// isDefiniteDocuSignRefusal reports a status that conclusively refuses the request unprocessed.
+func isDefiniteDocuSignRefusal(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
+// reportSessionFailureAfterPossibleSend never claims nothing was created, since an earlier attempt may have sent.
+func (client *Client) reportSessionFailureAfterPossibleSend(
+	call sdkgo.Call, checkpoint createDispatchCheckpoint, hasCheckpoint bool, sends createSendBudget, failure *sessionFailure,
 ) sdkgo.MutationAttempt[CreatedEnvelope] {
-	// The checkpoint must survive this attempt so a later one still reads back.
-	_ = call.Context.RecordHeartbeat(checkpoint) // A lost re-record leaves the prior value in place.
+	if hasCheckpoint {
+		// The checkpoint must survive this attempt so a later one still reads back.
+		_ = call.Context.RecordHeartbeat(checkpoint) // A lost re-record leaves the prior value in place.
+	}
 	if failure.kind == sessionFailureRetry {
 		return sdkgo.NewMutationRetry[CreatedEnvelope](failure.failure, failure.retryAfter)
 	}
 	unknownOutcome := failure.failure
-	unknownOutcome.Message = "an earlier attempt sent the DocuSign create request and its outcome is unknown; " + unknownOutcome.Message
+	unknownOutcome.Message = "an earlier attempt may have sent the DocuSign create request and its outcome is unknown; " + unknownOutcome.Message
+	return client.resendLaterOrSelectUncertain(sends.canResendLater(), unknownOutcome)
+}
+
+// resendLaterOrSelectUncertain returns Retry while a later attempt may resend, and uncertain at the cap.
+func (client *Client) resendLaterOrSelectUncertain(canResendLater bool, unknownOutcome sdkgo.Failure) sdkgo.MutationAttempt[CreatedEnvelope] {
+	if canResendLater {
+		// The checkpoint stays the last heartbeat, so the next attempt reads back before it sends.
+		return sdkgo.NewMutationRetry[CreatedEnvelope](unknownOutcome, 0)
+	}
 	return sdkgo.NewMutationUncertain(CreatedEnvelope{}, unknownOutcome, client.receipt("", ""))
 }
 
-// recoverCreatedEnvelope adopts exactly one tagged envelope; none is uncertain, since listings can lag.
+// recoverCreatedEnvelope reads back after this attempt's unknown send and adopts exactly one tagged envelope.
 func (client *Client) recoverCreatedEnvelope(
 	call sdkgo.Call, session *docusignSession, marker string, checkpoint createDispatchCheckpoint,
-	isRetryable bool, unknownOutcome sdkgo.Failure,
+	sends createSendBudget, unknownOutcome sdkgo.Failure,
 ) sdkgo.MutationAttempt[CreatedEnvelope] {
-	uncertain := sdkgo.NewMutationUncertain(CreatedEnvelope{}, unknownOutcome, client.receipt("", ""))
 	timeout, canRead := recoveryRequestTimeout(call)
 	if !canRead {
-		return uncertain
+		return client.resendLaterOrSelectUncertain(sends.canResendLater(), unknownOutcome)
 	}
 	response, err := client.listTaggedEnvelopes(call, session, marker, checkpoint.DispatchedAt, timeout)
-	if isRetryable && client.isRetryableListing(response, err) {
-		_ = call.Context.RecordHeartbeat(checkpoint) // A lost re-record leaves the prior value in place.
-		return client.retryListing(response, err)
-	}
 	if err != nil || response.statusCode != http.StatusOK {
-		return uncertain
-	}
-	matches, err := findTaggedEnvelopes(response.body, marker)
-	if err != nil || len(matches) != 1 {
-		return uncertain
-	}
-	return client.adoptRecoveredEnvelope(matches[0])
-}
-
-// findEnvelopeBeforeResend reads back on a retry whose checkpoint Dex may never have stored; no match lets it send.
-func (client *Client) findEnvelopeBeforeResend(
-	call sdkgo.Call, session *docusignSession, marker string,
-) (sdkgo.MutationAttempt[CreatedEnvelope], bool) {
-	timeout, canRead := recoveryRequestTimeout(call)
-	if !canRead {
-		return sdkgo.MutationAttempt[CreatedEnvelope]{}, false
-	}
-	response, err := client.listTaggedEnvelopes(call, session, marker, call.Context.FirstAttemptAt(), timeout)
-	if client.isRetryableListing(response, err) {
-		return client.retryListing(response, err), true
-	}
-	if err != nil || response.statusCode != http.StatusOK {
-		return sdkgo.MutationAttempt[CreatedEnvelope]{}, false
+		return client.resendLaterOrSelectUncertain(sends.canResendLater(), unknownOutcome)
 	}
 	matches, err := findTaggedEnvelopes(response.body, marker)
 	switch {
-	case err != nil || len(matches) == 0:
-		return sdkgo.MutationAttempt[CreatedEnvelope]{}, false
-	case len(matches) == 1:
-		return client.adoptRecoveredEnvelope(matches[0]), true
-	default:
-		return sdkgo.NewMutationUncertain(CreatedEnvelope{}, docusignFailure(createEnvelopeFromTemplateOperationID, sdkgo.FailureConflict,
-			"several DocuSign envelopes carry this Step's dexIdempotencyKey, so none was adopted and none was sent"), client.receipt("", "")), true
+	case err == nil && len(matches) == 1:
+		return client.adoptRecoveredEnvelope(matches[0])
+	case err == nil && len(matches) > 1:
+		return client.selectDuplicateEnvelopesUncertain()
 	}
+	// Listings can lag, so a miss is not proof; the next attempt reads back again before it sends.
+	return client.resendLaterOrSelectUncertain(sends.canResendLater(), unknownOutcome)
+}
+
+// findEnvelopeBeforeResend reads back before a later attempt sends; a miss or an inconclusive
+// read-back lets it send below the cap and selects uncertain at the cap.
+func (client *Client) findEnvelopeBeforeResend(
+	call sdkgo.Call, session *docusignSession, marker string, checkpoint createDispatchCheckpoint,
+	hasCheckpoint bool, sends createSendBudget,
+) (sdkgo.MutationAttempt[CreatedEnvelope], bool) {
+	since := call.Context.FirstAttemptAt()
+	if hasCheckpoint {
+		since = checkpoint.DispatchedAt
+	}
+	unknownOutcome := docusignFailure(createEnvelopeFromTemplateOperationID, sdkgo.FailureTransport, "an earlier attempt may have sent the DocuSign create request and its outcome is unknown")
+	timeout, canRead := recoveryRequestTimeout(call)
+	if canRead {
+		response, err := client.listTaggedEnvelopes(call, session, marker, since, timeout)
+		if client.isRetryableListing(response, err) {
+			if hasCheckpoint {
+				_ = call.Context.RecordHeartbeat(checkpoint) // A lost re-record leaves the prior value in place.
+			}
+			return client.retryListing(response, err), true
+		}
+		if err == nil && response.statusCode == http.StatusOK {
+			matches, matchErr := findTaggedEnvelopes(response.body, marker)
+			switch {
+			case matchErr == nil && len(matches) == 1:
+				return client.adoptRecoveredEnvelope(matches[0]), true
+			case matchErr == nil && len(matches) > 1:
+				return client.selectDuplicateEnvelopesUncertain(), true
+			}
+		}
+	}
+	if sends.canSendNow() {
+		return sdkgo.MutationAttempt[CreatedEnvelope]{}, false
+	}
+	if hasCheckpoint {
+		_ = call.Context.RecordHeartbeat(checkpoint) // A lost re-record leaves the prior value in place.
+	}
+	return sdkgo.NewMutationUncertain(CreatedEnvelope{}, unknownOutcome, client.receipt("", "")), true
+}
+
+// selectDuplicateEnvelopesUncertain refuses to pick among several tagged envelopes or to add another.
+func (client *Client) selectDuplicateEnvelopesUncertain() sdkgo.MutationAttempt[CreatedEnvelope] {
+	return sdkgo.NewMutationUncertain(CreatedEnvelope{}, docusignFailure(createEnvelopeFromTemplateOperationID, sdkgo.FailureConflict,
+		"several DocuSign envelopes carry this Step's dexIdempotencyKey, so none was adopted and none was sent"), client.receipt("", ""))
 }
 
 // recoveryRequestTimeout bounds a read-back by the time left in the attempt.
@@ -435,6 +502,16 @@ func earlierCreateDispatch(call sdkgo.Call) (createDispatchCheckpoint, bool) {
 		return createDispatchCheckpoint{IsDispatched: true, DispatchedAt: call.Context.FirstAttemptAt()}, true
 	}
 	return checkpoint, isFound && checkpoint.IsDispatched
+}
+
+// releaseCreateDispatch clears this attempt's checkpoint after DocuSign provably created nothing,
+// but keeps an earlier attempt's checkpoint, whose create may still exist.
+func releaseCreateDispatch(call sdkgo.Call, checkpoint createDispatchCheckpoint, hasCheckpoint bool) {
+	if hasCheckpoint {
+		_ = call.Context.RecordHeartbeat(checkpoint) // A lost re-record leaves the prior value in place.
+		return
+	}
+	clearCreateDispatch(call)
 }
 
 // clearCreateDispatch removes the checkpoint after DocuSign provably created nothing.

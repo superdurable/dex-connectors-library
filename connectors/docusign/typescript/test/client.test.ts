@@ -32,7 +32,7 @@ describe('Go-compatible DocuSign wire values', () => {
 });
 
 describe('create checkpoint recovery', () => {
-  it('preserves the create failure when read-back finds multiple envelopes', async () => {
+  it('selects uncertain without resending when read-back finds multiple envelopes', async () => {
     const original = { kind: 'AVAILABILITY', provider: 'docusign', operation: 'createEnvelopeFromTemplate', message: 'original create failure' };
     const envelope = { envelopeId: '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a', status: 'sent', customFields: { textCustomFields: [{ name: 'dexIdempotencyKey', value: 'call-1' }] } };
     const client = {
@@ -53,7 +53,30 @@ describe('create checkpoint recovery', () => {
     });
     expect(result.kind).toBe('uncertain');
     if (result.kind !== 'uncertain') throw new Error('expected uncertainty');
-    expect(result.failure).toEqual(original);
+    expect(result.failure).toMatchObject({ kind: 'CONFLICT' });
+  });
+  it.each([[1, 'retry'], [3, 'uncertain']] as const)('after an unknown send on attempt %i of a cap of 3, a read-back miss selects %s', async (attempt, expected) => {
+    const original = { kind: 'AVAILABILITY', provider: 'docusign', operation: 'createEnvelopeFromTemplate', message: 'original create failure' };
+    const methods: string[] = [];
+    const client = {
+      openSession: async () => ({}), currentTime: () => new Date('2026-10-04T12:00:00Z'), receipt: () => ({}),
+      classify: () => ({ retry: true, retryAfterMs: 0, failure: original }),
+      requestAPI: async (_call: Call, _session: unknown, method: string) => {
+        methods.push(method);
+        return { status: method === 'POST' ? 500 : 200, headers: {}, isTooLarge: false, body: Buffer.from(method === 'POST' ? '{}' : '{"envelopes":[]}') };
+      },
+    } as unknown as DocuSignClient;
+    const call = { id: 'call-1', idempotencyKey: 'call-1', context: {
+      attempt, firstAttemptAt: new Date('2026-10-04T12:00:00Z'), hasLastHeartbeatValue: () => false,
+      recordHeartbeat: async () => {},
+    } } as unknown as Call;
+    const result = await new CreateEnvelopeFromTemplateOperation(client).invoke(call, {
+      templateId: '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a',
+      templateRoles: [{ roleName: 'Customer', name: 'Priya Raman', email: 'priya@example.com' }],
+    });
+    expect(result.kind).toBe(expected);
+    expect(result).toMatchObject({ failure: original });
+    expect(methods).toEqual(attempt === 1 ? ['POST', 'GET'] : ['GET', 'POST', 'GET']);
   });
   it('records a timestamp with trimmed fractional zeros', async () => {
     let checkpoint: unknown;
@@ -102,16 +125,34 @@ describe('create checkpoint recovery', () => {
       templateId: '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a',
       templateRoles: [{ roleName: 'Customer', name: 'Priya Raman', email: 'priya@example.com' }],
     });
-    if (stored?.isDispatched) {
-      expect(result.kind).toBe('uncertain');
-      expect(methods).toEqual(['GET']);
-      expect(fromDates).toEqual(['2026-10-04T10:00:00Z']);
-    } else {
-      expect(result.kind).toBe('branch');
-      if (result.kind !== 'branch') throw new Error('expected created branch');
-      expect(result.branch).toBe('created');
-      expect(methods).toEqual(['GET', 'POST']);
-      expect(fromDates).toEqual(['2026-10-04T11:00:00Z']);
-    }
+    // Below the cap of 3, every later attempt reads back and then resends.
+    expect(result.kind).toBe('branch');
+    if (result.kind !== 'branch') throw new Error('expected created branch');
+    expect(result.branch).toBe('created');
+    expect(methods).toEqual(['GET', 'POST']);
+    expect(fromDates).toEqual([stored?.isDispatched ? '2026-10-04T10:00:00Z' : '2026-10-04T11:00:00Z']);
+    if (stored?.isDispatched) expect(heartbeat).toEqual(stored);
+  });
+  it('selects uncertain without sending when earlier attempts reached the cap', async () => {
+    let heartbeat: unknown = { isDispatched: true, dispatchedAt: '2026-10-04T11:00:00Z' };
+    const methods: string[] = [];
+    const client = {
+      openSession: async () => ({}), currentTime: () => new Date('2026-10-04T12:00:00Z'), receipt: () => ({}),
+      requestAPI: async (_call: Call, _session: unknown, method: string) => {
+        methods.push(method);
+        return { status: 200, headers: {}, body: Buffer.from('{"envelopes":[]}'), isTooLarge: false };
+      },
+    } as unknown as DocuSignClient;
+    const call = { id: 'call-1', idempotencyKey: 'call-1', context: {
+      attempt: 4, firstAttemptAt: new Date('2026-10-04T12:00:00Z'), deadline: undefined,
+      hasLastHeartbeatValue: () => true, getLastHeartbeatValue: () => heartbeat,
+      recordHeartbeat: async (value: unknown) => { heartbeat = value; },
+    } } as unknown as Call;
+    const result = await new CreateEnvelopeFromTemplateOperation(client).invoke(call, {
+      templateId: '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a',
+      templateRoles: [{ roleName: 'Customer', name: 'Priya Raman', email: 'priya@example.com' }],
+    });
+    expect(result.kind).toBe('uncertain');
+    expect(methods).toEqual(['GET']);
   });
 });

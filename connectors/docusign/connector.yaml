@@ -6,17 +6,17 @@ metadata:
   description: "Send DocuSign eSignature envelopes from templates, guarded against duplicates on retry, read envelope and recipient status, void an envelope as compensation, record the signed combined PDF's digest outside Dex payloads, and receive HMAC-verified Connect envelope-completed, envelope-declined, and envelope-voided events."
   company: DocuSign
   categories: [files-documents]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: docusign
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-docusign
       operations: [createEnvelopeFromTemplate, getEnvelope, listEnvelopeRecipients, voidEnvelope, downloadCombinedDocument]
       triggers: [envelopeEventReceived]
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: '@superdurable/connector-docusign'
 
       operations: [createEnvelopeFromTemplate, getEnvelope, listEnvelopeRecipients, voidEnvelope, downloadCombinedDocument]
@@ -155,19 +155,20 @@ spec:
       inputType: CreateEnvelopeFromTemplateInput
       outputType: CreatedEnvelope
       kind: mutation
-      description: "Create one envelope from a server template, filling its roles in their routing order, and send it or keep it as a draft. DocuSign has no idempotency key, so the call runs with sync durability, tags the envelope with a hidden custom field derived from the Step's idempotency key, and on every later attempt looks for that envelope by the field before sending again; an outcome it cannot confirm selects uncertain."
+      description: "Create one envelope from a server template, filling its roles in their routing order, and send it or keep it as a draft. DocuSign has no idempotency key, so the call runs with sync durability, tags the envelope with a hidden custom field derived from the Step's idempotency key, and on every later attempt looks for that envelope by the field before sending again. An outcome it cannot confirm resends on a later attempt while possible sends stay below maxSends, and selects uncertain at the cap."
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: "DocuSign holds the envelope this Step execution created; wasRecovered tells whether a later attempt found it by its custom field after an interrupted one."}
         - {id: providerRejected, goName: ProviderRejected, description: "DocuSign conclusively rejected the envelope, such as an unknown template, an unfilled or unknown role, an invalid email address, an exhausted envelope allowance, or a user who may not send; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The create request was sent but DocuSign's answer was lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, so an envelope may exist that this Result does not name; do not create another automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap was reached with DocuSign's answer lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, or several envelopes carry it, so an envelope may exist that this Result does not name; do not create another automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Sync: an async fallback attempt would send a slow create again, and DocuSign has no idempotency key.
       execution:
         executeMethodTimeout: 60s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 65m, reason: {kind: duplicateWriteRisk, explanation: "A repeated envelope POST could create another envelope when custom-field lookup is inconclusive; DocuSign does not enforce the field as a key."}}
+        # Six attempts leave room for maxSends sends plus rate-limit and read-back retries.
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 65m, reason: {kind: duplicateWriteRisk, explanation: "A repeated envelope POST could create another envelope when custom-field lookup is inconclusive; DocuSign does not enforce the field as a key, so attempts stay bounded."}}
       mocks:
         - name: meridianAgreementSent
           branch: created
