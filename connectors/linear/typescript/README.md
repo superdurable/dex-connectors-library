@@ -1,6 +1,6 @@
 # Linear TypeScript connector
 
-`@superdurable/connector-linear` provides the seven Linear GraphQL operations declared in `connector.yaml` for Dex TypeScript Flows: `searchIssues`, `getIssue`, `createIssue`, `updateIssue`, `addComment`, `findUserByEmail`, and `listWorkflowStates`. The signed `issueEventReceived` webhook Trigger remains Go only.
+`@superdurable/connector-linear` provides the seven Linear GraphQL operations declared in `connector.yaml` for Dex TypeScript Flows: `searchIssues`, `getIssue`, `createIssue`, `updateIssue`, `addComment`, `findUserByEmail`, and `listWorkflowStates`. The signed `issueEventReceived` webhook Trigger is not available in TypeScript.
 
 Install with `npm install @superdurable/connector-linear@0.1.0`. The package requires `@superdurable/connectors-sdk@0.5.0` and Node.js 22 or 24. Generated models, Step factories, mock outcomes, OAuth refresh declarations, and credential decoders are under `src/generated/`; edit the manifest or Go source and rerun `connectorctl generate` instead of editing those files.
 

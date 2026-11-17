@@ -11,11 +11,11 @@ spec:
   provider: linear
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-linear
       timestampFormat: rfc3339Nano
       operations: [searchIssues, getIssue, createIssue, updateIssue, addComment, findUserByEmail, listWorkflowStates]
-      triggers: []
+      triggers: [issueEventReceived]
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-linear"

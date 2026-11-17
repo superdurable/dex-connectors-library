@@ -552,3 +552,121 @@ class ListWorkflowStatesOutput:
 ListWorkflowStatesOutput.__annotations__['states'] = tuple[WorkflowState, ...] | None
 ListWorkflowStatesOutput.__dataclass_fields__['states'].type = tuple[WorkflowState, ...] | None
 setattr(ListWorkflowStatesOutput, '__module__', 'dex_connectors.linear.models')
+
+
+# IssueEventActor is who caused an Issue event: a user, an OAuth application, or an integration.
+@dataclass(frozen=True, slots=True)
+class IssueEventActor:
+    # ID is the actor's UUID.
+    id: str = ''
+    # Name is the actor's display name.
+    name: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # Type is Linear's actor type, such as user, OauthClient, or integration, passed through unchanged.
+    type: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+
+setattr(IssueEventActor, '__module__', 'dex_connectors.linear.models')
+
+
+# IssueEventIssue is the issue as the webhook described it, without its description.
+@dataclass(frozen=True, slots=True)
+class IssueEventIssue:
+    # ID is the issue's UUID, which never changes.
+    id: str = ''
+    # Identifier is the team key and number, such as ENG-123; it changes when the issue moves to another team.
+    identifier: str = ''
+    # Title is the issue's title.
+    title: str = ''
+    # URL is the issue's page in Linear.
+    url: str = ''
+    # Team is the team that owns the issue.
+    team: TeamReference = _dataclass_field(default_factory=TeamReference)
+    # State is the issue's current workflow state.
+    state: WorkflowStateReference = _dataclass_field(kw_only=True)
+    # AssigneeID is the assigned user's UUID, or blank when the issue is unassigned.
+    assignee_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'assigneeId', 'dex_json_omit_default': True})
+    # Priority is 0 for no priority, 1 urgent, 2 high, 3 medium, or 4 low.
+    priority: int = 0
+    # LabelIDs are the UUIDs of the issue's labels.
+    label_ids: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'labelIds', 'dex_json_omit_default': True})
+    # DueDate is the YYYY-MM-DD due date, or blank.
+    due_date: str = _dataclass_field(default='', metadata={'dex_json_name': 'dueDate', 'dex_json_omit_default': True})
+    # CreatedAt is when the issue was created.
+    created_at: str = _dataclass_field(default='0001-01-01T00:00:00Z', metadata={'dex_json_name': 'createdAt'})
+    # UpdatedAt is when the issue last changed; searches compare UpdatedAfter with it.
+    updated_at: str = _dataclass_field(default='0001-01-01T00:00:00Z', metadata={'dex_json_name': 'updatedAt'})
+    # ArchivedAt is when the issue was archived, or nil.
+    archived_at: str | None = _dataclass_field(default=None, metadata={'dex_json_name': 'archivedAt', 'dex_json_omit_default': True})
+    # Number is the issue's number within its team.
+    number: int = 0
+    # ProjectID is the issue's project UUID, or blank.
+    project_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'projectId', 'dex_json_omit_default': True})
+    # CycleID is the issue's cycle UUID, or blank.
+    cycle_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'cycleId', 'dex_json_omit_default': True})
+    # ParentID is the parent issue UUID of a sub-issue, or blank.
+    parent_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'parentId', 'dex_json_omit_default': True})
+    # IsTrashed reports that the issue is in the trash.
+    trashed: bool = _dataclass_field(default=False, metadata={'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if self.created_at is not None:
+            timestamp = self.created_at
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'created_at'))
+            object.__setattr__(self, 'created_at', canonical)
+        if self.updated_at is not None:
+            timestamp = self.updated_at
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'updated_at'))
+            object.__setattr__(self, 'updated_at', canonical)
+        if self.archived_at is not None:
+            timestamp = self.archived_at
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'archived_at'))
+            object.__setattr__(self, 'archived_at', canonical)
+
+
+setattr(IssueEventIssue, '__module__', 'dex_connectors.linear.models')
+
+
+# IssueEvent is one verified Linear Issue webhook. The Trigger event ID is the action, the issue UUID, and
+# the issue's updatedAt in Unix milliseconds, such as update:2f6b7c1e-...:1790000000000, so a redelivery of
+# one change keeps its ID even though Linear signs each delivery with a new webhookTimestamp.
+@dataclass(frozen=True, slots=True)
+class IssueEvent:
+    # Action is create, update, or remove; another Linear action is passed through unchanged.
+    action: str = ''
+    # OccurredAt is when Linear created the event payload.
+    occurred_at: str = _dataclass_field(default='0001-01-01T00:00:00Z', metadata={'dex_json_name': 'occurredAt'})
+    # WebhookID is the Linear webhook that sent the event.
+    webhook_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'webhookId'})
+    # OrganizationID is the Linear workspace's UUID.
+    organization_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'organizationId'})
+    # Actor is who caused the event, or nil when Linear names none.
+    actor: IssueEventActor | None = _dataclass_field(default=None, metadata={'dex_json_omit_default': True})
+    # Issue is the issue after the event.
+    issue: IssueEventIssue = _dataclass_field(kw_only=True)
+    # UpdatedFields names the properties an update changed, sorted, at most 50; previous values are omitted.
+    updated_fields: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'updatedFields', 'dex_json_omit_default': True})
+    # PreviousStateID is the workflow state an update moved the issue out of, or blank.
+    previous_state_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'previousStateId', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if self.occurred_at is not None:
+            timestamp = self.occurred_at
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'occurred_at'))
+            object.__setattr__(self, 'occurred_at', canonical)
+
+
+setattr(IssueEvent, '__module__', 'dex_connectors.linear.models')
+
+
+# IssueEventReceivedTriggerConfiguration filters the Issue webhook events one binding records. The zero value
+# records every Issue event of every team. It reduces what a binding stores; the application's
+# TriggerFilter remains its admission rule.
+@dataclass(frozen=True, slots=True)
+class IssueEventReceivedTriggerConfiguration:
+    # Actions lists create, update, and remove; empty accepts every action.
+    actions: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_omit_default': True})
+    # TeamID accepts only issues of this team UUID, such as the teamPicker unit's teamId; blank accepts every team.
+    team_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'teamId', 'dex_json_omit_default': True})
+
+
+setattr(IssueEventReceivedTriggerConfiguration, '__module__', 'dex_connectors.linear.models')
