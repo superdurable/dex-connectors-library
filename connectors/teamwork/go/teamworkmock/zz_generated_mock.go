@@ -18,7 +18,11 @@ import (
 // Mock is a scripted teamwork connection. Script each operation through its accessor.
 type Mock struct {
 	connection teamwork.Connection
+	listTasks  *connectormock.Query[teamwork.ListTasksInput, teamwork.TaskPage]
 	getTask    *connectormock.Query[teamwork.GetTaskInput, teamwork.TaskSummary]
+	createTask *connectormock.Mutation[teamwork.CreateTaskInput, teamwork.TaskSummary]
+	updateTask *connectormock.Mutation[teamwork.UpdateTaskInput, teamwork.TaskSummary]
+	deleteTask *connectormock.Mutation[teamwork.DeleteTaskInput, teamwork.DeleteTaskOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +30,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getTask: connectormock.NewQuery[teamwork.GetTaskInput, teamwork.TaskSummary](t, teamwork.GetTaskDefinition),
+		listTasks:  connectormock.NewQuery[teamwork.ListTasksInput, teamwork.TaskPage](t, teamwork.ListTasksDefinition),
+		getTask:    connectormock.NewQuery[teamwork.GetTaskInput, teamwork.TaskSummary](t, teamwork.GetTaskDefinition),
+		createTask: connectormock.NewMutation[teamwork.CreateTaskInput, teamwork.TaskSummary](t, teamwork.CreateTaskDefinition),
+		updateTask: connectormock.NewMutation[teamwork.UpdateTaskInput, teamwork.TaskSummary](t, teamwork.UpdateTaskDefinition),
+		deleteTask: connectormock.NewMutation[teamwork.DeleteTaskInput, teamwork.DeleteTaskOutput](t, teamwork.DeleteTaskDefinition),
 	}
+	mock.listTasks.Default(ListTasksDefault())
 	mock.getTask.Default(GetTaskDefault())
+	mock.createTask.Default(CreateTaskDefault())
+	mock.updateTask.Default(UpdateTaskDefault())
+	mock.deleteTask.Default(DeleteTaskDefault())
 	connection, err := teamwork.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "teamwork", Name: connectionName})
 	if err != nil {
 		t.Fatalf("teamwork mock connection: %v", err)
@@ -40,16 +52,82 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() teamwork.Connection { return mock.connection }
 
+// ListTasks returns the listTasks script.
+func (mock *Mock) ListTasks() *connectormock.Query[teamwork.ListTasksInput, teamwork.TaskPage] {
+	return mock.listTasks
+}
+
 // GetTask returns the getTask script.
 func (mock *Mock) GetTask() *connectormock.Query[teamwork.GetTaskInput, teamwork.TaskSummary] {
 	return mock.getTask
 }
 
+// CreateTask returns the createTask script.
+func (mock *Mock) CreateTask() *connectormock.Mutation[teamwork.CreateTaskInput, teamwork.TaskSummary] {
+	return mock.createTask
+}
+
+// UpdateTask returns the updateTask script.
+func (mock *Mock) UpdateTask() *connectormock.Mutation[teamwork.UpdateTaskInput, teamwork.TaskSummary] {
+	return mock.updateTask
+}
+
+// DeleteTask returns the deleteTask script.
+func (mock *Mock) DeleteTask() *connectormock.Mutation[teamwork.DeleteTaskInput, teamwork.DeleteTaskOutput] {
+	return mock.deleteTask
+}
+
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListTasks() sdkgo.Query[teamwork.ListTasksInput, teamwork.TaskPage] {
+	return operations.mock.listTasks
+}
 func (operations mockOperations) GetTask() sdkgo.Query[teamwork.GetTaskInput, teamwork.TaskSummary] {
 	return operations.mock.getTask
 }
+func (operations mockOperations) CreateTask() sdkgo.Mutation[teamwork.CreateTaskInput, teamwork.TaskSummary] {
+	return operations.mock.createTask
+}
+func (operations mockOperations) UpdateTask() sdkgo.Mutation[teamwork.UpdateTaskInput, teamwork.TaskSummary] {
+	return operations.mock.updateTask
+}
+func (operations mockOperations) DeleteTask() sdkgo.Mutation[teamwork.DeleteTaskInput, teamwork.DeleteTaskOutput] {
+	return operations.mock.deleteTask
+}
+
+// ListTasksListed selects the listed branch: Teamwork returned the task page.
+func ListTasksListed(value teamwork.TaskPage, failure *sdkgo.Failure) connectormock.Case[teamwork.TaskPage] {
+	return connectormock.Branch(teamwork.ListTasksBranchListed, value, failure)
+}
+
+// ListTasksProviderRejected selects the providerRejected branch: Teamwork conclusively rejected the lookup.
+func ListTasksProviderRejected(value teamwork.TaskPage, failure *sdkgo.Failure) connectormock.Case[teamwork.TaskPage] {
+	return connectormock.Branch(teamwork.ListTasksBranchProviderRejected, value, failure)
+}
+
+// ListTasksInvalidResponse selects the invalidResponse branch: Teamwork returned malformed or oversized JSON.
+func ListTasksInvalidResponse(value teamwork.TaskPage, failure *sdkgo.Failure) connectormock.Case[teamwork.TaskPage] {
+	return connectormock.Branch(teamwork.ListTasksBranchInvalidResponse, value, failure)
+}
+
+// ListTasksDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListTasksDefect(value teamwork.TaskPage, failure *sdkgo.Failure) connectormock.Case[teamwork.TaskPage] {
+	return connectormock.Branch(teamwork.ListTasksBranchDefect, value, failure)
+}
+
+// ListTasksRetry asks Dex to retry the listTasks Step, after the delay when it is positive.
+func ListTasksRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[teamwork.TaskPage] {
+	return connectormock.Retry[teamwork.TaskPage](failure, after)
+}
+
+// ListTasksListedDefault is the manifest mock listedDefault: One sample task is listed.
+func ListTasksListedDefault() connectormock.Case[teamwork.TaskPage] {
+	value := connectormock.MustDecodeOutput[teamwork.TaskPage](`{"tasks":[{"id":"12345","name":"Review launch","status":"pending"}],"page":1}`)
+	return connectormock.Branch(teamwork.ListTasksBranchListed, value, nil)
+}
+
+// ListTasksDefault is the manifest default, listedDefault, which New installs.
+func ListTasksDefault() connectormock.Case[teamwork.TaskPage] { return ListTasksListedDefault() }
 
 // GetTaskFound selects the found branch: Teamwork returned the task.
 func GetTaskFound(value teamwork.TaskSummary, failure *sdkgo.Failure) connectormock.Case[teamwork.TaskSummary] {
@@ -89,3 +167,107 @@ func GetTaskFoundDefault() connectormock.Case[teamwork.TaskSummary] {
 
 // GetTaskDefault is the manifest default, foundDefault, which New installs.
 func GetTaskDefault() connectormock.Case[teamwork.TaskSummary] { return GetTaskFoundDefault() }
+
+// CreateTaskCreated selects the created branch: Teamwork created the task.
+func CreateTaskCreated(value teamwork.TaskSummary, failure *sdkgo.Failure) connectormock.Case[teamwork.TaskSummary] {
+	return connectormock.Branch(teamwork.CreateTaskBranchCreated, value, failure)
+}
+
+// CreateTaskProviderRejected selects the providerRejected branch: Teamwork conclusively rejected the create.
+func CreateTaskProviderRejected(value teamwork.TaskSummary, failure *sdkgo.Failure) connectormock.Case[teamwork.TaskSummary] {
+	return connectormock.Branch(teamwork.CreateTaskBranchProviderRejected, value, failure)
+}
+
+// CreateTaskUncertain returns an uncertain createTask outcome.
+func CreateTaskUncertain(value teamwork.TaskSummary, failure sdkgo.Failure) connectormock.Case[teamwork.TaskSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateTaskDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateTaskDefect(value teamwork.TaskSummary, failure *sdkgo.Failure) connectormock.Case[teamwork.TaskSummary] {
+	return connectormock.Branch(teamwork.CreateTaskBranchDefect, value, failure)
+}
+
+// CreateTaskRetry asks Dex to retry the createTask Step, after the delay when it is positive.
+func CreateTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[teamwork.TaskSummary] {
+	return connectormock.Retry[teamwork.TaskSummary](failure, after)
+}
+
+// CreateTaskCreatedDefault is the manifest mock createdDefault: A sample task was created.
+func CreateTaskCreatedDefault() connectormock.Case[teamwork.TaskSummary] {
+	value := connectormock.MustDecodeOutput[teamwork.TaskSummary](`{"id":"12345","name":"Review launch","status":"pending"}`)
+	return connectormock.Branch(teamwork.CreateTaskBranchCreated, value, nil)
+}
+
+// CreateTaskDefault is the manifest default, createdDefault, which New installs.
+func CreateTaskDefault() connectormock.Case[teamwork.TaskSummary] { return CreateTaskCreatedDefault() }
+
+// UpdateTaskUpdated selects the updated branch: Teamwork updated the task.
+func UpdateTaskUpdated(value teamwork.TaskSummary, failure *sdkgo.Failure) connectormock.Case[teamwork.TaskSummary] {
+	return connectormock.Branch(teamwork.UpdateTaskBranchUpdated, value, failure)
+}
+
+// UpdateTaskNotFound selects the notFound branch: Teamwork did not expose the task.
+func UpdateTaskNotFound(value teamwork.TaskSummary, failure *sdkgo.Failure) connectormock.Case[teamwork.TaskSummary] {
+	return connectormock.Branch(teamwork.UpdateTaskBranchNotFound, value, failure)
+}
+
+// UpdateTaskProviderRejected selects the providerRejected branch: Teamwork conclusively rejected the update.
+func UpdateTaskProviderRejected(value teamwork.TaskSummary, failure *sdkgo.Failure) connectormock.Case[teamwork.TaskSummary] {
+	return connectormock.Branch(teamwork.UpdateTaskBranchProviderRejected, value, failure)
+}
+
+// UpdateTaskInvalidResponse selects the invalidResponse branch: Teamwork returned malformed or oversized JSON.
+func UpdateTaskInvalidResponse(value teamwork.TaskSummary, failure *sdkgo.Failure) connectormock.Case[teamwork.TaskSummary] {
+	return connectormock.Branch(teamwork.UpdateTaskBranchInvalidResponse, value, failure)
+}
+
+// UpdateTaskDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateTaskDefect(value teamwork.TaskSummary, failure *sdkgo.Failure) connectormock.Case[teamwork.TaskSummary] {
+	return connectormock.Branch(teamwork.UpdateTaskBranchDefect, value, failure)
+}
+
+// UpdateTaskRetry asks Dex to retry the updateTask Step, after the delay when it is positive.
+func UpdateTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[teamwork.TaskSummary] {
+	return connectormock.Retry[teamwork.TaskSummary](failure, after)
+}
+
+// UpdateTaskUpdatedDefault is the manifest mock updatedDefault: A sample task was updated.
+func UpdateTaskUpdatedDefault() connectormock.Case[teamwork.TaskSummary] {
+	value := connectormock.MustDecodeOutput[teamwork.TaskSummary](`{"id":"12345","name":"Review launch","status":"pending"}`)
+	return connectormock.Branch(teamwork.UpdateTaskBranchUpdated, value, nil)
+}
+
+// UpdateTaskDefault is the manifest default, updatedDefault, which New installs.
+func UpdateTaskDefault() connectormock.Case[teamwork.TaskSummary] { return UpdateTaskUpdatedDefault() }
+
+// DeleteTaskDeleted selects the deleted branch: Teamwork deleted or had already deleted the task.
+func DeleteTaskDeleted(value teamwork.DeleteTaskOutput, failure *sdkgo.Failure) connectormock.Case[teamwork.DeleteTaskOutput] {
+	return connectormock.Branch(teamwork.DeleteTaskBranchDeleted, value, failure)
+}
+
+// DeleteTaskProviderRejected selects the providerRejected branch: Teamwork conclusively rejected the delete.
+func DeleteTaskProviderRejected(value teamwork.DeleteTaskOutput, failure *sdkgo.Failure) connectormock.Case[teamwork.DeleteTaskOutput] {
+	return connectormock.Branch(teamwork.DeleteTaskBranchProviderRejected, value, failure)
+}
+
+// DeleteTaskDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteTaskDefect(value teamwork.DeleteTaskOutput, failure *sdkgo.Failure) connectormock.Case[teamwork.DeleteTaskOutput] {
+	return connectormock.Branch(teamwork.DeleteTaskBranchDefect, value, failure)
+}
+
+// DeleteTaskRetry asks Dex to retry the deleteTask Step, after the delay when it is positive.
+func DeleteTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[teamwork.DeleteTaskOutput] {
+	return connectormock.Retry[teamwork.DeleteTaskOutput](failure, after)
+}
+
+// DeleteTaskDeletedDefault is the manifest mock deletedDefault: A sample task was deleted.
+func DeleteTaskDeletedDefault() connectormock.Case[teamwork.DeleteTaskOutput] {
+	value := connectormock.MustDecodeOutput[teamwork.DeleteTaskOutput](`{"id":"12345"}`)
+	return connectormock.Branch(teamwork.DeleteTaskBranchDeleted, value, nil)
+}
+
+// DeleteTaskDefault is the manifest default, deletedDefault, which New installs.
+func DeleteTaskDefault() connectormock.Case[teamwork.DeleteTaskOutput] {
+	return DeleteTaskDeletedDefault()
+}

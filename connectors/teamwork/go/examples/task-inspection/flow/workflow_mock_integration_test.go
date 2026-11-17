@@ -24,7 +24,8 @@ import (
 func TestTaskInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := teamworkmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	createFlow := NewCreateTaskFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, createFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -58,4 +59,14 @@ func TestTaskInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "Review launch", output.Name)
 	require.Equal(t, "pending", output.Status)
 	require.Len(t, mock.GetTask().Calls(), 1)
+	createFlowID := "teamwork-create-task-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, createFlow, createFlowID, teamwork.CreateTaskInput{TasklistID: "321", Name: "Review launch"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	createdResult, err := client.WaitForFlow(ctx, createFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, createdResult.Status, createdResult.ErrorMessage)
+	var createdTask teamwork.TaskSummary
+	require.NoError(t, createdResult.DecodeSingleOutput(&createdTask))
+	require.Equal(t, "12345", createdTask.ID)
+	require.Len(t, mock.CreateTask().Calls(), 1)
 }

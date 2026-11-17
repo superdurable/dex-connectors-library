@@ -278,6 +278,1238 @@
       },
       "name": "getTask-transportFailure",
       "operation": "getTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "67112017-b752-4ce6-af73-27962a6687c1",
+      "exchanges": [
+        {
+          "body": "{\"tasks\":[{\"id\":12345,\"name\":\"Review launch\",\"status\":\"pending\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/tasks.json",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "page": 2,
+          "tasks": [
+            {
+              "id": "12345",
+              "name": "Review launch",
+              "status": "pending"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listTasks-success",
+      "operation": "listTasks"
+    },
+    {
+      "attempts": 1,
+      "callId": "67112017-b752-4ce6-af73-27962a6687c1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/tasks.json",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "page": 0,
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listTasks-providerRejected",
+      "operation": "listTasks"
+    },
+    {
+      "attempts": 1,
+      "callId": "67112017-b752-4ce6-af73-27962a6687c1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/tasks.json",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listTasks-invalidResponse",
+      "operation": "listTasks"
+    },
+    {
+      "attempts": 1,
+      "callId": "67112017-b752-4ce6-af73-27962a6687c1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 0,
+          "tasks": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1,
+        "pageSize": 3
+      },
+      "name": "listTasks-defect",
+      "operation": "listTasks"
+    },
+    {
+      "attempts": 1,
+      "callId": "67112017-b752-4ce6-af73-27962a6687c1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/tasks.json",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listTasks-rateLimit",
+      "operation": "listTasks"
+    },
+    {
+      "attempts": 1,
+      "callId": "67112017-b752-4ce6-af73-27962a6687c1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/tasks.json",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listTasks-serverFailure",
+      "operation": "listTasks"
+    },
+    {
+      "attempts": 1,
+      "callId": "67112017-b752-4ce6-af73-27962a6687c1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/tasks.json",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listTasks-transportFailure",
+      "operation": "listTasks"
+    },
+    {
+      "attempts": 1,
+      "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+      "exchanges": [
+        {
+          "body": "{\"task\":{\"id\":12345,\"name\":\"Review launch\",\"status\":\"pending\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/api/v3/tasklists/321/tasks.json",
+          "requestBody": {
+            "task": {
+              "name": "Review launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "12345",
+          "name": "Review launch",
+          "status": "pending"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+      "input": {
+        "name": "Review launch",
+        "tasklistId": "321"
+      },
+      "name": "createTask-success",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/api/v3/tasklists/321/tasks.json",
+          "requestBody": {
+            "task": {
+              "name": "Review launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+      "input": {
+        "name": "Review launch",
+        "tasklistId": "321"
+      },
+      "name": "createTask-providerRejected",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+      "input": {
+        "name": "Review launch",
+        "tasklistId": ""
+      },
+      "name": "createTask-defect",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/api/v3/tasklists/321/tasks.json",
+          "requestBody": {
+            "task": {
+              "name": "Review launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+      "input": {
+        "name": "Review launch",
+        "tasklistId": "321"
+      },
+      "name": "createTask-rateLimit",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/api/v3/tasklists/321/tasks.json",
+          "requestBody": {
+            "task": {
+              "name": "Review launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+      "input": {
+        "name": "Review launch",
+        "tasklistId": "321"
+      },
+      "name": "createTask-serverFailure",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/api/v3/tasklists/321/tasks.json",
+          "requestBody": {
+            "task": {
+              "name": "Review launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+      "input": {
+        "name": "Review launch",
+        "tasklistId": "321"
+      },
+      "name": "createTask-transportFailure",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 3,
+      "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/api/v3/tasklists/321/tasks.json",
+          "requestBody": {
+            "task": {
+              "name": "Review launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/api/v3/tasklists/321/tasks.json",
+          "requestBody": {
+            "task": {
+              "name": "Review launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/api/v3/tasklists/321/tasks.json",
+          "requestBody": {
+            "task": {
+              "name": "Review launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+      "input": {
+        "name": "Review launch",
+        "tasklistId": "321"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTask-uncertain-after-cap",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "exchanges": [
+        {
+          "body": "{\"task\":{\"id\":12345,\"name\":\"Renamed task\",\"status\":\"pending\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestBody": {
+            "task": {
+              "name": "Renamed task"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "12345",
+          "name": "Renamed task",
+          "status": "pending"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "input": {
+        "name": "Renamed task",
+        "taskId": "12345"
+      },
+      "name": "updateTask-success",
+      "operation": "updateTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestBody": {
+            "task": {
+              "name": "Renamed task"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "input": {
+        "name": "Renamed task",
+        "taskId": "12345"
+      },
+      "name": "updateTask-notFound",
+      "operation": "updateTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestBody": {
+            "task": {
+              "name": "Renamed task"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "input": {
+        "name": "Renamed task",
+        "taskId": "12345"
+      },
+      "name": "updateTask-invalidResponse",
+      "operation": "updateTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "input": {
+        "name": "Renamed task",
+        "taskId": ""
+      },
+      "name": "updateTask-defect",
+      "operation": "updateTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestBody": {
+            "task": {
+              "name": "Renamed task"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "input": {
+        "name": "Renamed task",
+        "taskId": "12345"
+      },
+      "name": "updateTask-rateLimit",
+      "operation": "updateTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestBody": {
+            "task": {
+              "name": "Renamed task"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "input": {
+        "name": "Renamed task",
+        "taskId": "12345"
+      },
+      "name": "updateTask-serverFailure",
+      "operation": "updateTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestBody": {
+            "task": {
+              "name": "Renamed task"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "input": {
+        "name": "Renamed task",
+        "taskId": "12345"
+      },
+      "name": "updateTask-transportFailure",
+      "operation": "updateTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "12345"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "input": {
+        "taskId": "12345"
+      },
+      "name": "deleteTask-success",
+      "operation": "deleteTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "input": {
+        "taskId": "12345"
+      },
+      "name": "deleteTask-providerRejected",
+      "operation": "deleteTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "input": {
+        "taskId": ""
+      },
+      "name": "deleteTask-defect",
+      "operation": "deleteTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "input": {
+        "taskId": "12345"
+      },
+      "name": "deleteTask-rateLimit",
+      "operation": "deleteTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "input": {
+        "taskId": "12345"
+      },
+      "name": "deleteTask-serverFailure",
+      "operation": "deleteTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "input": {
+        "taskId": "12345"
+      },
+      "name": "deleteTask-transportFailure",
+      "operation": "deleteTask"
     }
   ],
   "schemaVersion": 1

@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = ""
@@ -21,7 +22,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		reference: {APIToken: sdkgo.NewSecretString("sample-teamwork-api-token")},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getTask": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTask(), reference),
+	createContext := singledispatchtest.NewContext("teamwork-conformance", "create-task")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			createContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"listTasks":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTasks(), reference),
+		"getTask":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTask(), reference),
+		"createTask": newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateTask(), reference, scenario.CallID),
+		"updateTask": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateTask(), reference, scenario.CallID),
+		"deleteTask": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteTask(), reference, scenario.CallID),
 	}}
 }
