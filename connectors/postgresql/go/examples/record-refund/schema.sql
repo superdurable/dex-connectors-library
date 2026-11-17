@@ -13,5 +13,12 @@ CREATE TABLE IF NOT EXISTS refund_ledger (
   recorded_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- One running refund total per UTC day. Adding a refund is not idempotent: a repeat counts it twice.
+CREATE TABLE IF NOT EXISTS refund_daily_totals (
+  refund_date date PRIMARY KEY,
+  total_usd numeric(14, 2) NOT NULL CHECK (total_usd >= 0)
+);
+
 -- Grant the Dex login role only what the example needs, for example:
 -- GRANT SELECT, INSERT ON refund_ledger TO dex_app;
+-- GRANT INSERT, UPDATE ON refund_daily_totals TO dex_app;

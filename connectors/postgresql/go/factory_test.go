@@ -44,6 +44,11 @@ func TestDefinitionsDeclareOneHappyPathAndTheStandardBranches(t *testing.T) {
 	requireOneRequiredBranch(t, postgresql.QueryRowsDefinition.Branches, postgresql.QueryRowsBranchCompleted)
 	requireOneRequiredBranch(t, postgresql.ExecuteStatementDefinition.Branches, postgresql.ExecuteStatementBranchCompleted)
 	require.Equal(t, sdkgo.UncertainBranchID, postgresql.ExecuteStatementBranchUncertain)
+	require.Equal(t, sdkgo.OperationRef{ConnectorID: "postgresql", OperationID: "executeNonIdempotent"}, postgresql.ExecuteStatementNonIdempotentDefinition.Operation)
+	requireOneRequiredBranch(t, postgresql.ExecuteStatementNonIdempotentDefinition.Branches, postgresql.ExecuteStatementNonIdempotentBranchCompleted)
+	nonIdempotentDefaults := postgresql.ExecuteStatementNonIdempotentDefinition.StepDefaults
+	require.Equal(t, dex.StepDurabilitySync, nonIdempotentDefaults.ExecuteDurability, "the fence needs sync heartbeats")
+	require.Equal(t, 30*time.Second, nonIdempotentDefaults.ExecuteMethodTimeout)
 	for _, defaults := range []sdkgo.StepDefaults{postgresql.QueryRowsDefinition.StepDefaults, postgresql.ExecuteStatementDefinition.StepDefaults} {
 		require.Equal(t, dex.StepDurabilityAsync, defaults.ExecuteDurability)
 		require.Equal(t, 30*time.Second, defaults.ExecuteMethodTimeout)
@@ -89,6 +94,17 @@ func TestGeneratedFactoriesRequireTheHappyPathAndTheStaticConnection(t *testing.
 		Uncertain: sdkgo.GoTo(executeStatementTarget{}),
 	})
 	require.Equal(t, "WriteRow", write.GetStepType())
+
+	fencedWrite := postgresql.NewExecuteStatementNonIdempotentStep(postgresql.ExecuteStatementNonIdempotentStepConfig[string]{
+		StepType: "AddToBalance", ConnectionName: "ledger", Connection: connection,
+		Annotations: sdkgo.StepAnnotations{GroupID: "postgresql", GroupLabel: "PostgreSQL", Explanation: "Add to a balance once."},
+		MapToOperationInput: func(value string) postgresql.ExecuteStatementInput {
+			return postgresql.ExecuteStatementInput{Statement: value}
+		},
+		Completed: sdkgo.GoTo(executeStatementTarget{}),
+	})
+	require.Equal(t, "AddToBalance", fencedWrite.GetStepType())
+	require.Equal(t, dex.StepDurabilitySync, fencedWrite.GetStepOptions().ExecuteDurability)
 
 	require.Panics(t, func() {
 		postgresql.NewExecuteStatementStep(postgresql.ExecuteStatementStepConfig[string]{

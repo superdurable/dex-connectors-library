@@ -10,7 +10,8 @@ import math
 import os
 import re
 import unicodedata
-from dataclasses import dataclass
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any
 
@@ -26,6 +27,13 @@ from dex_connectors.sdk import (
     QueryAttempt,
     Receipt,
 )
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    DecisionKind,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
+)
 from psycopg import generators, pq
 from psycopg.pq.abc import PGresult
 
@@ -36,6 +44,9 @@ from ._generated.definitions import (
     CONNECTOR_ID,
     DEFECT,
     EXECUTE_DEFINITION,
+    EXECUTE_NON_IDEMPOTENT_DEFINITION,
+    EXECUTE_NON_IDEMPOTENT_OPERATION_ID,
+    EXECUTE_OPERATION_ID,
     INVALID_RESPONSE,
     LIMIT_EXCEEDED,
     PROVIDER_REJECTED,
@@ -92,6 +103,8 @@ _OWNED_KEYWORDS = {
 _NUMERIC = re.compile(r"^(?:-?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?|NaN|-?Infinity)$")
 _INTEGER = re.compile(r"^-?[0-9]+$")
 _EXTENDED_YEAR = re.compile(r"^[0-9]{5,}-")
+# Nothing is read back, so the request may use most of the attempt.
+_NON_IDEMPOTENT_WRITE_WINDOW = 5 / 6
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,8 +171,86 @@ class Client:
         return QueryRowsOperation(self)
 
     def execute(self) -> "ExecuteStatementOperation":
-        """Return the transactional Mutation operation."""
+        """Return the repeat-safe transactional Mutation operation."""
         return ExecuteStatementOperation(self)
+
+    def execute_non_idempotent(self) -> "ExecuteStatementNonIdempotentOperation":
+        """Return the fenced transactional Mutation operation, which never runs its statement twice."""
+        return ExecuteStatementNonIdempotentOperation(self)
+
+    async def _run_write(
+        self,
+        call: Call,
+        input: ExecuteStatementInput,
+        parameters: tuple[str | None, ...],
+        password: str,
+        commit: Callable[[psycopg.AsyncConnection[Any]], Awaitable[None]],
+    ) -> "_WriteOutcome":
+        """Run one statement in its own transaction and commit it through `commit`.
+
+        Every failure before `commit` is called leaves nothing committed.
+        """
+        connection: psycopg.AsyncConnection[Any] | None = None
+        phase = "connect"
+        try:
+            async with asyncio.timeout(_call_deadline_seconds(self.config)):
+                connection = await self._connect(password)
+                phase = "begin"
+                await self._begin(connection, False)
+                phase = "statement"
+                result = await _execute_described_statement(connection, input.statement, parameters)
+                columns, rows, is_truncated, affected = _read_result(result, self.config)
+                command = _command_name((result.command_status or b"").decode("utf-8"))
+                if is_truncated:
+                    return _WriteOutcome(
+                        _ClassifiedFailure(
+                            "limitExceeded",
+                            FailureKind.RESPONSE_TOO_LARGE,
+                            "RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction "
+                            "was rolled back",
+                        ),
+                        _receipt(call, connection),
+                    )
+                if input.max_rows_affected is not None and affected > input.max_rows_affected:
+                    return _WriteOutcome(
+                        _ClassifiedFailure(
+                            "limitExceeded",
+                            FailureKind.CONFLICT,
+                            f"the statement affected {affected} rows but maxRowsAffected is "
+                            f"{input.max_rows_affected}, so the transaction was rolled back",
+                        ),
+                        _receipt(call, connection),
+                    )
+                if connection.closed:
+                    return _WriteOutcome(
+                        _ClassifiedFailure(
+                            "retry",
+                            FailureKind.TRANSPORT,
+                            "the connection ended or the call deadline passed before COMMIT "
+                            "was sent, so nothing was committed",
+                        ),
+                        Receipt(),
+                    )
+                phase = "commit"
+                await commit(connection)
+                value = StatementExecution(
+                    command=command, rows_affected=affected, columns=columns, rows=rows
+                )
+                return _WriteOutcome(None, _receipt(call, connection), value)
+        except Exception as error:
+            classified = _classify_failure(error, phase)
+            return _WriteOutcome(
+                classified,
+                _receipt(call, connection, classified.sql_state),
+                is_commit_phase=phase == "commit",
+            )
+        finally:
+            if connection is not None:
+                # A failed close cannot alter a committed result; uncommitted writes roll back on disconnect.
+                try:
+                    await connection.close()
+                except psycopg.Error:
+                    pass
 
     async def _connect(self, password: str) -> psycopg.AsyncConnection[Any]:
         config = self.config
@@ -292,93 +383,174 @@ class ExecuteStatementOperation:
         return IdempotencyKey(call_id)
 
     async def invoke(self, call: Call, input: ExecuteStatementInput) -> MutationAttempt[StatementExecution]:
-        """Commit a bounded write or report a conclusive, retryable, or uncertain outcome."""
+        """Commit a repeat-safe bounded write; an unknown COMMIT outcome returns Retry, never uncertain."""
         try:
-            parameters = _bind_parameters(input.statement, input.parameters)
-            if input.max_rows_affected is not None and input.max_rows_affected < 0:
-                raise ValueError("maxRowsAffected cannot be negative")
-            if input.idempotency_key_placeholder:
-                if input.idempotency_key_placeholder != len(parameters) + 1 or len(parameters) == 65535:
-                    raise ValueError("idempotencyKeyPlaceholder must be the last placeholder")
-                parameters += (str(call.idempotency_key),)
+            parameters = _bind_execute_parameters(call, input)
         except ValueError as error:
-            return _execute_failure(DEFECT, FailureKind.VALIDATION, str(error))
+            return _write_defect(EXECUTE_OPERATION_ID, FailureKind.VALIDATION, str(error))
         password = await self.client._resolve_password(call)
         if password is None:
-            return _execute_failure(
-                DEFECT, FailureKind.AUTHENTICATION, "PostgreSQL connection credentials are unavailable"
+            return _write_defect(
+                EXECUTE_OPERATION_ID,
+                FailureKind.AUTHENTICATION,
+                "PostgreSQL connection credentials are unavailable",
             )
-        connection: psycopg.AsyncConnection[Any] | None = None
-        phase = "connect"
+        outcome = await self.client._run_write(call, input, parameters, password, _commit)
+        if outcome.failure is None:
+            return MutationAttempt.branch_result(COMPLETED, outcome.value, outcome.receipt)
+        failure = outcome.failure
+        if failure.disposition == "uncertain":
+            # The statement is repeat-safe, so an unknown COMMIT outcome runs it again.
+            failure = replace(failure, disposition="retry")
+        return _write_attempt(EXECUTE_OPERATION_ID, failure, outcome.receipt)
+
+
+class ExecuteStatementNonIdempotentOperation:
+    """Run one write statement that must not run twice, committing it at most once."""
+
+    def __init__(self, client: Client) -> None:
+        self.client = client
+
+    def definition(self) -> Any:
+        """Return the generated mutation identity and branches."""
+        return EXECUTE_NON_IDEMPOTENT_DEFINITION
+
+    def idempotency_key(self, call_id: CallID, input: ExecuteStatementInput) -> IdempotencyKey:
+        """Use the stable Dex call ID as PostgreSQL's idempotency key."""
+        return IdempotencyKey(call_id)
+
+    async def invoke(self, call: Call, input: ExecuteStatementInput) -> MutationAttempt[StatementExecution]:
+        """Commit at most once behind a single-dispatch fence; an unknown COMMIT selects uncertain.
+
+        A later attempt after a possibly sent COMMIT, or after a lost Worker, selects uncertain
+        without connecting. A proven rollback before or at COMMIT returns Retry, and an
+        unreadable checkpoint returns Retry without connecting.
+        """
         try:
-            async with asyncio.timeout(_call_deadline_seconds(self.client.config)):
-                connection = await self.client._connect(password)
-                phase = "begin"
-                await self.client._begin(connection, False)
-                phase = "statement"
-                result = await _execute_described_statement(connection, input.statement, parameters)
-                columns, rows, is_truncated, affected = _read_result(result, self.client.config)
-                command = _command_name((result.command_status or b"").decode("utf-8"))
-                if is_truncated:
-                    return _execute_failure(
-                        LIMIT_EXCEEDED,
-                        FailureKind.RESPONSE_TOO_LARGE,
-                        "RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction "
-                        "was rolled back",
-                        _receipt(call, connection),
-                    )
-                if input.max_rows_affected is not None and affected > input.max_rows_affected:
-                    return _execute_failure(
-                        LIMIT_EXCEEDED,
-                        FailureKind.CONFLICT,
-                        f"the statement affected {affected} rows but maxRowsAffected is "
-                        f"{input.max_rows_affected}, so the transaction was rolled back",
-                        _receipt(call, connection),
-                    )
-                if connection.closed:
-                    return MutationAttempt.retry(
-                        _failure(
-                            "execute",
-                            FailureKind.TRANSPORT,
-                            "the connection ended or the call deadline passed before COMMIT "
-                            "was sent, so nothing was committed",
-                        )
-                    )
-                phase = "commit"
-                async with connection.cursor() as cursor:
-                    await cursor.execute("COMMIT")
-                    if cursor.statusmessage != "COMMIT":
-                        return _execute_failure(
-                            PROVIDER_REJECTED,
-                            FailureKind.PROVIDER_REJECTION,
-                            "PostgreSQL rolled back the transaction at COMMIT",
-                            _receipt(call, connection),
-                        )
-                value = StatementExecution(
-                    command=command, rows_affected=affected, columns=columns, rows=rows
-                )
-                return MutationAttempt.branch_result(COMPLETED, value, _receipt(call, connection))
-        except Exception as error:
-            classified = _classify_failure(error, phase)
-            failure = _failure("execute", classified.kind, classified.message)
-            if classified.disposition == "retry":
-                return MutationAttempt.retry(failure)
-            receipt = _receipt(call, connection, classified.sql_state)
-            if classified.disposition == "uncertain":
-                return MutationAttempt.uncertain(StatementExecution(), failure, receipt)
-            branch = (
-                INVALID_RESPONSE
-                if classified.disposition == "invalid"
-                else (DEFECT if classified.disposition == "defect" else PROVIDER_REJECTED)
+            parameters = _bind_execute_parameters(call, input)
+        except ValueError as error:
+            return _write_defect(EXECUTE_NON_IDEMPOTENT_OPERATION_ID, FailureKind.VALIDATION, str(error))
+        try:
+            fence = Fence(
+                call,
+                EXECUTE_NON_IDEMPOTENT_DEFINITION.step_defaults.execute_method_timeout,
+                write_window_fraction=_NON_IDEMPOTENT_WRITE_WINDOW,
+                max_sends=call.max_sends,
             )
-            return MutationAttempt.branch_result(branch, StatementExecution(), receipt, failure)
-        finally:
-            if connection is not None:
-                # A failed close cannot alter a committed result; uncommitted writes roll back on disconnect.
-                try:
-                    await connection.close()
-                except psycopg.Error:
-                    pass
+        except ValueError:
+            return _write_defect(
+                EXECUTE_NON_IDEMPOTENT_OPERATION_ID,
+                FailureKind.LOCAL_DEFECT,
+                "PostgreSQL dispatch fence could not be constructed",
+            )
+        decision = await fence.decide()
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            return MutationAttempt.retry(
+                _failure(
+                    EXECUTE_NON_IDEMPOTENT_OPERATION_ID,
+                    FailureKind.AVAILABILITY,
+                    "the dispatch checkpoint could not be read, so nothing was sent in this attempt",
+                )
+            )
+        if decision.kind != DecisionKind.SEND_ALLOWED:
+            return MutationAttempt.uncertain(
+                StatementExecution(),
+                _failure(
+                    EXECUTE_NON_IDEMPOTENT_OPERATION_ID,
+                    FailureKind.TRANSPORT,
+                    "an earlier attempt may have committed the statement, and executeNonIdempotent "
+                    "never runs it again",
+                ),
+                _receipt(call, None),
+            )
+        # Overcounts when an earlier attempt proved its COMMIT unsent, which only costs a rejection branch.
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
+        password = await self.client._resolve_password(call)
+        if password is None:
+            failure = _ClassifiedFailure(
+                "defect", FailureKind.AUTHENTICATION, "PostgreSQL connection credentials are unavailable"
+            )
+            return await _settle_before_commit(fence, has_possible_earlier_send, failure, Receipt())
+
+        async def commit_once(connection: psycopg.AsyncConnection[Any]) -> None:
+            async def send(_write_deadline: datetime) -> None:
+                await _commit(connection)
+
+            try:
+                await fence.dispatch(send)
+            except (CheckpointError, DispatchNotAllowedError, InsufficientAttemptTimeError) as error:
+                raise _CommitNotSentError() from error
+
+        outcome = await self.client._run_write(call, input, parameters, password, commit_once)
+        if outcome.failure is None:
+            return MutationAttempt.branch_result(COMPLETED, outcome.value, outcome.receipt)
+        if not outcome.is_commit_phase:
+            return await _settle_before_commit(
+                fence, has_possible_earlier_send, outcome.failure, outcome.receipt
+            )
+        failure = outcome.failure
+        if failure.disposition != "uncertain":
+            # PostgreSQL rolled the transaction back; a lost checkpoint only makes a later attempt uncertain.
+            try:
+                await fence.record_can_resend()
+            except Exception:
+                pass
+            if failure.disposition != "retry" and has_possible_earlier_send:
+                failure = replace(failure, disposition="uncertain")
+        return _write_attempt(EXECUTE_NON_IDEMPOTENT_OPERATION_ID, failure, outcome.receipt)
+
+
+@dataclass(frozen=True, slots=True)
+class _WriteOutcome:
+    """A committed write, or a failure and whether it happened at COMMIT."""
+
+    failure: _ClassifiedFailure | None
+    receipt: Receipt
+    value: StatementExecution = StatementExecution()
+    is_commit_phase: bool = False
+
+
+class _CommitNotSentError(Exception):
+    """COMMIT was not sent, so the transaction rolls back when the connection closes."""
+
+
+class _CommitRolledBackError(Exception):
+    """PostgreSQL answered COMMIT without committing."""
+
+
+async def _commit(connection: psycopg.AsyncConnection[Any]) -> None:
+    async with connection.cursor() as cursor:
+        await cursor.execute("COMMIT")
+        if cursor.statusmessage != "COMMIT":
+            raise _CommitRolledBackError()
+
+
+async def _settle_before_commit(
+    fence: Fence, has_possible_earlier_send: bool, failure: _ClassifiedFailure, receipt: Receipt
+) -> MutationAttempt[StatementExecution]:
+    """Record that this attempt sent no COMMIT, then report the failure.
+
+    A refusal after a possible earlier send selects uncertain, since that send may have committed.
+    """
+    # A lost notSent checkpoint only makes the next attempt select uncertain, never send twice.
+    try:
+        await fence.record_not_sent()
+    except Exception:
+        pass
+    if failure.disposition != "retry" and has_possible_earlier_send:
+        failure = replace(failure, disposition="uncertain")
+    return _write_attempt(EXECUTE_NON_IDEMPOTENT_OPERATION_ID, failure, receipt)
+
+
+def _bind_execute_parameters(call: Call, input: ExecuteStatementInput) -> tuple[str | None, ...]:
+    parameters = _bind_parameters(input.statement, input.parameters)
+    if input.max_rows_affected is not None and input.max_rows_affected < 0:
+        raise ValueError("maxRowsAffected cannot be negative")
+    if input.idempotency_key_placeholder:
+        if input.idempotency_key_placeholder != len(parameters) + 1 or len(parameters) == 65535:
+            raise ValueError("idempotencyKeyPlaceholder must be the last placeholder")
+        parameters += (str(call.idempotency_key),)
+    return parameters
 
 
 def _is_local_host(host: str) -> bool:
@@ -649,6 +821,17 @@ def _trim_timestamp_fraction(timestamp_text: str) -> str:
 def _classify_failure(error: Exception, phase: str) -> _ClassifiedFailure:
     if isinstance(error, _InvalidValue):
         return _ClassifiedFailure("invalid", FailureKind.PROTOCOL, str(error))
+    if isinstance(error, _CommitNotSentError):
+        return _ClassifiedFailure(
+            "retry",
+            FailureKind.AVAILABILITY,
+            "COMMIT was not sent because the dispatch checkpoint failed or too little time remained, "
+            "so the transaction rolled back",
+        )
+    if isinstance(error, _CommitRolledBackError):
+        return _ClassifiedFailure(
+            "rejected", FailureKind.PROVIDER_REJECTION, "PostgreSQL rolled back the transaction at COMMIT"
+        )
     sql_state = error.sqlstate if isinstance(error, psycopg.Error) else None
     if not sql_state and isinstance(error, psycopg.Error):
         sql_state = getattr(getattr(error, "diag", None), "sqlstate", None)
@@ -665,7 +848,8 @@ def _classify_failure(error: Exception, phase: str) -> _ClassifiedFailure:
         elif "too many connections" in connect_message or "remaining connection slots" in connect_message:
             sql_state = "53300"
     if sql_state:
-        if phase == "commit" and not sql_state.startswith(("23", "40")):
+        # SQLSTATE 40003 (statement_completion_unknown) is the one rollback-class code that proves nothing.
+        if phase == "commit" and (sql_state == "40003" or not sql_state.startswith(("23", "40"))):
             return _ClassifiedFailure(
                 "uncertain",
                 FailureKind.AVAILABILITY,
@@ -763,15 +947,26 @@ def _query_failure(branch: str, kind: FailureKind, message: str) -> QueryAttempt
     return QueryAttempt.branch_result(branch, RowSet(), Receipt(), _failure("query", kind, message))
 
 
-def _execute_failure(
-    branch: str,
-    kind: FailureKind,
-    message: str,
-    receipt: Receipt | None = None,
+_WRITE_BRANCHES = {
+    "limitExceeded": LIMIT_EXCEEDED,
+    "invalid": INVALID_RESPONSE,
+    "defect": DEFECT,
+    "rejected": PROVIDER_REJECTED,
+}
+
+
+def _write_attempt(
+    operation: str, classified: _ClassifiedFailure, receipt: Receipt
 ) -> MutationAttempt[StatementExecution]:
-    return MutationAttempt.branch_result(
-        branch,
-        StatementExecution(),
-        receipt or Receipt(),
-        _failure("execute", kind, message),
-    )
+    """Map a failure to an attempt; both write operations share their branch IDs."""
+    failure = _failure(operation, classified.kind, classified.message)
+    if classified.disposition == "retry":
+        return MutationAttempt.retry(failure)
+    if classified.disposition == "uncertain":
+        return MutationAttempt.uncertain(StatementExecution(), failure, receipt)
+    branch = _WRITE_BRANCHES.get(classified.disposition, PROVIDER_REJECTED)
+    return MutationAttempt.branch_result(branch, StatementExecution(), receipt, failure)
+
+
+def _write_defect(operation: str, kind: FailureKind, message: str) -> MutationAttempt[StatementExecution]:
+    return _write_attempt(operation, _ClassifiedFailure("defect", kind, message), Receipt())

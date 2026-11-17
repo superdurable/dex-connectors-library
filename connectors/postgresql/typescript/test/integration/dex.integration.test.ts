@@ -27,7 +27,11 @@ it('runs the refund example through a real Dex Worker and Client', async () => {
     await client.startFlow(flow, flowId, { orderId: 'order-88213', amountUsd: '250.00', externalReference: 'SUP-88213' });
     const result = await client.waitForFlow(flowId, 60_000);
     expect(result.status, result.errorMessage).toBe('completed');
-    expect(result.singleOutput<RefundOutcome>()).toMatchObject({ status: 'recorded', row: { amount_usd: '250.00', order_id: 'order-88213' } });
+    expect(result.singleOutput<RefundOutcome>()).toMatchObject({ status: 'recorded', row: { amount_usd: '250.00', order_id: 'order-88213' }, dailyTotalUsd: '250.00' });
+    const dailyTotalCalls = mock.executeNonIdempotent().calls();
+    expect(dailyTotalCalls).toHaveLength(1);
+    expect(dailyTotalCalls[0]?.input).toMatchObject({ parameters: ['250.00'], maxRowsAffected: 1 });
+    expect(dailyTotalCalls[0]?.input.statement).toContain('refund_daily_totals');
     mock.assertNoFailures();
   } finally {
     await client.close(); await worker.close(); cache.close();

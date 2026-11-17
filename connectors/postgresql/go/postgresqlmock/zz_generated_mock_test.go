@@ -40,6 +40,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[postgresql.StatementExecution](`{"columns":[],"rows":[]}`)
 			return err
 		}},
+		{name: "executeNonIdempotent/addedToDailyTotal/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postgresql.StatementExecution](`{"command":"INSERT","rowsAffected":1,"columns":[{"name":"refund_date","typeName":"date","typeOid":1082},{"name":"total_usd","typeName":"numeric","typeOid":1700}],"rows":[{"refund_date":"2026-10-26","total_usd":"250.00"}]}`)
+			return err
+		}},
+		{name: "executeNonIdempotent/missingDailyTotalTable/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postgresql.StatementExecution](`{"columns":[],"rows":[]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -55,5 +63,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ExecuteStatement().Definition().Operation.OperationID != "execute" {
 		t.Errorf("execute mock has another definition")
+	}
+	if mock.ExecuteStatementNonIdempotent().Definition().Operation.OperationID != "executeNonIdempotent" {
+		t.Errorf("executeNonIdempotent mock has another definition")
 	}
 }

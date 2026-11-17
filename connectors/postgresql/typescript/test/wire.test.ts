@@ -96,16 +96,19 @@ async function wireServer(mode: 'commit' | 'statement' | 'close' | 'closekill' |
 }
 
 it.each([
-  ['commit', 'uncertain'],
-  ['statement', 'retry'],
-  ['close', 'retry'],
-] as const)('classifies a real pg.Client %s socket failure without an uncaught error', async (mode, kind) => {
+  ['commit', 'retry', 'uncertain'],
+  ['statement', 'retry', 'retry'],
+  ['close', 'retry', 'retry'],
+] as const)('classifies a real pg.Client %s socket failure without an uncaught error', async (mode, executeKind, nonIdempotentKind) => {
   const port = await wireServer(mode);
   const client = new PostgreSQLClient({ host: '127.0.0.1', port, database: 'app', user: 'dex_app', sslMode: 'disable', connectTimeoutMs: 500, statementTimeoutMs: 1 }, { resolve: async () => ({ password: new SecretString('test-password') }) });
   const call = { id: '00000000-0000-4000-8000-000000000001', idempotencyKey: '00000000-0000-4000-8000-000000000001' } as Call;
   const result = await client.execute().invoke(call, { statement: 'INSERT INTO ledger VALUES (1)' });
-  expect(result).toMatchObject({ kind, failure: { kind: 'TRANSPORT' } });
-}, 15_000);
+  expect(result).toMatchObject({ kind: executeKind, failure: { kind: 'TRANSPORT' } });
+  const fencedCall = { ...call, context: { attempt: 1, runId: 'run', flowId: 'wire-flow', flowStartedAt: new Date(0), deadline: new Date(Date.now() + 30_000), cancellationSignal: new AbortController().signal, hasLastHeartbeatValue: () => false, getLastHeartbeatValue: () => undefined, recordHeartbeat: async () => undefined } } as unknown as Call;
+  const fenced = await client.executeNonIdempotent().invoke(fencedCall, { statement: 'UPDATE ledger SET total = total + 1' });
+  expect(fenced).toMatchObject({ kind: nonIdempotentKind, failure: { kind: 'TRANSPORT' } });
+}, 30_000);
 
 it.each([
   ['closekill', 'query', 'truncated'],

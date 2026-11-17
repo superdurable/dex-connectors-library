@@ -1,6 +1,6 @@
 # PostgreSQL Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/postgresql/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/postgresql/go@v0.24.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/postgresql`.
 
@@ -9,13 +9,21 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/postgresql
 > is not verified.
 
 This module runs parameterized SQL against a PostgreSQL database from Dex
-Steps. It has two operations:
+Steps. It has three operations:
 
 - `query` (`QueryRows`) runs one read statement inside a read-only
   transaction and returns bounded rows.
-- `execute` (`ExecuteStatement`) runs one write statement in its own
-  transaction, commits it, and returns the rows affected and any bounded
-  `RETURNING` rows.
+- `execute` (`ExecuteStatement`) runs one repeat-safe write statement in its
+  own transaction, commits it, and returns the rows affected and any bounded
+  `RETURNING` rows. It is `repeatOnUnknown: safe`: a `COMMIT` with an unknown
+  outcome runs the statement again.
+- `executeNonIdempotent` (`ExecuteStatementNonIdempotent`) runs a write that
+  must not run twice, such as adding to a balance, with the same input and
+  Result. It is `repeatOnUnknown: unsafe`: it commits at most once and selects
+  `uncertain` when a `COMMIT` outcome is unknown.
+
+The application chooses between the two writes by whether its statement is
+safe to repeat.
 
 The Go connector is built on the pure-Go `github.com/jackc/pgx/v5/pgconn` wire
 protocol client. Each operation opens one connection, runs one transaction,
@@ -27,9 +35,10 @@ verified against PostgreSQL 17.
 
 `postgresqlmock.New` returns a typed connection. Its query default models no
 existing refund for `order-88213`; its execute default records that order's
-`250.00` refund with reference `SUP-88213`. Script other orders or statements.
-Named cases cover truncation, a missing table, a write limit, and a duplicate
-order. See [`sdkgo/connectormock`](../../sdkgo/README.md#connector-mocks).
+`250.00` refund with reference `SUP-88213`; its executeNonIdempotent default
+adds that refund to a `250.00` daily total. Script other orders or statements.
+Named cases cover truncation, a missing table, a write limit, a duplicate
+order, and a missing daily-total table. See [`sdkgo/connectormock`](../../sdkgo/README.md#connector-mocks).
 
 The [runnable mock integration test](go/examples/record-refund/flow/workflow_mock_integration_test.go)
 uses these defaults on a real Dex Worker:
@@ -202,16 +211,22 @@ affects more rows, or its `RETURNING` rows exceed `maxRows` or
 | `completed` | PostgreSQL acknowledged `COMMIT` |
 | `limitExceeded` | `MaxRowsAffected`, `maxRows`, or `maxResponseBytes` was exceeded; nothing was written |
 | `providerRejected` | A constraint violation, which names its constraint, or a syntax, data, permission, or connection rejection; nothing was written |
-| `uncertain` | The connection failed after `COMMIT` was sent, or the server reported an error other than SQLSTATE class 23 or 40 while committing |
+| `uncertain` | Never selected by `execute`; declared for identity stability. `executeNonIdempotent` selects it as described below |
 | `invalidResponse` | A `RETURNING` value that does not match its type; nothing was written |
 | `defect` | Invalid input, including an `IdempotencyKeyPlaceholder` that is not the last placeholder |
+
+`executeNonIdempotent` declares the same branches and runs the same
+transaction. Its `uncertain` branch is selected when the connection failed
+after `COMMIT` was sent, when the server reported SQLSTATE 40003 or an error
+outside classes 23 and 40 while committing, or on a later attempt of a Step
+execution whose earlier attempt may have sent `COMMIT`.
 
 Only a happy path is required. Every other branch is optional, and an unwired
 optional branch fails the Flow.
 
 ## Retries, uncertainty, and idempotency
 
-Both operations return Retry, which Dex retries with the Step's one-hour default retry budget, for:
+Every operation returns Retry, which Dex retries with the Step's one-hour default retry budget, for:
 
 - connection refusal and connect timeouts;
 - `too_many_connections` and the rest of SQLSTATE class 53;
@@ -223,11 +238,23 @@ PostgreSQL rolls back an open transaction when its connection ends, so a write
 that fails before `COMMIT` left nothing behind and is safe to retry.
 
 A connection lost after `COMMIT` was sent is different: the server may have
-committed. The connector selects `uncertain` instead of retrying, and the
-Result's `Receipt.IdempotencyKey` tells the application which write to look
-for. The same applies when a backend is terminated while committing or a
-synchronous-replication wait is canceled, because PostgreSQL can report an
-error after committing locally.
+committed. The same applies when a backend is terminated while committing, a
+synchronous-replication wait is canceled, or `COMMIT` reports SQLSTATE 40003,
+because PostgreSQL can report an error after committing locally. `execute`
+returns Retry for this unknown outcome too, so Dex runs the statement again
+with the same idempotency key until the retry budget runs out; it never
+selects `uncertain`.
+
+`executeNonIdempotent` instead guards `COMMIT` with the shared single-dispatch
+fence (`sdkgo/singledispatch`, with sync durability). Before `COMMIT` it
+records a claim in the Step heartbeat. After an unknown outcome it selects
+`uncertain`, and a later attempt that finds the claim, or no checkpoint after
+a lost Worker, selects `uncertain` without connecting. Only a proven rollback,
+such as a connection lost before `COMMIT` or SQLSTATE 40001 at `COMMIT`,
+records that nothing was committed and returns Retry. An unreadable checkpoint
+returns Retry without connecting. PostgreSQL has no generic read-back for an
+arbitrary statement, so the application reconciles `uncertain` itself; the
+Result's `Receipt.IdempotencyKey` identifies the Step execution.
 
 Dex can run `execute` more than once for one Step execution after a Worker is
 lost mid-call. The scripted integration test commits the first `INSERT`, holds
@@ -245,8 +272,8 @@ deduplicate across Flows.
 `execute` keeps the repository's async default because most statements finish
 in milliseconds. Sync durability would not remove the need for idempotency,
 because a Worker lost after `COMMIT` still runs the Step execution again. Make
-every write idempotent, and treat a statement that is not idempotent as a
-defect in the Flow.
+every `execute` statement repeat-safe, and run a statement that is not, such
+as a relative `UPDATE ... SET total = total + $1`, with `executeNonIdempotent`.
 
 The runnable example's write, from
 [`examples/record-refund/flow/workflow.go`](go/examples/record-refund/flow/workflow.go):
@@ -267,17 +294,22 @@ return postgresql.ExecuteStatementInput{
 }
 ```
 
-It wires `uncertain`, and a replay that returned no row, to a read-back by the
-key:
+When a replay returned no row, the example reads the row back by the key.
+When the read-back finds no row, it fails the Flow for review instead of
+inserting again. A `COMMIT` stalled on synchronous replication can still
+become visible after the read.
+
+The example then adds the refund to a daily total, which must not run twice:
 
 ```go
-Completed:           sdkgo.GoTo(completeRefundRecording{}),
-Uncertain:           sdkgo.GoTo(sdkgo.StepRef[postgresql.ExecuteStatementResult](findRefundByIdempotencyKeyStepType)),
+AddRefundToDailyTotalStatement = `INSERT INTO refund_daily_totals (refund_date, total_usd)
+VALUES (CURRENT_DATE, $1::numeric)
+ON CONFLICT (refund_date) DO UPDATE SET total_usd = refund_daily_totals.total_usd + EXCLUDED.total_usd
+RETURNING refund_date, total_usd`
 ```
 
-When the read-back finds no row, the example fails the Flow for review instead
-of inserting again. A `COMMIT` stalled on synchronous replication can still
-become visible after the read.
+It wires only `completed`, so an `uncertain` daily total fails the Flow for
+review instead of counting the refund twice.
 
 Every call is bounded by `connectTimeout + statementTimeout + 5s` on the
 client, so it returns a classified attempt before Dex's 30-second Execute
@@ -304,10 +336,11 @@ seconds.
 ## Runnable example
 
 [`examples/record-refund`](go/examples/record-refund/README.md) records one
-refund in a ledger at most once. It uses `query` for the duplicate check and
-`execute` for the idempotent insert, and reconciles an uncertain `COMMIT`.
+refund in a ledger at most once. It uses `query` for the duplicate check,
+`execute` for the idempotent insert, which it retries after an unknown
+`COMMIT`, and `executeNonIdempotent` to add the refund to a daily total once.
 
-The [TypeScript package](typescript/README.md) implements both operations with
+The [TypeScript package](typescript/README.md) implements all three operations with
 the native `pg` driver. Its [refund example](typescript/examples/record-refund/README.md)
 uses the static `postgresql-ledger` connection name and has a real Dex
 Worker/Client integration test. The native-driver integration suite runs in
@@ -316,8 +349,8 @@ the full Worker-to-database path remain unverified.
 
 ## Python package
 
-Install `dex-connector-postgresql==0.1.0` for the Python `query` and `execute`
-Steps. The package uses the native Psycopg driver, including PostgreSQL's `$1`
+Install `dex-connector-postgresql==0.2.0` for the Python `query`, `execute`,
+and `executeNonIdempotent` Steps. The package uses the native Psycopg driver, including PostgreSQL's `$1`
 placeholders, and resolves the password for every call. Its
 [runnable refund Flow](python/examples/record_refund/README.md) binds the static
 `postgresql-ledger` connection and runs on a real Dex Worker. Python unit tests
@@ -357,7 +390,7 @@ covers:
 - idempotent replay, constraint and limit rollbacks, and `statementTimeout`;
 - TLS `require` and a failing `verify-full` against a self-signed server;
 - a proxy, `internal/commitfaultproxy`, that drops the connection at
-  `Execute`, before `COMMIT`, and after `COMMIT`.
+  `Execute`, before `COMMIT`, and after `COMMIT`, for both writes.
 
 It also runs the example Flow on a real Dex Worker:
 

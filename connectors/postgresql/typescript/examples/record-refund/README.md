@@ -1,7 +1,11 @@
 # Record a refund
 
 This Flow looks up an order in `refund_ledger`, then inserts one refund with
-the Dex Call ID bound to its final SQL placeholder. Its static connection name
+the Dex Call ID bound to its final SQL placeholder through `execute`, which
+retries a `COMMIT` with an unknown outcome. It then adds the new refund to
+today's total in `refund_daily_totals` through `executeNonIdempotent`, because
+running that addition twice would count the refund twice; an `uncertain`
+daily total is not wired and fails the Flow for review. Its static connection name
 is `postgresql-ledger`. The password stays in the Worker's environment and
 never enters the Flow input or result. The starter accepts the checked-in
 `input.example.json` shape.

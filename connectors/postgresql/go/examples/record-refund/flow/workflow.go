@@ -1,10 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package recordrefund demonstrates the PostgreSQL query and execute operations in a Flow started
-// from Dex Web Start Flow. It records one refund in a ledger table at most once: a read-only query
-// finds an existing refund for the order, and an idempotent INSERT keyed by the Step's idempotency
-// key writes a new one. An uncertain COMMIT is reconciled by reading the row back by that key.
+// Package recordrefund demonstrates the PostgreSQL query, execute, and executeNonIdempotent
+// operations in a Flow started from Dex Web Start Flow. It records one refund in a ledger table at
+// most once: a read-only query finds an existing refund for the order, and an idempotent INSERT
+// keyed by the Step's idempotency key writes a new one, which execute repeats after an unknown
+// COMMIT. A replay that inserted nothing reads the row back by that key. The Flow then adds the
+// refund to the daily refund total with executeNonIdempotent, because adding twice double-counts.
 package recordrefund
 
 import (
@@ -37,6 +39,8 @@ const (
 	completeRefundRecordingStepType    = "CompleteRefundRecording"
 	findRefundByIdempotencyKeyStepType = "FindRefundByIdempotencyKey"
 	completeReconciledRefundStepType   = "CompleteReconciledRefund"
+	addRefundToDailyTotalStepType      = "AddRefundToDailyTotal"
+	completeDailyTotalStepType         = "CompleteDailyTotal"
 
 	refundColumns = "refund_id, order_id, amount_usd, external_reference, idempotency_key, recorded_at"
 	// FindRecordedRefundStatement reads the order's existing refund inside a read-only transaction.
@@ -46,8 +50,13 @@ const (
 VALUES ($1, $2::numeric, $3, $4)
 ON CONFLICT (idempotency_key) DO NOTHING
 RETURNING ` + refundColumns
-	// FindRefundByIdempotencyKeyStatement reads back the row an uncertain or replayed INSERT may have written.
+	// FindRefundByIdempotencyKeyStatement reads back the row a replayed INSERT may have written.
 	FindRefundByIdempotencyKeyStatement = "SELECT " + refundColumns + " FROM refund_ledger WHERE idempotency_key = $1"
+	// AddRefundToDailyTotalStatement adds $1 to today's UTC total; running it twice counts the refund twice.
+	AddRefundToDailyTotalStatement = `INSERT INTO refund_daily_totals (refund_date, total_usd)
+VALUES (CURRENT_DATE, $1::numeric)
+ON CONFLICT (refund_date) DO UPDATE SET total_usd = refund_daily_totals.total_usd + EXCLUDED.total_usd
+RETURNING refund_date, total_usd`
 )
 
 var (
@@ -89,8 +98,10 @@ type Outcome struct {
 	Status string `json:"status"`
 	// Refund is the ledger row for the order.
 	Refund Refund `json:"refund"`
-	// WasReconciled reports that the row was confirmed by reading it back after an uncertain or replayed INSERT.
+	// WasReconciled reports that the row was confirmed by reading it back after a replayed INSERT.
 	WasReconciled bool `json:"wasReconciled,omitempty"`
+	// DailyTotalUSD is the day's refunded total, as an exact decimal string, after adding a new refund.
+	DailyTotalUSD string `json:"dailyTotalUsd,omitempty"`
 }
 
 // Flow records one refund in a PostgreSQL ledger at most once.
@@ -107,7 +118,7 @@ func NewFlow(connection postgresql.Connection) *Flow {
 // GetFlowType returns FlowType.
 func (*Flow) GetFlowType() string { return FlowType }
 
-// GetSteps returns the request, query, decision, write, and reconciliation Steps.
+// GetSteps returns the request, query, decision, write, reconciliation, and daily-total Steps.
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(recordRefundRequest{}),
@@ -131,21 +142,30 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: flow.MapToInsertRefundInput,
 			Completed:           sdkgo.GoTo(completeRefundRecording{}),
-			// Read back an uncertain commit by its idempotency key before completing the refund.
-			Uncertain: sdkgo.GoTo(sdkgo.StepRef[postgresql.ExecuteStatementResult](findRefundByIdempotencyKeyStepType)),
 		})),
 		dex.DefineStep(completeRefundRecording{}),
 		dex.DefineStep(postgresql.NewQueryRowsStep(postgresql.QueryRowsStepConfig[postgresql.ExecuteStatementResult]{
 			StepType: findRefundByIdempotencyKeyStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "postgresql", GroupLabel: "PostgreSQL",
-				Explanation: "Read back the row an uncertain or replayed insert may have written.",
+				Explanation: "Read back the row a replayed insert may have written.",
 			},
 			Connection:          flow.connection,
 			MapToOperationInput: flow.MapToFindRefundByIdempotencyKeyInput,
 			Completed:           sdkgo.GoTo(completeReconciledRefund{}),
 		})),
 		dex.DefineStep(completeReconciledRefund{}),
+		dex.DefineStep(postgresql.NewExecuteStatementNonIdempotentStep(postgresql.ExecuteStatementNonIdempotentStepConfig[Outcome]{
+			StepType: addRefundToDailyTotalStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{
+				GroupID: "postgresql", GroupLabel: "PostgreSQL",
+				Explanation: "Add the new refund to today's total at most once.",
+			},
+			Connection:          flow.connection,
+			MapToOperationInput: flow.MapToAddRefundToDailyTotalInput,
+			Completed:           sdkgo.GoTo(completeDailyTotal{}),
+		})),
+		dex.DefineStep(completeDailyTotal{}),
 	}
 }
 
@@ -209,6 +229,14 @@ func (*Flow) MapToInsertRefundInput(input Input) postgresql.ExecuteStatementInpu
 		Parameters:                []any{input.OrderID, input.AmountUSD, externalReference},
 		IdempotencyKeyPlaceholder: 4,
 		MaxRowsAffected:           &maxRowsAffected,
+	}
+}
+
+// MapToAddRefundToDailyTotalInput binds the recorded refund's exact amount; the statement touches one row.
+func (*Flow) MapToAddRefundToDailyTotalInput(outcome Outcome) postgresql.ExecuteStatementInput {
+	maxRowsAffected := int64(1)
+	return postgresql.ExecuteStatementInput{
+		Statement: AddRefundToDailyTotalStatement, Parameters: []any{outcome.Refund.AmountUSD}, MaxRowsAffected: &maxRowsAffected,
 	}
 }
 
@@ -314,7 +342,7 @@ func (decideRefundRecording) Execute(ctx dex.Context, result postgresql.QueryRow
 }
 
 // dex:group group-id:postgresql group-label:"PostgreSQL"
-// dex:explanation text:"Complete with the inserted row, or read it back when a replay inserted nothing."
+// dex:explanation text:"Record the inserted row, or read it back when a replay inserted nothing."
 type completeRefundRecording struct {
 	dex.StepDefaultsNoWaitFor[postgresql.ExecuteStatementResult]
 }
@@ -334,11 +362,11 @@ func (completeRefundRecording) Execute(ctx dex.Context, result postgresql.Execut
 	if err := refundOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}
-	return dex.GracefulComplete(outcome), nil
+	return dex.GoTo(sdkgo.StepRef[Outcome](addRefundToDailyTotalStepType), outcome), nil
 }
 
 // dex:group group-id:postgresql group-label:"PostgreSQL"
-// dex:explanation text:"Complete when the read-back found the row; otherwise stop for review."
+// dex:explanation text:"Record the read-back row; otherwise stop for review."
 type completeReconciledRefund struct {
 	dex.StepDefaultsNoWaitFor[postgresql.QueryRowsResult]
 }
@@ -355,6 +383,33 @@ func (completeReconciledRefund) Execute(ctx dex.Context, result postgresql.Query
 		return dex.ForceFail(err.Error()), nil
 	}
 	outcome := Outcome{Status: StatusRecorded, Refund: refund, WasReconciled: true}
+	if err := refundOutcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[Outcome](addRefundToDailyTotalStepType), outcome), nil
+}
+
+// dex:group group-id:postgresql group-label:"PostgreSQL"
+// dex:explanation text:"Complete with the recorded refund and today's refunded total."
+type completeDailyTotal struct {
+	dex.StepDefaultsNoWaitFor[postgresql.ExecuteStatementNonIdempotentResult]
+}
+
+func (completeDailyTotal) GetStepType() string { return completeDailyTotalStepType }
+
+func (completeDailyTotal) Execute(ctx dex.Context, result postgresql.ExecuteStatementNonIdempotentResult) (*dex.StepDecision, error) {
+	if len(result.Value.Rows) != 1 {
+		return dex.ForceFail("the daily total update returned no row"), nil
+	}
+	total, isText := result.Value.Rows[0]["total_usd"].(string)
+	if !isText {
+		return dex.ForceFail("the daily total is not the numeric string mapping"), nil
+	}
+	outcome, err := refundOutcomeAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	outcome.DailyTotalUSD = total
 	if err := refundOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

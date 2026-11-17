@@ -9,7 +9,7 @@ from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
 from ..models import Column, ExecuteStatementInput, QueryRowsInput, RowSet, StatementExecution
-from .definitions import CONNECTOR_ID, COMPLETED, DEFECT, EXECUTE_DEFINITION, INVALID_RESPONSE, LIMIT_EXCEEDED, PROVIDER_REJECTED, QUERY_DEFINITION, TRUNCATED, UNCERTAIN
+from .definitions import CONNECTOR_ID, COMPLETED, DEFECT, EXECUTE_DEFINITION, EXECUTE_NON_IDEMPOTENT_DEFINITION, INVALID_RESPONSE, LIMIT_EXCEEDED, PROVIDER_REJECTED, QUERY_DEFINITION, TRUNCATED, UNCERTAIN
 
 def query_completed(value: RowSet, failure: Failure | None = None) -> Case[RowSet]:
     return Case.branch_result(COMPLETED, value, failure)
@@ -106,6 +106,51 @@ def execute_duplicate_order() -> Case[StatementExecution]:
 
 setattr(execute_duplicate_order, '__module__', "dex_connectors.postgresql.postgresqlmock")
 
+def execute_non_idempotent_completed(value: StatementExecution, failure: Failure | None = None) -> Case[StatementExecution]:
+    return Case.branch_result(COMPLETED, value, failure)
+
+setattr(execute_non_idempotent_completed, '__module__', "dex_connectors.postgresql.postgresqlmock")
+
+def execute_non_idempotent_limit_exceeded(value: StatementExecution, failure: Failure | None = None) -> Case[StatementExecution]:
+    return Case.branch_result(LIMIT_EXCEEDED, value, failure)
+
+setattr(execute_non_idempotent_limit_exceeded, '__module__', "dex_connectors.postgresql.postgresqlmock")
+
+def execute_non_idempotent_provider_rejected(value: StatementExecution, failure: Failure | None = None) -> Case[StatementExecution]:
+    return Case.branch_result(PROVIDER_REJECTED, value, failure)
+
+setattr(execute_non_idempotent_provider_rejected, '__module__', "dex_connectors.postgresql.postgresqlmock")
+
+def execute_non_idempotent_uncertain(value: StatementExecution, failure: Failure) -> Case[StatementExecution]:
+    return Case.uncertain(value, failure)
+
+setattr(execute_non_idempotent_uncertain, '__module__', "dex_connectors.postgresql.postgresqlmock")
+
+def execute_non_idempotent_invalid_response(value: StatementExecution, failure: Failure | None = None) -> Case[StatementExecution]:
+    return Case.branch_result(INVALID_RESPONSE, value, failure)
+
+setattr(execute_non_idempotent_invalid_response, '__module__', "dex_connectors.postgresql.postgresqlmock")
+
+def execute_non_idempotent_defect(value: StatementExecution, failure: Failure | None = None) -> Case[StatementExecution]:
+    return Case.branch_result(DEFECT, value, failure)
+
+setattr(execute_non_idempotent_defect, '__module__', "dex_connectors.postgresql.postgresqlmock")
+
+def execute_non_idempotent_retry(failure: Failure, after_seconds: float = 0) -> Case[StatementExecution]:
+    return Case.retry(failure, after_seconds)
+
+setattr(execute_non_idempotent_retry, '__module__', "dex_connectors.postgresql.postgresqlmock")
+
+def execute_non_idempotent_added_to_daily_total() -> Case[StatementExecution]:
+    return Case.branch_result(COMPLETED, StatementExecution(command='INSERT', rows_affected=1, columns=(Column(name='refund_date', type_name='date', type_oid=1082), Column(name='total_usd', type_name='numeric', type_oid=1700)), rows=({'refund_date': '2026-10-26', 'total_usd': '250.00'},)))
+
+setattr(execute_non_idempotent_added_to_daily_total, '__module__', "dex_connectors.postgresql.postgresqlmock")
+
+def execute_non_idempotent_missing_daily_total_table() -> Case[StatementExecution]:
+    return Case.branch_result(PROVIDER_REJECTED, StatementExecution(columns=(), rows=()), Failure(FailureKind.NOT_FOUND, CONNECTOR_ID, "executeNonIdempotent", "PostgreSQL could not find refund_daily_totals."))
+
+setattr(execute_non_idempotent_missing_daily_total_table, '__module__', "dex_connectors.postgresql.postgresqlmock")
+
 
 class Mock:
 
@@ -114,9 +159,12 @@ class Mock:
         self.query_script.default(query_no_recorded_refund())
         self.execute_script: Mutation[ExecuteStatementInput, StatementExecution] = Mutation(EXECUTE_DEFINITION)
         self.execute_script.default(execute_recorded_refund())
+        self.execute_non_idempotent_script: Mutation[ExecuteStatementInput, StatementExecution] = Mutation(EXECUTE_NON_IDEMPOTENT_DEFINITION)
+        self.execute_non_idempotent_script.default(execute_non_idempotent_added_to_daily_total())
         self._connection = new_connection_with_operations(
             query=self.query_script,
             execute=self.execute_script,
+            execute_non_idempotent=self.execute_non_idempotent_script,
             reference=ConnectionRef(CONNECTOR_ID, connection_name),
         )
 
@@ -146,4 +194,13 @@ __all__ = [
     "execute_recorded_refund",
     "execute_affected_row_limit",
     "execute_duplicate_order",
+    "execute_non_idempotent_completed",
+    "execute_non_idempotent_limit_exceeded",
+    "execute_non_idempotent_provider_rejected",
+    "execute_non_idempotent_uncertain",
+    "execute_non_idempotent_invalid_response",
+    "execute_non_idempotent_defect",
+    "execute_non_idempotent_retry",
+    "execute_non_idempotent_added_to_daily_total",
+    "execute_non_idempotent_missing_daily_total_table",
 ]

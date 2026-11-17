@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """A runnable refund ledger Flow with a static PostgreSQL connection."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import dex
 from dex_connectors.sdk import MutationResult, QueryResult
@@ -13,6 +13,7 @@ from dex_connectors.postgresql import (
     QueryRowsInput,
     RowSet,
     StatementExecution,
+    new_execute_non_idempotent_step,
     new_execute_step,
     new_query_step,
 )
@@ -24,6 +25,12 @@ INSERT_REFUND = (
     "INSERT INTO refund_ledger (order_id, amount_usd, external_reference, idempotency_key) "
     "VALUES ($1, $2::numeric, $3, $4) ON CONFLICT (idempotency_key) DO NOTHING "
     f"RETURNING {REFUND_COLUMNS}"
+)
+# Running this twice counts the refund twice, so it uses executeNonIdempotent.
+ADD_REFUND_TO_DAILY_TOTAL = (
+    "INSERT INTO refund_daily_totals (refund_date, total_usd) VALUES (CURRENT_DATE, $1::numeric) "
+    "ON CONFLICT (refund_date) DO UPDATE SET total_usd = refund_daily_totals.total_usd + EXCLUDED.total_usd "
+    "RETURNING refund_date, total_usd"
 )
 
 
@@ -38,10 +45,11 @@ class RefundRequest:
 
 @dataclass(frozen=True, slots=True)
 class RefundOutcome:
-    """The recorded or existing refund row."""
+    """The recorded or existing refund row, and the daily total after a new refund."""
 
     status: str
     refund: dict[str, object]
+    daily_total_usd: str = field(default="", metadata={"dex_json_name": "dailyTotalUsd"})
 
 
 _REQUEST = dex.Attribute("postgresql-python-refund-request", RefundRequest)
@@ -76,7 +84,7 @@ class _Found(dex.Step[QueryResult[RowSet]]):
 
 
 # dex:group group-id:postgresql group-label:"PostgreSQL"
-# dex:explanation text:"Complete after PostgreSQL commits the refund write."
+# dex:explanation text:"Record the committed refund, then add it to the daily total."
 class _Recorded(dex.Step[MutationResult[StatementExecution]]):
     def get_step_type(self) -> str:
         return "CompleteRefundRecording"
@@ -85,6 +93,22 @@ class _Recorded(dex.Step[MutationResult[StatementExecution]]):
         if not input.value.rows:
             return dex.force_fail("the idempotent insert returned no refund row")
         outcome = RefundOutcome("recorded", input.value.rows[0] or {})
+        _OUTCOME.set(context, outcome)
+        return dex.go_to(dex.StepRef("AddRefundToDailyTotal"), outcome)
+
+
+# dex:group group-id:postgresql group-label:"PostgreSQL"
+# dex:explanation text:"Complete with the refund and today's refunded total."
+class _DailyTotalRecorded(dex.Step[MutationResult[StatementExecution]]):
+    def get_step_type(self) -> str:
+        return "CompleteDailyTotal"
+
+    def execute(self, context: dex.Context, input: MutationResult[StatementExecution]) -> dex.StepDecision:
+        row = input.value.rows[0] if len(input.value.rows) == 1 else None
+        total = row.get("total_usd") if row else None
+        if not isinstance(total, str):
+            return dex.force_fail("the daily total update returned no numeric total")
+        outcome = replace(_OUTCOME.get(context), daily_total_usd=total)
         _OUTCOME.set(context, outcome)
         return dex.graceful_complete(outcome)
 
@@ -129,18 +153,36 @@ class RecordRefundFlow(dex.Flow[RefundRequest]):
             ),
             completed=self._recorded,
         )
+        self._daily_total_recorded = _DailyTotalRecorded()
+        self._add_to_daily_total = new_execute_non_idempotent_step(
+            step_type="AddRefundToDailyTotal",
+            step_input_type=RefundOutcome,
+            annotations={
+                "groupId": "postgresql",
+                "groupLabel": "PostgreSQL",
+                "explanation": "Add the new refund to today's total at most once.",
+            },
+            connection=connection,
+            connection_name=CONNECTION_NAME,
+            map_to_operation_input=lambda outcome: ExecuteStatementInput(
+                ADD_REFUND_TO_DAILY_TOTAL, (str(outcome.refund["amount_usd"]),), 0, 1
+            ),
+            completed=self._daily_total_recorded,
+        )
 
     def get_flow_type(self) -> str:
         """Return the static Flow identity."""
         return "PostgreSQLPythonRecordRefund"
 
     def get_steps(self) -> dex.StepList[RefundRequest]:
-        """Register the request and both connector Steps."""
+        """Register the request, the three connector Steps, and their decisions."""
         return dex.StepList.start_step(self._start).other_steps(
             self._query,
             self._found,
             self._execute,
             self._recorded,
+            self._add_to_daily_total,
+            self._daily_total_recorded,
         )
 
     def get_persistence_schema(self) -> dex.PersistenceSchema:

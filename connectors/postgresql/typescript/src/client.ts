@@ -6,7 +6,7 @@ import { isIP } from 'node:net';
 import pg, { type Client as PgClient } from 'pg';
 import type { Call, CredentialProvider, ReceiptDraft } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
-import { ExecuteStatementOperation, QueryRowsOperation } from './operations.js';
+import { ExecuteStatementNonIdempotentOperation, ExecuteStatementOperation, QueryRowsOperation } from './operations.js';
 import type { ClassifiedFailure } from './failures.js';
 
 /** Injectable native driver factory for deterministic connector tests. */
@@ -58,8 +58,11 @@ export class PostgreSQLClient {
   /** Bind the read-only query operation. */
   query(): QueryRowsOperation { return new QueryRowsOperation(this); }
 
-  /** Bind the transactional write operation. */
+  /** Bind the repeat-safe transactional write operation. */
   execute(): ExecuteStatementOperation { return new ExecuteStatementOperation(this); }
+
+  /** Bind the fenced transactional write operation, which never runs its statement twice. */
+  executeNonIdempotent(): ExecuteStatementNonIdempotentOperation { return new ExecuteStatementNonIdempotentOperation(this); }
 
   /** Resolve the current password outside Flow state and open one native connection, bounded by the call signal. */
   async connect(call: Call, signal?: AbortSignal): Promise<PgClient | null> {

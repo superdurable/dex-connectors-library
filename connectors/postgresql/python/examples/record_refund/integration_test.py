@@ -40,14 +40,19 @@ async def test_record_refund_real_dex_worker(tmp_path: Path) -> None:
             outputs = [
                 item.decode(RefundOutcome)
                 for item in completed.completions
-                if item.step_type == "CompleteRefundRecording"
+                if item.step_type == "CompleteDailyTotal"
             ]
             assert len(outputs) == 1 and outputs[0].status == "recorded"
             assert outputs[0].refund["order_id"] == request.order_id
+            assert outputs[0].daily_total_usd == "250.00"
             query_calls = [call for call in mock.query_script.calls() if call.flow_id == flow_id]
             execute_calls = [call for call in mock.execute_script.calls() if call.flow_id == flow_id]
-            assert len(query_calls) == len(execute_calls) == 1
+            daily_total_calls = [
+                call for call in mock.execute_non_idempotent_script.calls() if call.flow_id == flow_id
+            ]
+            assert len(query_calls) == len(execute_calls) == len(daily_total_calls) == 1
             assert execute_calls[0].input.idempotency_key_placeholder == 4
+            assert daily_total_calls[0].input.parameters == ("250.00",)
 
             existing_id = f"postgresql-python-existing-{uuid4()}"
             mock.query_script.for_flow(existing_id).respond(

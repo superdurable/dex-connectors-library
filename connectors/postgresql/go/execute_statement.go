@@ -4,9 +4,11 @@
 package postgresql
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
@@ -60,75 +62,82 @@ func (ExecuteStatementOperation) IdempotencyKey(callID sdkgo.CallID, _ ExecuteSt
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke runs one statement in its own transaction and commits it.
+// Invoke runs one repeat-safe statement in its own transaction and commits it.
 //
 // Invoke opens one connection, sends BEGIN with the connector's session settings, prepares the
 // statement, checks its placeholders, runs it, and reads any RETURNING rows. It rolls back, by
 // closing the connection before COMMIT, when a bound or MaxRowsAffected is exceeded. Every failure
 // before COMMIT leaves nothing committed: transient ones return Retry and conclusive ones select a
-// branch. A failure after COMMIT is sent selects uncertain, because PostgreSQL may have committed.
+// branch. A COMMIT whose outcome is unknown, such as a connection lost after COMMIT was sent, also
+// returns Retry, so Dex runs the statement again; execute never selects uncertain.
 //
-// Dex can run Invoke more than once for one Step execution, for example after a Worker is lost
-// mid-call or when an async Step outlasts its local phase. Make the statement idempotent, such as
-// INSERT ... ON CONFLICT DO NOTHING keyed by IdempotencyKeyPlaceholder.
+// Dex can therefore run the statement more than once for one Step execution, also after a Worker
+// is lost mid-call or when an async Step outlasts its local phase. Make the statement repeat-safe,
+// such as INSERT ... ON CONFLICT DO NOTHING keyed by IdempotencyKeyPlaceholder, an absolute UPDATE,
+// or a DELETE. Use ExecuteStatementNonIdempotent for a statement that must not run twice.
 func (operation ExecuteStatementOperation) Invoke(call sdkgo.Call, input ExecuteStatementInput) sdkgo.MutationAttempt[StatementExecution] {
 	client := operation.client
 	statement, err := bindExecuteStatement(call, input)
 	if err != nil {
-		return executeDefect(sdkgo.FailureValidation, err.Error(), sdkgo.Receipt{})
+		return writeDefect(executeOperationID, sdkgo.FailureValidation, err.Error(), sdkgo.Receipt{})
 	}
 	password, isResolved := client.resolvePassword(call)
 	if !isResolved {
-		return executeDefect(sdkgo.FailureAuthentication, "PostgreSQL connection credentials are unavailable", sdkgo.Receipt{})
+		return writeDefect(executeOperationID, sdkgo.FailureAuthentication, "PostgreSQL connection credentials are unavailable", sdkgo.Receipt{})
 	}
 	ctx, cancel := client.newCallContext(call)
 	defer cancel()
 	connection, err := client.connect(ctx, password)
 	if err != nil {
 		failure := classifyFailure(err, phaseConnect)
-		return executeAttemptForFailure(failure, client.receipt(call, nil, failure))
+		return writeAttemptForFailure(executeOperationID, failure, client.receipt(call, nil, failure))
 	}
 	defer client.closeConnection(connection)
-	if err := client.beginTransaction(ctx, connection, transactionAccessDefault); err != nil {
-		failure := classifyFailure(err, phaseBegin)
-		return executeAttemptForFailure(failure, client.receipt(call, connection, failure))
-	}
-	description, err := connection.Prepare(ctx, "", statement.sql, nil)
-	if err != nil {
-		failure := classifyFailure(err, phaseStatement)
-		return executeAttemptForFailure(failure, client.receipt(call, connection, failure))
-	}
-	if err := validateStatementDescription(description, len(statement.parameterValues)); err != nil {
-		return executeDefect(sdkgo.FailureValidation, err.Error(), client.receipt(call, connection, classifiedFailure{}))
-	}
-	read, err := readBoundedRows(ctx, connection, description, statement.parameterValues, client.maxRows, client.maxResponseBytes)
-	if err != nil {
-		failure := classifyFailure(err, phaseStatement)
-		return executeAttemptForFailure(failure, client.receipt(call, connection, failure))
-	}
-	if read.isTruncated {
-		failure := classifiedFailure{
-			kind:    sdkgo.FailureResponseTooLarge,
-			message: "RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction was rolled back",
-		}
-		return sdkgo.NewMutationBranch(ExecuteStatementBranchLimitExceeded, emptyStatementExecution(), failurePointer(executeOperationID, failure), client.receipt(call, connection, failure))
-	}
-	if input.MaxRowsAffected != nil && read.commandTag.RowsAffected() > *input.MaxRowsAffected {
-		failure := classifiedFailure{
-			kind:    sdkgo.FailureConflict,
-			message: fmt.Sprintf("the statement affected %d rows but maxRowsAffected is %d, so the transaction was rolled back", read.commandTag.RowsAffected(), *input.MaxRowsAffected),
-		}
-		return sdkgo.NewMutationBranch(ExecuteStatementBranchLimitExceeded, emptyStatementExecution(), failurePointer(executeOperationID, failure), client.receipt(call, connection, failure))
+	read, failure, isReadyToCommit := client.runStatementBeforeCommit(ctx, connection, statement, input.MaxRowsAffected)
+	if !isReadyToCommit {
+		return writeAttemptForFailure(executeOperationID, failure, client.receipt(call, connection, failure))
 	}
 	if err := client.commitTransaction(ctx, connection); err != nil {
 		failure := classifyFailure(err, phaseCommit)
-		return executeAttemptForFailure(failure, client.receipt(call, connection, failure))
+		if failure.disposition == dispositionUncertain {
+			// The statement is repeat-safe, so an unknown COMMIT outcome runs it again.
+			failure.disposition = dispositionRetry
+		}
+		return writeAttemptForFailure(executeOperationID, failure, client.receipt(call, connection, failure))
 	}
-	execution := StatementExecution{
-		Command: commandName(read.commandTag.String()), RowsAffected: read.commandTag.RowsAffected(),
-		Columns: read.columns, Rows: read.rows,
+	return sdkgo.NewMutationBranch(ExecuteStatementBranchCompleted, newStatementExecution(read), nil, client.receipt(call, connection, classifiedFailure{}))
+}
+
+// runStatementBeforeCommit opens the transaction and runs the statement within its bounds.
+// It never sends COMMIT, so a returned failure always means nothing was committed.
+func (client *Client) runStatementBeforeCommit(ctx context.Context, connection *pgconn.PgConn, statement boundStatement, maxRowsAffected *int64) (rowRead, classifiedFailure, bool) {
+	if err := client.beginTransaction(ctx, connection, transactionAccessDefault); err != nil {
+		return rowRead{}, classifyFailure(err, phaseBegin), false
 	}
-	return sdkgo.NewMutationBranch(ExecuteStatementBranchCompleted, execution, nil, client.receipt(call, connection, classifiedFailure{}))
+	description, err := connection.Prepare(ctx, "", statement.sql, nil)
+	if err != nil {
+		return rowRead{}, classifyFailure(err, phaseStatement), false
+	}
+	if err := validateStatementDescription(description, len(statement.parameterValues)); err != nil {
+		return rowRead{}, classifiedFailure{disposition: dispositionDefect, kind: sdkgo.FailureValidation, message: err.Error()}, false
+	}
+	read, err := readBoundedRows(ctx, connection, description, statement.parameterValues, client.maxRows, client.maxResponseBytes)
+	if err != nil {
+		return rowRead{}, classifyFailure(err, phaseStatement), false
+	}
+	if read.isTruncated {
+		return rowRead{}, classifiedFailure{
+			disposition: dispositionLimitExceeded, kind: sdkgo.FailureResponseTooLarge,
+			message: "RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction was rolled back",
+		}, false
+	}
+	if maxRowsAffected != nil && read.commandTag.RowsAffected() > *maxRowsAffected {
+		return rowRead{}, classifiedFailure{
+			disposition: dispositionLimitExceeded, kind: sdkgo.FailureConflict,
+			message: fmt.Sprintf("the statement affected %d rows but maxRowsAffected is %d, so the transaction was rolled back", read.commandTag.RowsAffected(), *maxRowsAffected),
+		}, false
+	}
+	return read, classifiedFailure{}, true
 }
 
 // bindExecuteStatement validates the input and appends the idempotency key as the last placeholder.
@@ -154,24 +163,33 @@ func bindExecuteStatement(call sdkgo.Call, input ExecuteStatementInput) (boundSt
 	}
 }
 
-func executeAttemptForFailure(failure classifiedFailure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[StatementExecution] {
+// writeAttemptForFailure maps a failure to a branch; both write operations share their branch IDs.
+func writeAttemptForFailure(operationID string, failure classifiedFailure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[StatementExecution] {
 	switch failure.disposition {
 	case dispositionRetry:
-		return sdkgo.NewMutationRetry[StatementExecution](sdkFailure(executeOperationID, failure), 0)
+		return sdkgo.NewMutationRetry[StatementExecution](sdkFailure(operationID, failure), 0)
 	case dispositionUncertain:
-		return sdkgo.NewMutationUncertain(emptyStatementExecution(), sdkFailure(executeOperationID, failure), receipt)
+		return sdkgo.NewMutationUncertain(emptyStatementExecution(), sdkFailure(operationID, failure), receipt)
+	case dispositionLimitExceeded:
+		return sdkgo.NewMutationBranch(ExecuteStatementBranchLimitExceeded, emptyStatementExecution(), failurePointer(operationID, failure), receipt)
 	case dispositionInvalidResponse:
-		return sdkgo.NewMutationBranch(ExecuteStatementBranchInvalidResponse, emptyStatementExecution(), failurePointer(executeOperationID, failure), receipt)
+		return sdkgo.NewMutationBranch(ExecuteStatementBranchInvalidResponse, emptyStatementExecution(), failurePointer(operationID, failure), receipt)
 	case dispositionDefect:
-		return sdkgo.NewMutationBranch(ExecuteStatementBranchDefect, emptyStatementExecution(), failurePointer(executeOperationID, failure), receipt)
+		return sdkgo.NewMutationBranch(ExecuteStatementBranchDefect, emptyStatementExecution(), failurePointer(operationID, failure), receipt)
 	default:
-		return sdkgo.NewMutationBranch(ExecuteStatementBranchProviderRejected, emptyStatementExecution(), failurePointer(executeOperationID, failure), receipt)
+		return sdkgo.NewMutationBranch(ExecuteStatementBranchProviderRejected, emptyStatementExecution(), failurePointer(operationID, failure), receipt)
 	}
 }
 
-func executeDefect(kind sdkgo.FailureKind, message string, receipt sdkgo.Receipt) sdkgo.MutationAttempt[StatementExecution] {
-	failure := classifiedFailure{disposition: dispositionDefect, kind: kind, message: message}
-	return sdkgo.NewMutationBranch(ExecuteStatementBranchDefect, emptyStatementExecution(), failurePointer(executeOperationID, failure), receipt)
+func writeDefect(operationID string, kind sdkgo.FailureKind, message string, receipt sdkgo.Receipt) sdkgo.MutationAttempt[StatementExecution] {
+	return writeAttemptForFailure(operationID, classifiedFailure{disposition: dispositionDefect, kind: kind, message: message}, receipt)
+}
+
+func newStatementExecution(read rowRead) StatementExecution {
+	return StatementExecution{
+		Command: commandName(read.commandTag.String()), RowsAffected: read.commandTag.RowsAffected(),
+		Columns: read.columns, Rows: read.rows,
+	}
 }
 
 func emptyStatementExecution() StatementExecution {

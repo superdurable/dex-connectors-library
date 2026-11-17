@@ -8,21 +8,27 @@ from typing import Any
 from dex_connectors.sdk import Call, ConnectionRef, Mutation, Query, SecretString
 from dex_connectors.sdk.projectconfig import ConnectionKey, LoadedProject
 
-from ._generated.definitions import CONNECTOR_ID, EXECUTE_DEFINITION, QUERY_DEFINITION
+from ._generated.definitions import (
+    CONNECTOR_ID,
+    EXECUTE_DEFINITION,
+    EXECUTE_NON_IDEMPOTENT_DEFINITION,
+    QUERY_DEFINITION,
+)
 from .client import Client, Config, Credentials
 from .models import ExecuteStatementInput, QueryRowsInput, RowSet, StatementExecution
 
 
 class Connection:
-    """Bind the two operations to one static Dex connection name."""
+    """Bind the three operations to one static Dex connection name."""
 
-    __slots__ = ("_query", "_execute", "reference")
+    __slots__ = ("_query", "_execute", "_execute_non_idempotent", "reference")
 
     def __init__(
         self,
         reference: ConnectionRef,
         query: Query[QueryRowsInput, RowSet],
         execute: Mutation[ExecuteStatementInput, StatementExecution],
+        execute_non_idempotent: Mutation[ExecuteStatementInput, StatementExecution] | None = None,
     ) -> None:
         reference.validate()
         if reference.provider != CONNECTOR_ID or query is None or execute is None:
@@ -31,17 +37,32 @@ class Connection:
             raise ValueError("PostgreSQL query identity differs")
         if execute.definition().operation != EXECUTE_DEFINITION.operation:
             raise ValueError("PostgreSQL execute identity differs")
+        if (
+            execute_non_idempotent is not None
+            and execute_non_idempotent.definition().operation != EXECUTE_NON_IDEMPOTENT_DEFINITION.operation
+        ):
+            raise ValueError("PostgreSQL executeNonIdempotent identity differs")
         self.reference = reference
         self._query = query
         self._execute = execute
+        self._execute_non_idempotent = execute_non_idempotent
 
     def query(self) -> Query[QueryRowsInput, RowSet]:
         """Return the read-only query operation."""
         return self._query
 
     def execute(self) -> Mutation[ExecuteStatementInput, StatementExecution]:
-        """Return the transactional write operation."""
+        """Return the repeat-safe transactional write operation."""
         return self._execute
+
+    def execute_non_idempotent(self) -> Mutation[ExecuteStatementInput, StatementExecution]:
+        """Return the fenced write operation that never runs its statement twice.
+
+        Raises ValueError for a connection built by `new_connection_with_operations` without it.
+        """
+        if self._execute_non_idempotent is None:
+            raise ValueError("PostgreSQL connection was built without the executeNonIdempotent operation")
+        return self._execute_non_idempotent
 
     async def aclose(self) -> None:
         """Close connection resources; each call already owns its own session."""
@@ -59,16 +80,22 @@ def new_connection(client: Client, reference: ConnectionRef) -> Connection:
     """Bind a provider client to a logical connection reference."""
     if client is None:
         raise ValueError("PostgreSQL client is required")
-    return Connection(reference, client.query(), client.execute())
+    return Connection(reference, client.query(), client.execute(), client.execute_non_idempotent())
 
 
 def new_connection_with_operations(
     query: Query[QueryRowsInput, RowSet],
     execute: Mutation[ExecuteStatementInput, StatementExecution],
     reference: ConnectionRef,
+    *,
+    execute_non_idempotent: Mutation[ExecuteStatementInput, StatementExecution] | None = None,
 ) -> Connection:
-    """Bind test or mock operations to a PostgreSQL connection name."""
-    return Connection(reference, query, execute)
+    """Bind test or mock operations to a PostgreSQL connection name.
+
+    `execute_non_idempotent` is optional so earlier callers keep working; without it, a
+    `new_execute_non_idempotent_step` built on this connection raises ValueError.
+    """
+    return Connection(reference, query, execute, execute_non_idempotent)
 
 
 class _ProjectCredentialSource:

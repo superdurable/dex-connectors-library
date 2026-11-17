@@ -280,7 +280,7 @@ func TestExecuteStatementCommitsAndBindsTheIdempotencyKeyLast(t *testing.T) {
 	require.Equal(t, "commit", queries[1].Text)
 }
 
-func TestExecuteStatementReportsUncertainOnlyAfterCommitIsSent(t *testing.T) {
+func TestExecuteStatementRetriesACommitWithAnUnknownOutcome(t *testing.T) {
 	for name, testCase := range map[string]struct {
 		commit        scriptedpostgresql.CommitAction
 		wantCommitted bool
@@ -293,13 +293,13 @@ func TestExecuteStatementReportsUncertainOnlyAfterCommitIsSent(t *testing.T) {
 				shape: scriptedpostgresql.Shape{ParameterCount: 1}, execution: scriptedpostgresql.Execution{CommandTag: "UPDATE 1"}, commit: testCase.commit,
 			}
 			_, client := startScriptedDatabase(t, database, nil)
-			result, err := execute(t, client, newStep(), postgresql.ExecuteStatementInput{Statement: "UPDATE t SET note = $1", Parameters: []any{secretLookingText}})
-			require.NoError(t, err, "uncertainty is a branch, never a retry")
-			require.Equal(t, postgresql.ExecuteStatementBranchUncertain, result.Branch)
-			require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
-			require.NotEmpty(t, result.Receipt.IdempotencyKey, "the Receipt carries the key for reconciliation")
+			_, err := execute(t, client, newStep(), postgresql.ExecuteStatementInput{Statement: "UPDATE t SET note = $1", Parameters: []any{secretLookingText}})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "execute is repeat-safe, so an unknown COMMIT runs again instead of selecting uncertain")
+			require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
+			require.Contains(t, retry.Failure.Message, "whether the transaction committed is unknown")
+			require.NotContains(t, retry.Failure.Message, secretLookingText)
 			require.Equal(t, testCase.wantCommitted, database.hasCommitted.Load())
-			requireSecretFree(t, result)
 		})
 	}
 
