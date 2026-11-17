@@ -515,7 +515,7 @@ with the request and button Triggers on one shared runner.
 
 ## Python package
 
-`dex-connector-slack==0.5.0` implements every Go operation and Trigger for
+`dex-connector-slack==0.6.0` implements every Go operation and Trigger for
 Python Dex Flows: the channel discovery, channel history and thread reads, the
 channel, thread, and button message posts, the `channelThreadCreated` and
 `threadReplyCreated` Triggers through Socket Mode or a host's relay, and the

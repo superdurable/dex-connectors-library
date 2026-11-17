@@ -1,6 +1,6 @@
 # Slack Python connector
 
-Install with `pip install dex-connector-slack==0.5.0`.
+Install with `pip install dex-connector-slack==0.6.0`.
 
 This package exposes Dex Query Steps for Slack channel pages, the connected workspace identity, channel history pages, thread pages, and replies, plus durable Mutation Steps for posting channel messages, thread replies, and messages with Block Kit buttons. From 0.5.0 it also implements the `channelThreadCreated`, `threadReplyCreated`, and `buttonClicked` Triggers at parity with the Go connector. It uses the static `ConnectionName` configured in Dex Web. OAuth credentials are resolved at call time; the generated project connection refreshes rotating bot and user tokens through the manifest declaration.
 
