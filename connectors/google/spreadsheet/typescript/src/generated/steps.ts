@@ -86,7 +86,7 @@ export interface UpsertRowStepConfig<StepInput, OperationInput = UpsertRowInput,
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Google returned an invalid or oversized pre-write response. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** The dispatched write outcome cannot be confirmed. */
+  /** The dispatched append was still not confirmed by its key when the send cap was reached. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

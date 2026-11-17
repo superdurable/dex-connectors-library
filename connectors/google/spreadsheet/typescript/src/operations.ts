@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type MutationAttempt, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type MutationAttempt, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { newFence, CheckpointError, InsufficientTimeError, DispatchNotAllowedError, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import type { GetValuesInput, GetValuesOutput, FindRowInput, FindRowOutput, UpsertRowInput, UpsertRowOutput, Credentials } from './generated/models.js';
 import { GetValuesDefinition, FindRowDefinition, UpsertRowDefinition } from './generated/definitions.js';
@@ -69,22 +69,30 @@ export class UpsertRowOperation {
   /** Bind a validated client. */ constructor(private readonly client: SpreadsheetClient) {}
   /** Return the manifest-owned mutation definition. */ definition() { return UpsertRowDefinition; }
   /** The Dex Call ID correlates safe retries and receipts. */ idempotencyKey(callId: string): string { return callId; }
-  /** Read the key and replace or append one row. */
+  /**
+   * Read the key and replace or append one row. The key lookup reads back an earlier possible append;
+   * an unconfirmed append is resent while possible sends stay below the send cap, and uncertain is
+   * selected only at the cap.
+   */
   async invoke(call: Call, input: UpsertRowInput): Promise<MutationAttempt<UpsertRowOutput>> {
     const operation = 'upsertRow';
     if ([input.spreadsheetId, input.sheetName, input.keyColumn, input.keyValue].some(isBlank) || !input.values || Object.keys(input.values).length === 0) {
       const message = [input.spreadsheetId, input.sheetName, input.keyColumn, input.keyValue].some(isBlank) ? 'spreadsheet ID, sheet name, key column, and key value are required' : 'values are required';
       return newMutationBranch('defect', emptyUpsert(), {}, this.client.failure(operation, 'VALIDATION', message));
     }
+    const operationMaxSends = definitionMaxSends(UpsertRowDefinition);
     let fence: Fence;
-    try { fence = newFence(call, 30_000); }
+    try { fence = newFence(call, 30_000, { maxSends: operationMaxSends }); }
     catch { return newMutationBranch('defect', emptyUpsert(), {}, this.client.failure(operation, 'LOCAL_DEFECT', 'single-dispatch fence could not be constructed')); }
     const decision = fence.decide();
-    if (decision.kind === 'failClosed') return this.uncertain(call, undefined, 'prior dispatch checkpoint cannot be trusted');
+    if (decision.kind === 'failClosed') return newMutationRetry(this.client.failure(operation, 'AVAILABILITY', 'prior dispatch checkpoint is unreadable; no row was written in this attempt'));
+    const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
+    // An earlier append may have taken effect, so a terminal non-uncertain branch could hide it.
+    const hasPossibleEarlierSend = priorSendUpperBound > 0;
     const selected = await this.client.resolve(call);
     if (!selected.credential) {
       if (selected.reauthorization) {
-        if (decision.kind === 'sendAllowed') {
+        if (!hasPossibleEarlierSend && decision.kind === 'sendAllowed') {
           try { await fence.recordNotSent(); } catch { return newMutationRetry(this.client.failure(operation, 'AVAILABILITY', 'credential checkpoint failed')); }
           return newMutationBranch('defect', emptyUpsert(), {}, selected.failure);
         }
@@ -96,7 +104,7 @@ export class UpsertRowOperation {
     const lookup = await this.client.request(call, credential, 'GET', input.spreadsheetId, `/values/${goPathEscape(quoteSheet(input.sheetName))}`, { majorDimension: 'ROWS', valueRenderOption: 'FORMATTED_VALUE' });
     const exchange = lookup.exchange;
     if (exchange.isTooLarge) {
-      if (decision.kind === 'readBackRequired') return this.uncertain(call, exchange, 'read-back response is oversized');
+      if (hasPossibleEarlierSend) return this.uncertain(call, exchange, 'read-back response is oversized');
       return newMutationBranch('invalidResponse', emptyUpsert(), this.client.receipt(call, exchange), this.client.failure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds configured limit'));
     }
     if (exchange.error) return this.retryBeforeWrite(fence, decision.kind, this.client.failure(operation, 'AVAILABILITY', 'sheet lookup is unavailable'));
@@ -104,24 +112,24 @@ export class UpsertRowOperation {
     if (retry.kind === 'invalid') return this.retryBeforeWrite(fence, decision.kind, this.client.failure(operation, 'PROTOCOL', 'provider returned an invalid Retry-After header'));
     if (retry.kind === 'retry') return this.retryBeforeWrite(fence, decision.kind, this.client.failure(operation, statusKind(exchange.status), 'sheet lookup is temporarily unavailable'), retry.delay);
     if (exchange.status < 200 || exchange.status >= 300) {
-      if (decision.kind === 'readBackRequired') return this.uncertain(call, exchange, 'read-back was rejected');
+      if (hasPossibleEarlierSend) return this.uncertain(call, exchange, 'read-back was rejected');
       return newMutationBranch('providerRejected', emptyUpsert(), this.client.receipt(call, exchange), this.client.failure(operation, statusKind(exchange.status), 'provider rejected the pre-write query'));
     }
     const decoded = this.client.decodeValues(exchange, operation);
     if (!decoded.value) {
-      if (decision.kind === 'readBackRequired') return this.uncertain(call, exchange, 'read-back response is invalid');
+      if (hasPossibleEarlierSend) return this.uncertain(call, exchange, 'read-back response is invalid');
       return newMutationBranch('invalidResponse', emptyUpsert(), this.client.receipt(call, exchange), decoded.failure);
     }
     const rows = decoded.value.values;
     const found = findRow(rows, input.keyColumn, input.keyValue, operation, this.client);
     if (found.branch === 'conflict') return newMutationBranch('conflict', emptyUpsert(), this.client.receipt(call, exchange), found.failure);
     if (found.branch === 'defect') {
-      if (decision.kind === 'readBackRequired' && decision.marker?.state === 'claimed') return this.uncertain(call, exchange, 'prior append cannot be checked against the row key');
+      if (hasPossibleEarlierSend) return this.uncertain(call, exchange, 'prior append cannot be checked against the row key');
       return newMutationBranch('defect', emptyUpsert(), this.client.receipt(call, exchange), found.failure);
     }
     const built = buildRow(rows, input, this.client);
     if (!built.row) {
-      if (decision.kind === 'readBackRequired' && decision.marker?.state === 'claimed') return this.uncertain(call, exchange, 'prior append cannot be checked against the row schema');
+      if (hasPossibleEarlierSend) return this.uncertain(call, exchange, 'prior append cannot be checked against the row schema');
       return newMutationBranch('defect', emptyUpsert(), this.client.receipt(call, exchange), built.failure);
     }
     const row = built.row;
@@ -130,11 +138,15 @@ export class UpsertRowOperation {
       return newMutationBranch('upserted', upsertOutput(action, found.value.rowNumber!, input.sheetName, row.length), this.client.receipt(call, exchange));
     }
     if (decision.kind === 'readBackRequired' && (decision.marker?.state === 'claimed' || found.branch === 'notFound')) return this.uncertain(call, exchange, 'prior append cannot be confirmed by the row key');
-    if (found.branch === 'found') return this.replace(call, lookup.credential, input, row, found.value.rowNumber!, fence, decision.kind);
-    return this.append(call, lookup.credential, input, row, fence);
+    if (found.branch === 'found') return this.replace(call, lookup.credential, input, row, found.value.rowNumber!, fence, decision.kind, hasPossibleEarlierSend);
+    // Google accepted an earlier append, so a missing row is read lag and never resent.
+    if (decision.kind === 'readBackThenResendAllowed' && decision.marker?.providerId) return this.uncertain(call, exchange, 'accepted append is not yet visible by the row key');
+    const effectiveMaxSends = operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+    const appendSend: AppendSend = { canResendUnknownOutcome: priorSendUpperBound + 1 < effectiveMaxSends, hasPossibleEarlierSend };
+    return this.append(call, lookup.credential, input, row, fence, appendSend);
   }
 
-  private async replace(call: Call, credential: Credentials, input: UpsertRowInput, row: string[], rowNumber: number, fence: Fence, decision: string): Promise<MutationAttempt<UpsertRowOutput>> {
+  private async replace(call: Call, credential: Credentials, input: UpsertRowInput, row: string[], rowNumber: number, fence: Fence, decision: string, hasPossibleEarlierSend: boolean): Promise<MutationAttempt<UpsertRowOutput>> {
     const targetRange = `${quoteSheet(input.sheetName)}!A${rowNumber}`;
     const payload = { range: targetRange, majorDimension: 'ROWS', values: [row] };
     const executeTimeout = UpsertRowDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000;
@@ -149,38 +161,40 @@ export class UpsertRowOperation {
     }
     const exchange = response.exchange;
     if (exchange.status === 0) return this.retryBeforeWrite(fence, decision, this.client.failure('upsertRow', 'TRANSPORT', 'row replacement response is unavailable'));
-    if ([409, 429].includes(exchange.status) || exchange.status >= 500) {
+    // An absolute replacement is repeatable, so every outcome except a definite refusal retries.
+    if ((exchange.status < 200 || exchange.status >= 300) && !definiteRefusalStatuses.has(exchange.status)) {
       const retry = retryStatus(exchange, true);
       if (retry.kind === 'invalid') return this.retryBeforeWrite(fence, decision, this.client.failure('upsertRow', 'PROTOCOL', 'provider returned an invalid Retry-After header'));
       return this.retryBeforeWrite(fence, decision, this.client.failure('upsertRow', statusKind(exchange.status), 'row replacement is temporarily unavailable'), retry.delay);
     }
     const receipt = this.client.receipt(call, exchange, `${input.spreadsheetId}#${input.sheetName}!${rowNumber}`);
-    if (exchange.status === 401) return newMutationBranch('providerRejected', emptyUpsert(), receipt, this.client.failure('upsertRow', 'AUTHENTICATION', rejectedMessage(needsReauthorization)));
-    if (exchange.status < 200 || exchange.status >= 300) return newMutationBranch('providerRejected', emptyUpsert(), receipt, this.client.failure('upsertRow', statusKind(exchange.status), 'provider rejected the row replacement'));
+    if (exchange.status === 401) return rejectOrSelectUncertain(hasPossibleEarlierSend, receipt, this.client.failure('upsertRow', 'AUTHENTICATION', rejectedMessage(needsReauthorization)));
+    if (exchange.status < 200 || exchange.status >= 300) return rejectOrSelectUncertain(hasPossibleEarlierSend, receipt, this.client.failure('upsertRow', statusKind(exchange.status), 'provider rejected the row replacement'));
     let updatedRange = upsertOutput('updated', rowNumber, input.sheetName, row.length).updatedRange;
     if (!exchange.error) { try { const response = JSON.parse(Buffer.from(exchange.body).toString('utf8')) as { updatedRange?: unknown }; if (typeof response.updatedRange === 'string' && response.updatedRange) updatedRange = response.updatedRange; } catch { /* Accepted absolute replacement remains successful. */ } }
     return newMutationBranch('upserted', { action: 'updated', rowNumber, updatedRange }, receipt);
   }
 
-  private async append(call: Call, credential: Credentials, input: UpsertRowInput, row: string[], fence: Fence): Promise<MutationAttempt<UpsertRowOutput>> {
+  private async append(call: Call, credential: Credentials, input: UpsertRowInput, row: string[], fence: Fence, appendSend: AppendSend): Promise<MutationAttempt<UpsertRowOutput>> {
     const targetRange = quoteSheet(input.sheetName);
     let response: { exchange: SpreadsheetExchange; credential: Credentials };
     try { response = await fence.dispatch(signal => this.client.request(call, credential, 'POST', input.spreadsheetId, `/values/${goPathEscape(targetRange)}:append`, { insertDataOption: 'INSERT_ROWS', valueInputOption: 'RAW' }, { range: targetRange, majorDimension: 'ROWS', values: [row] }, true, signal)); }
     catch (error) {
       if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(this.client.failure('upsertRow', 'AVAILABILITY', 'append was not sent before the attempt deadline'));
       if (error instanceof DispatchNotAllowedError) return this.uncertain(call, undefined, 'single-dispatch permission is unavailable');
-      return this.uncertain(call, undefined, 'append cannot be confirmed by the row key');
+      return this.reconcile(call, credential, input, row, appendSend);
     }
     const exchange = response.exchange;
-    if (exchange.status === 401) {
+    const isAppendAccepted = !exchange.error && hasAppendAcceptance(exchange);
+    if (exchange.status === 401 && !isAppendAccepted) {
       const refreshed = await this.client.refreshAfterRejection(call, credential);
       if (refreshed.credential) return this.retryAfterRejectedAppend(fence, exchange);
-      return newMutationBranch('providerRejected', emptyUpsert(), this.client.receipt(call, exchange), this.client.failure('upsertRow', 'AUTHENTICATION', rejectedMessage(refreshed.reauthorization)));
+      return this.rejectAppendOrSelectUncertain(fence, appendSend, this.client.receipt(call, exchange), this.client.failure('upsertRow', 'AUTHENTICATION', rejectedMessage(refreshed.reauthorization)));
     }
-    if ([409, 429, 503].includes(exchange.status)) return this.retryAfterRejectedAppend(fence, exchange);
-    if (exchange.status === 0) return exchange.isProvablyNotSent ? this.retryAfterRejectedAppend(fence, exchange) : this.reconcile(call, credential, input, row);
-    if (exchange.status >= 500) return this.reconcile(call, credential, input, row);
-    if (exchange.status < 200 || exchange.status >= 300) return newMutationBranch('providerRejected', emptyUpsert(), this.client.receipt(call, exchange), this.client.failure('upsertRow', statusKind(exchange.status), 'provider rejected the append'));
+    if ([429, 503].includes(exchange.status)) return this.retryAfterRejectedAppend(fence, exchange);
+    if (exchange.status === 0) return exchange.isProvablyNotSent ? this.retryAfterRejectedAppend(fence, exchange) : this.reconcile(call, credential, input, row, appendSend);
+    if (definiteRefusalStatuses.has(exchange.status) && !isAppendAccepted) return this.rejectAppendOrSelectUncertain(fence, appendSend, this.client.receipt(call, exchange), this.client.failure('upsertRow', statusKind(exchange.status), 'provider rejected the append'));
+    if (exchange.status < 200 || exchange.status >= 300) return this.reconcile(call, credential, input, row, appendSend);
     if (!exchange.error) {
       try {
         const payload = JSON.parse(Buffer.from(exchange.body).toString('utf8')) as { updates?: { updatedRange?: unknown } };
@@ -192,22 +206,39 @@ export class UpsertRowOperation {
         }
       } catch { /* Read-back confirms a successful append without a usable response. */ }
     }
-    return this.reconcile(call, credential, input, row);
+    return this.reconcile(call, credential, input, row, appendSend);
   }
 
-  private async reconcile(call: Call, credential: Credentials, input: UpsertRowInput, row: string[]): Promise<MutationAttempt<UpsertRowOutput>> {
+  /** Read back an append with an unknown outcome and resend it below the send cap. */
+  private async reconcile(call: Call, credential: Credentials, input: UpsertRowInput, row: string[], appendSend: AppendSend): Promise<MutationAttempt<UpsertRowOutput>> {
     const { exchange } = await this.client.request(call, credential, 'GET', input.spreadsheetId, `/values/${goPathEscape(quoteSheet(input.sheetName))}`, { majorDimension: 'ROWS', valueRenderOption: 'FORMATTED_VALUE' });
     if (exchange.error) return newMutationRetry(this.client.failure('upsertRow', 'AVAILABILITY', 'append read-back is unavailable'));
     const retry = retryStatus(exchange);
     if (retry.kind === 'invalid') return newMutationRetry(this.client.failure('upsertRow', 'PROTOCOL', 'read-back returned an invalid Retry-After header'));
     if (retry.kind === 'retry') return newMutationRetry(this.client.failure('upsertRow', statusKind(exchange.status), 'append read-back is temporarily unavailable'), retry.delay);
-    if (exchange.status < 200 || exchange.status >= 300) return this.uncertain(call, exchange, 'append read-back was rejected');
+    if (exchange.status < 200 || exchange.status >= 300) return this.resendOrSelectUncertain(call, appendSend, exchange, 'append read-back was rejected');
     const decoded = this.client.decodeValues(exchange, 'upsertRow');
-    if (!decoded.value) return this.uncertain(call, exchange, 'append read-back is invalid');
+    if (!decoded.value) return this.resendOrSelectUncertain(call, appendSend, exchange, 'append read-back is invalid');
     const found = findRow(decoded.value.values, input.keyColumn, input.keyValue, 'upsertRow', this.client);
     if (found.branch === 'conflict') return newMutationBranch('conflict', emptyUpsert(), this.client.receipt(call, exchange), found.failure);
-    if (found.branch !== 'found' || !rowMatches(found.value, input)) return this.uncertain(call, exchange, 'append cannot be confirmed by the row key');
+    if (found.branch !== 'found' || !rowMatches(found.value, input)) return this.resendOrSelectUncertain(call, appendSend, exchange, 'append cannot be confirmed by the row key');
     return newMutationBranch('upserted', upsertOutput('inserted', found.value.rowNumber!, input.sheetName, row.length), this.client.receipt(call, exchange));
+  }
+
+  /** Retry an unconfirmed append while the send cap allows another send. */
+  private resendOrSelectUncertain(call: Call, appendSend: AppendSend, exchange: SpreadsheetExchange, message: string): MutationAttempt<UpsertRowOutput> {
+    // The claim stays the last marker, so the next attempt counts this append and reads back first.
+    if (appendSend.canResendUnknownOutcome) return newMutationRetry(this.client.failure('upsertRow', 'TRANSPORT', message));
+    return this.uncertain(call, exchange, `${message}; the send cap is reached`);
+  }
+
+  /** Select providerRejected only when no earlier append may have taken effect. */
+  private async rejectAppendOrSelectUncertain(fence: Fence, appendSend: AppendSend, receipt: ReceiptDraft, failure: Failure): Promise<MutationAttempt<UpsertRowOutput>> {
+    if (!appendSend.hasPossibleEarlierSend) {
+      try { await fence.recordCanResend(); }
+      catch { /* The refusal ends the Step, so a lost checkpoint cannot cause a resend. */ }
+    }
+    return rejectOrSelectUncertain(appendSend.hasPossibleEarlierSend, receipt, failure);
   }
 
   private async retryBeforeWrite(fence: Fence, decision: string, failure: Failure, delay = 0): Promise<MutationAttempt<UpsertRowOutput>> {
@@ -225,6 +256,26 @@ export class UpsertRowOperation {
   private uncertain(call: Call, exchange: SpreadsheetExchange | undefined, message: string): MutationAttempt<UpsertRowOutput> { return newMutationUncertain(emptyUpsert(), this.client.failure('upsertRow', 'TRANSPORT', message), this.client.receipt(call, exchange)); }
 }
 
+/** Send-cap facts of this attempt's possible append. */
+interface AppendSend {
+  /** False when this append is the last one the cap allows. */ canResendUnknownOutcome: boolean;
+  /** An earlier append of this call may have taken effect. */ hasPossibleEarlierSend: boolean;
+}
+// Only these statuses prove Google refused a write; every other status is an unknown outcome.
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+/** Select uncertain for a refusal after an earlier possible append. */
+function rejectOrSelectUncertain(hasPossibleEarlierSend: boolean, receipt: ReceiptDraft, failure: Failure): MutationAttempt<UpsertRowOutput> {
+  if (hasPossibleEarlierSend) return newMutationUncertain(emptyUpsert(), { ...failure, message: `${failure.message} after an earlier unconfirmed append` }, receipt);
+  return newMutationBranch('providerRejected', emptyUpsert(), receipt, failure);
+}
+/** Report a response body that names the appended range. */
+function hasAppendAcceptance(exchange: SpreadsheetExchange): boolean {
+  if (exchange.isTooLarge) return false;
+  try {
+    const payload = JSON.parse(Buffer.from(exchange.body).toString('utf8')) as { updates?: { updatedRange?: unknown } } | null;
+    return typeof payload?.updates?.updatedRange === 'string' && payload.updates.updatedRange !== '';
+  } catch { return false; }
+}
 function rejectedMessage(needsReauthorization: boolean): string { return needsReauthorization ? 'provider rejected the write credential; reconnect the connection' : 'provider rejected the write credential; credential refresh is temporarily unavailable'; }
 function statusKind(status: number): Failure['kind'] { return status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 404 ? 'NOT_FOUND' : status === 409 ? 'CONFLICT' : status === 429 ? 'RATE_LIMIT' : status >= 500 ? 'AVAILABILITY' : 'PROVIDER_REJECTION'; }
 function retryStatus(exchange: SpreadsheetExchange, force = false): { kind: 'none' | 'retry' | 'invalid'; delay: number } {
