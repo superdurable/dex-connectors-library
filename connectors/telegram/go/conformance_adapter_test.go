@@ -27,7 +27,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"sendMessage": newConformanceMutationInvocation(t, scenario.Input, context, client.SendMessage(), testConnection, scenario.CallID),
-		"getChat":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetChat(), testConnection),
+		"getChatAdministrators": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetChatAdministrators(), testConnection),
+		"getChatMember":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetChatMember(), testConnection),
+		"leaveChat":             newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.LeaveChat(), testConnection, scenario.CallID),
+		"setChatDescription":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.SetChatDescription(), testConnection, scenario.CallID),
+		"setChatTitle":          newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.SetChatTitle(), testConnection, scenario.CallID),
+		"sendMessage":           newConformanceMutationInvocation(t, scenario.Input, context, client.SendMessage(), testConnection, scenario.CallID),
+		"getChat":               newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetChat(), testConnection),
 	}}
 }

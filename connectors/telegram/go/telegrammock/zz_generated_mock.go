@@ -17,9 +17,14 @@ import (
 
 // Mock is a scripted telegram connection. Script each operation through its accessor.
 type Mock struct {
-	connection  telegram.Connection
-	sendMessage *connectormock.Mutation[telegram.SendMessageInput, telegram.SentMessage]
-	getChat     *connectormock.Query[telegram.GetChatInput, telegram.Chat]
+	connection            telegram.Connection
+	getChatAdministrators *connectormock.Query[telegram.GetChatInput, telegram.ChatAdministrators]
+	getChatMember         *connectormock.Query[telegram.GetChatMemberInput, telegram.ChatMemberSummary]
+	leaveChat             *connectormock.Mutation[telegram.GetChatInput, telegram.ChatActionResult]
+	setChatDescription    *connectormock.Mutation[telegram.SetChatDescriptionInput, telegram.ChatActionResult]
+	setChatTitle          *connectormock.Mutation[telegram.SetChatTitleInput, telegram.ChatActionResult]
+	sendMessage           *connectormock.Mutation[telegram.SendMessageInput, telegram.SentMessage]
+	getChat               *connectormock.Query[telegram.GetChatInput, telegram.Chat]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,9 +32,19 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		sendMessage: connectormock.NewMutation[telegram.SendMessageInput, telegram.SentMessage](t, telegram.SendMessageDefinition),
-		getChat:     connectormock.NewQuery[telegram.GetChatInput, telegram.Chat](t, telegram.GetChatDefinition),
+		getChatAdministrators: connectormock.NewQuery[telegram.GetChatInput, telegram.ChatAdministrators](t, telegram.GetChatAdministratorsDefinition),
+		getChatMember:         connectormock.NewQuery[telegram.GetChatMemberInput, telegram.ChatMemberSummary](t, telegram.GetChatMemberDefinition),
+		leaveChat:             connectormock.NewMutation[telegram.GetChatInput, telegram.ChatActionResult](t, telegram.LeaveChatDefinition),
+		setChatDescription:    connectormock.NewMutation[telegram.SetChatDescriptionInput, telegram.ChatActionResult](t, telegram.SetChatDescriptionDefinition),
+		setChatTitle:          connectormock.NewMutation[telegram.SetChatTitleInput, telegram.ChatActionResult](t, telegram.SetChatTitleDefinition),
+		sendMessage:           connectormock.NewMutation[telegram.SendMessageInput, telegram.SentMessage](t, telegram.SendMessageDefinition),
+		getChat:               connectormock.NewQuery[telegram.GetChatInput, telegram.Chat](t, telegram.GetChatDefinition),
 	}
+	mock.getChatAdministrators.Default(GetChatAdministratorsDefault())
+	mock.getChatMember.Default(GetChatMemberDefault())
+	mock.leaveChat.Default(LeaveChatDefault())
+	mock.setChatDescription.Default(SetChatDescriptionDefault())
+	mock.setChatTitle.Default(SetChatTitleDefault())
 	mock.sendMessage.Default(SendMessageDefault())
 	mock.getChat.Default(GetChatDefault())
 	connection, err := telegram.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "telegram", Name: connectionName})
@@ -43,6 +58,31 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() telegram.Connection { return mock.connection }
 
+// GetChatAdministrators returns the getChatAdministrators script.
+func (mock *Mock) GetChatAdministrators() *connectormock.Query[telegram.GetChatInput, telegram.ChatAdministrators] {
+	return mock.getChatAdministrators
+}
+
+// GetChatMember returns the getChatMember script.
+func (mock *Mock) GetChatMember() *connectormock.Query[telegram.GetChatMemberInput, telegram.ChatMemberSummary] {
+	return mock.getChatMember
+}
+
+// LeaveChat returns the leaveChat script.
+func (mock *Mock) LeaveChat() *connectormock.Mutation[telegram.GetChatInput, telegram.ChatActionResult] {
+	return mock.leaveChat
+}
+
+// SetChatDescription returns the setChatDescription script.
+func (mock *Mock) SetChatDescription() *connectormock.Mutation[telegram.SetChatDescriptionInput, telegram.ChatActionResult] {
+	return mock.setChatDescription
+}
+
+// SetChatTitle returns the setChatTitle script.
+func (mock *Mock) SetChatTitle() *connectormock.Mutation[telegram.SetChatTitleInput, telegram.ChatActionResult] {
+	return mock.setChatTitle
+}
+
 // SendMessage returns the sendMessage script.
 func (mock *Mock) SendMessage() *connectormock.Mutation[telegram.SendMessageInput, telegram.SentMessage] {
 	return mock.sendMessage
@@ -55,11 +95,209 @@ func (mock *Mock) GetChat() *connectormock.Query[telegram.GetChatInput, telegram
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetChatAdministrators() sdkgo.Query[telegram.GetChatInput, telegram.ChatAdministrators] {
+	return operations.mock.getChatAdministrators
+}
+func (operations mockOperations) GetChatMember() sdkgo.Query[telegram.GetChatMemberInput, telegram.ChatMemberSummary] {
+	return operations.mock.getChatMember
+}
+func (operations mockOperations) LeaveChat() sdkgo.Mutation[telegram.GetChatInput, telegram.ChatActionResult] {
+	return operations.mock.leaveChat
+}
+func (operations mockOperations) SetChatDescription() sdkgo.Mutation[telegram.SetChatDescriptionInput, telegram.ChatActionResult] {
+	return operations.mock.setChatDescription
+}
+func (operations mockOperations) SetChatTitle() sdkgo.Mutation[telegram.SetChatTitleInput, telegram.ChatActionResult] {
+	return operations.mock.setChatTitle
+}
 func (operations mockOperations) SendMessage() sdkgo.Mutation[telegram.SendMessageInput, telegram.SentMessage] {
 	return operations.mock.sendMessage
 }
 func (operations mockOperations) GetChat() sdkgo.Query[telegram.GetChatInput, telegram.Chat] {
 	return operations.mock.getChat
+}
+
+// GetChatAdministratorsFound selects the found branch: Telegram returned the administrators.
+func GetChatAdministratorsFound(value telegram.ChatAdministrators, failure *sdkgo.Failure) connectormock.Case[telegram.ChatAdministrators] {
+	return connectormock.Branch(telegram.GetChatAdministratorsBranchFound, value, failure)
+}
+
+// GetChatAdministratorsProviderRejected selects the providerRejected branch: Telegram conclusively rejected the lookup.
+func GetChatAdministratorsProviderRejected(value telegram.ChatAdministrators, failure *sdkgo.Failure) connectormock.Case[telegram.ChatAdministrators] {
+	return connectormock.Branch(telegram.GetChatAdministratorsBranchProviderRejected, value, failure)
+}
+
+// GetChatAdministratorsInvalidResponse selects the invalidResponse branch: Telegram returned malformed or oversized data.
+func GetChatAdministratorsInvalidResponse(value telegram.ChatAdministrators, failure *sdkgo.Failure) connectormock.Case[telegram.ChatAdministrators] {
+	return connectormock.Branch(telegram.GetChatAdministratorsBranchInvalidResponse, value, failure)
+}
+
+// GetChatAdministratorsDefect selects the defect branch: Local chat ID or credentials are invalid.
+func GetChatAdministratorsDefect(value telegram.ChatAdministrators, failure *sdkgo.Failure) connectormock.Case[telegram.ChatAdministrators] {
+	return connectormock.Branch(telegram.GetChatAdministratorsBranchDefect, value, failure)
+}
+
+// GetChatAdministratorsRetry asks Dex to retry the getChatAdministrators Step, after the delay when it is positive.
+func GetChatAdministratorsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.ChatAdministrators] {
+	return connectormock.Retry[telegram.ChatAdministrators](failure, after)
+}
+
+// GetChatAdministratorsFoundDefault is the manifest mock foundDefault: One administrator is returned.
+func GetChatAdministratorsFoundDefault() connectormock.Case[telegram.ChatAdministrators] {
+	value := connectormock.MustDecodeOutput[telegram.ChatAdministrators](`{"administrators":[{"userId":42,"status":"administrator"}]}`)
+	return connectormock.Branch(telegram.GetChatAdministratorsBranchFound, value, nil)
+}
+
+// GetChatAdministratorsDefault is the manifest default, foundDefault, which New installs.
+func GetChatAdministratorsDefault() connectormock.Case[telegram.ChatAdministrators] {
+	return GetChatAdministratorsFoundDefault()
+}
+
+// GetChatMemberFound selects the found branch: Telegram returned the member.
+func GetChatMemberFound(value telegram.ChatMemberSummary, failure *sdkgo.Failure) connectormock.Case[telegram.ChatMemberSummary] {
+	return connectormock.Branch(telegram.GetChatMemberBranchFound, value, failure)
+}
+
+// GetChatMemberNotFound selects the notFound branch: Telegram could not find the member.
+func GetChatMemberNotFound(value telegram.ChatMemberSummary, failure *sdkgo.Failure) connectormock.Case[telegram.ChatMemberSummary] {
+	return connectormock.Branch(telegram.GetChatMemberBranchNotFound, value, failure)
+}
+
+// GetChatMemberProviderRejected selects the providerRejected branch: Telegram conclusively rejected the lookup.
+func GetChatMemberProviderRejected(value telegram.ChatMemberSummary, failure *sdkgo.Failure) connectormock.Case[telegram.ChatMemberSummary] {
+	return connectormock.Branch(telegram.GetChatMemberBranchProviderRejected, value, failure)
+}
+
+// GetChatMemberInvalidResponse selects the invalidResponse branch: Telegram returned malformed or oversized data.
+func GetChatMemberInvalidResponse(value telegram.ChatMemberSummary, failure *sdkgo.Failure) connectormock.Case[telegram.ChatMemberSummary] {
+	return connectormock.Branch(telegram.GetChatMemberBranchInvalidResponse, value, failure)
+}
+
+// GetChatMemberDefect selects the defect branch: Local chat or member ID or credentials are invalid.
+func GetChatMemberDefect(value telegram.ChatMemberSummary, failure *sdkgo.Failure) connectormock.Case[telegram.ChatMemberSummary] {
+	return connectormock.Branch(telegram.GetChatMemberBranchDefect, value, failure)
+}
+
+// GetChatMemberRetry asks Dex to retry the getChatMember Step, after the delay when it is positive.
+func GetChatMemberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.ChatMemberSummary] {
+	return connectormock.Retry[telegram.ChatMemberSummary](failure, after)
+}
+
+// GetChatMemberFoundDefault is the manifest mock foundDefault: One member is returned.
+func GetChatMemberFoundDefault() connectormock.Case[telegram.ChatMemberSummary] {
+	value := connectormock.MustDecodeOutput[telegram.ChatMemberSummary](`{"userId":42,"status":"member"}`)
+	return connectormock.Branch(telegram.GetChatMemberBranchFound, value, nil)
+}
+
+// GetChatMemberDefault is the manifest default, foundDefault, which New installs.
+func GetChatMemberDefault() connectormock.Case[telegram.ChatMemberSummary] {
+	return GetChatMemberFoundDefault()
+}
+
+// LeaveChatLeft selects the left branch: Telegram confirmed the bot left the chat.
+func LeaveChatLeft(value telegram.ChatActionResult, failure *sdkgo.Failure) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Branch(telegram.LeaveChatBranchLeft, value, failure)
+}
+
+// LeaveChatProviderRejected selects the providerRejected branch: Telegram conclusively rejected the action.
+func LeaveChatProviderRejected(value telegram.ChatActionResult, failure *sdkgo.Failure) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Branch(telegram.LeaveChatBranchProviderRejected, value, failure)
+}
+
+// LeaveChatInvalidResponse selects the invalidResponse branch: Telegram returned malformed or oversized data.
+func LeaveChatInvalidResponse(value telegram.ChatActionResult, failure *sdkgo.Failure) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Branch(telegram.LeaveChatBranchInvalidResponse, value, failure)
+}
+
+// LeaveChatDefect selects the defect branch: Local chat ID or credentials are invalid.
+func LeaveChatDefect(value telegram.ChatActionResult, failure *sdkgo.Failure) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Branch(telegram.LeaveChatBranchDefect, value, failure)
+}
+
+// LeaveChatRetry asks Dex to retry the leaveChat Step, after the delay when it is positive.
+func LeaveChatRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Retry[telegram.ChatActionResult](failure, after)
+}
+
+// LeaveChatLeftDefault is the manifest mock leftDefault: The bot left the chat.
+func LeaveChatLeftDefault() connectormock.Case[telegram.ChatActionResult] {
+	value := connectormock.MustDecodeOutput[telegram.ChatActionResult](`{"chatId":"-1001234567890"}`)
+	return connectormock.Branch(telegram.LeaveChatBranchLeft, value, nil)
+}
+
+// LeaveChatDefault is the manifest default, leftDefault, which New installs.
+func LeaveChatDefault() connectormock.Case[telegram.ChatActionResult] { return LeaveChatLeftDefault() }
+
+// SetChatDescriptionUpdated selects the updated branch: Telegram confirmed the description.
+func SetChatDescriptionUpdated(value telegram.ChatActionResult, failure *sdkgo.Failure) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Branch(telegram.SetChatDescriptionBranchUpdated, value, failure)
+}
+
+// SetChatDescriptionProviderRejected selects the providerRejected branch: Telegram conclusively rejected the action.
+func SetChatDescriptionProviderRejected(value telegram.ChatActionResult, failure *sdkgo.Failure) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Branch(telegram.SetChatDescriptionBranchProviderRejected, value, failure)
+}
+
+// SetChatDescriptionInvalidResponse selects the invalidResponse branch: Telegram returned malformed or oversized data.
+func SetChatDescriptionInvalidResponse(value telegram.ChatActionResult, failure *sdkgo.Failure) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Branch(telegram.SetChatDescriptionBranchInvalidResponse, value, failure)
+}
+
+// SetChatDescriptionDefect selects the defect branch: Local chat ID, description, or credentials are invalid.
+func SetChatDescriptionDefect(value telegram.ChatActionResult, failure *sdkgo.Failure) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Branch(telegram.SetChatDescriptionBranchDefect, value, failure)
+}
+
+// SetChatDescriptionRetry asks Dex to retry the setChatDescription Step, after the delay when it is positive.
+func SetChatDescriptionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Retry[telegram.ChatActionResult](failure, after)
+}
+
+// SetChatDescriptionUpdatedDefault is the manifest mock updatedDefault: The chat description was updated.
+func SetChatDescriptionUpdatedDefault() connectormock.Case[telegram.ChatActionResult] {
+	value := connectormock.MustDecodeOutput[telegram.ChatActionResult](`{"chatId":"-1001234567890"}`)
+	return connectormock.Branch(telegram.SetChatDescriptionBranchUpdated, value, nil)
+}
+
+// SetChatDescriptionDefault is the manifest default, updatedDefault, which New installs.
+func SetChatDescriptionDefault() connectormock.Case[telegram.ChatActionResult] {
+	return SetChatDescriptionUpdatedDefault()
+}
+
+// SetChatTitleUpdated selects the updated branch: Telegram confirmed the title.
+func SetChatTitleUpdated(value telegram.ChatActionResult, failure *sdkgo.Failure) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Branch(telegram.SetChatTitleBranchUpdated, value, failure)
+}
+
+// SetChatTitleProviderRejected selects the providerRejected branch: Telegram conclusively rejected the action.
+func SetChatTitleProviderRejected(value telegram.ChatActionResult, failure *sdkgo.Failure) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Branch(telegram.SetChatTitleBranchProviderRejected, value, failure)
+}
+
+// SetChatTitleInvalidResponse selects the invalidResponse branch: Telegram returned malformed or oversized data.
+func SetChatTitleInvalidResponse(value telegram.ChatActionResult, failure *sdkgo.Failure) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Branch(telegram.SetChatTitleBranchInvalidResponse, value, failure)
+}
+
+// SetChatTitleDefect selects the defect branch: Local chat ID, title, or credentials are invalid.
+func SetChatTitleDefect(value telegram.ChatActionResult, failure *sdkgo.Failure) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Branch(telegram.SetChatTitleBranchDefect, value, failure)
+}
+
+// SetChatTitleRetry asks Dex to retry the setChatTitle Step, after the delay when it is positive.
+func SetChatTitleRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.ChatActionResult] {
+	return connectormock.Retry[telegram.ChatActionResult](failure, after)
+}
+
+// SetChatTitleUpdatedDefault is the manifest mock updatedDefault: The chat title was updated.
+func SetChatTitleUpdatedDefault() connectormock.Case[telegram.ChatActionResult] {
+	value := connectormock.MustDecodeOutput[telegram.ChatActionResult](`{"chatId":"-1001234567890"}`)
+	return connectormock.Branch(telegram.SetChatTitleBranchUpdated, value, nil)
+}
+
+// SetChatTitleDefault is the manifest default, updatedDefault, which New installs.
+func SetChatTitleDefault() connectormock.Case[telegram.ChatActionResult] {
+	return SetChatTitleUpdatedDefault()
 }
 
 // SendMessageSent selects the sent branch: Telegram created the message and returned its ID.

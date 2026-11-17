@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getChatAdministrators/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.ChatAdministrators](`{"administrators":[{"userId":42,"status":"administrator"}]}`)
+			return err
+		}},
+		{name: "getChatMember/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.ChatMemberSummary](`{"userId":42,"status":"member"}`)
+			return err
+		}},
+		{name: "leaveChat/leftDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.ChatActionResult](`{"chatId":"-1001234567890"}`)
+			return err
+		}},
+		{name: "setChatDescription/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.ChatActionResult](`{"chatId":"-1001234567890"}`)
+			return err
+		}},
+		{name: "setChatTitle/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.ChatActionResult](`{"chatId":"-1001234567890"}`)
+			return err
+		}},
 		{name: "sendMessage/sentText/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":52,"date":1794110000}`)
 			return err
@@ -34,6 +54,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetChatAdministrators().Definition().Operation.OperationID != "getChatAdministrators" {
+		t.Errorf("getChatAdministrators mock has another definition")
+	}
+	if mock.GetChatMember().Definition().Operation.OperationID != "getChatMember" {
+		t.Errorf("getChatMember mock has another definition")
+	}
+	if mock.LeaveChat().Definition().Operation.OperationID != "leaveChat" {
+		t.Errorf("leaveChat mock has another definition")
+	}
+	if mock.SetChatDescription().Definition().Operation.OperationID != "setChatDescription" {
+		t.Errorf("setChatDescription mock has another definition")
+	}
+	if mock.SetChatTitle().Definition().Operation.OperationID != "setChatTitle" {
+		t.Errorf("setChatTitle mock has another definition")
+	}
 	if mock.SendMessage().Definition().Operation.OperationID != "sendMessage" {
 		t.Errorf("sendMessage mock has another definition")
 	}

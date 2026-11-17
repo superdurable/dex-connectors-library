@@ -40,12 +40,32 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetChatAdministrators() sdkgo.Query[GetChatInput, ChatAdministrators]
+	GetChatMember() sdkgo.Query[GetChatMemberInput, ChatMemberSummary]
+	LeaveChat() sdkgo.Mutation[GetChatInput, ChatActionResult]
+	SetChatDescription() sdkgo.Mutation[SetChatDescriptionInput, ChatActionResult]
+	SetChatTitle() sdkgo.Mutation[SetChatTitleInput, ChatActionResult]
 	SendMessage() sdkgo.Mutation[SendMessageInput, SentMessage]
 	GetChat() sdkgo.Query[GetChatInput, Chat]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetChatAdministrators() sdkgo.Query[GetChatInput, ChatAdministrators] {
+	return operations.client.GetChatAdministrators()
+}
+func (operations clientOperations) GetChatMember() sdkgo.Query[GetChatMemberInput, ChatMemberSummary] {
+	return operations.client.GetChatMember()
+}
+func (operations clientOperations) LeaveChat() sdkgo.Mutation[GetChatInput, ChatActionResult] {
+	return operations.client.LeaveChat()
+}
+func (operations clientOperations) SetChatDescription() sdkgo.Mutation[SetChatDescriptionInput, ChatActionResult] {
+	return operations.client.SetChatDescription()
+}
+func (operations clientOperations) SetChatTitle() sdkgo.Mutation[SetChatTitleInput, ChatActionResult] {
+	return operations.client.SetChatTitle()
+}
 func (operations clientOperations) SendMessage() sdkgo.Mutation[SendMessageInput, SentMessage] {
 	return operations.client.SendMessage()
 }
@@ -188,6 +208,367 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential bot_token is required")
 	}
 	return nil
+}
+
+const GetChatAdministratorsBranchFound sdkgo.BranchID = "found"
+const GetChatAdministratorsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetChatAdministratorsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetChatAdministratorsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetChatAdministratorsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getChatAdministrators"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetChatAdministratorsBranchFound, Description: "Telegram returned the administrators."},
+		{ID: GetChatAdministratorsBranchProviderRejected, Description: "Telegram conclusively rejected the lookup.", Optional: true},
+		{ID: GetChatAdministratorsBranchInvalidResponse, Description: "Telegram returned malformed or oversized data.", Optional: true},
+		{ID: GetChatAdministratorsBranchDefect, Description: "Local chat ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetChatAdministratorsResult = sdkgo.QueryResult[ChatAdministrators]
+
+type GetChatAdministratorsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=telegram"`
+	operationID                    struct{}                                              `connector:"operationId=getChatAdministrators"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetChatInput                                 `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetChatAdministratorsResult]             `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetChatAdministratorsResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetChatAdministratorsResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetChatAdministratorsResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ChatAdministrators]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetChatAdministratorsStep[IN any](config GetChatAdministratorsStepConfig[IN]) sdkgo.QueryStep[IN, GetChatInput, ChatAdministrators] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetChatInput, ChatAdministrators]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetChatAdministrators(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetChatAdministratorsResult] {
+			branches := make([]sdkgo.BranchTarget[GetChatAdministratorsResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetChatAdministratorsBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetChatAdministratorsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetChatAdministratorsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetChatAdministratorsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetChatMemberBranchFound sdkgo.BranchID = "found"
+const GetChatMemberBranchNotFound sdkgo.BranchID = "notFound"
+const GetChatMemberBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetChatMemberBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetChatMemberBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetChatMemberDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getChatMember"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetChatMemberBranchFound, Description: "Telegram returned the member."},
+		{ID: GetChatMemberBranchNotFound, Description: "Telegram could not find the member.", Optional: true},
+		{ID: GetChatMemberBranchProviderRejected, Description: "Telegram conclusively rejected the lookup.", Optional: true},
+		{ID: GetChatMemberBranchInvalidResponse, Description: "Telegram returned malformed or oversized data.", Optional: true},
+		{ID: GetChatMemberBranchDefect, Description: "Local chat or member ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetChatMemberResult = sdkgo.QueryResult[ChatMemberSummary]
+
+type GetChatMemberStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=telegram"`
+	operationID                    struct{}                                             `connector:"operationId=getChatMember"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetChatMemberInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetChatMemberResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetChatMemberResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetChatMemberResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetChatMemberResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetChatMemberResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ChatMemberSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewGetChatMemberStep[IN any](config GetChatMemberStepConfig[IN]) sdkgo.QueryStep[IN, GetChatMemberInput, ChatMemberSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetChatMemberInput, ChatMemberSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetChatMember(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetChatMemberResult] {
+			branches := make([]sdkgo.BranchTarget[GetChatMemberResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetChatMemberBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetChatMemberBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetChatMemberBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetChatMemberBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetChatMemberBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const LeaveChatBranchLeft sdkgo.BranchID = "left"
+const LeaveChatBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const LeaveChatBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const LeaveChatBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var LeaveChatDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "leaveChat"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: LeaveChatBranchLeft, Description: "Telegram confirmed the bot left the chat."},
+		{ID: LeaveChatBranchProviderRejected, Description: "Telegram conclusively rejected the action.", Optional: true},
+		{ID: LeaveChatBranchInvalidResponse, Description: "Telegram returned malformed or oversized data.", Optional: true},
+		{ID: LeaveChatBranchDefect, Description: "Local chat ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type LeaveChatResult = sdkgo.MutationResult[ChatActionResult]
+
+type LeaveChatStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=telegram"`
+	operationID                       struct{}                                               `connector:"operationId=leaveChat"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetChatInput                                  `connector:"mapToOperationInput"`
+	Left                              sdkgo.Target[LeaveChatResult]                          `connector:"branch=left"`
+	ProviderRejected                  sdkgo.Target[LeaveChatResult]                          `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[LeaveChatResult]                          `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[LeaveChatResult]                          `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ChatActionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewLeaveChatStep[IN any](config LeaveChatStepConfig[IN]) sdkgo.MutationStep[IN, GetChatInput, ChatActionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetChatInput, ChatActionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.LeaveChat(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[LeaveChatResult] {
+			branches := make([]sdkgo.BranchTarget[LeaveChatResult], 0, 4)
+			if config.Left.HasStep() {
+				branches = append(branches, config.Left.BranchTarget(LeaveChatBranchLeft))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(LeaveChatBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(LeaveChatBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(LeaveChatBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SetChatDescriptionBranchUpdated sdkgo.BranchID = "updated"
+const SetChatDescriptionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SetChatDescriptionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SetChatDescriptionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SetChatDescriptionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "setChatDescription"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SetChatDescriptionBranchUpdated, Description: "Telegram confirmed the description."},
+		{ID: SetChatDescriptionBranchProviderRejected, Description: "Telegram conclusively rejected the action.", Optional: true},
+		{ID: SetChatDescriptionBranchInvalidResponse, Description: "Telegram returned malformed or oversized data.", Optional: true},
+		{ID: SetChatDescriptionBranchDefect, Description: "Local chat ID, description, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SetChatDescriptionResult = sdkgo.MutationResult[ChatActionResult]
+
+type SetChatDescriptionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=telegram"`
+	operationID                       struct{}                                               `connector:"operationId=setChatDescription"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetChatDescriptionInput                       `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[SetChatDescriptionResult]                 `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[SetChatDescriptionResult]                 `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SetChatDescriptionResult]                 `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SetChatDescriptionResult]                 `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ChatActionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewSetChatDescriptionStep[IN any](config SetChatDescriptionStepConfig[IN]) sdkgo.MutationStep[IN, SetChatDescriptionInput, ChatActionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetChatDescriptionInput, ChatActionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SetChatDescription(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SetChatDescriptionResult] {
+			branches := make([]sdkgo.BranchTarget[SetChatDescriptionResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(SetChatDescriptionBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SetChatDescriptionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SetChatDescriptionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SetChatDescriptionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SetChatTitleBranchUpdated sdkgo.BranchID = "updated"
+const SetChatTitleBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SetChatTitleBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SetChatTitleBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SetChatTitleDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "setChatTitle"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SetChatTitleBranchUpdated, Description: "Telegram confirmed the title."},
+		{ID: SetChatTitleBranchProviderRejected, Description: "Telegram conclusively rejected the action.", Optional: true},
+		{ID: SetChatTitleBranchInvalidResponse, Description: "Telegram returned malformed or oversized data.", Optional: true},
+		{ID: SetChatTitleBranchDefect, Description: "Local chat ID, title, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SetChatTitleResult = sdkgo.MutationResult[ChatActionResult]
+
+type SetChatTitleStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=telegram"`
+	operationID                       struct{}                                               `connector:"operationId=setChatTitle"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetChatTitleInput                             `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[SetChatTitleResult]                       `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[SetChatTitleResult]                       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SetChatTitleResult]                       `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SetChatTitleResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ChatActionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewSetChatTitleStep[IN any](config SetChatTitleStepConfig[IN]) sdkgo.MutationStep[IN, SetChatTitleInput, ChatActionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetChatTitleInput, ChatActionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SetChatTitle(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SetChatTitleResult] {
+			branches := make([]sdkgo.BranchTarget[SetChatTitleResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(SetChatTitleBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SetChatTitleBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SetChatTitleBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SetChatTitleBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const SendMessageBranchSent sdkgo.BranchID = "sent"

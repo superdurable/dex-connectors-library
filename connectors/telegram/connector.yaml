@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: telegram
   displayName: Telegram Bot
-  description: Read chat metadata and send text messages through a Telegram bot.
+  description: Read and manage chats, and send text messages through a Telegram bot.
   company: Telegram
   categories: [communication]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: telegram
   languages:
@@ -55,6 +55,107 @@ spec:
         - For an existing bot, open BotFather > /mybots > your bot > API Token. Save the token only in bot_token, never in Flow input. Use BotFather to revoke and replace a leaked token.
         - Add the bot to the target chat and grant access needed to read its metadata or send text. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: getChatAdministrators
+      goName: GetChatAdministrators
+      inputType: GetChatInput
+      outputType: ChatAdministrators
+      kind: query
+      description: Read administrator user IDs and statuses without profile details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Telegram returned the administrators.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local chat ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One administrator is returned.
+          output: {administrators: [{userId: 42, status: administrator}]}
+    - name: getChatMember
+      goName: GetChatMember
+      inputType: GetChatMemberInput
+      outputType: ChatMemberSummary
+      kind: query
+      description: Read a member's numeric user ID and status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Telegram returned the member.}
+        - {id: notFound, goName: NotFound, description: Telegram could not find the member., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local chat or member ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One member is returned.
+          output: {userId: 42, status: member}
+    - name: leaveChat
+      goName: LeaveChat
+      inputType: GetChatInput
+      outputType: ChatActionResult
+      kind: mutation
+      description: Leave a group, supergroup, or channel accessible to the bot.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: left, goName: Left, description: Telegram confirmed the bot left the chat.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the action., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local chat ID or credentials are invalid., optional: true}
+      mocks:
+        - name: leftDefault
+          branch: left
+          default: true
+          description: The bot left the chat.
+          output: {chatId: "-1001234567890"}
+    - name: setChatDescription
+      goName: SetChatDescription
+      inputType: SetChatDescriptionInput
+      outputType: ChatActionResult
+      kind: mutation
+      description: Replace a chat's description.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Telegram confirmed the description.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the action., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local chat ID, description, or credentials are invalid.", optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: The chat description was updated.
+          output: {chatId: "-1001234567890"}
+    - name: setChatTitle
+      goName: SetChatTitle
+      inputType: SetChatTitleInput
+      outputType: ChatActionResult
+      kind: mutation
+      description: Replace a chat's title.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Telegram confirmed the title.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the action., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local chat ID, title, or credentials are invalid.", optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: The chat title was updated.
+          output: {chatId: "-1001234567890"}
     - name: sendMessage
       goName: SendMessage
       inputType: SendMessageInput
