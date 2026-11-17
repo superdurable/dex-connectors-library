@@ -417,6 +417,8 @@ commit.
   persistence, wait, retry, Trigger, RPC, Attribute, or Stream boundary.
 - Use unique Flow IDs and convergence polling. Never use a fixed sleep to guess
   when asynchronous state has converged.
+- When an agent starts `dexcli dev` or `dexcli web`, it passes `-open=false`, so
+  no browser opens on the owner's desktop, and stops it when done.
 - A fixed wait is allowed inside the system under test or when elapsed time is
   itself the behavior being verified.
 - Never skip, gate, or early-return around a failing assertion merely to green

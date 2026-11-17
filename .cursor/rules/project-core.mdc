@@ -113,4 +113,6 @@ alwaysApply: true
   Trigger, RPC, Attribute, Stream, and transition boundaries.
 - Use unique Flow IDs and convergence polling. Fixed waits are only for behavior
   inside the system under test or elapsed-time assertions.
+- When an agent starts `dexcli dev` or `dexcli web`, it passes `-open=false`, so
+  no browser opens on the owner's desktop, and stops it when done.
 - Never skip or gate a failure merely to make a suite pass.
