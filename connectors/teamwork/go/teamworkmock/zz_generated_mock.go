@@ -17,12 +17,16 @@ import (
 
 // Mock is a scripted teamwork connection. Script each operation through its accessor.
 type Mock struct {
-	connection teamwork.Connection
-	listTasks  *connectormock.Query[teamwork.ListTasksInput, teamwork.TaskPage]
-	getTask    *connectormock.Query[teamwork.GetTaskInput, teamwork.TaskSummary]
-	createTask *connectormock.Mutation[teamwork.CreateTaskInput, teamwork.TaskSummary]
-	updateTask *connectormock.Mutation[teamwork.UpdateTaskInput, teamwork.TaskSummary]
-	deleteTask *connectormock.Mutation[teamwork.DeleteTaskInput, teamwork.DeleteTaskOutput]
+	connection    teamwork.Connection
+	listProjects  *connectormock.Query[teamwork.ListProjectsInput, teamwork.ProjectPage]
+	getProject    *connectormock.Query[teamwork.GetProjectInput, teamwork.ProjectSummary]
+	createProject *connectormock.Mutation[teamwork.CreateProjectInput, teamwork.ProjectID]
+	updateProject *connectormock.Mutation[teamwork.UpdateProjectInput, teamwork.ProjectID]
+	listTasks     *connectormock.Query[teamwork.ListTasksInput, teamwork.TaskPage]
+	getTask       *connectormock.Query[teamwork.GetTaskInput, teamwork.TaskSummary]
+	createTask    *connectormock.Mutation[teamwork.CreateTaskInput, teamwork.TaskSummary]
+	updateTask    *connectormock.Mutation[teamwork.UpdateTaskInput, teamwork.TaskSummary]
+	deleteTask    *connectormock.Mutation[teamwork.DeleteTaskInput, teamwork.DeleteTaskOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -30,12 +34,20 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listTasks:  connectormock.NewQuery[teamwork.ListTasksInput, teamwork.TaskPage](t, teamwork.ListTasksDefinition),
-		getTask:    connectormock.NewQuery[teamwork.GetTaskInput, teamwork.TaskSummary](t, teamwork.GetTaskDefinition),
-		createTask: connectormock.NewMutation[teamwork.CreateTaskInput, teamwork.TaskSummary](t, teamwork.CreateTaskDefinition),
-		updateTask: connectormock.NewMutation[teamwork.UpdateTaskInput, teamwork.TaskSummary](t, teamwork.UpdateTaskDefinition),
-		deleteTask: connectormock.NewMutation[teamwork.DeleteTaskInput, teamwork.DeleteTaskOutput](t, teamwork.DeleteTaskDefinition),
+		listProjects:  connectormock.NewQuery[teamwork.ListProjectsInput, teamwork.ProjectPage](t, teamwork.ListProjectsDefinition),
+		getProject:    connectormock.NewQuery[teamwork.GetProjectInput, teamwork.ProjectSummary](t, teamwork.GetProjectDefinition),
+		createProject: connectormock.NewMutation[teamwork.CreateProjectInput, teamwork.ProjectID](t, teamwork.CreateProjectDefinition),
+		updateProject: connectormock.NewMutation[teamwork.UpdateProjectInput, teamwork.ProjectID](t, teamwork.UpdateProjectDefinition),
+		listTasks:     connectormock.NewQuery[teamwork.ListTasksInput, teamwork.TaskPage](t, teamwork.ListTasksDefinition),
+		getTask:       connectormock.NewQuery[teamwork.GetTaskInput, teamwork.TaskSummary](t, teamwork.GetTaskDefinition),
+		createTask:    connectormock.NewMutation[teamwork.CreateTaskInput, teamwork.TaskSummary](t, teamwork.CreateTaskDefinition),
+		updateTask:    connectormock.NewMutation[teamwork.UpdateTaskInput, teamwork.TaskSummary](t, teamwork.UpdateTaskDefinition),
+		deleteTask:    connectormock.NewMutation[teamwork.DeleteTaskInput, teamwork.DeleteTaskOutput](t, teamwork.DeleteTaskDefinition),
 	}
+	mock.listProjects.Default(ListProjectsDefault())
+	mock.getProject.Default(GetProjectDefault())
+	mock.createProject.Default(CreateProjectDefault())
+	mock.updateProject.Default(UpdateProjectDefault())
 	mock.listTasks.Default(ListTasksDefault())
 	mock.getTask.Default(GetTaskDefault())
 	mock.createTask.Default(CreateTaskDefault())
@@ -51,6 +63,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() teamwork.Connection { return mock.connection }
+
+// ListProjects returns the listProjects script.
+func (mock *Mock) ListProjects() *connectormock.Query[teamwork.ListProjectsInput, teamwork.ProjectPage] {
+	return mock.listProjects
+}
+
+// GetProject returns the getProject script.
+func (mock *Mock) GetProject() *connectormock.Query[teamwork.GetProjectInput, teamwork.ProjectSummary] {
+	return mock.getProject
+}
+
+// CreateProject returns the createProject script.
+func (mock *Mock) CreateProject() *connectormock.Mutation[teamwork.CreateProjectInput, teamwork.ProjectID] {
+	return mock.createProject
+}
+
+// UpdateProject returns the updateProject script.
+func (mock *Mock) UpdateProject() *connectormock.Mutation[teamwork.UpdateProjectInput, teamwork.ProjectID] {
+	return mock.updateProject
+}
 
 // ListTasks returns the listTasks script.
 func (mock *Mock) ListTasks() *connectormock.Query[teamwork.ListTasksInput, teamwork.TaskPage] {
@@ -79,6 +111,18 @@ func (mock *Mock) DeleteTask() *connectormock.Mutation[teamwork.DeleteTaskInput,
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListProjects() sdkgo.Query[teamwork.ListProjectsInput, teamwork.ProjectPage] {
+	return operations.mock.listProjects
+}
+func (operations mockOperations) GetProject() sdkgo.Query[teamwork.GetProjectInput, teamwork.ProjectSummary] {
+	return operations.mock.getProject
+}
+func (operations mockOperations) CreateProject() sdkgo.Mutation[teamwork.CreateProjectInput, teamwork.ProjectID] {
+	return operations.mock.createProject
+}
+func (operations mockOperations) UpdateProject() sdkgo.Mutation[teamwork.UpdateProjectInput, teamwork.ProjectID] {
+	return operations.mock.updateProject
+}
 func (operations mockOperations) ListTasks() sdkgo.Query[teamwork.ListTasksInput, teamwork.TaskPage] {
 	return operations.mock.listTasks
 }
@@ -93,6 +137,158 @@ func (operations mockOperations) UpdateTask() sdkgo.Mutation[teamwork.UpdateTask
 }
 func (operations mockOperations) DeleteTask() sdkgo.Mutation[teamwork.DeleteTaskInput, teamwork.DeleteTaskOutput] {
 	return operations.mock.deleteTask
+}
+
+// ListProjectsListed selects the listed branch: Teamwork returned the project page.
+func ListProjectsListed(value teamwork.ProjectPage, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectPage] {
+	return connectormock.Branch(teamwork.ListProjectsBranchListed, value, failure)
+}
+
+// ListProjectsProviderRejected selects the providerRejected branch: Teamwork conclusively rejected the lookup.
+func ListProjectsProviderRejected(value teamwork.ProjectPage, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectPage] {
+	return connectormock.Branch(teamwork.ListProjectsBranchProviderRejected, value, failure)
+}
+
+// ListProjectsInvalidResponse selects the invalidResponse branch: Teamwork returned malformed or oversized JSON.
+func ListProjectsInvalidResponse(value teamwork.ProjectPage, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectPage] {
+	return connectormock.Branch(teamwork.ListProjectsBranchInvalidResponse, value, failure)
+}
+
+// ListProjectsDefect selects the defect branch: Local page input or credentials are invalid.
+func ListProjectsDefect(value teamwork.ProjectPage, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectPage] {
+	return connectormock.Branch(teamwork.ListProjectsBranchDefect, value, failure)
+}
+
+// ListProjectsRetry asks Dex to retry the listProjects Step, after the delay when it is positive.
+func ListProjectsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[teamwork.ProjectPage] {
+	return connectormock.Retry[teamwork.ProjectPage](failure, after)
+}
+
+// ListProjectsListedDefault is the manifest mock listedDefault: One sample project is listed.
+func ListProjectsListedDefault() connectormock.Case[teamwork.ProjectPage] {
+	value := connectormock.MustDecodeOutput[teamwork.ProjectPage](`{"projects":[{"id":"123","name":"Launch","status":"active"}],"page":1}`)
+	return connectormock.Branch(teamwork.ListProjectsBranchListed, value, nil)
+}
+
+// ListProjectsDefault is the manifest default, listedDefault, which New installs.
+func ListProjectsDefault() connectormock.Case[teamwork.ProjectPage] {
+	return ListProjectsListedDefault()
+}
+
+// GetProjectFound selects the found branch: Teamwork returned the project.
+func GetProjectFound(value teamwork.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectSummary] {
+	return connectormock.Branch(teamwork.GetProjectBranchFound, value, failure)
+}
+
+// GetProjectNotFound selects the notFound branch: The project is absent or inaccessible.
+func GetProjectNotFound(value teamwork.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectSummary] {
+	return connectormock.Branch(teamwork.GetProjectBranchNotFound, value, failure)
+}
+
+// GetProjectProviderRejected selects the providerRejected branch: Teamwork conclusively rejected the lookup.
+func GetProjectProviderRejected(value teamwork.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectSummary] {
+	return connectormock.Branch(teamwork.GetProjectBranchProviderRejected, value, failure)
+}
+
+// GetProjectInvalidResponse selects the invalidResponse branch: Teamwork returned malformed or oversized JSON.
+func GetProjectInvalidResponse(value teamwork.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectSummary] {
+	return connectormock.Branch(teamwork.GetProjectBranchInvalidResponse, value, failure)
+}
+
+// GetProjectDefect selects the defect branch: Local project ID or credentials are invalid.
+func GetProjectDefect(value teamwork.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectSummary] {
+	return connectormock.Branch(teamwork.GetProjectBranchDefect, value, failure)
+}
+
+// GetProjectRetry asks Dex to retry the getProject Step, after the delay when it is positive.
+func GetProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[teamwork.ProjectSummary] {
+	return connectormock.Retry[teamwork.ProjectSummary](failure, after)
+}
+
+// GetProjectFoundDefault is the manifest mock foundDefault: One sample project is returned.
+func GetProjectFoundDefault() connectormock.Case[teamwork.ProjectSummary] {
+	value := connectormock.MustDecodeOutput[teamwork.ProjectSummary](`{"id":"123","name":"Launch","status":"active"}`)
+	return connectormock.Branch(teamwork.GetProjectBranchFound, value, nil)
+}
+
+// GetProjectDefault is the manifest default, foundDefault, which New installs.
+func GetProjectDefault() connectormock.Case[teamwork.ProjectSummary] { return GetProjectFoundDefault() }
+
+// CreateProjectCreated selects the created branch: Teamwork created the project.
+func CreateProjectCreated(value teamwork.ProjectID, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectID] {
+	return connectormock.Branch(teamwork.CreateProjectBranchCreated, value, failure)
+}
+
+// CreateProjectProviderRejected selects the providerRejected branch: Teamwork conclusively rejected the create.
+func CreateProjectProviderRejected(value teamwork.ProjectID, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectID] {
+	return connectormock.Branch(teamwork.CreateProjectBranchProviderRejected, value, failure)
+}
+
+// CreateProjectUncertain returns an uncertain createProject outcome.
+func CreateProjectUncertain(value teamwork.ProjectID, failure sdkgo.Failure) connectormock.Case[teamwork.ProjectID] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateProjectDefect selects the defect branch: Local project name or credentials are invalid.
+func CreateProjectDefect(value teamwork.ProjectID, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectID] {
+	return connectormock.Branch(teamwork.CreateProjectBranchDefect, value, failure)
+}
+
+// CreateProjectRetry asks Dex to retry the createProject Step, after the delay when it is positive.
+func CreateProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[teamwork.ProjectID] {
+	return connectormock.Retry[teamwork.ProjectID](failure, after)
+}
+
+// CreateProjectCreatedDefault is the manifest mock createdDefault: A sample project was created.
+func CreateProjectCreatedDefault() connectormock.Case[teamwork.ProjectID] {
+	value := connectormock.MustDecodeOutput[teamwork.ProjectID](`{"id":"123"}`)
+	return connectormock.Branch(teamwork.CreateProjectBranchCreated, value, nil)
+}
+
+// CreateProjectDefault is the manifest default, createdDefault, which New installs.
+func CreateProjectDefault() connectormock.Case[teamwork.ProjectID] {
+	return CreateProjectCreatedDefault()
+}
+
+// UpdateProjectUpdated selects the updated branch: Teamwork updated the project.
+func UpdateProjectUpdated(value teamwork.ProjectID, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectID] {
+	return connectormock.Branch(teamwork.UpdateProjectBranchUpdated, value, failure)
+}
+
+// UpdateProjectNotFound selects the notFound branch: The project is absent or inaccessible.
+func UpdateProjectNotFound(value teamwork.ProjectID, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectID] {
+	return connectormock.Branch(teamwork.UpdateProjectBranchNotFound, value, failure)
+}
+
+// UpdateProjectProviderRejected selects the providerRejected branch: Teamwork conclusively rejected the update.
+func UpdateProjectProviderRejected(value teamwork.ProjectID, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectID] {
+	return connectormock.Branch(teamwork.UpdateProjectBranchProviderRejected, value, failure)
+}
+
+// UpdateProjectInvalidResponse selects the invalidResponse branch: Teamwork returned malformed or oversized JSON.
+func UpdateProjectInvalidResponse(value teamwork.ProjectID, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectID] {
+	return connectormock.Branch(teamwork.UpdateProjectBranchInvalidResponse, value, failure)
+}
+
+// UpdateProjectDefect selects the defect branch: Local project input or credentials are invalid.
+func UpdateProjectDefect(value teamwork.ProjectID, failure *sdkgo.Failure) connectormock.Case[teamwork.ProjectID] {
+	return connectormock.Branch(teamwork.UpdateProjectBranchDefect, value, failure)
+}
+
+// UpdateProjectRetry asks Dex to retry the updateProject Step, after the delay when it is positive.
+func UpdateProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[teamwork.ProjectID] {
+	return connectormock.Retry[teamwork.ProjectID](failure, after)
+}
+
+// UpdateProjectUpdatedDefault is the manifest mock updatedDefault: A sample project was updated.
+func UpdateProjectUpdatedDefault() connectormock.Case[teamwork.ProjectID] {
+	value := connectormock.MustDecodeOutput[teamwork.ProjectID](`{"id":"123"}`)
+	return connectormock.Branch(teamwork.UpdateProjectBranchUpdated, value, nil)
+}
+
+// UpdateProjectDefault is the manifest default, updatedDefault, which New installs.
+func UpdateProjectDefault() connectormock.Case[teamwork.ProjectID] {
+	return UpdateProjectUpdatedDefault()
 }
 
 // ListTasksListed selects the listed branch: Teamwork returned the task page.

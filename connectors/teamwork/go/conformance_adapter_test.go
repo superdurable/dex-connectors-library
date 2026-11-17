@@ -23,15 +23,21 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	createContext := singledispatchtest.NewContext("teamwork-conformance", "create-task")
+	createProjectContext := singledispatchtest.NewContext("teamwork-conformance", "create-project")
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		if attempt > 1 {
 			createContext.AdvanceAttempt()
+			createProjectContext.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"listTasks":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTasks(), reference),
-		"getTask":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTask(), reference),
-		"createTask": newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateTask(), reference, scenario.CallID),
-		"updateTask": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateTask(), reference, scenario.CallID),
-		"deleteTask": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteTask(), reference, scenario.CallID),
+		"listProjects":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListProjects(), reference),
+		"getProject":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetProject(), reference),
+		"createProject": newConformanceMutationInvocation(t, scenario.Input, createProjectContext, client.CreateProject(), reference, scenario.CallID),
+		"updateProject": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateProject(), reference, scenario.CallID),
+		"listTasks":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTasks(), reference),
+		"getTask":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTask(), reference),
+		"createTask":    newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateTask(), reference, scenario.CallID),
+		"updateTask":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateTask(), reference, scenario.CallID),
+		"deleteTask":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteTask(), reference, scenario.CallID),
 	}}
 }

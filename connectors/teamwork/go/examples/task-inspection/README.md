@@ -1,6 +1,6 @@
 # Teamwork task inspection Flow
 
-These runnable Flows call `getTask` and `createTask` through the static `teamwork` connection. They persist task identity and state in Attributes and expose them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+These runnable Flows call `getTask`, `createTask`, and `getProject` through the static `teamwork` connection. They persist task or project identity and state in Attributes and expose them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -25,5 +25,7 @@ GOWORK=off go run ./examples/task-inspection
 Start `TeamworkTaskInspection` with a unique Flow ID and input `{"taskId":"12345"}`. Replace the sample with a task ID returned by Teamwork. The Worker connects to Dex Server without an inbound listener.
 
 Start `TeamworkCreateTask` with a unique Flow ID and input `{"tasklistId":"321","name":"Review launch"}` to create a task in the chosen task list. A possibly effective create is repeated at most three times; an unconfirmed outcome fails on the optional `uncertain` branch. The task list ID comes from the Teamwork Projects task list URL or API.
+
+Start `TeamworkGetProject` with input `{"projectId":"123"}` to inspect the selected project's ID, name, and status. Find the numeric project ID in Teamwork's project URL or through the Projects API.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real Teamwork authorization and retrieval remain unverified.

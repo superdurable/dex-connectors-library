@@ -55,6 +55,88 @@ spec:
         - Open your Teamwork.com site, click the avatar at bottom left > Edit my details > API & Mobile > Show your token, then copy the secret Key into Dex Web api_token. Blank is invalid. Disable or rotate it from the same page. The key has the site user's permissions.
         - Copy the required non-secret site root from the browser address before /app into baseUrl; US and EU site domains differ. Leave timeout and maxResponseBytes blank for their displayed defaults. Open the desired task or query the Projects API to find its numeric task ID and pass it as taskId; blank is invalid. Current clients accept IDs through 9007199254740991 for exact cross-language decoding.
   operations:
+    - name: listProjects
+      goName: ListProjects
+      inputType: ListProjectsInput
+      outputType: ProjectPage
+      kind: query
+      description: Read a bounded page of accessible project IDs, names, and states.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Teamwork returned the project page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Teamwork conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Teamwork returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local page input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample project is listed.
+          output: {projects: [{id: "123", name: "Launch", status: active}], page: 1}
+    - name: getProject
+      goName: GetProject
+      inputType: GetProjectInput
+      outputType: ProjectSummary
+      kind: query
+      description: Read one project's ID, name, and state.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Teamwork returned the project.}
+        - {id: notFound, goName: NotFound, description: The project is absent or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Teamwork conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Teamwork returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local project ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample project is returned.
+          output: {id: "123", name: "Launch", status: active}
+    - name: createProject
+      goName: CreateProject
+      inputType: CreateProjectInput
+      outputType: ProjectID
+      kind: mutation
+      description: Create a named project through Teamwork's V1 API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Teamwork created the project.}
+        - {id: providerRejected, goName: ProviderRejected, description: Teamwork conclusively rejected the create., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The create could not be confirmed after the send cap., optional: true}
+        - {id: defect, goName: Defect, description: Local project name or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample project was created.
+          output: {id: "123"}
+    - name: updateProject
+      goName: UpdateProject
+      inputType: UpdateProjectInput
+      outputType: ProjectID
+      kind: mutation
+      description: Replace a project's name through Teamwork's V1 API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Teamwork updated the project.}
+        - {id: notFound, goName: NotFound, description: The project is absent or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Teamwork conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Teamwork returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local project input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample project was updated.
+          output: {id: "123"}
     - name: listTasks
       goName: ListTasks
       inputType: ListTasksInput

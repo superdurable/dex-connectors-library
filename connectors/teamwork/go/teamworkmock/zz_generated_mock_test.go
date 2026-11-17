@@ -16,6 +16,16 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listProjects/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[teamwork.ProjectPage](`{"projects":[{"id":"123","name":"Launch","status":"active"}],"page":1}`)
+			return err
+		}},
+		{name: "getProject/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[teamwork.ProjectSummary](`{"id":"123","name":"Launch","status":"active"}`)
+			return err
+		}},
+		{name: "createProject/createdDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[teamwork.ProjectID](`{"id":"123"}`); return err }},
+		{name: "updateProject/updatedDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[teamwork.ProjectID](`{"id":"123"}`); return err }},
 		{name: "listTasks/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[teamwork.TaskPage](`{"tasks":[{"id":"12345","name":"Review launch","status":"pending"}],"page":1}`)
 			return err
@@ -46,6 +56,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
+		t.Errorf("listProjects mock has another definition")
+	}
+	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
+		t.Errorf("getProject mock has another definition")
+	}
+	if mock.CreateProject().Definition().Operation.OperationID != "createProject" {
+		t.Errorf("createProject mock has another definition")
+	}
+	if mock.UpdateProject().Definition().Operation.OperationID != "updateProject" {
+		t.Errorf("updateProject mock has another definition")
+	}
 	if mock.ListTasks().Definition().Operation.OperationID != "listTasks" {
 		t.Errorf("listTasks mock has another definition")
 	}

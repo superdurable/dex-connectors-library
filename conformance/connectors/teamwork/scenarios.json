@@ -1510,6 +1510,1255 @@
       },
       "name": "deleteTask-transportFailure",
       "operation": "deleteTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "8a26d599-7e88-4c65-9373-60e698d62ee9",
+      "exchanges": [
+        {
+          "body": "{\"projects\":[{\"id\":123,\"name\":\"Launch\",\"status\":\"active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/projects.json",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "page": 2,
+          "projects": [
+            {
+              "id": "123",
+              "name": "Launch",
+              "status": "active"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-success",
+      "operation": "listProjects"
+    },
+    {
+      "attempts": 1,
+      "callId": "8a26d599-7e88-4c65-9373-60e698d62ee9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/projects.json",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "page": 0,
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-providerRejected",
+      "operation": "listProjects"
+    },
+    {
+      "attempts": 1,
+      "callId": "8a26d599-7e88-4c65-9373-60e698d62ee9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/projects.json",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-invalidResponse",
+      "operation": "listProjects"
+    },
+    {
+      "attempts": 1,
+      "callId": "8a26d599-7e88-4c65-9373-60e698d62ee9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 0,
+          "projects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1,
+        "pageSize": 3
+      },
+      "name": "listProjects-defect",
+      "operation": "listProjects"
+    },
+    {
+      "attempts": 1,
+      "callId": "8a26d599-7e88-4c65-9373-60e698d62ee9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/projects.json",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-rateLimit",
+      "operation": "listProjects"
+    },
+    {
+      "attempts": 1,
+      "callId": "8a26d599-7e88-4c65-9373-60e698d62ee9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/projects.json",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-serverFailure",
+      "operation": "listProjects"
+    },
+    {
+      "attempts": 1,
+      "callId": "8a26d599-7e88-4c65-9373-60e698d62ee9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/projects.json",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-transportFailure",
+      "operation": "listProjects"
+    },
+    {
+      "attempts": 1,
+      "callId": "04ed99e5-6bbd-4e61-87d1-b73b31db67a9",
+      "exchanges": [
+        {
+          "body": "{\"project\":{\"id\":123,\"name\":\"Launch\",\"status\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/projects/123.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "123",
+          "name": "Launch",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "123"
+      },
+      "name": "getProject-success",
+      "operation": "getProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "04ed99e5-6bbd-4e61-87d1-b73b31db67a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/projects/123.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "123"
+      },
+      "name": "getProject-notFound",
+      "operation": "getProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "04ed99e5-6bbd-4e61-87d1-b73b31db67a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/projects/123.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "123"
+      },
+      "name": "getProject-invalidResponse",
+      "operation": "getProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "04ed99e5-6bbd-4e61-87d1-b73b31db67a9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": ""
+      },
+      "name": "getProject-defect",
+      "operation": "getProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "04ed99e5-6bbd-4e61-87d1-b73b31db67a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/projects/123.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "123"
+      },
+      "name": "getProject-rateLimit",
+      "operation": "getProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "04ed99e5-6bbd-4e61-87d1-b73b31db67a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/projects/123.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "123"
+      },
+      "name": "getProject-serverFailure",
+      "operation": "getProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "04ed99e5-6bbd-4e61-87d1-b73b31db67a9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/api/v3/projects/123.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "123"
+      },
+      "name": "getProject-transportFailure",
+      "operation": "getProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"123\",\"STATUS\":\"Created\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+      "input": {
+        "name": "Launch"
+      },
+      "name": "createProject-success",
+      "operation": "createProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+      "input": {
+        "name": "Launch"
+      },
+      "name": "createProject-providerRejected",
+      "operation": "createProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+      "input": {
+        "name": ""
+      },
+      "name": "createProject-defect",
+      "operation": "createProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+      "input": {
+        "name": "Launch"
+      },
+      "name": "createProject-rateLimit",
+      "operation": "createProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+      "input": {
+        "name": "Launch"
+      },
+      "name": "createProject-serverFailure",
+      "operation": "createProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+      "input": {
+        "name": "Launch"
+      },
+      "name": "createProject-transportFailure",
+      "operation": "createProject"
+    },
+    {
+      "attempts": 3,
+      "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+      "input": {
+        "name": "Launch"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createProject-uncertain-after-cap",
+      "operation": "createProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "exchanges": [
+        {
+          "body": "{\"STATUS\":\"OK\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch 2"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "input": {
+        "name": "Launch 2",
+        "projectId": "123"
+      },
+      "name": "updateProject-success",
+      "operation": "updateProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch 2"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "input": {
+        "name": "Launch 2",
+        "projectId": "123"
+      },
+      "name": "updateProject-notFound",
+      "operation": "updateProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch 2"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "input": {
+        "name": "Launch 2",
+        "projectId": "123"
+      },
+      "name": "updateProject-invalidResponse",
+      "operation": "updateProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "input": {
+        "name": "Launch 2",
+        "projectId": ""
+      },
+      "name": "updateProject-defect",
+      "operation": "updateProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch 2"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "input": {
+        "name": "Launch 2",
+        "projectId": "123"
+      },
+      "name": "updateProject-rateLimit",
+      "operation": "updateProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch 2"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "input": {
+        "name": "Launch 2",
+        "projectId": "123"
+      },
+      "name": "updateProject-serverFailure",
+      "operation": "updateProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch 2"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "input": {
+        "name": "Launch 2",
+        "projectId": "123"
+      },
+      "name": "updateProject-transportFailure",
+      "operation": "updateProject"
     }
   ],
   "schemaVersion": 1
