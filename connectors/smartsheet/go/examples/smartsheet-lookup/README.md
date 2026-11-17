@@ -1,6 +1,6 @@
 # Smartsheet lookup example
 
-This Worker registers `SmartsheetLookup` with static connection name `smartsheet`. It calls `listSheets and getSheet` in one typed Flow.
+This Worker registers sheet, row, column, folder, and workspace lookup Flows plus `SmartsheetSheetCreate`, all using static connection name `smartsheet`. The row Flow calls `getRow` with `{"sheetId":1001,"rowId":3001}`, the sheet Flow creates a sheet with `{"workspaceId":4001,"name":"Meridian Planning","primaryColumnTitle":"Task"}`, the column Flow calls `getColumn` with `{"sheetId":1001,"columnId":2001}`, the folder Flow calls `getFolder` with `{"folderId":5001}`, and the workspace Flow calls `getWorkspace` with `{"workspaceId":4001}`. Choose IDs and a token with permission for the intended operation.
 
 ## Generate and run
 
@@ -19,15 +19,15 @@ mkdir -p /tmp/smartsheet-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/smartsheet/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/smartsheet/go \
-  --version v0.2.0 --tag connectors/smartsheet/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/smartsheet/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/smartsheet-release/connector-release.json \
   --digest-output /tmp/smartsheet-release/connector-release.json.sha256
-dexcli dev \
+dexcli dev -open=false \
   --flow-rendering-dir /tmp/smartsheet-lookup-fdg \
   --connector-release-override smartsheet=/tmp/smartsheet-release
 ```
 
-Configure the static `smartsheet` connection in Dex Web, then in a second terminal run `GOWORK=off go run ./examples/smartsheet-lookup` from `connectors/smartsheet` with the project environment described in [`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md). Start `SmartsheetLookup` through Dex Web's Start Flow form.
+Configure the static `smartsheet` connection in Dex Web, then in a second terminal run `GOWORK=off go run ./examples/smartsheet-lookup` from `connectors/smartsheet/go` with the project environment described in [`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md). Start either Flow through Dex Web's Start Flow form.
 
-The deterministic mapping unit test runs with `GOWORK=off go test ./examples/smartsheet-lookup/...`. CI runs `flow/workflow_mock_integration_test.go` against a real Dex Worker and Client; local integration is left to CI.
+The deterministic mapping unit test runs with `GOWORK=off go test ./examples/smartsheet-lookup/...`. CI and local verification run `flow/workflow_mock_integration_test.go` against a real Dex Worker and Client.

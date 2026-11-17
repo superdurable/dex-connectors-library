@@ -17,8 +17,12 @@ import (
 
 // Mock is a scripted shortcut connection. Script each operation through its accessor.
 type Mock struct {
-	connection shortcut.Connection
-	getStory   *connectormock.Query[shortcut.GetStoryInput, shortcut.StoryMetadata]
+	connection    shortcut.Connection
+	getStory      *connectormock.Query[shortcut.GetStoryInput, shortcut.StoryMetadata]
+	searchStories *connectormock.Query[shortcut.SearchStoriesInput, shortcut.SearchStoriesOutput]
+	createStory   *connectormock.Mutation[shortcut.CreateStoryInput, shortcut.StoryMetadata]
+	updateStory   *connectormock.Mutation[shortcut.UpdateStoryInput, shortcut.StoryMetadata]
+	deleteStory   *connectormock.Mutation[shortcut.DeleteStoryInput, shortcut.DeleteStoryOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +30,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getStory: connectormock.NewQuery[shortcut.GetStoryInput, shortcut.StoryMetadata](t, shortcut.GetStoryDefinition),
+		getStory:      connectormock.NewQuery[shortcut.GetStoryInput, shortcut.StoryMetadata](t, shortcut.GetStoryDefinition),
+		searchStories: connectormock.NewQuery[shortcut.SearchStoriesInput, shortcut.SearchStoriesOutput](t, shortcut.SearchStoriesDefinition),
+		createStory:   connectormock.NewMutation[shortcut.CreateStoryInput, shortcut.StoryMetadata](t, shortcut.CreateStoryDefinition),
+		updateStory:   connectormock.NewMutation[shortcut.UpdateStoryInput, shortcut.StoryMetadata](t, shortcut.UpdateStoryDefinition),
+		deleteStory:   connectormock.NewMutation[shortcut.DeleteStoryInput, shortcut.DeleteStoryOutput](t, shortcut.DeleteStoryDefinition),
 	}
 	mock.getStory.Default(GetStoryDefault())
+	mock.searchStories.Default(SearchStoriesDefault())
+	mock.createStory.Default(CreateStoryDefault())
+	mock.updateStory.Default(UpdateStoryDefault())
+	mock.deleteStory.Default(DeleteStoryDefault())
 	connection, err := shortcut.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "shortcut", Name: connectionName})
 	if err != nil {
 		t.Fatalf("shortcut mock connection: %v", err)
@@ -45,10 +57,42 @@ func (mock *Mock) GetStory() *connectormock.Query[shortcut.GetStoryInput, shortc
 	return mock.getStory
 }
 
+// SearchStories returns the searchStories script.
+func (mock *Mock) SearchStories() *connectormock.Query[shortcut.SearchStoriesInput, shortcut.SearchStoriesOutput] {
+	return mock.searchStories
+}
+
+// CreateStory returns the createStory script.
+func (mock *Mock) CreateStory() *connectormock.Mutation[shortcut.CreateStoryInput, shortcut.StoryMetadata] {
+	return mock.createStory
+}
+
+// UpdateStory returns the updateStory script.
+func (mock *Mock) UpdateStory() *connectormock.Mutation[shortcut.UpdateStoryInput, shortcut.StoryMetadata] {
+	return mock.updateStory
+}
+
+// DeleteStory returns the deleteStory script.
+func (mock *Mock) DeleteStory() *connectormock.Mutation[shortcut.DeleteStoryInput, shortcut.DeleteStoryOutput] {
+	return mock.deleteStory
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetStory() sdkgo.Query[shortcut.GetStoryInput, shortcut.StoryMetadata] {
 	return operations.mock.getStory
+}
+func (operations mockOperations) SearchStories() sdkgo.Query[shortcut.SearchStoriesInput, shortcut.SearchStoriesOutput] {
+	return operations.mock.searchStories
+}
+func (operations mockOperations) CreateStory() sdkgo.Mutation[shortcut.CreateStoryInput, shortcut.StoryMetadata] {
+	return operations.mock.createStory
+}
+func (operations mockOperations) UpdateStory() sdkgo.Mutation[shortcut.UpdateStoryInput, shortcut.StoryMetadata] {
+	return operations.mock.updateStory
+}
+func (operations mockOperations) DeleteStory() sdkgo.Mutation[shortcut.DeleteStoryInput, shortcut.DeleteStoryOutput] {
+	return operations.mock.deleteStory
 }
 
 // GetStoryFound selects the found branch: Shortcut returned the story.
@@ -95,3 +139,152 @@ func GetStoryStoryMissing() connectormock.Case[shortcut.StoryMetadata] {
 
 // GetStoryDefault is the manifest default, foundDefault, which New installs.
 func GetStoryDefault() connectormock.Case[shortcut.StoryMetadata] { return GetStoryFoundDefault() }
+
+// SearchStoriesFound selects the found branch: Shortcut returned a story search page.
+func SearchStoriesFound(value shortcut.SearchStoriesOutput, failure *sdkgo.Failure) connectormock.Case[shortcut.SearchStoriesOutput] {
+	return connectormock.Branch(shortcut.SearchStoriesBranchFound, value, failure)
+}
+
+// SearchStoriesProviderRejected selects the providerRejected branch: Shortcut rejected the search.
+func SearchStoriesProviderRejected(value shortcut.SearchStoriesOutput, failure *sdkgo.Failure) connectormock.Case[shortcut.SearchStoriesOutput] {
+	return connectormock.Branch(shortcut.SearchStoriesBranchProviderRejected, value, failure)
+}
+
+// SearchStoriesInvalidResponse selects the invalidResponse branch: Shortcut returned malformed search JSON.
+func SearchStoriesInvalidResponse(value shortcut.SearchStoriesOutput, failure *sdkgo.Failure) connectormock.Case[shortcut.SearchStoriesOutput] {
+	return connectormock.Branch(shortcut.SearchStoriesBranchInvalidResponse, value, failure)
+}
+
+// SearchStoriesDefect selects the defect branch: Search input or credentials are invalid.
+func SearchStoriesDefect(value shortcut.SearchStoriesOutput, failure *sdkgo.Failure) connectormock.Case[shortcut.SearchStoriesOutput] {
+	return connectormock.Branch(shortcut.SearchStoriesBranchDefect, value, failure)
+}
+
+// SearchStoriesRetry asks Dex to retry the searchStories Step, after the delay when it is positive.
+func SearchStoriesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[shortcut.SearchStoriesOutput] {
+	return connectormock.Retry[shortcut.SearchStoriesOutput](failure, after)
+}
+
+// SearchStoriesFoundDefault is the manifest mock foundDefault: One matching story is returned.
+func SearchStoriesFoundDefault() connectormock.Case[shortcut.SearchStoriesOutput] {
+	value := connectormock.MustDecodeOutput[shortcut.SearchStoriesOutput](`{"stories":[{"storyId":"12345","name":"Example story","storyType":"feature","workflowStateId":"678","archived":false}],"total":1}`)
+	return connectormock.Branch(shortcut.SearchStoriesBranchFound, value, nil)
+}
+
+// SearchStoriesDefault is the manifest default, foundDefault, which New installs.
+func SearchStoriesDefault() connectormock.Case[shortcut.SearchStoriesOutput] {
+	return SearchStoriesFoundDefault()
+}
+
+// CreateStoryCreated selects the created branch: Shortcut created the story.
+func CreateStoryCreated(value shortcut.StoryMetadata, failure *sdkgo.Failure) connectormock.Case[shortcut.StoryMetadata] {
+	return connectormock.Branch(shortcut.CreateStoryBranchCreated, value, failure)
+}
+
+// CreateStoryProviderRejected selects the providerRejected branch: Shortcut rejected the create request.
+func CreateStoryProviderRejected(value shortcut.StoryMetadata, failure *sdkgo.Failure) connectormock.Case[shortcut.StoryMetadata] {
+	return connectormock.Branch(shortcut.CreateStoryBranchProviderRejected, value, failure)
+}
+
+// CreateStoryUncertain returns an uncertain createStory outcome.
+func CreateStoryUncertain(value shortcut.StoryMetadata, failure sdkgo.Failure) connectormock.Case[shortcut.StoryMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateStoryDefect selects the defect branch: Story input or credentials are invalid.
+func CreateStoryDefect(value shortcut.StoryMetadata, failure *sdkgo.Failure) connectormock.Case[shortcut.StoryMetadata] {
+	return connectormock.Branch(shortcut.CreateStoryBranchDefect, value, failure)
+}
+
+// CreateStoryRetry asks Dex to retry the createStory Step, after the delay when it is positive.
+func CreateStoryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[shortcut.StoryMetadata] {
+	return connectormock.Retry[shortcut.StoryMetadata](failure, after)
+}
+
+// CreateStoryCreatedDefault is the manifest mock createdDefault: One example story is created.
+func CreateStoryCreatedDefault() connectormock.Case[shortcut.StoryMetadata] {
+	value := connectormock.MustDecodeOutput[shortcut.StoryMetadata](`{"storyId":"12345","name":"Example story","storyType":"feature","workflowStateId":"678","archived":false}`)
+	return connectormock.Branch(shortcut.CreateStoryBranchCreated, value, nil)
+}
+
+// CreateStoryDefault is the manifest default, createdDefault, which New installs.
+func CreateStoryDefault() connectormock.Case[shortcut.StoryMetadata] {
+	return CreateStoryCreatedDefault()
+}
+
+// UpdateStoryUpdated selects the updated branch: Shortcut updated the story.
+func UpdateStoryUpdated(value shortcut.StoryMetadata, failure *sdkgo.Failure) connectormock.Case[shortcut.StoryMetadata] {
+	return connectormock.Branch(shortcut.UpdateStoryBranchUpdated, value, failure)
+}
+
+// UpdateStoryNotFound selects the notFound branch: Shortcut did not find the story.
+func UpdateStoryNotFound(value shortcut.StoryMetadata, failure *sdkgo.Failure) connectormock.Case[shortcut.StoryMetadata] {
+	return connectormock.Branch(shortcut.UpdateStoryBranchNotFound, value, failure)
+}
+
+// UpdateStoryProviderRejected selects the providerRejected branch: Shortcut rejected the update.
+func UpdateStoryProviderRejected(value shortcut.StoryMetadata, failure *sdkgo.Failure) connectormock.Case[shortcut.StoryMetadata] {
+	return connectormock.Branch(shortcut.UpdateStoryBranchProviderRejected, value, failure)
+}
+
+// UpdateStoryInvalidResponse selects the invalidResponse branch: Shortcut returned malformed story JSON.
+func UpdateStoryInvalidResponse(value shortcut.StoryMetadata, failure *sdkgo.Failure) connectormock.Case[shortcut.StoryMetadata] {
+	return connectormock.Branch(shortcut.UpdateStoryBranchInvalidResponse, value, failure)
+}
+
+// UpdateStoryDefect selects the defect branch: Story input or credentials are invalid.
+func UpdateStoryDefect(value shortcut.StoryMetadata, failure *sdkgo.Failure) connectormock.Case[shortcut.StoryMetadata] {
+	return connectormock.Branch(shortcut.UpdateStoryBranchDefect, value, failure)
+}
+
+// UpdateStoryRetry asks Dex to retry the updateStory Step, after the delay when it is positive.
+func UpdateStoryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[shortcut.StoryMetadata] {
+	return connectormock.Retry[shortcut.StoryMetadata](failure, after)
+}
+
+// UpdateStoryUpdatedDefault is the manifest mock updatedDefault: One example story is updated.
+func UpdateStoryUpdatedDefault() connectormock.Case[shortcut.StoryMetadata] {
+	value := connectormock.MustDecodeOutput[shortcut.StoryMetadata](`{"storyId":"12345","name":"Example story","storyType":"feature","workflowStateId":"678","archived":false}`)
+	return connectormock.Branch(shortcut.UpdateStoryBranchUpdated, value, nil)
+}
+
+// UpdateStoryDefault is the manifest default, updatedDefault, which New installs.
+func UpdateStoryDefault() connectormock.Case[shortcut.StoryMetadata] {
+	return UpdateStoryUpdatedDefault()
+}
+
+// DeleteStoryDeleted selects the deleted branch: Shortcut deleted the story.
+func DeleteStoryDeleted(value shortcut.DeleteStoryOutput, failure *sdkgo.Failure) connectormock.Case[shortcut.DeleteStoryOutput] {
+	return connectormock.Branch(shortcut.DeleteStoryBranchDeleted, value, failure)
+}
+
+// DeleteStoryNotFound selects the notFound branch: Shortcut did not find the story.
+func DeleteStoryNotFound(value shortcut.DeleteStoryOutput, failure *sdkgo.Failure) connectormock.Case[shortcut.DeleteStoryOutput] {
+	return connectormock.Branch(shortcut.DeleteStoryBranchNotFound, value, failure)
+}
+
+// DeleteStoryProviderRejected selects the providerRejected branch: Shortcut rejected the delete.
+func DeleteStoryProviderRejected(value shortcut.DeleteStoryOutput, failure *sdkgo.Failure) connectormock.Case[shortcut.DeleteStoryOutput] {
+	return connectormock.Branch(shortcut.DeleteStoryBranchProviderRejected, value, failure)
+}
+
+// DeleteStoryDefect selects the defect branch: Story ID or credentials are invalid.
+func DeleteStoryDefect(value shortcut.DeleteStoryOutput, failure *sdkgo.Failure) connectormock.Case[shortcut.DeleteStoryOutput] {
+	return connectormock.Branch(shortcut.DeleteStoryBranchDefect, value, failure)
+}
+
+// DeleteStoryRetry asks Dex to retry the deleteStory Step, after the delay when it is positive.
+func DeleteStoryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[shortcut.DeleteStoryOutput] {
+	return connectormock.Retry[shortcut.DeleteStoryOutput](failure, after)
+}
+
+// DeleteStoryDeletedDefault is the manifest mock deletedDefault: One example story is deleted.
+func DeleteStoryDeletedDefault() connectormock.Case[shortcut.DeleteStoryOutput] {
+	value := connectormock.MustDecodeOutput[shortcut.DeleteStoryOutput](`{"storyId":"12345"}`)
+	return connectormock.Branch(shortcut.DeleteStoryBranchDeleted, value, nil)
+}
+
+// DeleteStoryDefault is the manifest default, deletedDefault, which New installs.
+func DeleteStoryDefault() connectormock.Case[shortcut.DeleteStoryOutput] {
+	return DeleteStoryDeletedDefault()
+}
