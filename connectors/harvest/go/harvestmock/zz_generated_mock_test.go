@@ -75,6 +75,23 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "deleteTask/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedTask](`{"id":8001}`); return err }},
+		{name: "listInvoices/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.InvoicePage](`{"invoices":[{"id":9001,"clientId":2001,"number":"INV-1001","subject":"Planning","state":"draft","amount":100}]}`)
+			return err
+		}},
+		{name: "getInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.InvoiceRecord](`{"id":9001,"clientId":2001,"number":"INV-1001","subject":"Planning","state":"draft","amount":100}`)
+			return err
+		}},
+		{name: "createInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.InvoiceRecord](`{"id":9001,"clientId":2001,"number":"INV-1001","subject":"Planning","state":"draft","amount":100}`)
+			return err
+		}},
+		{name: "updateInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.InvoiceRecord](`{"id":9001,"clientId":2001,"number":"INV-1001","subject":"Planning","state":"draft","amount":100}`)
+			return err
+		}},
+		{name: "deleteInvoice/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedInvoice](`{"id":9001}`); return err }},
 		{name: "listUsers/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[harvest.UserPage](`{"users":[{"id":6001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com","isActive":true}]}`)
 			return err
@@ -205,6 +222,21 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteTask().Definition().Operation.OperationID != "deleteTask" {
 		t.Errorf("deleteTask mock has another definition")
+	}
+	if mock.ListInvoices().Definition().Operation.OperationID != "listInvoices" {
+		t.Errorf("listInvoices mock has another definition")
+	}
+	if mock.GetInvoice().Definition().Operation.OperationID != "getInvoice" {
+		t.Errorf("getInvoice mock has another definition")
+	}
+	if mock.CreateInvoice().Definition().Operation.OperationID != "createInvoice" {
+		t.Errorf("createInvoice mock has another definition")
+	}
+	if mock.UpdateInvoice().Definition().Operation.OperationID != "updateInvoice" {
+		t.Errorf("updateInvoice mock has another definition")
+	}
+	if mock.DeleteInvoice().Definition().Operation.OperationID != "deleteInvoice" {
+		t.Errorf("deleteInvoice mock has another definition")
 	}
 	if mock.ListUsers().Definition().Operation.OperationID != "listUsers" {
 		t.Errorf("listUsers mock has another definition")

@@ -24,6 +24,7 @@ const clientStepType = "ReadHarvestClients"
 const contactStepType = "ReadHarvestContacts"
 const companyStepType = "ReadHarvestCompany"
 const taskStepType = "ReadHarvestTasks"
+const invoiceStepType = "ReadHarvestInvoices"
 
 // Request is the typed Start Flow input.
 type Request struct {
@@ -33,8 +34,8 @@ type Request struct {
 
 // Outcome is the Flow completion output.
 type Outcome struct {
-	// Tasks contains the Harvest tasks read by the Flow.
-	Tasks []harvest.TaskRecord `json:"tasks"`
+	// Invoices contains the Harvest invoices read by the Flow.
+	Invoices []harvest.InvoiceRecord `json:"invoices"`
 }
 
 // Flow reads the first and second provider resources.
@@ -87,7 +88,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(afterContacts{}),
 		dex.DefineStep(harvest.NewGetCompanyStep(harvest.GetCompanyStepConfig[harvest.ListContactsResult]{StepType: companyStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read company settings."}, MapToOperationInput: MapToGetCompanyInput, Found: sdkgo.GoTo(afterCompany{})})),
 		dex.DefineStep(afterCompany{}),
-		dex.DefineStep(harvest.NewListTasksStep(harvest.ListTasksStepConfig[harvest.GetCompanyResult]{StepType: taskStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read Harvest tasks."}, MapToOperationInput: MapToListTasksInput, Listed: sdkgo.GoTo(completeLookup{})})),
+		dex.DefineStep(harvest.NewListTasksStep(harvest.ListTasksStepConfig[harvest.GetCompanyResult]{StepType: taskStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read Harvest tasks."}, MapToOperationInput: MapToListTasksInput, Listed: sdkgo.GoTo(afterTasks{})})),
+		dex.DefineStep(afterTasks{}),
+		dex.DefineStep(harvest.NewListInvoicesStep(harvest.ListInvoicesStepConfig[harvest.ListTasksResult]{StepType: invoiceStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "harvest-lookup", GroupLabel: "Harvest lookup", Explanation: "Read Harvest invoices."}, MapToOperationInput: MapToListInvoicesInput, Listed: sdkgo.GoTo(completeLookup{})})),
 		dex.DefineStep(completeLookup{}),
 	}
 }
@@ -144,6 +147,11 @@ func MapToGetCompanyInput(_ harvest.ListContactsResult) harvest.GetCompanyInput 
 // MapToListTasksInput selects one bounded task page.
 func MapToListTasksInput(_ harvest.GetCompanyResult) harvest.ListTasksInput {
 	return harvest.ListTasksInput{PerPage: 10}
+}
+
+// MapToListInvoicesInput selects one bounded invoice page.
+func MapToListInvoicesInput(_ harvest.ListTasksResult) harvest.ListInvoicesInput {
+	return harvest.ListInvoicesInput{PerPage: 10}
 }
 
 // dex:group group-id:harvest-lookup group-label:"Harvest lookup"
@@ -247,12 +255,23 @@ func (afterCompany) Execute(_ dex.Context, result harvest.GetCompanyResult) (*de
 }
 
 // dex:group group-id:harvest-lookup group-label:"Harvest lookup"
-// dex:explanation text:"Complete the Flow with Harvest data."
-type completeLookup struct {
+// dex:explanation text:"Read invoices after the task page."
+type afterTasks struct {
 	dex.StepDefaultsNoWaitFor[harvest.ListTasksResult]
 }
 
+func (afterTasks) GetStepType() string { return "AfterHarvestTasks" }
+func (afterTasks) Execute(_ dex.Context, result harvest.ListTasksResult) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[harvest.ListTasksResult](invoiceStepType), result), nil
+}
+
+// dex:group group-id:harvest-lookup group-label:"Harvest lookup"
+// dex:explanation text:"Complete the Flow with Harvest data."
+type completeLookup struct {
+	dex.StepDefaultsNoWaitFor[harvest.ListInvoicesResult]
+}
+
 func (completeLookup) GetStepType() string { return "CompleteHarvestLookup" }
-func (completeLookup) Execute(_ dex.Context, result harvest.ListTasksResult) (*dex.StepDecision, error) {
-	return dex.GracefulComplete(Outcome{Tasks: result.Value.Tasks}), nil
+func (completeLookup) Execute(_ dex.Context, result harvest.ListInvoicesResult) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(Outcome{Invoices: result.Value.Invoices}), nil
 }

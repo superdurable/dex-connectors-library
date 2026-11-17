@@ -35,6 +35,11 @@ type Mock struct {
 	createTask                       *connectormock.Mutation[harvest.CreateTaskInput, harvest.TaskRecord]
 	updateTask                       *connectormock.Mutation[harvest.UpdateTaskInput, harvest.TaskRecord]
 	deleteTask                       *connectormock.Mutation[harvest.DeleteTaskInput, harvest.DeletedTask]
+	listInvoices                     *connectormock.Query[harvest.ListInvoicesInput, harvest.InvoicePage]
+	getInvoice                       *connectormock.Query[harvest.GetInvoiceInput, harvest.InvoiceRecord]
+	createInvoice                    *connectormock.Mutation[harvest.CreateInvoiceInput, harvest.InvoiceRecord]
+	updateInvoice                    *connectormock.Mutation[harvest.UpdateInvoiceInput, harvest.InvoiceRecord]
+	deleteInvoice                    *connectormock.Mutation[harvest.DeleteInvoiceInput, harvest.DeletedInvoice]
 	listUsers                        *connectormock.Query[harvest.ListUsersInput, harvest.UserPage]
 	getUser                          *connectormock.Query[harvest.GetUserInput, harvest.UserRecord]
 	getCurrentUser                   *connectormock.Query[harvest.GetCurrentUserInput, harvest.UserRecord]
@@ -78,6 +83,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		createTask:                       connectormock.NewMutation[harvest.CreateTaskInput, harvest.TaskRecord](t, harvest.CreateTaskDefinition),
 		updateTask:                       connectormock.NewMutation[harvest.UpdateTaskInput, harvest.TaskRecord](t, harvest.UpdateTaskDefinition),
 		deleteTask:                       connectormock.NewMutation[harvest.DeleteTaskInput, harvest.DeletedTask](t, harvest.DeleteTaskDefinition),
+		listInvoices:                     connectormock.NewQuery[harvest.ListInvoicesInput, harvest.InvoicePage](t, harvest.ListInvoicesDefinition),
+		getInvoice:                       connectormock.NewQuery[harvest.GetInvoiceInput, harvest.InvoiceRecord](t, harvest.GetInvoiceDefinition),
+		createInvoice:                    connectormock.NewMutation[harvest.CreateInvoiceInput, harvest.InvoiceRecord](t, harvest.CreateInvoiceDefinition),
+		updateInvoice:                    connectormock.NewMutation[harvest.UpdateInvoiceInput, harvest.InvoiceRecord](t, harvest.UpdateInvoiceDefinition),
+		deleteInvoice:                    connectormock.NewMutation[harvest.DeleteInvoiceInput, harvest.DeletedInvoice](t, harvest.DeleteInvoiceDefinition),
 		listUsers:                        connectormock.NewQuery[harvest.ListUsersInput, harvest.UserPage](t, harvest.ListUsersDefinition),
 		getUser:                          connectormock.NewQuery[harvest.GetUserInput, harvest.UserRecord](t, harvest.GetUserDefinition),
 		getCurrentUser:                   connectormock.NewQuery[harvest.GetCurrentUserInput, harvest.UserRecord](t, harvest.GetCurrentUserDefinition),
@@ -115,6 +125,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createTask.Default(CreateTaskDefault())
 	mock.updateTask.Default(UpdateTaskDefault())
 	mock.deleteTask.Default(DeleteTaskDefault())
+	mock.listInvoices.Default(ListInvoicesDefault())
+	mock.getInvoice.Default(GetInvoiceDefault())
+	mock.createInvoice.Default(CreateInvoiceDefault())
+	mock.updateInvoice.Default(UpdateInvoiceDefault())
+	mock.deleteInvoice.Default(DeleteInvoiceDefault())
 	mock.listUsers.Default(ListUsersDefault())
 	mock.getUser.Default(GetUserDefault())
 	mock.getCurrentUser.Default(GetCurrentUserDefault())
@@ -228,6 +243,31 @@ func (mock *Mock) UpdateTask() *connectormock.Mutation[harvest.UpdateTaskInput, 
 // DeleteTask returns the deleteTask script.
 func (mock *Mock) DeleteTask() *connectormock.Mutation[harvest.DeleteTaskInput, harvest.DeletedTask] {
 	return mock.deleteTask
+}
+
+// ListInvoices returns the listInvoices script.
+func (mock *Mock) ListInvoices() *connectormock.Query[harvest.ListInvoicesInput, harvest.InvoicePage] {
+	return mock.listInvoices
+}
+
+// GetInvoice returns the getInvoice script.
+func (mock *Mock) GetInvoice() *connectormock.Query[harvest.GetInvoiceInput, harvest.InvoiceRecord] {
+	return mock.getInvoice
+}
+
+// CreateInvoice returns the createInvoice script.
+func (mock *Mock) CreateInvoice() *connectormock.Mutation[harvest.CreateInvoiceInput, harvest.InvoiceRecord] {
+	return mock.createInvoice
+}
+
+// UpdateInvoice returns the updateInvoice script.
+func (mock *Mock) UpdateInvoice() *connectormock.Mutation[harvest.UpdateInvoiceInput, harvest.InvoiceRecord] {
+	return mock.updateInvoice
+}
+
+// DeleteInvoice returns the deleteInvoice script.
+func (mock *Mock) DeleteInvoice() *connectormock.Mutation[harvest.DeleteInvoiceInput, harvest.DeletedInvoice] {
+	return mock.deleteInvoice
 }
 
 // ListUsers returns the listUsers script.
@@ -377,6 +417,21 @@ func (operations mockOperations) UpdateTask() sdkgo.Mutation[harvest.UpdateTaskI
 }
 func (operations mockOperations) DeleteTask() sdkgo.Mutation[harvest.DeleteTaskInput, harvest.DeletedTask] {
 	return operations.mock.deleteTask
+}
+func (operations mockOperations) ListInvoices() sdkgo.Query[harvest.ListInvoicesInput, harvest.InvoicePage] {
+	return operations.mock.listInvoices
+}
+func (operations mockOperations) GetInvoice() sdkgo.Query[harvest.GetInvoiceInput, harvest.InvoiceRecord] {
+	return operations.mock.getInvoice
+}
+func (operations mockOperations) CreateInvoice() sdkgo.Mutation[harvest.CreateInvoiceInput, harvest.InvoiceRecord] {
+	return operations.mock.createInvoice
+}
+func (operations mockOperations) UpdateInvoice() sdkgo.Mutation[harvest.UpdateInvoiceInput, harvest.InvoiceRecord] {
+	return operations.mock.updateInvoice
+}
+func (operations mockOperations) DeleteInvoice() sdkgo.Mutation[harvest.DeleteInvoiceInput, harvest.DeletedInvoice] {
+	return operations.mock.deleteInvoice
 }
 func (operations mockOperations) ListUsers() sdkgo.Query[harvest.ListUsersInput, harvest.UserPage] {
 	return operations.mock.listUsers
@@ -1039,6 +1094,189 @@ func DeleteTaskDefaultAnswer() connectormock.Case[harvest.DeletedTask] {
 
 // DeleteTaskDefault is the manifest default, defaultAnswer, which New installs.
 func DeleteTaskDefault() connectormock.Case[harvest.DeletedTask] { return DeleteTaskDefaultAnswer() }
+
+// ListInvoicesListed selects the listed branch: Harvest confirmed the invoice result.
+func ListInvoicesListed(value harvest.InvoicePage, failure *sdkgo.Failure) connectormock.Case[harvest.InvoicePage] {
+	return connectormock.Branch(harvest.ListInvoicesBranchListed, value, failure)
+}
+
+// ListInvoicesProviderRejected selects the providerRejected branch: Harvest rejected the invoice operation.
+func ListInvoicesProviderRejected(value harvest.InvoicePage, failure *sdkgo.Failure) connectormock.Case[harvest.InvoicePage] {
+	return connectormock.Branch(harvest.ListInvoicesBranchProviderRejected, value, failure)
+}
+
+// ListInvoicesInvalidResponse selects the invalidResponse branch: Harvest returned unusable JSON.
+func ListInvoicesInvalidResponse(value harvest.InvoicePage, failure *sdkgo.Failure) connectormock.Case[harvest.InvoicePage] {
+	return connectormock.Branch(harvest.ListInvoicesBranchInvalidResponse, value, failure)
+}
+
+// ListInvoicesDefect selects the defect branch: Local input or credentials are invalid.
+func ListInvoicesDefect(value harvest.InvoicePage, failure *sdkgo.Failure) connectormock.Case[harvest.InvoicePage] {
+	return connectormock.Branch(harvest.ListInvoicesBranchDefect, value, failure)
+}
+
+// ListInvoicesRetry asks Dex to retry the listInvoices Step, after the delay when it is positive.
+func ListInvoicesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.InvoicePage] {
+	return connectormock.Retry[harvest.InvoicePage](failure, after)
+}
+
+// ListInvoicesDefaultAnswer is the manifest mock defaultAnswer: A Meridian invoice result.
+func ListInvoicesDefaultAnswer() connectormock.Case[harvest.InvoicePage] {
+	value := connectormock.MustDecodeOutput[harvest.InvoicePage](`{"invoices":[{"id":9001,"clientId":2001,"number":"INV-1001","subject":"Planning","state":"draft","amount":100}]}`)
+	return connectormock.Branch(harvest.ListInvoicesBranchListed, value, nil)
+}
+
+// ListInvoicesDefault is the manifest default, defaultAnswer, which New installs.
+func ListInvoicesDefault() connectormock.Case[harvest.InvoicePage] {
+	return ListInvoicesDefaultAnswer()
+}
+
+// GetInvoiceFound selects the found branch: Harvest confirmed the invoice result.
+func GetInvoiceFound(value harvest.InvoiceRecord, failure *sdkgo.Failure) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Branch(harvest.GetInvoiceBranchFound, value, failure)
+}
+
+// GetInvoiceNotFound selects the notFound branch: The invoice ID does not exist.
+func GetInvoiceNotFound(value harvest.InvoiceRecord, failure *sdkgo.Failure) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Branch(harvest.GetInvoiceBranchNotFound, value, failure)
+}
+
+// GetInvoiceProviderRejected selects the providerRejected branch: Harvest rejected the invoice operation.
+func GetInvoiceProviderRejected(value harvest.InvoiceRecord, failure *sdkgo.Failure) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Branch(harvest.GetInvoiceBranchProviderRejected, value, failure)
+}
+
+// GetInvoiceInvalidResponse selects the invalidResponse branch: Harvest returned unusable JSON.
+func GetInvoiceInvalidResponse(value harvest.InvoiceRecord, failure *sdkgo.Failure) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Branch(harvest.GetInvoiceBranchInvalidResponse, value, failure)
+}
+
+// GetInvoiceDefect selects the defect branch: Local input or credentials are invalid.
+func GetInvoiceDefect(value harvest.InvoiceRecord, failure *sdkgo.Failure) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Branch(harvest.GetInvoiceBranchDefect, value, failure)
+}
+
+// GetInvoiceRetry asks Dex to retry the getInvoice Step, after the delay when it is positive.
+func GetInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Retry[harvest.InvoiceRecord](failure, after)
+}
+
+// GetInvoiceDefaultAnswer is the manifest mock defaultAnswer: A Meridian invoice result.
+func GetInvoiceDefaultAnswer() connectormock.Case[harvest.InvoiceRecord] {
+	value := connectormock.MustDecodeOutput[harvest.InvoiceRecord](`{"id":9001,"clientId":2001,"number":"INV-1001","subject":"Planning","state":"draft","amount":100}`)
+	return connectormock.Branch(harvest.GetInvoiceBranchFound, value, nil)
+}
+
+// GetInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func GetInvoiceDefault() connectormock.Case[harvest.InvoiceRecord] { return GetInvoiceDefaultAnswer() }
+
+// CreateInvoiceCreated selects the created branch: Harvest confirmed the invoice result.
+func CreateInvoiceCreated(value harvest.InvoiceRecord, failure *sdkgo.Failure) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Branch(harvest.CreateInvoiceBranchCreated, value, failure)
+}
+
+// CreateInvoiceProviderRejected selects the providerRejected branch: Harvest rejected the invoice operation.
+func CreateInvoiceProviderRejected(value harvest.InvoiceRecord, failure *sdkgo.Failure) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Branch(harvest.CreateInvoiceBranchProviderRejected, value, failure)
+}
+
+// CreateInvoiceUncertain returns an uncertain createInvoice outcome.
+func CreateInvoiceUncertain(value harvest.InvoiceRecord, failure sdkgo.Failure) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateInvoiceDefect selects the defect branch: Local input or credentials are invalid.
+func CreateInvoiceDefect(value harvest.InvoiceRecord, failure *sdkgo.Failure) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Branch(harvest.CreateInvoiceBranchDefect, value, failure)
+}
+
+// CreateInvoiceRetry asks Dex to retry the createInvoice Step, after the delay when it is positive.
+func CreateInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Retry[harvest.InvoiceRecord](failure, after)
+}
+
+// CreateInvoiceDefaultAnswer is the manifest mock defaultAnswer: A Meridian invoice result.
+func CreateInvoiceDefaultAnswer() connectormock.Case[harvest.InvoiceRecord] {
+	value := connectormock.MustDecodeOutput[harvest.InvoiceRecord](`{"id":9001,"clientId":2001,"number":"INV-1001","subject":"Planning","state":"draft","amount":100}`)
+	return connectormock.Branch(harvest.CreateInvoiceBranchCreated, value, nil)
+}
+
+// CreateInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func CreateInvoiceDefault() connectormock.Case[harvest.InvoiceRecord] {
+	return CreateInvoiceDefaultAnswer()
+}
+
+// UpdateInvoiceUpdated selects the updated branch: Harvest confirmed the invoice result.
+func UpdateInvoiceUpdated(value harvest.InvoiceRecord, failure *sdkgo.Failure) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Branch(harvest.UpdateInvoiceBranchUpdated, value, failure)
+}
+
+// UpdateInvoiceNotFound selects the notFound branch: The invoice ID does not exist.
+func UpdateInvoiceNotFound(value harvest.InvoiceRecord, failure *sdkgo.Failure) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Branch(harvest.UpdateInvoiceBranchNotFound, value, failure)
+}
+
+// UpdateInvoiceProviderRejected selects the providerRejected branch: Harvest rejected the invoice operation.
+func UpdateInvoiceProviderRejected(value harvest.InvoiceRecord, failure *sdkgo.Failure) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Branch(harvest.UpdateInvoiceBranchProviderRejected, value, failure)
+}
+
+// UpdateInvoiceDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateInvoiceDefect(value harvest.InvoiceRecord, failure *sdkgo.Failure) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Branch(harvest.UpdateInvoiceBranchDefect, value, failure)
+}
+
+// UpdateInvoiceRetry asks Dex to retry the updateInvoice Step, after the delay when it is positive.
+func UpdateInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.InvoiceRecord] {
+	return connectormock.Retry[harvest.InvoiceRecord](failure, after)
+}
+
+// UpdateInvoiceDefaultAnswer is the manifest mock defaultAnswer: A Meridian invoice result.
+func UpdateInvoiceDefaultAnswer() connectormock.Case[harvest.InvoiceRecord] {
+	value := connectormock.MustDecodeOutput[harvest.InvoiceRecord](`{"id":9001,"clientId":2001,"number":"INV-1001","subject":"Planning","state":"draft","amount":100}`)
+	return connectormock.Branch(harvest.UpdateInvoiceBranchUpdated, value, nil)
+}
+
+// UpdateInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func UpdateInvoiceDefault() connectormock.Case[harvest.InvoiceRecord] {
+	return UpdateInvoiceDefaultAnswer()
+}
+
+// DeleteInvoiceDeleted selects the deleted branch: Harvest confirmed the invoice result.
+func DeleteInvoiceDeleted(value harvest.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedInvoice] {
+	return connectormock.Branch(harvest.DeleteInvoiceBranchDeleted, value, failure)
+}
+
+// DeleteInvoiceNotFound selects the notFound branch: The invoice ID does not exist.
+func DeleteInvoiceNotFound(value harvest.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedInvoice] {
+	return connectormock.Branch(harvest.DeleteInvoiceBranchNotFound, value, failure)
+}
+
+// DeleteInvoiceProviderRejected selects the providerRejected branch: Harvest rejected the invoice operation.
+func DeleteInvoiceProviderRejected(value harvest.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedInvoice] {
+	return connectormock.Branch(harvest.DeleteInvoiceBranchProviderRejected, value, failure)
+}
+
+// DeleteInvoiceDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteInvoiceDefect(value harvest.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedInvoice] {
+	return connectormock.Branch(harvest.DeleteInvoiceBranchDefect, value, failure)
+}
+
+// DeleteInvoiceRetry asks Dex to retry the deleteInvoice Step, after the delay when it is positive.
+func DeleteInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.DeletedInvoice] {
+	return connectormock.Retry[harvest.DeletedInvoice](failure, after)
+}
+
+// DeleteInvoiceDefaultAnswer is the manifest mock defaultAnswer: A Meridian invoice result.
+func DeleteInvoiceDefaultAnswer() connectormock.Case[harvest.DeletedInvoice] {
+	value := connectormock.MustDecodeOutput[harvest.DeletedInvoice](`{"id":9001}`)
+	return connectormock.Branch(harvest.DeleteInvoiceBranchDeleted, value, nil)
+}
+
+// DeleteInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func DeleteInvoiceDefault() connectormock.Case[harvest.DeletedInvoice] {
+	return DeleteInvoiceDefaultAnswer()
+}
 
 // ListUsersListed selects the listed branch: Harvest confirmed the user result.
 func ListUsersListed(value harvest.UserPage, failure *sdkgo.Failure) connectormock.Case[harvest.UserPage] {
