@@ -7526,6 +7526,1465 @@
       ],
       "name": "createTaskChecklist-uncertain",
       "operation": "createTaskChecklist"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "[{\"id\":27,\"checklist_id\":20,\"name\":\"Step One\",\"status\":1,\"sequence\":0}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checklists/20/checklist_items",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "items": [
+            {
+              "checklistId": "20",
+              "id": "27",
+              "name": "Step One",
+              "status": "1"
+            }
+          ],
+          "page": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "checklistId": "20",
+        "items": 10,
+        "page": 1
+      },
+      "name": "listChecklistItems-success",
+      "operation": "listChecklistItems"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checklists/20/checklist_items",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "items": [],
+          "page": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "checklistId": "20",
+        "items": 10,
+        "page": 1
+      },
+      "name": "listChecklistItems-providerRejected",
+      "operation": "listChecklistItems"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checklists/20/checklist_items",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "items": [],
+          "page": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "checklistId": "20",
+        "items": 10,
+        "page": 1
+      },
+      "name": "listChecklistItems-invalidResponse",
+      "operation": "listChecklistItems"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checklists/20/checklist_items",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "checklistId": "20",
+        "items": 10,
+        "page": 1
+      },
+      "name": "listChecklistItems-429",
+      "operation": "listChecklistItems"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checklists/20/checklist_items",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "checklistId": "20",
+        "items": 10,
+        "page": 1
+      },
+      "name": "listChecklistItems-503",
+      "operation": "listChecklistItems"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checklists/20/checklist_items",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "checklistId": "20",
+        "items": 10,
+        "page": 1
+      },
+      "name": "listChecklistItems-transport",
+      "operation": "listChecklistItems"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{\"id\":27,\"checklist_id\":20,\"name\":\"Step One\",\"status\":1,\"sequence\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checklist_items/27",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "checklistId": "20",
+          "id": "27",
+          "name": "Step One",
+          "status": "1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "checklistItemId": "27"
+      },
+      "name": "getChecklistItem-success",
+      "operation": "getChecklistItem"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checklist_items/27",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "checklistId": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "checklistItemId": "27"
+      },
+      "name": "getChecklistItem-notFound",
+      "operation": "getChecklistItem"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checklist_items/27",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "checklistId": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "checklistItemId": "27"
+      },
+      "name": "getChecklistItem-providerRejected",
+      "operation": "getChecklistItem"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checklist_items/27",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "checklistId": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "checklistItemId": "27"
+      },
+      "name": "getChecklistItem-invalidResponse",
+      "operation": "getChecklistItem"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checklist_items/27",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "checklistItemId": "27"
+      },
+      "name": "getChecklistItem-429",
+      "operation": "getChecklistItem"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checklist_items/27",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "checklistItemId": "27"
+      },
+      "name": "getChecklistItem-503",
+      "operation": "getChecklistItem"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checklist_items/27",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "checklistItemId": "27"
+      },
+      "name": "getChecklistItem-transport",
+      "operation": "getChecklistItem"
+    },
+    {
+      "callId": "177109c5-3b84-587a-bc12-eda3235a7a46",
+      "exchanges": [
+        {
+          "body": "{\"id\":27,\"checklist_id\":20,\"name\":\"Step One\",\"status\":5,\"sequence\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/checklist_items/27",
+          "requestBody": {
+            "name": "Step One",
+            "status": 5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "checklistId": "20",
+          "id": "27",
+          "name": "Step One",
+          "status": "5"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "177109c5-3b84-587a-bc12-eda3235a7a46",
+      "input": {
+        "checklistItemId": "27",
+        "name": "Step One",
+        "status": 5
+      },
+      "name": "updateChecklistItem-success",
+      "operation": "updateChecklistItem"
+    },
+    {
+      "callId": "177109c5-3b84-587a-bc12-eda3235a7a46",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/checklist_items/27",
+          "requestBody": {
+            "name": "Step One",
+            "status": 5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "checklistId": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "177109c5-3b84-587a-bc12-eda3235a7a46",
+      "input": {
+        "checklistItemId": "27",
+        "name": "Step One",
+        "status": 5
+      },
+      "name": "updateChecklistItem-notFound",
+      "operation": "updateChecklistItem"
+    },
+    {
+      "callId": "177109c5-3b84-587a-bc12-eda3235a7a46",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/checklist_items/27",
+          "requestBody": {
+            "name": "Step One",
+            "status": 5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "checklistId": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "177109c5-3b84-587a-bc12-eda3235a7a46",
+      "input": {
+        "checklistItemId": "27",
+        "name": "Step One",
+        "status": 5
+      },
+      "name": "updateChecklistItem-providerRejected",
+      "operation": "updateChecklistItem"
+    },
+    {
+      "callId": "177109c5-3b84-587a-bc12-eda3235a7a46",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/checklist_items/27",
+          "requestBody": {
+            "name": "Step One",
+            "status": 5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "checklistId": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "177109c5-3b84-587a-bc12-eda3235a7a46",
+      "input": {
+        "checklistItemId": "27",
+        "name": "Step One",
+        "status": 5
+      },
+      "name": "updateChecklistItem-invalidResponse",
+      "operation": "updateChecklistItem"
+    },
+    {
+      "callId": "177109c5-3b84-587a-bc12-eda3235a7a46",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/checklist_items/27",
+          "requestBody": {
+            "name": "Step One",
+            "status": 5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "177109c5-3b84-587a-bc12-eda3235a7a46",
+      "input": {
+        "checklistItemId": "27",
+        "name": "Step One",
+        "status": 5
+      },
+      "name": "updateChecklistItem-429",
+      "operation": "updateChecklistItem"
+    },
+    {
+      "callId": "177109c5-3b84-587a-bc12-eda3235a7a46",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/checklist_items/27",
+          "requestBody": {
+            "name": "Step One",
+            "status": 5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "177109c5-3b84-587a-bc12-eda3235a7a46",
+      "input": {
+        "checklistItemId": "27",
+        "name": "Step One",
+        "status": 5
+      },
+      "name": "updateChecklistItem-503",
+      "operation": "updateChecklistItem"
+    },
+    {
+      "callId": "177109c5-3b84-587a-bc12-eda3235a7a46",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/checklist_items/27",
+          "requestBody": {
+            "name": "Step One",
+            "status": 5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "177109c5-3b84-587a-bc12-eda3235a7a46",
+      "input": {
+        "checklistItemId": "27",
+        "name": "Step One",
+        "status": 5
+      },
+      "name": "updateChecklistItem-transport",
+      "operation": "updateChecklistItem"
+    },
+    {
+      "callId": "067dc24d-359e-5b52-91f6-7b2755fbc249",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/checklist_items/27",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "checklistItemId": "27"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "067dc24d-359e-5b52-91f6-7b2755fbc249",
+      "input": {
+        "checklistItemId": "27"
+      },
+      "name": "deleteChecklistItem-success",
+      "operation": "deleteChecklistItem"
+    },
+    {
+      "callId": "067dc24d-359e-5b52-91f6-7b2755fbc249",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/checklist_items/27",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "checklistItemId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "067dc24d-359e-5b52-91f6-7b2755fbc249",
+      "input": {
+        "checklistItemId": "27"
+      },
+      "name": "deleteChecklistItem-notFound",
+      "operation": "deleteChecklistItem"
+    },
+    {
+      "callId": "067dc24d-359e-5b52-91f6-7b2755fbc249",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/checklist_items/27",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "checklistItemId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "067dc24d-359e-5b52-91f6-7b2755fbc249",
+      "input": {
+        "checklistItemId": "27"
+      },
+      "name": "deleteChecklistItem-providerRejected",
+      "operation": "deleteChecklistItem"
+    },
+    {
+      "callId": "067dc24d-359e-5b52-91f6-7b2755fbc249",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/checklist_items/27",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "067dc24d-359e-5b52-91f6-7b2755fbc249",
+      "input": {
+        "checklistItemId": "27"
+      },
+      "name": "deleteChecklistItem-429",
+      "operation": "deleteChecklistItem"
+    },
+    {
+      "callId": "067dc24d-359e-5b52-91f6-7b2755fbc249",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/checklist_items/27",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "067dc24d-359e-5b52-91f6-7b2755fbc249",
+      "input": {
+        "checklistItemId": "27"
+      },
+      "name": "deleteChecklistItem-503",
+      "operation": "deleteChecklistItem"
+    },
+    {
+      "callId": "067dc24d-359e-5b52-91f6-7b2755fbc249",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/checklist_items/27",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "067dc24d-359e-5b52-91f6-7b2755fbc249",
+      "input": {
+        "checklistItemId": "27"
+      },
+      "name": "deleteChecklistItem-transport",
+      "operation": "deleteChecklistItem"
+    },
+    {
+      "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "exchanges": [
+        {
+          "body": "{\"id\":27,\"checklist_id\":20,\"name\":\"Step One\",\"status\":1,\"sequence\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+          "providerId": "27",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "checklistId": "20",
+          "id": "27",
+          "name": "Step One",
+          "status": "1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "input": {
+        "checklistId": "20",
+        "name": "Step One"
+      },
+      "name": "createChecklistItem-success",
+      "operation": "createChecklistItem"
+    },
+    {
+      "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "checklistId": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "input": {
+        "checklistId": "20",
+        "name": "Step One"
+      },
+      "name": "createChecklistItem-providerRejected",
+      "operation": "createChecklistItem"
+    },
+    {
+      "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "input": {
+        "checklistId": "20",
+        "name": "Step One"
+      },
+      "name": "createChecklistItem-429",
+      "operation": "createChecklistItem"
+    },
+    {
+      "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "input": {
+        "checklistId": "20",
+        "name": "Step One"
+      },
+      "name": "createChecklistItem-503",
+      "operation": "createChecklistItem"
+    },
+    {
+      "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "input": {
+        "checklistId": "20",
+        "name": "Step One"
+      },
+      "name": "createChecklistItem-transport",
+      "operation": "createChecklistItem"
+    },
+    {
+      "attempts": 3,
+      "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "checklistId": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "input": {
+        "checklistId": "20",
+        "name": "Step One"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createChecklistItem-uncertain",
+      "operation": "createChecklistItem"
     }
   ],
   "schemaVersion": 1

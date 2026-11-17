@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listChecklistItems/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ChecklistItemsPage](`{"items":[{"id":"27","checklistId":"20","name":"Step One","status":"1"}],"page":1}`)
+			return err
+		}},
+		{name: "getChecklistItem/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ChecklistItemSummary](`{"id":"27","checklistId":"20","name":"Step One","status":"1"}`)
+			return err
+		}},
+		{name: "updateChecklistItem/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ChecklistItemSummary](`{"id":"27","checklistId":"20","name":"Step One","status":"5"}`)
+			return err
+		}},
+		{name: "deleteChecklistItem/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.DeletedChecklistItem](`{"checklistItemId":"27"}`)
+			return err
+		}},
+		{name: "createChecklistItem/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ChecklistItemSummary](`{"id":"27","checklistId":"20","name":"Step One","status":"1"}`)
+			return err
+		}},
 		{name: "listTaskChecklists/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[meistertask.TaskChecklistsPage](`{"checklists":[{"id":"20","taskId":"15","name":"Steps"}],"page":1}`)
 			return err
@@ -126,6 +146,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListChecklistItems().Definition().Operation.OperationID != "listChecklistItems" {
+		t.Errorf("listChecklistItems mock has another definition")
+	}
+	if mock.GetChecklistItem().Definition().Operation.OperationID != "getChecklistItem" {
+		t.Errorf("getChecklistItem mock has another definition")
+	}
+	if mock.UpdateChecklistItem().Definition().Operation.OperationID != "updateChecklistItem" {
+		t.Errorf("updateChecklistItem mock has another definition")
+	}
+	if mock.DeleteChecklistItem().Definition().Operation.OperationID != "deleteChecklistItem" {
+		t.Errorf("deleteChecklistItem mock has another definition")
+	}
+	if mock.CreateChecklistItem().Definition().Operation.OperationID != "createChecklistItem" {
+		t.Errorf("createChecklistItem mock has another definition")
+	}
 	if mock.ListTaskChecklists().Definition().Operation.OperationID != "listTaskChecklists" {
 		t.Errorf("listTaskChecklists mock has another definition")
 	}

@@ -28,6 +28,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			createContext.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
+		"listChecklistItems": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListChecklistItems(), reference),
+		"getChecklistItem": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetChecklistItem(), reference),
+		"updateChecklistItem": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateChecklistItem(), reference, scenario.CallID),
+		"deleteChecklistItem": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteChecklistItem(), reference, scenario.CallID),
+		"createChecklistItem": newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateChecklistItem(), reference, scenario.CallID),
 		"listTaskChecklists": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTaskChecklists(), reference),
 		"getChecklist": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetChecklist(), reference),
 		"updateChecklist": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateChecklist(), reference, scenario.CallID),

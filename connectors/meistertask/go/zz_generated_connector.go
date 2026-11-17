@@ -40,6 +40,11 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListChecklistItems() sdkgo.Query[ListChecklistItemsInput, ChecklistItemsPage]
+	GetChecklistItem() sdkgo.Query[GetChecklistItemInput, ChecklistItemSummary]
+	UpdateChecklistItem() sdkgo.Mutation[UpdateChecklistItemInput, ChecklistItemSummary]
+	DeleteChecklistItem() sdkgo.Mutation[DeleteChecklistItemInput, DeletedChecklistItem]
+	CreateChecklistItem() sdkgo.Mutation[CreateChecklistItemInput, ChecklistItemSummary]
 	ListTaskChecklists() sdkgo.Query[ListTaskChecklistsInput, TaskChecklistsPage]
 	GetChecklist() sdkgo.Query[GetChecklistInput, ChecklistSummary]
 	UpdateChecklist() sdkgo.Mutation[UpdateChecklistInput, ChecklistSummary]
@@ -69,6 +74,21 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListChecklistItems() sdkgo.Query[ListChecklistItemsInput, ChecklistItemsPage] {
+	return operations.client.ListChecklistItems()
+}
+func (operations clientOperations) GetChecklistItem() sdkgo.Query[GetChecklistItemInput, ChecklistItemSummary] {
+	return operations.client.GetChecklistItem()
+}
+func (operations clientOperations) UpdateChecklistItem() sdkgo.Mutation[UpdateChecklistItemInput, ChecklistItemSummary] {
+	return operations.client.UpdateChecklistItem()
+}
+func (operations clientOperations) DeleteChecklistItem() sdkgo.Mutation[DeleteChecklistItemInput, DeletedChecklistItem] {
+	return operations.client.DeleteChecklistItem()
+}
+func (operations clientOperations) CreateChecklistItem() sdkgo.Mutation[CreateChecklistItemInput, ChecklistItemSummary] {
+	return operations.client.CreateChecklistItem()
+}
 func (operations clientOperations) ListTaskChecklists() sdkgo.Query[ListTaskChecklistsInput, TaskChecklistsPage] {
 	return operations.client.ListTaskChecklists()
 }
@@ -280,6 +300,380 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_token is required")
 	}
 	return nil
+}
+
+const ListChecklistItemsBranchListed sdkgo.BranchID = "listed"
+const ListChecklistItemsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListChecklistItemsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListChecklistItemsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListChecklistItemsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listChecklistItems"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListChecklistItemsBranchListed, Description: "MeisterTask returned the checklist item outcome."},
+		{ID: ListChecklistItemsBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: ListChecklistItemsBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: ListChecklistItemsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListChecklistItemsResult = sdkgo.QueryResult[ChecklistItemsPage]
+
+type ListChecklistItemsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=meistertask"`
+	operationID                    struct{}                                              `connector:"operationId=listChecklistItems"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListChecklistItemsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListChecklistItemsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListChecklistItemsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListChecklistItemsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListChecklistItemsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ChecklistItemsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewListChecklistItemsStep[IN any](config ListChecklistItemsStepConfig[IN]) sdkgo.QueryStep[IN, ListChecklistItemsInput, ChecklistItemsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListChecklistItemsInput, ChecklistItemsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListChecklistItems(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListChecklistItemsResult] {
+			branches := make([]sdkgo.BranchTarget[ListChecklistItemsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListChecklistItemsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListChecklistItemsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListChecklistItemsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListChecklistItemsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetChecklistItemBranchFound sdkgo.BranchID = "found"
+const GetChecklistItemBranchNotFound sdkgo.BranchID = "notFound"
+const GetChecklistItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetChecklistItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetChecklistItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetChecklistItemDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getChecklistItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetChecklistItemBranchFound, Description: "MeisterTask returned the checklist item outcome."},
+		{ID: GetChecklistItemBranchNotFound, Description: "MeisterTask did not expose the item.", Optional: true},
+		{ID: GetChecklistItemBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: GetChecklistItemBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: GetChecklistItemBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetChecklistItemResult = sdkgo.QueryResult[ChecklistItemSummary]
+
+type GetChecklistItemStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=meistertask"`
+	operationID                    struct{}                                                `connector:"operationId=getChecklistItem"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetChecklistItemInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetChecklistItemResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetChecklistItemResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetChecklistItemResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetChecklistItemResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetChecklistItemResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ChecklistItemSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetChecklistItemStep[IN any](config GetChecklistItemStepConfig[IN]) sdkgo.QueryStep[IN, GetChecklistItemInput, ChecklistItemSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetChecklistItemInput, ChecklistItemSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetChecklistItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetChecklistItemResult] {
+			branches := make([]sdkgo.BranchTarget[GetChecklistItemResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetChecklistItemBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetChecklistItemBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetChecklistItemBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetChecklistItemBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetChecklistItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateChecklistItemBranchUpdated sdkgo.BranchID = "updated"
+const UpdateChecklistItemBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateChecklistItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateChecklistItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateChecklistItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateChecklistItemDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateChecklistItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateChecklistItemBranchUpdated, Description: "MeisterTask returned the checklist item outcome."},
+		{ID: UpdateChecklistItemBranchNotFound, Description: "MeisterTask did not expose the item.", Optional: true},
+		{ID: UpdateChecklistItemBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: UpdateChecklistItemBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateChecklistItemBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateChecklistItemResult = sdkgo.MutationResult[ChecklistItemSummary]
+
+type UpdateChecklistItemStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=meistertask"`
+	operationID                       struct{}                                                   `connector:"operationId=updateChecklistItem"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateChecklistItemInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateChecklistItemResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateChecklistItemResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateChecklistItemResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateChecklistItemResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateChecklistItemResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ChecklistItemSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateChecklistItemStep[IN any](config UpdateChecklistItemStepConfig[IN]) sdkgo.MutationStep[IN, UpdateChecklistItemInput, ChecklistItemSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateChecklistItemInput, ChecklistItemSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateChecklistItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateChecklistItemResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateChecklistItemResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateChecklistItemBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateChecklistItemBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateChecklistItemBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateChecklistItemBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateChecklistItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteChecklistItemBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteChecklistItemBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteChecklistItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteChecklistItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteChecklistItemDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteChecklistItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteChecklistItemBranchDeleted, Description: "MeisterTask returned the checklist item outcome."},
+		{ID: DeleteChecklistItemBranchNotFound, Description: "MeisterTask did not expose the item.", Optional: true},
+		{ID: DeleteChecklistItemBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: DeleteChecklistItemBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteChecklistItemResult = sdkgo.MutationResult[DeletedChecklistItem]
+
+type DeleteChecklistItemStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=meistertask"`
+	operationID                       struct{}                                                   `connector:"operationId=deleteChecklistItem"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteChecklistItemInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteChecklistItemResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteChecklistItemResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteChecklistItemResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteChecklistItemResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedChecklistItem]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteChecklistItemStep[IN any](config DeleteChecklistItemStepConfig[IN]) sdkgo.MutationStep[IN, DeleteChecklistItemInput, DeletedChecklistItem] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteChecklistItemInput, DeletedChecklistItem]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteChecklistItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteChecklistItemResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteChecklistItemResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteChecklistItemBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteChecklistItemBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteChecklistItemBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteChecklistItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateChecklistItemBranchCreated sdkgo.BranchID = "created"
+const CreateChecklistItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateChecklistItemBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateChecklistItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateChecklistItemDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createChecklistItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateChecklistItemBranchCreated, Description: "MeisterTask returned the checklist item outcome."},
+		{ID: CreateChecklistItemBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: CreateChecklistItemBranchUncertain, Description: "Creation may have succeeded; inspect checklist items before manual retry.", Optional: true},
+		{ID: CreateChecklistItemBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateChecklistItemResult = sdkgo.MutationResult[ChecklistItemSummary]
+
+type CreateChecklistItemStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=meistertask"`
+	operationID                       struct{}                                                   `connector:"operationId=createChecklistItem"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateChecklistItemInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateChecklistItemResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateChecklistItemResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateChecklistItemResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateChecklistItemResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ChecklistItemSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateChecklistItemStep[IN any](config CreateChecklistItemStepConfig[IN]) sdkgo.MutationStep[IN, CreateChecklistItemInput, ChecklistItemSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateChecklistItemInput, ChecklistItemSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateChecklistItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateChecklistItemResult] {
+			branches := make([]sdkgo.BranchTarget[CreateChecklistItemResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateChecklistItemBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateChecklistItemBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateChecklistItemBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateChecklistItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
 }
 
 const ListTaskChecklistsBranchListed sdkgo.BranchID = "listed"
