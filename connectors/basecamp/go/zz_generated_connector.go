@@ -51,6 +51,11 @@ type Operations interface {
 	TrashProject() sdkgo.Mutation[GetProjectInput, ProjectActionResult]
 	ListProjects() sdkgo.Query[ListProjectsInput, ProjectsPage]
 	GetProject() sdkgo.Query[GetProjectInput, Project]
+	ListScheduleEntries() sdkgo.Query[ListScheduleEntriesInput, ScheduleEntriesPage]
+	GetScheduleEntry() sdkgo.Query[GetScheduleEntryInput, ScheduleEntry]
+	CreateScheduleEntry() sdkgo.Mutation[CreateScheduleEntryInput, ScheduleEntry]
+	UpdateScheduleEntry() sdkgo.Mutation[UpdateScheduleEntryInput, ScheduleEntry]
+	TrashScheduleEntry() sdkgo.Mutation[GetScheduleEntryInput, ScheduleEntryActionResult]
 	ListMessages() sdkgo.Query[ListMessagesInput, MessagesPage]
 	GetMessage() sdkgo.Query[GetMessageInput, Message]
 	CreateMessage() sdkgo.Mutation[CreateMessageInput, Message]
@@ -104,6 +109,21 @@ func (operations clientOperations) ListProjects() sdkgo.Query[ListProjectsInput,
 }
 func (operations clientOperations) GetProject() sdkgo.Query[GetProjectInput, Project] {
 	return operations.client.GetProject()
+}
+func (operations clientOperations) ListScheduleEntries() sdkgo.Query[ListScheduleEntriesInput, ScheduleEntriesPage] {
+	return operations.client.ListScheduleEntries()
+}
+func (operations clientOperations) GetScheduleEntry() sdkgo.Query[GetScheduleEntryInput, ScheduleEntry] {
+	return operations.client.GetScheduleEntry()
+}
+func (operations clientOperations) CreateScheduleEntry() sdkgo.Mutation[CreateScheduleEntryInput, ScheduleEntry] {
+	return operations.client.CreateScheduleEntry()
+}
+func (operations clientOperations) UpdateScheduleEntry() sdkgo.Mutation[UpdateScheduleEntryInput, ScheduleEntry] {
+	return operations.client.UpdateScheduleEntry()
+}
+func (operations clientOperations) TrashScheduleEntry() sdkgo.Mutation[GetScheduleEntryInput, ScheduleEntryActionResult] {
+	return operations.client.TrashScheduleEntry()
 }
 func (operations clientOperations) ListMessages() sdkgo.Query[ListMessagesInput, MessagesPage] {
 	return operations.client.ListMessages()
@@ -913,6 +933,380 @@ func NewGetProjectStep[IN any](config GetProjectStepConfig[IN]) sdkgo.QueryStep[
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetProjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListScheduleEntriesBranchListed sdkgo.BranchID = "listed"
+const ListScheduleEntriesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListScheduleEntriesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListScheduleEntriesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListScheduleEntriesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listScheduleEntries"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListScheduleEntriesBranchListed, Description: "Basecamp returned the requested result."},
+		{ID: ListScheduleEntriesBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: ListScheduleEntriesBranchInvalidResponse, Description: "Basecamp returned invalid schedule JSON.", Optional: true},
+		{ID: ListScheduleEntriesBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListScheduleEntriesResult = sdkgo.QueryResult[ScheduleEntriesPage]
+
+type ListScheduleEntriesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=basecamp"`
+	operationID                    struct{}                                               `connector:"operationId=listScheduleEntries"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListScheduleEntriesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListScheduleEntriesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListScheduleEntriesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListScheduleEntriesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListScheduleEntriesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ScheduleEntriesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewListScheduleEntriesStep[IN any](config ListScheduleEntriesStepConfig[IN]) sdkgo.QueryStep[IN, ListScheduleEntriesInput, ScheduleEntriesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListScheduleEntriesInput, ScheduleEntriesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListScheduleEntries(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListScheduleEntriesResult] {
+			branches := make([]sdkgo.BranchTarget[ListScheduleEntriesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListScheduleEntriesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListScheduleEntriesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListScheduleEntriesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListScheduleEntriesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetScheduleEntryBranchFound sdkgo.BranchID = "found"
+const GetScheduleEntryBranchNotFound sdkgo.BranchID = "notFound"
+const GetScheduleEntryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetScheduleEntryBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetScheduleEntryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetScheduleEntryDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getScheduleEntry"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetScheduleEntryBranchFound, Description: "Basecamp returned the requested result."},
+		{ID: GetScheduleEntryBranchNotFound, Description: "The schedule entry does not exist.", Optional: true},
+		{ID: GetScheduleEntryBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: GetScheduleEntryBranchInvalidResponse, Description: "Basecamp returned invalid schedule JSON.", Optional: true},
+		{ID: GetScheduleEntryBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetScheduleEntryResult = sdkgo.QueryResult[ScheduleEntry]
+
+type GetScheduleEntryStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=basecamp"`
+	operationID                    struct{}                                         `connector:"operationId=getScheduleEntry"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetScheduleEntryInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetScheduleEntryResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetScheduleEntryResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetScheduleEntryResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetScheduleEntryResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetScheduleEntryResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ScheduleEntry]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetScheduleEntryStep[IN any](config GetScheduleEntryStepConfig[IN]) sdkgo.QueryStep[IN, GetScheduleEntryInput, ScheduleEntry] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetScheduleEntryInput, ScheduleEntry]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetScheduleEntry(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetScheduleEntryResult] {
+			branches := make([]sdkgo.BranchTarget[GetScheduleEntryResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetScheduleEntryBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetScheduleEntryBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetScheduleEntryBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetScheduleEntryBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetScheduleEntryBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateScheduleEntryBranchCreated sdkgo.BranchID = "created"
+const CreateScheduleEntryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateScheduleEntryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateScheduleEntryBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateScheduleEntryDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createScheduleEntry"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateScheduleEntryBranchCreated, Description: "Basecamp returned the requested result."},
+		{ID: CreateScheduleEntryBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: CreateScheduleEntryBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: CreateScheduleEntryBranchUncertain, Description: "Creation cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateScheduleEntryResult = sdkgo.MutationResult[ScheduleEntry]
+
+type CreateScheduleEntryStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=basecamp"`
+	operationID                       struct{}                                            `connector:"operationId=createScheduleEntry"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateScheduleEntryInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateScheduleEntryResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateScheduleEntryResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateScheduleEntryResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateScheduleEntryResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ScheduleEntry]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateScheduleEntryStep[IN any](config CreateScheduleEntryStepConfig[IN]) sdkgo.MutationStep[IN, CreateScheduleEntryInput, ScheduleEntry] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateScheduleEntryInput, ScheduleEntry]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateScheduleEntry(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateScheduleEntryResult] {
+			branches := make([]sdkgo.BranchTarget[CreateScheduleEntryResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateScheduleEntryBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateScheduleEntryBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateScheduleEntryBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateScheduleEntryBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateScheduleEntryBranchUpdated sdkgo.BranchID = "updated"
+const UpdateScheduleEntryBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateScheduleEntryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateScheduleEntryBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateScheduleEntryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateScheduleEntryDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateScheduleEntry"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateScheduleEntryBranchUpdated, Description: "Basecamp returned the requested result."},
+		{ID: UpdateScheduleEntryBranchNotFound, Description: "The schedule entry does not exist.", Optional: true},
+		{ID: UpdateScheduleEntryBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: UpdateScheduleEntryBranchInvalidResponse, Description: "Basecamp returned invalid schedule JSON.", Optional: true},
+		{ID: UpdateScheduleEntryBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateScheduleEntryResult = sdkgo.MutationResult[ScheduleEntry]
+
+type UpdateScheduleEntryStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=basecamp"`
+	operationID                       struct{}                                            `connector:"operationId=updateScheduleEntry"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateScheduleEntryInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateScheduleEntryResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateScheduleEntryResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateScheduleEntryResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateScheduleEntryResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateScheduleEntryResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ScheduleEntry]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateScheduleEntryStep[IN any](config UpdateScheduleEntryStepConfig[IN]) sdkgo.MutationStep[IN, UpdateScheduleEntryInput, ScheduleEntry] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateScheduleEntryInput, ScheduleEntry]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateScheduleEntry(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateScheduleEntryResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateScheduleEntryResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateScheduleEntryBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateScheduleEntryBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateScheduleEntryBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateScheduleEntryBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateScheduleEntryBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const TrashScheduleEntryBranchTrashed sdkgo.BranchID = "trashed"
+const TrashScheduleEntryBranchNotFound sdkgo.BranchID = "notFound"
+const TrashScheduleEntryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const TrashScheduleEntryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var TrashScheduleEntryDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "trashScheduleEntry"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: TrashScheduleEntryBranchTrashed, Description: "Basecamp returned the requested result."},
+		{ID: TrashScheduleEntryBranchNotFound, Description: "The schedule entry does not exist.", Optional: true},
+		{ID: TrashScheduleEntryBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: TrashScheduleEntryBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type TrashScheduleEntryResult = sdkgo.MutationResult[ScheduleEntryActionResult]
+
+type TrashScheduleEntryStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                        `connector:"connectorId=basecamp"`
+	operationID                       struct{}                                                        `connector:"operationId=trashScheduleEntry"`
+	StepType                          string                                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                           `connector:"annotations"`
+	Connection                        Connection                                                      `connector:"connection"`
+	ConnectionName                    string                                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetScheduleEntryInput                                  `connector:"mapToOperationInput"`
+	Trashed                           sdkgo.Target[TrashScheduleEntryResult]                          `connector:"branch=trashed"`
+	NotFound                          sdkgo.Target[TrashScheduleEntryResult]                          `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[TrashScheduleEntryResult]                          `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[TrashScheduleEntryResult]                          `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ScheduleEntryActionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+}
+
+func NewTrashScheduleEntryStep[IN any](config TrashScheduleEntryStepConfig[IN]) sdkgo.MutationStep[IN, GetScheduleEntryInput, ScheduleEntryActionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetScheduleEntryInput, ScheduleEntryActionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.TrashScheduleEntry(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[TrashScheduleEntryResult] {
+			branches := make([]sdkgo.BranchTarget[TrashScheduleEntryResult], 0, 4)
+			if config.Trashed.HasStep() {
+				branches = append(branches, config.Trashed.BranchTarget(TrashScheduleEntryBranchTrashed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(TrashScheduleEntryBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(TrashScheduleEntryBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(TrashScheduleEntryBranchDefect))
 			}
 			return branches
 		}(),

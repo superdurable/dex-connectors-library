@@ -26,6 +26,8 @@ type Project struct {
 	TodoSetID string `json:"todoSetId,omitempty"`
 	// MessageBoardID identifies the project's message board from its dock, when present.
 	MessageBoardID string `json:"messageBoardId,omitempty"`
+	// ScheduleID identifies the project's calendar from its dock, when present.
+	ScheduleID string `json:"scheduleId,omitempty"`
 }
 
 // ProjectsPage contains one provider page of active projects.
@@ -256,6 +258,9 @@ func decodeProject(body []byte, expectedID string) (Project, error) {
 		}
 		if dockItem.Name == "message_board" && dockItem.ID > 0 {
 			project.MessageBoardID = strconv.FormatInt(dockItem.ID, 10)
+		}
+		if dockItem.Name == "schedule" && dockItem.ID > 0 {
+			project.ScheduleID = strconv.FormatInt(dockItem.ID, 10)
 		}
 	}
 	return project, nil

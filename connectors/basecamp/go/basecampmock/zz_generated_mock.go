@@ -25,6 +25,11 @@ type Mock struct {
 	trashProject        *connectormock.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult]
 	listProjects        *connectormock.Query[basecamp.ListProjectsInput, basecamp.ProjectsPage]
 	getProject          *connectormock.Query[basecamp.GetProjectInput, basecamp.Project]
+	listScheduleEntries *connectormock.Query[basecamp.ListScheduleEntriesInput, basecamp.ScheduleEntriesPage]
+	getScheduleEntry    *connectormock.Query[basecamp.GetScheduleEntryInput, basecamp.ScheduleEntry]
+	createScheduleEntry *connectormock.Mutation[basecamp.CreateScheduleEntryInput, basecamp.ScheduleEntry]
+	updateScheduleEntry *connectormock.Mutation[basecamp.UpdateScheduleEntryInput, basecamp.ScheduleEntry]
+	trashScheduleEntry  *connectormock.Mutation[basecamp.GetScheduleEntryInput, basecamp.ScheduleEntryActionResult]
 	listMessages        *connectormock.Query[basecamp.ListMessagesInput, basecamp.MessagesPage]
 	getMessage          *connectormock.Query[basecamp.GetMessageInput, basecamp.Message]
 	createMessage       *connectormock.Mutation[basecamp.CreateMessageInput, basecamp.Message]
@@ -68,6 +73,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		trashProject:        connectormock.NewMutation[basecamp.GetProjectInput, basecamp.ProjectActionResult](t, basecamp.TrashProjectDefinition),
 		listProjects:        connectormock.NewQuery[basecamp.ListProjectsInput, basecamp.ProjectsPage](t, basecamp.ListProjectsDefinition),
 		getProject:          connectormock.NewQuery[basecamp.GetProjectInput, basecamp.Project](t, basecamp.GetProjectDefinition),
+		listScheduleEntries: connectormock.NewQuery[basecamp.ListScheduleEntriesInput, basecamp.ScheduleEntriesPage](t, basecamp.ListScheduleEntriesDefinition),
+		getScheduleEntry:    connectormock.NewQuery[basecamp.GetScheduleEntryInput, basecamp.ScheduleEntry](t, basecamp.GetScheduleEntryDefinition),
+		createScheduleEntry: connectormock.NewMutation[basecamp.CreateScheduleEntryInput, basecamp.ScheduleEntry](t, basecamp.CreateScheduleEntryDefinition),
+		updateScheduleEntry: connectormock.NewMutation[basecamp.UpdateScheduleEntryInput, basecamp.ScheduleEntry](t, basecamp.UpdateScheduleEntryDefinition),
+		trashScheduleEntry:  connectormock.NewMutation[basecamp.GetScheduleEntryInput, basecamp.ScheduleEntryActionResult](t, basecamp.TrashScheduleEntryDefinition),
 		listMessages:        connectormock.NewQuery[basecamp.ListMessagesInput, basecamp.MessagesPage](t, basecamp.ListMessagesDefinition),
 		getMessage:          connectormock.NewQuery[basecamp.GetMessageInput, basecamp.Message](t, basecamp.GetMessageDefinition),
 		createMessage:       connectormock.NewMutation[basecamp.CreateMessageInput, basecamp.Message](t, basecamp.CreateMessageDefinition),
@@ -105,6 +115,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.trashProject.Default(TrashProjectDefault())
 	mock.listProjects.Default(ListProjectsDefault())
 	mock.getProject.Default(GetProjectDefault())
+	mock.listScheduleEntries.Default(ListScheduleEntriesDefault())
+	mock.getScheduleEntry.Default(GetScheduleEntryDefault())
+	mock.createScheduleEntry.Default(CreateScheduleEntryDefault())
+	mock.updateScheduleEntry.Default(UpdateScheduleEntryDefault())
+	mock.trashScheduleEntry.Default(TrashScheduleEntryDefault())
 	mock.listMessages.Default(ListMessagesDefault())
 	mock.getMessage.Default(GetMessageDefault())
 	mock.createMessage.Default(CreateMessageDefault())
@@ -178,6 +193,31 @@ func (mock *Mock) ListProjects() *connectormock.Query[basecamp.ListProjectsInput
 // GetProject returns the getProject script.
 func (mock *Mock) GetProject() *connectormock.Query[basecamp.GetProjectInput, basecamp.Project] {
 	return mock.getProject
+}
+
+// ListScheduleEntries returns the listScheduleEntries script.
+func (mock *Mock) ListScheduleEntries() *connectormock.Query[basecamp.ListScheduleEntriesInput, basecamp.ScheduleEntriesPage] {
+	return mock.listScheduleEntries
+}
+
+// GetScheduleEntry returns the getScheduleEntry script.
+func (mock *Mock) GetScheduleEntry() *connectormock.Query[basecamp.GetScheduleEntryInput, basecamp.ScheduleEntry] {
+	return mock.getScheduleEntry
+}
+
+// CreateScheduleEntry returns the createScheduleEntry script.
+func (mock *Mock) CreateScheduleEntry() *connectormock.Mutation[basecamp.CreateScheduleEntryInput, basecamp.ScheduleEntry] {
+	return mock.createScheduleEntry
+}
+
+// UpdateScheduleEntry returns the updateScheduleEntry script.
+func (mock *Mock) UpdateScheduleEntry() *connectormock.Mutation[basecamp.UpdateScheduleEntryInput, basecamp.ScheduleEntry] {
+	return mock.updateScheduleEntry
+}
+
+// TrashScheduleEntry returns the trashScheduleEntry script.
+func (mock *Mock) TrashScheduleEntry() *connectormock.Mutation[basecamp.GetScheduleEntryInput, basecamp.ScheduleEntryActionResult] {
+	return mock.trashScheduleEntry
 }
 
 // ListMessages returns the listMessages script.
@@ -347,6 +387,21 @@ func (operations mockOperations) ListProjects() sdkgo.Query[basecamp.ListProject
 }
 func (operations mockOperations) GetProject() sdkgo.Query[basecamp.GetProjectInput, basecamp.Project] {
 	return operations.mock.getProject
+}
+func (operations mockOperations) ListScheduleEntries() sdkgo.Query[basecamp.ListScheduleEntriesInput, basecamp.ScheduleEntriesPage] {
+	return operations.mock.listScheduleEntries
+}
+func (operations mockOperations) GetScheduleEntry() sdkgo.Query[basecamp.GetScheduleEntryInput, basecamp.ScheduleEntry] {
+	return operations.mock.getScheduleEntry
+}
+func (operations mockOperations) CreateScheduleEntry() sdkgo.Mutation[basecamp.CreateScheduleEntryInput, basecamp.ScheduleEntry] {
+	return operations.mock.createScheduleEntry
+}
+func (operations mockOperations) UpdateScheduleEntry() sdkgo.Mutation[basecamp.UpdateScheduleEntryInput, basecamp.ScheduleEntry] {
+	return operations.mock.updateScheduleEntry
+}
+func (operations mockOperations) TrashScheduleEntry() sdkgo.Mutation[basecamp.GetScheduleEntryInput, basecamp.ScheduleEntryActionResult] {
+	return operations.mock.trashScheduleEntry
 }
 func (operations mockOperations) ListMessages() sdkgo.Query[basecamp.ListMessagesInput, basecamp.MessagesPage] {
 	return operations.mock.listMessages
@@ -695,6 +750,196 @@ func GetProjectFoundDefault() connectormock.Case[basecamp.Project] {
 
 // GetProjectDefault is the manifest default, foundDefault, which New installs.
 func GetProjectDefault() connectormock.Case[basecamp.Project] { return GetProjectFoundDefault() }
+
+// ListScheduleEntriesListed selects the listed branch: Basecamp returned the requested result.
+func ListScheduleEntriesListed(value basecamp.ScheduleEntriesPage, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntriesPage] {
+	return connectormock.Branch(basecamp.ListScheduleEntriesBranchListed, value, failure)
+}
+
+// ListScheduleEntriesProviderRejected selects the providerRejected branch: Basecamp rejected the request.
+func ListScheduleEntriesProviderRejected(value basecamp.ScheduleEntriesPage, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntriesPage] {
+	return connectormock.Branch(basecamp.ListScheduleEntriesBranchProviderRejected, value, failure)
+}
+
+// ListScheduleEntriesInvalidResponse selects the invalidResponse branch: Basecamp returned invalid schedule JSON.
+func ListScheduleEntriesInvalidResponse(value basecamp.ScheduleEntriesPage, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntriesPage] {
+	return connectormock.Branch(basecamp.ListScheduleEntriesBranchInvalidResponse, value, failure)
+}
+
+// ListScheduleEntriesDefect selects the defect branch: Input or credentials are invalid.
+func ListScheduleEntriesDefect(value basecamp.ScheduleEntriesPage, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntriesPage] {
+	return connectormock.Branch(basecamp.ListScheduleEntriesBranchDefect, value, failure)
+}
+
+// ListScheduleEntriesRetry asks Dex to retry the listScheduleEntries Step, after the delay when it is positive.
+func ListScheduleEntriesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.ScheduleEntriesPage] {
+	return connectormock.Retry[basecamp.ScheduleEntriesPage](failure, after)
+}
+
+// ListScheduleEntriesListedDefault is the manifest mock listedDefault: Basecamp returned the requested result.
+func ListScheduleEntriesListedDefault() connectormock.Case[basecamp.ScheduleEntriesPage] {
+	value := connectormock.MustDecodeOutput[basecamp.ScheduleEntriesPage](`{"entries":[{"id":"789","summary":"Example Meeting","startsAt":"2026-11-20T10:00:00Z","endsAt":"2026-11-20T11:00:00Z"}]}`)
+	return connectormock.Branch(basecamp.ListScheduleEntriesBranchListed, value, nil)
+}
+
+// ListScheduleEntriesDefault is the manifest default, listedDefault, which New installs.
+func ListScheduleEntriesDefault() connectormock.Case[basecamp.ScheduleEntriesPage] {
+	return ListScheduleEntriesListedDefault()
+}
+
+// GetScheduleEntryFound selects the found branch: Basecamp returned the requested result.
+func GetScheduleEntryFound(value basecamp.ScheduleEntry, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Branch(basecamp.GetScheduleEntryBranchFound, value, failure)
+}
+
+// GetScheduleEntryNotFound selects the notFound branch: The schedule entry does not exist.
+func GetScheduleEntryNotFound(value basecamp.ScheduleEntry, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Branch(basecamp.GetScheduleEntryBranchNotFound, value, failure)
+}
+
+// GetScheduleEntryProviderRejected selects the providerRejected branch: Basecamp rejected the request.
+func GetScheduleEntryProviderRejected(value basecamp.ScheduleEntry, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Branch(basecamp.GetScheduleEntryBranchProviderRejected, value, failure)
+}
+
+// GetScheduleEntryInvalidResponse selects the invalidResponse branch: Basecamp returned invalid schedule JSON.
+func GetScheduleEntryInvalidResponse(value basecamp.ScheduleEntry, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Branch(basecamp.GetScheduleEntryBranchInvalidResponse, value, failure)
+}
+
+// GetScheduleEntryDefect selects the defect branch: Input or credentials are invalid.
+func GetScheduleEntryDefect(value basecamp.ScheduleEntry, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Branch(basecamp.GetScheduleEntryBranchDefect, value, failure)
+}
+
+// GetScheduleEntryRetry asks Dex to retry the getScheduleEntry Step, after the delay when it is positive.
+func GetScheduleEntryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Retry[basecamp.ScheduleEntry](failure, after)
+}
+
+// GetScheduleEntryFoundDefault is the manifest mock foundDefault: Basecamp returned the requested result.
+func GetScheduleEntryFoundDefault() connectormock.Case[basecamp.ScheduleEntry] {
+	value := connectormock.MustDecodeOutput[basecamp.ScheduleEntry](`{"id":"789","summary":"Example Meeting","startsAt":"2026-11-20T10:00:00Z","endsAt":"2026-11-20T11:00:00Z"}`)
+	return connectormock.Branch(basecamp.GetScheduleEntryBranchFound, value, nil)
+}
+
+// GetScheduleEntryDefault is the manifest default, foundDefault, which New installs.
+func GetScheduleEntryDefault() connectormock.Case[basecamp.ScheduleEntry] {
+	return GetScheduleEntryFoundDefault()
+}
+
+// CreateScheduleEntryCreated selects the created branch: Basecamp returned the requested result.
+func CreateScheduleEntryCreated(value basecamp.ScheduleEntry, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Branch(basecamp.CreateScheduleEntryBranchCreated, value, failure)
+}
+
+// CreateScheduleEntryProviderRejected selects the providerRejected branch: Basecamp rejected the request.
+func CreateScheduleEntryProviderRejected(value basecamp.ScheduleEntry, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Branch(basecamp.CreateScheduleEntryBranchProviderRejected, value, failure)
+}
+
+// CreateScheduleEntryDefect selects the defect branch: Input or credentials are invalid.
+func CreateScheduleEntryDefect(value basecamp.ScheduleEntry, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Branch(basecamp.CreateScheduleEntryBranchDefect, value, failure)
+}
+
+// CreateScheduleEntryUncertain returns an uncertain createScheduleEntry outcome.
+func CreateScheduleEntryUncertain(value basecamp.ScheduleEntry, failure sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateScheduleEntryRetry asks Dex to retry the createScheduleEntry Step, after the delay when it is positive.
+func CreateScheduleEntryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Retry[basecamp.ScheduleEntry](failure, after)
+}
+
+// CreateScheduleEntryCreatedDefault is the manifest mock createdDefault: Basecamp returned the requested result.
+func CreateScheduleEntryCreatedDefault() connectormock.Case[basecamp.ScheduleEntry] {
+	value := connectormock.MustDecodeOutput[basecamp.ScheduleEntry](`{"id":"789","summary":"Example Meeting","startsAt":"2026-11-20T10:00:00Z","endsAt":"2026-11-20T11:00:00Z"}`)
+	return connectormock.Branch(basecamp.CreateScheduleEntryBranchCreated, value, nil)
+}
+
+// CreateScheduleEntryDefault is the manifest default, createdDefault, which New installs.
+func CreateScheduleEntryDefault() connectormock.Case[basecamp.ScheduleEntry] {
+	return CreateScheduleEntryCreatedDefault()
+}
+
+// UpdateScheduleEntryUpdated selects the updated branch: Basecamp returned the requested result.
+func UpdateScheduleEntryUpdated(value basecamp.ScheduleEntry, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Branch(basecamp.UpdateScheduleEntryBranchUpdated, value, failure)
+}
+
+// UpdateScheduleEntryNotFound selects the notFound branch: The schedule entry does not exist.
+func UpdateScheduleEntryNotFound(value basecamp.ScheduleEntry, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Branch(basecamp.UpdateScheduleEntryBranchNotFound, value, failure)
+}
+
+// UpdateScheduleEntryProviderRejected selects the providerRejected branch: Basecamp rejected the request.
+func UpdateScheduleEntryProviderRejected(value basecamp.ScheduleEntry, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Branch(basecamp.UpdateScheduleEntryBranchProviderRejected, value, failure)
+}
+
+// UpdateScheduleEntryInvalidResponse selects the invalidResponse branch: Basecamp returned invalid schedule JSON.
+func UpdateScheduleEntryInvalidResponse(value basecamp.ScheduleEntry, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Branch(basecamp.UpdateScheduleEntryBranchInvalidResponse, value, failure)
+}
+
+// UpdateScheduleEntryDefect selects the defect branch: Input or credentials are invalid.
+func UpdateScheduleEntryDefect(value basecamp.ScheduleEntry, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Branch(basecamp.UpdateScheduleEntryBranchDefect, value, failure)
+}
+
+// UpdateScheduleEntryRetry asks Dex to retry the updateScheduleEntry Step, after the delay when it is positive.
+func UpdateScheduleEntryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.ScheduleEntry] {
+	return connectormock.Retry[basecamp.ScheduleEntry](failure, after)
+}
+
+// UpdateScheduleEntryUpdatedDefault is the manifest mock updatedDefault: Basecamp returned the requested result.
+func UpdateScheduleEntryUpdatedDefault() connectormock.Case[basecamp.ScheduleEntry] {
+	value := connectormock.MustDecodeOutput[basecamp.ScheduleEntry](`{"id":"789","summary":"Example Meeting","startsAt":"2026-11-20T10:00:00Z","endsAt":"2026-11-20T11:00:00Z"}`)
+	return connectormock.Branch(basecamp.UpdateScheduleEntryBranchUpdated, value, nil)
+}
+
+// UpdateScheduleEntryDefault is the manifest default, updatedDefault, which New installs.
+func UpdateScheduleEntryDefault() connectormock.Case[basecamp.ScheduleEntry] {
+	return UpdateScheduleEntryUpdatedDefault()
+}
+
+// TrashScheduleEntryTrashed selects the trashed branch: Basecamp returned the requested result.
+func TrashScheduleEntryTrashed(value basecamp.ScheduleEntryActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntryActionResult] {
+	return connectormock.Branch(basecamp.TrashScheduleEntryBranchTrashed, value, failure)
+}
+
+// TrashScheduleEntryNotFound selects the notFound branch: The schedule entry does not exist.
+func TrashScheduleEntryNotFound(value basecamp.ScheduleEntryActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntryActionResult] {
+	return connectormock.Branch(basecamp.TrashScheduleEntryBranchNotFound, value, failure)
+}
+
+// TrashScheduleEntryProviderRejected selects the providerRejected branch: Basecamp rejected the request.
+func TrashScheduleEntryProviderRejected(value basecamp.ScheduleEntryActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntryActionResult] {
+	return connectormock.Branch(basecamp.TrashScheduleEntryBranchProviderRejected, value, failure)
+}
+
+// TrashScheduleEntryDefect selects the defect branch: Input or credentials are invalid.
+func TrashScheduleEntryDefect(value basecamp.ScheduleEntryActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ScheduleEntryActionResult] {
+	return connectormock.Branch(basecamp.TrashScheduleEntryBranchDefect, value, failure)
+}
+
+// TrashScheduleEntryRetry asks Dex to retry the trashScheduleEntry Step, after the delay when it is positive.
+func TrashScheduleEntryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.ScheduleEntryActionResult] {
+	return connectormock.Retry[basecamp.ScheduleEntryActionResult](failure, after)
+}
+
+// TrashScheduleEntryTrashedDefault is the manifest mock trashedDefault: Basecamp returned the requested result.
+func TrashScheduleEntryTrashedDefault() connectormock.Case[basecamp.ScheduleEntryActionResult] {
+	value := connectormock.MustDecodeOutput[basecamp.ScheduleEntryActionResult](`{"entryId":"789","status":"trashed"}`)
+	return connectormock.Branch(basecamp.TrashScheduleEntryBranchTrashed, value, nil)
+}
+
+// TrashScheduleEntryDefault is the manifest default, trashedDefault, which New installs.
+func TrashScheduleEntryDefault() connectormock.Case[basecamp.ScheduleEntryActionResult] {
+	return TrashScheduleEntryTrashedDefault()
+}
 
 // ListMessagesListed selects the listed branch: Basecamp returned the requested result.
 func ListMessagesListed(value basecamp.MessagesPage, failure *sdkgo.Failure) connectormock.Case[basecamp.MessagesPage] {

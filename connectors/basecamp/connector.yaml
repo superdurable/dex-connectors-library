@@ -81,6 +81,7 @@ spec:
         - For to-do lists, open https://3.basecamp.com > your account > project > To-dos. Use the numeric to-do set ID from getProject's dock or the Basecamp API, and the selected list ID from its URL or listTodoLists. Name is non-blank; description is non-secret rich text and blank clears it on update. Position is one-based among incomplete lists. Trashing uses the list's recording ID.
         - For people, open https://3.basecamp.com > your account > People or a project > People. Use the numeric account, project, and person IDs from listAccounts, listProjects, and listPeople or their page URLs. Project grant and revoke require an existing person ID; enrollment requires a non-blank name and email address, optionally project IDs, and can send an invitation email. Blank project IDs enroll only at account level; notify omitted uses Basecamp's invitation default, and false suppresses new invitation emails. Email is personal data, not a credential; some profiles redact it for non-admin callers.
         - For messages, open https://3.basecamp.com > your account > project > Message Board. Use the numeric message board ID from getProject's dock and message ID from the selected message URL or listMessages. Subject is a non-blank title; content is non-secret rich text and blank clears it on update. Create defaults to a draft; publish true posts immediately. Omitted subscribers use Basecamp's all-project default, while an explicit empty list subscribes no one. Publishing a draft notifies its subscribers once; pin, unpin, and trash use the message recording ID.
+        - For schedules, open https://3.basecamp.com > your account > project > Schedule. Use the numeric schedule ID from getProject's dock, and entry IDs from the selected entry URL or listScheduleEntries. Summary is a non-blank title; description is non-secret rich text and blank clears it on update. Timed startsAt and endsAt use RFC3339 with timezone, while allDay uses YYYY-MM-DD calendar dates. Blank is invalid for the interval. Person IDs come from People; omit participants on update to preserve them, or supply an empty list to clear them. Draft true saves without publishing; update status must be active or drafted. Trash uses the entry recording ID.
     oauth2:
       authorizationEndpoint: https://launchpad.37signals.com/authorization/new
       tokenEndpoint: https://launchpad.37signals.com/authorization/token
@@ -220,6 +221,108 @@ spec:
           default: true
           description: One project exists.
           output: {id: '123', name: Example Project}
+    - name: listScheduleEntries
+      goName: ListScheduleEntries
+      inputType: ListScheduleEntriesInput
+      outputType: ScheduleEntriesPage
+      kind: query
+      description: List active schedule entries on one calendar.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Basecamp returned the requested result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned invalid schedule JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Basecamp returned the requested result.
+          output: {entries: [{id: '789', summary: Example Meeting, startsAt: '2026-11-20T10:00:00Z', endsAt: '2026-11-20T11:00:00Z'}]}
+    - name: getScheduleEntry
+      goName: GetScheduleEntry
+      inputType: GetScheduleEntryInput
+      outputType: ScheduleEntry
+      kind: query
+      description: Read one schedule entry.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The schedule entry does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned invalid schedule JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Basecamp returned the requested result.
+          output: {id: '789', summary: Example Meeting, startsAt: '2026-11-20T10:00:00Z', endsAt: '2026-11-20T11:00:00Z'}
+    - name: createScheduleEntry
+      goName: CreateScheduleEntry
+      inputType: CreateScheduleEntryInput
+      outputType: ScheduleEntry
+      kind: mutation
+      description: Create a dated schedule entry.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Basecamp returned the requested result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Basecamp returned the requested result.
+          output: {id: '789', summary: Example Meeting, startsAt: '2026-11-20T10:00:00Z', endsAt: '2026-11-20T11:00:00Z'}
+    - name: updateScheduleEntry
+      goName: UpdateScheduleEntry
+      inputType: UpdateScheduleEntryInput
+      outputType: ScheduleEntry
+      kind: mutation
+      description: Replace a schedule entry's title, interval, and description.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The schedule entry does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned invalid schedule JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Basecamp returned the requested result.
+          output: {id: '789', summary: Example Meeting, startsAt: '2026-11-20T10:00:00Z', endsAt: '2026-11-20T11:00:00Z'}
+    - name: trashScheduleEntry
+      goName: TrashScheduleEntry
+      inputType: GetScheduleEntryInput
+      outputType: ScheduleEntryActionResult
+      kind: mutation
+      description: Trash a schedule entry recording.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: trashed, goName: Trashed, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The schedule entry does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: trashedDefault
+          branch: trashed
+          default: true
+          description: Basecamp returned the requested result.
+          output: {entryId: '789', status: trashed}
     - name: listMessages
       goName: ListMessages
       inputType: ListMessagesInput

@@ -83,5 +83,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"pinMessage":          newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.PinMessage(), reference, scenario.CallID),
 		"unpinMessage":        newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UnpinMessage(), reference, scenario.CallID),
 		"trashMessage":        newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.TrashMessage(), reference, scenario.CallID),
+		"listScheduleEntries": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListScheduleEntries(), reference),
+		"getScheduleEntry":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetScheduleEntry(), reference),
+		"createScheduleEntry": newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateScheduleEntry(), reference, scenario.CallID),
+		"updateScheduleEntry": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateScheduleEntry(), reference, scenario.CallID),
+		"trashScheduleEntry":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.TrashScheduleEntry(), reference, scenario.CallID),
 	}}
 }

@@ -11777,6 +11777,1867 @@
       },
       "name": "getProject-messageBoard",
       "operation": "getProject"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "[{\"id\":789,\"summary\":\"Example Meeting\",\"starts_at\":\"2026-11-20T10:00:00Z\",\"ends_at\":\"2026-11-20T11:00:00Z\",\"status\":\"active\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123/schedules/456/entries.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "entries": [
+            {
+              "endsAt": "2026-11-20T11:00:00Z",
+              "id": "789",
+              "startsAt": "2026-11-20T10:00:00Z",
+              "status": "active",
+              "summary": "Example Meeting"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "scheduleId": "456"
+      },
+      "name": "listScheduleEntries-success",
+      "operation": "listScheduleEntries"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123/schedules/456/entries.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "entries": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "scheduleId": "456"
+      },
+      "name": "listScheduleEntries-providerRejected",
+      "operation": "listScheduleEntries"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123/schedules/456/entries.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "entries": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "scheduleId": "456"
+      },
+      "name": "listScheduleEntries-invalidResponse",
+      "operation": "listScheduleEntries"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123/schedules/456/entries.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "scheduleId": "456"
+      },
+      "name": "listScheduleEntries-final429",
+      "operation": "listScheduleEntries"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123/schedules/456/entries.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "scheduleId": "456"
+      },
+      "name": "listScheduleEntries-final503",
+      "operation": "listScheduleEntries"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "entries": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "scheduleId": "0"
+      },
+      "name": "listScheduleEntries-defect",
+      "operation": "listScheduleEntries"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123/schedules/456/entries.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "scheduleId": "456"
+      },
+      "name": "listScheduleEntries-transportFailure",
+      "operation": "listScheduleEntries"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "{\"id\":789,\"summary\":\"Example Meeting\",\"starts_at\":\"2026-11-20T10:00:00Z\",\"ends_at\":\"2026-11-20T11:00:00Z\",\"status\":\"active\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123/schedule_entries/789.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "endsAt": "2026-11-20T11:00:00Z",
+          "id": "789",
+          "startsAt": "2026-11-20T10:00:00Z",
+          "status": "active",
+          "summary": "Example Meeting"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "entryId": "789"
+      },
+      "name": "getScheduleEntry-success",
+      "operation": "getScheduleEntry"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123/schedule_entries/789.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "startsAt": "",
+          "summary": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "entryId": "789"
+      },
+      "name": "getScheduleEntry-notFound",
+      "operation": "getScheduleEntry"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123/schedule_entries/789.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "startsAt": "",
+          "summary": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "entryId": "789"
+      },
+      "name": "getScheduleEntry-providerRejected",
+      "operation": "getScheduleEntry"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123/schedule_entries/789.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "startsAt": "",
+          "summary": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "entryId": "789"
+      },
+      "name": "getScheduleEntry-invalidResponse",
+      "operation": "getScheduleEntry"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123/schedule_entries/789.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "entryId": "789"
+      },
+      "name": "getScheduleEntry-final429",
+      "operation": "getScheduleEntry"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123/schedule_entries/789.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "entryId": "789"
+      },
+      "name": "getScheduleEntry-final503",
+      "operation": "getScheduleEntry"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "startsAt": "",
+          "summary": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "entryId": "0"
+      },
+      "name": "getScheduleEntry-defect",
+      "operation": "getScheduleEntry"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123/schedule_entries/789.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "entryId": "789"
+      },
+      "name": "getScheduleEntry-transportFailure",
+      "operation": "getScheduleEntry"
+    },
+    {
+      "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+      "exchanges": [
+        {
+          "body": "{\"id\":789,\"summary\":\"Example Meeting\",\"starts_at\":\"2026-11-20\",\"ends_at\":\"2026-11-21\",\"all_day\":true,\"status\":\"drafted\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/schedules/456/entries.json",
+          "requestBody": {
+            "all_day": true,
+            "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+            "ends_at": "2026-11-21",
+            "participant_ids": [
+              789
+            ],
+            "starts_at": "2026-11-20",
+            "status": "drafted",
+            "summary": "Example Meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "allDay": true,
+          "endsAt": "2026-11-21",
+          "id": "789",
+          "startsAt": "2026-11-20",
+          "status": "drafted",
+          "summary": "Example Meeting"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4130d541-0982-5187-9978-0354d88e58ba",
+      "input": {
+        "accountId": "123",
+        "allDay": true,
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "draft": true,
+        "endsAt": "2026-11-21",
+        "participantIds": [
+          "789"
+        ],
+        "scheduleId": "456",
+        "startsAt": "2026-11-20",
+        "summary": "Example Meeting"
+      },
+      "name": "createScheduleEntry-success",
+      "operation": "createScheduleEntry"
+    },
+    {
+      "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/schedules/456/entries.json",
+          "requestBody": {
+            "all_day": false,
+            "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+            "ends_at": "2026-11-20T11:00:00Z",
+            "participant_ids": [
+              789
+            ],
+            "starts_at": "2026-11-20T10:00:00Z",
+            "status": "active",
+            "summary": "Example Meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "startsAt": "",
+          "summary": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4130d541-0982-5187-9978-0354d88e58ba",
+      "input": {
+        "accountId": "123",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "endsAt": "2026-11-20T11:00:00Z",
+        "participantIds": [
+          "789"
+        ],
+        "scheduleId": "456",
+        "startsAt": "2026-11-20T10:00:00Z",
+        "summary": "Example Meeting"
+      },
+      "name": "createScheduleEntry-providerRejected",
+      "operation": "createScheduleEntry"
+    },
+    {
+      "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/schedules/456/entries.json",
+          "requestBody": {
+            "all_day": false,
+            "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+            "ends_at": "2026-11-20T11:00:00Z",
+            "participant_ids": [
+              789
+            ],
+            "starts_at": "2026-11-20T10:00:00Z",
+            "status": "active",
+            "summary": "Example Meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4130d541-0982-5187-9978-0354d88e58ba",
+      "input": {
+        "accountId": "123",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "endsAt": "2026-11-20T11:00:00Z",
+        "participantIds": [
+          "789"
+        ],
+        "scheduleId": "456",
+        "startsAt": "2026-11-20T10:00:00Z",
+        "summary": "Example Meeting"
+      },
+      "name": "createScheduleEntry-final429",
+      "operation": "createScheduleEntry"
+    },
+    {
+      "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/schedules/456/entries.json",
+          "requestBody": {
+            "all_day": false,
+            "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+            "ends_at": "2026-11-20T11:00:00Z",
+            "participant_ids": [
+              789
+            ],
+            "starts_at": "2026-11-20T10:00:00Z",
+            "status": "active",
+            "summary": "Example Meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4130d541-0982-5187-9978-0354d88e58ba",
+      "input": {
+        "accountId": "123",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "endsAt": "2026-11-20T11:00:00Z",
+        "participantIds": [
+          "789"
+        ],
+        "scheduleId": "456",
+        "startsAt": "2026-11-20T10:00:00Z",
+        "summary": "Example Meeting"
+      },
+      "name": "createScheduleEntry-final503",
+      "operation": "createScheduleEntry"
+    },
+    {
+      "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/schedules/456/entries.json",
+          "requestBody": {
+            "all_day": false,
+            "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+            "ends_at": "2026-11-20T11:00:00Z",
+            "participant_ids": [
+              789
+            ],
+            "starts_at": "2026-11-20T10:00:00Z",
+            "status": "active",
+            "summary": "Example Meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4130d541-0982-5187-9978-0354d88e58ba",
+      "input": {
+        "accountId": "123",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "endsAt": "2026-11-20T11:00:00Z",
+        "participantIds": [
+          "789"
+        ],
+        "scheduleId": "456",
+        "startsAt": "2026-11-20T10:00:00Z",
+        "summary": "Example Meeting"
+      },
+      "name": "createScheduleEntry-serverFailure",
+      "operation": "createScheduleEntry"
+    },
+    {
+      "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "startsAt": "",
+          "summary": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4130d541-0982-5187-9978-0354d88e58ba",
+      "input": {
+        "accountId": "123",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "endsAt": "bad",
+        "participantIds": [
+          "789"
+        ],
+        "scheduleId": "456",
+        "startsAt": "2026-11-20T10:00:00Z",
+        "summary": "Example Meeting"
+      },
+      "name": "createScheduleEntry-defect",
+      "operation": "createScheduleEntry"
+    },
+    {
+      "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/schedules/456/entries.json",
+          "requestBody": {
+            "all_day": false,
+            "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+            "ends_at": "2026-11-20T11:00:00Z",
+            "participant_ids": [
+              789
+            ],
+            "starts_at": "2026-11-20T10:00:00Z",
+            "status": "active",
+            "summary": "Example Meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4130d541-0982-5187-9978-0354d88e58ba",
+      "input": {
+        "accountId": "123",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "endsAt": "2026-11-20T11:00:00Z",
+        "participantIds": [
+          "789"
+        ],
+        "scheduleId": "456",
+        "startsAt": "2026-11-20T10:00:00Z",
+        "summary": "Example Meeting"
+      },
+      "name": "createScheduleEntry-transportFailure",
+      "operation": "createScheduleEntry"
+    },
+    {
+      "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "startsAt": "",
+          "summary": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "4130d541-0982-5187-9978-0354d88e58ba",
+      "input": {
+        "accountId": "123",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "endsAt": "2026-11-20T11:00:00Z",
+        "participantIds": [
+          "789"
+        ],
+        "scheduleId": "456",
+        "startsAt": "2026-11-20T10:00:00Z",
+        "summary": "Example Meeting"
+      },
+      "name": "createScheduleEntry-uncertain",
+      "operation": "createScheduleEntry",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "4130d541-0982-5187-9978-0354d88e58ba",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "exchanges": [
+        {
+          "body": "{\"id\":789,\"summary\":\"Updated Meeting\",\"starts_at\":\"2026-11-20\",\"ends_at\":\"2026-11-21\",\"all_day\":true,\"status\":\"active\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/schedule_entries/789.json",
+          "requestBody": {
+            "all_day": true,
+            "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+            "ends_at": "2026-11-21",
+            "participant_ids": [
+              987
+            ],
+            "starts_at": "2026-11-20",
+            "status": "active",
+            "summary": "Updated Meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "allDay": true,
+          "endsAt": "2026-11-21",
+          "id": "789",
+          "startsAt": "2026-11-20",
+          "status": "active",
+          "summary": "Updated Meeting"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "input": {
+        "accountId": "123",
+        "allDay": true,
+        "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+        "endsAt": "2026-11-21",
+        "entryId": "789",
+        "participantIds": [
+          "987"
+        ],
+        "startsAt": "2026-11-20",
+        "status": "active",
+        "summary": "Updated Meeting"
+      },
+      "name": "updateScheduleEntry-success",
+      "operation": "updateScheduleEntry"
+    },
+    {
+      "callId": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/schedule_entries/789.json",
+          "requestBody": {
+            "all_day": false,
+            "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+            "ends_at": "2026-11-20T13:00:00Z",
+            "participant_ids": [
+              987
+            ],
+            "starts_at": "2026-11-20T12:00:00Z",
+            "status": "active",
+            "summary": "Updated Meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "startsAt": "",
+          "summary": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "input": {
+        "accountId": "123",
+        "allDay": false,
+        "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+        "endsAt": "2026-11-20T13:00:00Z",
+        "entryId": "789",
+        "participantIds": [
+          "987"
+        ],
+        "startsAt": "2026-11-20T12:00:00Z",
+        "status": "active",
+        "summary": "Updated Meeting"
+      },
+      "name": "updateScheduleEntry-notFound",
+      "operation": "updateScheduleEntry"
+    },
+    {
+      "callId": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/schedule_entries/789.json",
+          "requestBody": {
+            "all_day": false,
+            "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+            "ends_at": "2026-11-20T13:00:00Z",
+            "participant_ids": [
+              987
+            ],
+            "starts_at": "2026-11-20T12:00:00Z",
+            "status": "active",
+            "summary": "Updated Meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "startsAt": "",
+          "summary": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "input": {
+        "accountId": "123",
+        "allDay": false,
+        "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+        "endsAt": "2026-11-20T13:00:00Z",
+        "entryId": "789",
+        "participantIds": [
+          "987"
+        ],
+        "startsAt": "2026-11-20T12:00:00Z",
+        "status": "active",
+        "summary": "Updated Meeting"
+      },
+      "name": "updateScheduleEntry-providerRejected",
+      "operation": "updateScheduleEntry"
+    },
+    {
+      "callId": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/schedule_entries/789.json",
+          "requestBody": {
+            "all_day": false,
+            "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+            "ends_at": "2026-11-20T13:00:00Z",
+            "participant_ids": [
+              987
+            ],
+            "starts_at": "2026-11-20T12:00:00Z",
+            "status": "active",
+            "summary": "Updated Meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "startsAt": "",
+          "summary": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "input": {
+        "accountId": "123",
+        "allDay": false,
+        "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+        "endsAt": "2026-11-20T13:00:00Z",
+        "entryId": "789",
+        "participantIds": [
+          "987"
+        ],
+        "startsAt": "2026-11-20T12:00:00Z",
+        "status": "active",
+        "summary": "Updated Meeting"
+      },
+      "name": "updateScheduleEntry-invalidResponse",
+      "operation": "updateScheduleEntry"
+    },
+    {
+      "callId": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/schedule_entries/789.json",
+          "requestBody": {
+            "all_day": false,
+            "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+            "ends_at": "2026-11-20T13:00:00Z",
+            "participant_ids": [
+              987
+            ],
+            "starts_at": "2026-11-20T12:00:00Z",
+            "status": "active",
+            "summary": "Updated Meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "input": {
+        "accountId": "123",
+        "allDay": false,
+        "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+        "endsAt": "2026-11-20T13:00:00Z",
+        "entryId": "789",
+        "participantIds": [
+          "987"
+        ],
+        "startsAt": "2026-11-20T12:00:00Z",
+        "status": "active",
+        "summary": "Updated Meeting"
+      },
+      "name": "updateScheduleEntry-final429",
+      "operation": "updateScheduleEntry"
+    },
+    {
+      "callId": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/schedule_entries/789.json",
+          "requestBody": {
+            "all_day": false,
+            "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+            "ends_at": "2026-11-20T13:00:00Z",
+            "participant_ids": [
+              987
+            ],
+            "starts_at": "2026-11-20T12:00:00Z",
+            "status": "active",
+            "summary": "Updated Meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "input": {
+        "accountId": "123",
+        "allDay": false,
+        "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+        "endsAt": "2026-11-20T13:00:00Z",
+        "entryId": "789",
+        "participantIds": [
+          "987"
+        ],
+        "startsAt": "2026-11-20T12:00:00Z",
+        "status": "active",
+        "summary": "Updated Meeting"
+      },
+      "name": "updateScheduleEntry-final503",
+      "operation": "updateScheduleEntry"
+    },
+    {
+      "callId": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "startsAt": "",
+          "summary": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "input": {
+        "accountId": "123",
+        "allDay": false,
+        "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+        "endsAt": "2026-11-20T13:00:00Z",
+        "entryId": "789",
+        "participantIds": [
+          "987"
+        ],
+        "startsAt": "2026-11-20T12:00:00Z",
+        "status": "bad",
+        "summary": "Updated Meeting"
+      },
+      "name": "updateScheduleEntry-defect",
+      "operation": "updateScheduleEntry"
+    },
+    {
+      "callId": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/schedule_entries/789.json",
+          "requestBody": {
+            "all_day": false,
+            "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+            "ends_at": "2026-11-20T13:00:00Z",
+            "participant_ids": [
+              987
+            ],
+            "starts_at": "2026-11-20T12:00:00Z",
+            "status": "active",
+            "summary": "Updated Meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "31b3a077-f4b8-5221-9be7-501d58225a02",
+      "input": {
+        "accountId": "123",
+        "allDay": false,
+        "description": "\u003cdiv\u003eUpdated\u003c/div\u003e",
+        "endsAt": "2026-11-20T13:00:00Z",
+        "entryId": "789",
+        "participantIds": [
+          "987"
+        ],
+        "startsAt": "2026-11-20T12:00:00Z",
+        "status": "active",
+        "summary": "Updated Meeting"
+      },
+      "name": "updateScheduleEntry-transportFailure",
+      "operation": "updateScheduleEntry"
+    },
+    {
+      "callId": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/recordings/789/status/trashed.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "trashed",
+        "failureKind": "",
+        "output": {
+          "entryId": "789",
+          "status": "trashed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
+      "input": {
+        "accountId": "123",
+        "entryId": "789"
+      },
+      "name": "trashScheduleEntry-success",
+      "operation": "trashScheduleEntry"
+    },
+    {
+      "callId": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/recordings/789/status/trashed.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "entryId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
+      "input": {
+        "accountId": "123",
+        "entryId": "789"
+      },
+      "name": "trashScheduleEntry-notFound",
+      "operation": "trashScheduleEntry"
+    },
+    {
+      "callId": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/recordings/789/status/trashed.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "entryId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
+      "input": {
+        "accountId": "123",
+        "entryId": "789"
+      },
+      "name": "trashScheduleEntry-providerRejected",
+      "operation": "trashScheduleEntry"
+    },
+    {
+      "callId": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/recordings/789/status/trashed.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
+      "input": {
+        "accountId": "123",
+        "entryId": "789"
+      },
+      "name": "trashScheduleEntry-final429",
+      "operation": "trashScheduleEntry"
+    },
+    {
+      "callId": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/recordings/789/status/trashed.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
+      "input": {
+        "accountId": "123",
+        "entryId": "789"
+      },
+      "name": "trashScheduleEntry-final503",
+      "operation": "trashScheduleEntry"
+    },
+    {
+      "callId": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "entryId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
+      "input": {
+        "accountId": "123",
+        "entryId": "0"
+      },
+      "name": "trashScheduleEntry-defect",
+      "operation": "trashScheduleEntry"
+    },
+    {
+      "callId": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/recordings/789/status/trashed.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
+      "input": {
+        "accountId": "123",
+        "entryId": "789"
+      },
+      "name": "trashScheduleEntry-transportFailure",
+      "operation": "trashScheduleEntry"
+    },
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "{\"id\":456,\"name\":\"Example Project\",\"dock\":[{\"id\":987,\"name\":\"message_board\"},{\"id\":988,\"name\":\"schedule\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123/projects/456.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "456",
+          "messageBoardId": "987",
+          "name": "Example Project",
+          "scheduleId": "988"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "getProject-schedule",
+      "operation": "getProject"
     }
   ],
   "schemaVersion": 1

@@ -44,6 +44,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[basecamp.Project](`{"id":"123","name":"Example Project"}`)
 			return err
 		}},
+		{name: "listScheduleEntries/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ScheduleEntriesPage](`{"entries":[{"id":"789","summary":"Example Meeting","startsAt":"2026-11-20T10:00:00Z","endsAt":"2026-11-20T11:00:00Z"}]}`)
+			return err
+		}},
+		{name: "getScheduleEntry/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ScheduleEntry](`{"id":"789","summary":"Example Meeting","startsAt":"2026-11-20T10:00:00Z","endsAt":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "createScheduleEntry/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ScheduleEntry](`{"id":"789","summary":"Example Meeting","startsAt":"2026-11-20T10:00:00Z","endsAt":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "updateScheduleEntry/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ScheduleEntry](`{"id":"789","summary":"Example Meeting","startsAt":"2026-11-20T10:00:00Z","endsAt":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "trashScheduleEntry/trashedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ScheduleEntryActionResult](`{"entryId":"789","status":"trashed"}`)
+			return err
+		}},
 		{name: "listMessages/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[basecamp.MessagesPage](`{"messages":[{"id":"789","subject":"Example Message","status":"active"}]}`)
 			return err
@@ -190,6 +210,21 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
 		t.Errorf("getProject mock has another definition")
+	}
+	if mock.ListScheduleEntries().Definition().Operation.OperationID != "listScheduleEntries" {
+		t.Errorf("listScheduleEntries mock has another definition")
+	}
+	if mock.GetScheduleEntry().Definition().Operation.OperationID != "getScheduleEntry" {
+		t.Errorf("getScheduleEntry mock has another definition")
+	}
+	if mock.CreateScheduleEntry().Definition().Operation.OperationID != "createScheduleEntry" {
+		t.Errorf("createScheduleEntry mock has another definition")
+	}
+	if mock.UpdateScheduleEntry().Definition().Operation.OperationID != "updateScheduleEntry" {
+		t.Errorf("updateScheduleEntry mock has another definition")
+	}
+	if mock.TrashScheduleEntry().Definition().Operation.OperationID != "trashScheduleEntry" {
+		t.Errorf("trashScheduleEntry mock has another definition")
 	}
 	if mock.ListMessages().Definition().Operation.OperationID != "listMessages" {
 		t.Errorf("listMessages mock has another definition")
