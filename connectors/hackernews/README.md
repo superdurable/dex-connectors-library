@@ -1,10 +1,10 @@
 # Hacker News Daily Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hackernews/go@v0.26.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hackernews/go@v0.27.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/hackernews`.
 
-Read public Hacker News feeds, stories, and comments, and search stories by
+Read public Hacker News feeds, stories, comments, and user profiles, and search stories by
 keyword, through typed Dex Query Steps. Use the
 [daily digest example](go/examples/daily-digest/README.md) to monitor developer
 topics and produce summaries with direct source links, and the
@@ -35,6 +35,12 @@ the operations it implements.
 | `NewListStoryIDsStep` | `ListStoryIDsInput` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | `NewGetItemStep` | `GetItemInput` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `NewSearchStoriesStep` | `SearchStoriesInput` | `searched` | `providerRejected`, `invalidResponse`, `defect` |
+| `NewGetUserStep` | `GetUserInput` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+
+`GetUser` reads the public profile for a case-sensitive Hacker News username,
+including creation time, karma, profile HTML, submitted item IDs, and a profile URL.
+Its Query repeats safely after temporary failures. The story search example can
+read the first matching story author's profile when `LookupFirstAuthor` is true.
 
 `ListStoryIDs` reads `top`, `best`, `new`, `ask`, or `show`. Empty `Feed` selects
 `top`. `Limit` accepts 1 through 500; zero selects 50. Both fields are optional

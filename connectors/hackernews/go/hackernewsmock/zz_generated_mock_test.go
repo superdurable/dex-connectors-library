@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getUser/publicUser/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[hackernews.User](`{"id":"langtools","created":1700000000,"karma":100,"submitted":[42003],"profileUrl":"https://news.ycombinator.com/user?id=langtools"}`)
+			return err
+		}},
 		{name: "listStoryIDs/developerFeed/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[hackernews.StoryIDs](`{"ids":[42001],"hasMore":true,"observedAt":"2026-10-26T12:00:00Z"}`)
 			return err
@@ -46,6 +50,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetUser().Definition().Operation.OperationID != "getUser" {
+		t.Errorf("getUser mock has another definition")
+	}
 	if mock.ListStoryIDs().Definition().Operation.OperationID != "listStoryIDs" {
 		t.Errorf("listStoryIDs mock has another definition")
 	}

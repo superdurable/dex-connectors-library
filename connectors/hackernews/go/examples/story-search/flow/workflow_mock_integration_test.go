@@ -25,7 +25,7 @@ func TestStorySearchExampleUsesHackerNewsMockWithRealDex(t *testing.T) {
 	t.Run("reads every page and keeps each story once", func(t *testing.T) {
 		flowID := fmt.Sprintf("hn-search-mock-%d", time.Now().UnixNano())
 		startedAt := time.Now().UTC()
-		_, err := worker.client.StartFlow(context.Background(), flow, flowID, Request{Query: "compiler"}, dex.StartFlowOptions{})
+		_, err := worker.client.StartFlow(context.Background(), flow, flowID, Request{Query: "compiler", LookupFirstAuthor: true}, dex.StartFlowOptions{})
 		require.NoError(t, err)
 		result := waitForFlow(t, worker.client, flowID)
 		require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
@@ -36,6 +36,9 @@ func TestStorySearchExampleUsesHackerNewsMockWithRealDex(t *testing.T) {
 		require.Equal(t, 3, report.PagesRead)
 		require.False(t, report.HasUnreadPages)
 		require.Empty(t, report.Stories[2].URL, "the Ask HN text post has no source URL")
+		require.NotNil(t, report.FirstAuthor)
+		require.Equal(t, "langtools", report.FirstAuthor.ID)
+		require.Equal(t, "langtools", mock.GetUser().Calls()[0].Input.ID)
 
 		calls := mock.SearchStories().Calls()
 		require.Len(t, calls, 3)

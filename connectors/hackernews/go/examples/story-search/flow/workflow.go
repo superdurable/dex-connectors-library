@@ -25,6 +25,7 @@ const (
 	maxPages            = 20
 	storiesPerPageRead  = 50
 	searchStoriesStepID = "SearchStories"
+	getUserStepID       = "GetUser"
 )
 
 // searchReport is the Flow's only state: the resolved request, the window, and the stories read so far.
@@ -44,6 +45,8 @@ type Request struct {
 	SortBy hackernews.StorySearchSort `json:"sortBy,omitempty"`
 	// MaxPages bounds the result pages read, from 1 through 20, at 50 stories per page. Zero selects 4.
 	MaxPages int `json:"maxPages,omitempty"`
+	// LookupFirstAuthor reads the first story author's public profile after all pages.
+	LookupFirstAuthor bool `json:"lookupFirstAuthor,omitempty"`
 }
 
 // Report is the search result, available through Dex Web and as the completion result.
@@ -60,6 +63,8 @@ type Report struct {
 	PagesRead int `json:"pagesRead"`
 	// HasUnreadPages reports that MaxPages stopped the search before the last result page.
 	HasUnreadPages bool `json:"hasUnreadPages"`
+	// FirstAuthor is the first story author's public profile when requested and available.
+	FirstAuthor *hackernews.User `json:"firstAuthor,omitempty"`
 }
 
 // StorySearchFlow searches Hacker News once and completes with the matching stories.
@@ -84,6 +89,13 @@ func (flow *StorySearchFlow) GetSteps() []dex.StepDef {
 			Searched:            sdkgo.GoTo(recordStoryPage{}),
 		})),
 		dex.DefineStep(recordStoryPage{}),
+		dex.DefineStep(hackernews.NewGetUserStep(hackernews.GetUserStepConfig[hackernews.GetUserInput]{
+			StepType: getUserStepID, ConnectionName: ConnectionName, Connection: flow.connection,
+			MapToOperationInput: func(input hackernews.GetUserInput) hackernews.GetUserInput { return input },
+			Annotations:         sdkgo.StepAnnotations{GroupID: "search", GroupLabel: "Search", Explanation: "Read the first matching story author's public profile."},
+			Found:               sdkgo.GoTo(recordFirstAuthor{}),
+		})),
+		dex.DefineStep(recordFirstAuthor{}),
 	}
 }
 
@@ -167,6 +179,27 @@ func (recordStoryPage) Execute(ctx dex.Context, result hackernews.SearchStoriesR
 	}
 	if result.Value.NextPage != 0 && !report.HasUnreadPages {
 		return dex.GoTo(sdkgo.StepRef[hackernews.SearchStoriesInput](searchStoriesStepID), searchInput(report, result.Value.NextPage)), nil
+	}
+	if report.Request.LookupFirstAuthor && len(report.Stories) > 0 && report.Stories[0].Author != "" {
+		return dex.GoTo(sdkgo.StepRef[hackernews.GetUserInput](getUserStepID), hackernews.GetUserInput{ID: report.Stories[0].Author}), nil
+	}
+	return dex.GracefulComplete(report), nil
+}
+
+// dex:group group-id:search group-label:"Search"
+// dex:explanation text:"Store the requested author's public profile with the matching stories."
+type recordFirstAuthor struct {
+	dex.StepDefaultsNoWaitFor[hackernews.GetUserResult]
+}
+
+func (recordFirstAuthor) Execute(ctx dex.Context, result hackernews.GetUserResult) (*dex.StepDecision, error) {
+	report, err := searchReport.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	report.FirstAuthor = &result.Value
+	if err := searchReport.Set(ctx, report); err != nil {
+		return nil, err
 	}
 	return dex.GracefulComplete(report), nil
 }

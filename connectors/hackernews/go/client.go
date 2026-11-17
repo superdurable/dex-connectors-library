@@ -10,7 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -66,6 +68,28 @@ type GetItemInput struct {
 	ID int64 `json:"id"`
 }
 
+// GetUserInput identifies a public Hacker News user by case-sensitive username.
+type GetUserInput struct {
+	// ID is the username shown on the Hacker News profile page.
+	ID string `json:"id"`
+}
+
+// User contains public profile fields and submitted item IDs.
+type User struct {
+	// ID is the case-sensitive public username.
+	ID string `json:"id"`
+	// Created is the account creation time in Unix seconds.
+	Created int64 `json:"created"`
+	// Karma is the public score reported by Hacker News.
+	Karma int `json:"karma"`
+	// AboutHTML is untrusted profile HTML and needs sanitization before rendering.
+	AboutHTML string `json:"about,omitempty"`
+	// Submitted contains public story, poll, and comment IDs.
+	Submitted []int64 `json:"submitted,omitempty"`
+	// ProfileURL links to the public Hacker News profile.
+	ProfileURL string `json:"profileUrl"`
+}
+
 // Item preserves public API fields and adds the exact Hacker News permalink.
 // TextHTML and Title are untrusted provider text. Applications must escape or sanitize them before HTML rendering.
 type Item struct {
@@ -105,6 +129,9 @@ type ListStoryIDsOperation struct{ client *Client }
 // GetItemOperation reads one item with one HTTP request. It does not fetch its children or external URL.
 type GetItemOperation struct{ client *Client }
 
+// GetUserOperation reads one public profile with one HTTP request.
+type GetUserOperation struct{ client *Client }
+
 // New validates config without accessing the network. Zero fields use manifest defaults.
 // The generated constructor supplies credentials, but public Hacker News reads never resolve or transmit them.
 func New(config Config, _ sdkgo.CredentialProvider[Credentials], options ...Option) (*Client, error) {
@@ -136,6 +163,9 @@ func (client *Client) ListStoryIDs() ListStoryIDsOperation { return ListStoryIDs
 
 // GetItem returns the item query bound to this client.
 func (client *Client) GetItem() GetItemOperation { return GetItemOperation{client} }
+
+// GetUser returns the public user query bound to this client.
+func (client *Client) GetUser() GetUserOperation { return GetUserOperation{client} }
 
 // SearchStories returns the story search query bound to this client.
 func (client *Client) SearchStories() SearchStoriesOperation { return SearchStoriesOperation{client} }
@@ -183,6 +213,35 @@ func decodeStoryIDs(body []byte, limit int, clock func() time.Time) sdkgo.QueryA
 
 // Definition returns the manifest-generated item query contract.
 func (GetItemOperation) Definition() sdkgo.QueryDefinition { return GetItemDefinition }
+
+// Definition returns the manifest-generated user query contract.
+func (GetUserOperation) Definition() sdkgo.QueryDefinition { return GetUserDefinition }
+
+// Invoke reads one public profile. Missing profiles select notFound.
+func (operation GetUserOperation) Invoke(call sdkgo.Call, input GetUserInput) sdkgo.QueryAttempt[User] {
+	if input.ID == "" || len(input.ID) > 100 || strings.ContainsAny(input.ID, "/?#") {
+		return failedBranch[User]("getUser", GetUserBranchDefect, sdkgo.FailureValidation, "username is invalid")
+	}
+	return getJSON(operation.client, call, "getUser", operation.client.baseURL+"/user/"+url.PathEscape(input.ID)+".json", func(body []byte) sdkgo.QueryAttempt[User] {
+		var user *User
+		if err := json.Unmarshal(body, &user); err != nil {
+			return failedBranch[User]("getUser", GetUserBranchInvalidResponse, sdkgo.FailureProtocol, "Hacker News returned malformed user JSON")
+		}
+		if user == nil {
+			return failedBranch[User]("getUser", GetUserBranchNotFound, sdkgo.FailureNotFound, "Hacker News user was not found")
+		}
+		if user.ID != input.ID || user.Created < 0 || user.Karma < 0 {
+			return failedBranch[User]("getUser", GetUserBranchInvalidResponse, sdkgo.FailureProtocol, "Hacker News returned invalid user data")
+		}
+		for _, itemID := range user.Submitted {
+			if itemID <= 0 {
+				return failedBranch[User]("getUser", GetUserBranchInvalidResponse, sdkgo.FailureProtocol, "Hacker News returned an invalid submitted item ID")
+			}
+		}
+		user.ProfileURL = "https://news.ycombinator.com/user?id=" + url.QueryEscape(user.ID)
+		return sdkgo.NewQueryBranch(GetUserBranchFound, *user, nil, sdkgo.Receipt{})
+	})
+}
 
 // Invoke reads one public item. Null, deleted, and dead items select notFound without retrying.
 func (operation GetItemOperation) Invoke(call sdkgo.Call, input GetItemInput) sdkgo.QueryAttempt[Item] {
@@ -239,8 +298,8 @@ func getJSON[T any](client *Client, call sdkgo.Call, operation, requestURL strin
 			kind = sdkgo.FailureRateLimit
 		}
 		return sdkgo.NewQueryRetry[T](failure(operation, kind, "Hacker News is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.clock()))
-	case response.StatusCode == http.StatusNotFound && operation == "getItem":
-		return failedBranch[T](operation, GetItemBranchNotFound, sdkgo.FailureNotFound, "Hacker News resource was not found")
+	case response.StatusCode == http.StatusNotFound && (operation == "getItem" || operation == "getUser"):
+		return failedBranch[T](operation, sdkgo.BranchID("notFound"), sdkgo.FailureNotFound, "Hacker News resource was not found")
 	case response.StatusCode != http.StatusOK:
 		return failedBranch[T](operation, GetItemBranchProviderRejected, sdkgo.FailureProviderRejection, "Hacker News rejected the request")
 	}

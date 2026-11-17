@@ -23,6 +23,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"listStoryIDs":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListStoryIDs(), connection),
 		"getItem":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetItem(), connection),
+		"getUser":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetUser(), connection),
 		"searchStories": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchStories(), connection),
 	}}
 }
