@@ -17,10 +17,10 @@ spec:
       operations: [searchIssues, getIssue, createIssue, updateIssue, addComment, findUserByEmail, listWorkflowStates]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-linear"
       operations: [searchIssues, getIssue, createIssue, updateIssue, addComment, findUserByEmail, listWorkflowStates]
-      triggers: []
+      triggers: [issueEventReceived]
   codegen:
     go:
       package: linear

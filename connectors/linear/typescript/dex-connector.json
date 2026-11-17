@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-linear",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -568,6 +568,16 @@
           "teamId"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineIssueEventReceivedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "issueEventReceived",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]

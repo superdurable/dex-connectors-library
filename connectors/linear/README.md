@@ -376,3 +376,5 @@ No Linear workspace was used. The following live behavior is unverified:
 - Linear's webhook payloads, whether `updatedAt` changes for every update event, the retry schedule, and the
   stability of `Linear-Delivery`, which the connector does not use;
 - the `listTeams` command and team picker through Dex Web, and the settings paths in the setup guidance.
+
+The TypeScript `issueEventReceived` Trigger is available in `@superdurable/connector-linear` v0.2.0. See its runnable [issue event intake example](typescript/examples/issue-event-intake/README.md) for durable inbox delivery and a real Dex integration check. Live Linear webhook delivery remains unverified.
