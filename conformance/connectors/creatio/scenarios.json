@@ -3201,6 +3201,1543 @@
       },
       "name": "deleteAccount-transportFailure",
       "operation": "deleteAccount"
+    },
+    {
+      "callId": "e0000001-f539-5f35-98a5-4caec221843e",
+      "exchanges": [
+        {
+          "body": "{\"Id\":\"59f2ffca-b4ae-4545-82e6-58830db5077b\",\"Title\":\"Example Company\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,Title"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+          "title": "Example Company"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getActivity-found",
+      "operation": "getActivity"
+    },
+    {
+      "callId": "e0000002-ed26-5e2b-b359-8f21319c7ca8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,Title"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getActivity-notFound",
+      "operation": "getActivity"
+    },
+    {
+      "callId": "e0000003-4b1d-5e5b-8e3e-381cf468eaee",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,Title"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getActivity-providerRejected",
+      "operation": "getActivity"
+    },
+    {
+      "callId": "e0000004-2269-5a60-beb7-b47c5543d00d",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,Title"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getActivity-invalidResponse",
+      "operation": "getActivity"
+    },
+    {
+      "callId": "e0000005-8025-54a4-a13d-656a72bbb435",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,Title"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getActivity-rateLimit",
+      "operation": "getActivity"
+    },
+    {
+      "callId": "e0000006-d3ea-5d92-bc37-2b6284608357",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,Title"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getActivity-serverUnavailable",
+      "operation": "getActivity"
+    },
+    {
+      "callId": "e0000007-f884-5c08-a8c8-0ab710cacdf4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,Title"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getActivity-requestTimeout",
+      "operation": "getActivity"
+    },
+    {
+      "callId": "e0000008-09a3-5754-8446-a31138e9ec50",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityId": "invalid/id"
+      },
+      "name": "getActivity-defect",
+      "operation": "getActivity"
+    },
+    {
+      "callId": "e0000009-6165-582f-8d11-ba927db276df",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,Title"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getActivity-transportFailure",
+      "operation": "getActivity"
+    },
+    {
+      "callId": "e000000a-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"Id\":\"59f2ffca-b4ae-4545-82e6-58830db5077b\",\"Title\":\"Example Company\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,Title"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "activities": [
+            {
+              "id": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+              "title": "Example Company"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listActivities-success",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "e000000b-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,Title"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "activities": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listActivities-providerRejected",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "e000000c-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,Title"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "activities": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listActivities-invalidResponse",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "e000000d-0000-4000-8000-000000000804",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "activities": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 201
+      },
+      "name": "listActivities-defect",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "e000000e-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,Title"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listActivities-rateLimit",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "e000000f-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,Title"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listActivities-serverUnavailable",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "e0000010-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,Title"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listActivities-transportFailure",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
+      "exchanges": [
+        {
+          "body": "{\"Id\":\"59f2ffca-b4ae-4545-82e6-58830db5077b\",\"Title\":\"Example Company\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Activity",
+          "requestBody": {
+            "Due": "2026-11-17T09:30:00Z",
+            "Start": "2026-11-17T09:00:00Z",
+            "Title": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
+          "providerId": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+          "title": "Example Company"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
+      "input": {
+        "due": "2026-11-17T09:30:00Z",
+        "start": "2026-11-17T09:00:00Z",
+        "title": "Example Company"
+      },
+      "name": "createActivity-success",
+      "operation": "createActivity"
+    },
+    {
+      "callId": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Activity",
+          "requestBody": {
+            "Due": "2026-11-17T09:30:00Z",
+            "Start": "2026-11-17T09:00:00Z",
+            "Title": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
+      "input": {
+        "due": "2026-11-17T09:30:00Z",
+        "start": "2026-11-17T09:00:00Z",
+        "title": "Example Company"
+      },
+      "name": "createActivity-providerRejected",
+      "operation": "createActivity"
+    },
+    {
+      "callId": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
+      "input": {
+        "due": "2026-11-17T09:30:00Z",
+        "start": "2026-11-17T09:00:00Z",
+        "title": ""
+      },
+      "name": "createActivity-defect",
+      "operation": "createActivity"
+    },
+    {
+      "callId": "e0000014-7d03-53ce-a1ec-a6acdb3d007b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Activity",
+          "requestBody": {
+            "Due": "2026-11-17T09:30:00Z",
+            "Start": "2026-11-17T09:00:00Z",
+            "Title": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0000014-7d03-53ce-a1ec-a6acdb3d007b",
+      "input": {
+        "due": "2026-11-17T09:30:00Z",
+        "start": "2026-11-17T09:00:00Z",
+        "title": "Example Company"
+      },
+      "name": "createActivity-rateLimit",
+      "operation": "createActivity"
+    },
+    {
+      "callId": "e0000015-7d03-53ce-a1ec-a6acdb3d007b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Activity",
+          "requestBody": {
+            "Due": "2026-11-17T09:30:00Z",
+            "Start": "2026-11-17T09:00:00Z",
+            "Title": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0000015-7d03-53ce-a1ec-a6acdb3d007b",
+      "input": {
+        "due": "2026-11-17T09:30:00Z",
+        "start": "2026-11-17T09:00:00Z",
+        "title": "Example Company"
+      },
+      "name": "createActivity-serverUnavailable",
+      "operation": "createActivity"
+    },
+    {
+      "callId": "e0000016-7d03-53ce-a1ec-a6acdb3d007b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Activity",
+          "requestBody": {
+            "Due": "2026-11-17T09:30:00Z",
+            "Start": "2026-11-17T09:00:00Z",
+            "Title": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0000016-7d03-53ce-a1ec-a6acdb3d007b",
+      "input": {
+        "due": "2026-11-17T09:30:00Z",
+        "start": "2026-11-17T09:00:00Z",
+        "title": "Example Company"
+      },
+      "name": "createActivity-transportFailure",
+      "operation": "createActivity"
+    },
+    {
+      "callId": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Activity",
+          "query": {
+            "$filter": [
+              "Title eq 'Example Company'"
+            ],
+            "$select": [
+              "Id,Title"
+            ],
+            "$top": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
+      "input": {
+        "due": "2026-11-17T09:30:00Z",
+        "start": "2026-11-17T09:00:00Z",
+        "title": "Example Company"
+      },
+      "name": "createActivity-uncertain",
+      "operation": "createActivity",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "2b0bf06e-6327-56ce-bb6c-61ddece7cd60",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestBody": {
+            "Due": "2026-11-17T10:30:00Z",
+            "Start": "2026-11-17T10:00:00Z",
+            "Title": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b0bf06e-6327-56ce-bb6c-61ddece7cd60",
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+        "due": "2026-11-17T10:30:00Z",
+        "start": "2026-11-17T10:00:00Z",
+        "title": "Example Company"
+      },
+      "name": "updateActivity-success",
+      "operation": "updateActivity"
+    },
+    {
+      "callId": "2b0bf06e-6327-56ce-bb6c-61ddece7cd60",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestBody": {
+            "Title": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b0bf06e-6327-56ce-bb6c-61ddece7cd60",
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+        "title": "Example Company"
+      },
+      "name": "updateActivity-notFound",
+      "operation": "updateActivity"
+    },
+    {
+      "callId": "2b0bf06e-6327-56ce-bb6c-61ddece7cd60",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestBody": {
+            "Title": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b0bf06e-6327-56ce-bb6c-61ddece7cd60",
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+        "title": "Example Company"
+      },
+      "name": "updateActivity-providerRejected",
+      "operation": "updateActivity"
+    },
+    {
+      "callId": "2b0bf06e-6327-56ce-bb6c-61ddece7cd60",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b0bf06e-6327-56ce-bb6c-61ddece7cd60",
+      "input": {
+        "activityId": "invalid",
+        "title": "Example Company"
+      },
+      "name": "updateActivity-defect",
+      "operation": "updateActivity"
+    },
+    {
+      "callId": "e000001c-924f-5476-9c72-69d0dc131bcc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestBody": {
+            "Title": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e000001c-924f-5476-9c72-69d0dc131bcc",
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+        "title": "Example Company"
+      },
+      "name": "updateActivity-rateLimit",
+      "operation": "updateActivity"
+    },
+    {
+      "callId": "e000001d-924f-5476-9c72-69d0dc131bcc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestBody": {
+            "Title": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e000001d-924f-5476-9c72-69d0dc131bcc",
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+        "title": "Example Company"
+      },
+      "name": "updateActivity-serverUnavailable",
+      "operation": "updateActivity"
+    },
+    {
+      "callId": "e000001e-924f-5476-9c72-69d0dc131bcc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestBody": {
+            "Title": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e000001e-924f-5476-9c72-69d0dc131bcc",
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+        "title": "Example Company"
+      },
+      "name": "updateActivity-transportFailure",
+      "operation": "updateActivity"
+    },
+    {
+      "callId": "861df14a-cf46-5f1a-8ed8-25d7552b8512",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "861df14a-cf46-5f1a-8ed8-25d7552b8512",
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "deleteActivity-success",
+      "operation": "deleteActivity"
+    },
+    {
+      "callId": "861df14a-cf46-5f1a-8ed8-25d7552b8512",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "861df14a-cf46-5f1a-8ed8-25d7552b8512",
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "deleteActivity-notFound",
+      "operation": "deleteActivity"
+    },
+    {
+      "callId": "861df14a-cf46-5f1a-8ed8-25d7552b8512",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "861df14a-cf46-5f1a-8ed8-25d7552b8512",
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "deleteActivity-providerRejected",
+      "operation": "deleteActivity"
+    },
+    {
+      "callId": "861df14a-cf46-5f1a-8ed8-25d7552b8512",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "861df14a-cf46-5f1a-8ed8-25d7552b8512",
+      "input": {
+        "activityId": "invalid"
+      },
+      "name": "deleteActivity-defect",
+      "operation": "deleteActivity"
+    },
+    {
+      "callId": "e0000023-6346-5d36-94f4-d2762b5ffd0e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0000023-6346-5d36-94f4-d2762b5ffd0e",
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "deleteActivity-rateLimit",
+      "operation": "deleteActivity"
+    },
+    {
+      "callId": "e0000024-6346-5d36-94f4-d2762b5ffd0e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0000024-6346-5d36-94f4-d2762b5ffd0e",
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "deleteActivity-serverUnavailable",
+      "operation": "deleteActivity"
+    },
+    {
+      "callId": "e0000025-6346-5d36-94f4-d2762b5ffd0e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Activity(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0000025-6346-5d36-94f4-d2762b5ffd0e",
+      "input": {
+        "activityId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "deleteActivity-transportFailure",
+      "operation": "deleteActivity"
     }
   ],
   "schemaVersion": 1

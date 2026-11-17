@@ -48,6 +48,11 @@ type Operations interface {
 	CreateAccount() sdkgo.Mutation[CreateAccountInput, AccountSummary]
 	UpdateAccount() sdkgo.Mutation[UpdateAccountInput, AccountWriteOutput]
 	DeleteAccount() sdkgo.Mutation[DeleteAccountInput, AccountWriteOutput]
+	GetActivity() sdkgo.Query[GetActivityInput, ActivitySummary]
+	ListActivities() sdkgo.Query[ListActivitiesInput, ActivitiesPage]
+	CreateActivity() sdkgo.Mutation[CreateActivityInput, ActivitySummary]
+	UpdateActivity() sdkgo.Mutation[UpdateActivityInput, ActivityWriteOutput]
+	DeleteActivity() sdkgo.Mutation[DeleteActivityInput, ActivityWriteOutput]
 	GetContact() sdkgo.Query[GetContactInput, ContactSummary]
 	ListContacts() sdkgo.Query[ListContactsInput, ContactsPage]
 	CreateContact() sdkgo.Mutation[CreateContactInput, ContactSummary]
@@ -71,6 +76,21 @@ func (operations clientOperations) UpdateAccount() sdkgo.Mutation[UpdateAccountI
 }
 func (operations clientOperations) DeleteAccount() sdkgo.Mutation[DeleteAccountInput, AccountWriteOutput] {
 	return operations.client.DeleteAccount()
+}
+func (operations clientOperations) GetActivity() sdkgo.Query[GetActivityInput, ActivitySummary] {
+	return operations.client.GetActivity()
+}
+func (operations clientOperations) ListActivities() sdkgo.Query[ListActivitiesInput, ActivitiesPage] {
+	return operations.client.ListActivities()
+}
+func (operations clientOperations) CreateActivity() sdkgo.Mutation[CreateActivityInput, ActivitySummary] {
+	return operations.client.CreateActivity()
+}
+func (operations clientOperations) UpdateActivity() sdkgo.Mutation[UpdateActivityInput, ActivityWriteOutput] {
+	return operations.client.UpdateActivity()
+}
+func (operations clientOperations) DeleteActivity() sdkgo.Mutation[DeleteActivityInput, ActivityWriteOutput] {
+	return operations.client.DeleteActivity()
 }
 func (operations clientOperations) GetContact() sdkgo.Query[GetContactInput, ContactSummary] {
 	return operations.client.GetContact()
@@ -646,6 +666,374 @@ func NewDeleteAccountStep[IN any](config DeleteAccountStepConfig[IN]) sdkgo.Muta
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteAccountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetActivityBranchFound sdkgo.BranchID = "found"
+const GetActivityBranchNotFound sdkgo.BranchID = "notFound"
+const GetActivityBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetActivityBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetActivityBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetActivityDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getActivity"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetActivityBranchFound, Description: "Creatio returned the selected activity."},
+		{ID: GetActivityBranchNotFound, Description: "Creatio returned no accessible activity for this UUID.", Optional: true},
+		{ID: GetActivityBranchProviderRejected, Description: "Creatio conclusively rejected the lookup.", Optional: true},
+		{ID: GetActivityBranchInvalidResponse, Description: "Creatio returned malformed or oversized OData JSON.", Optional: true},
+		{ID: GetActivityBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetActivityResult = sdkgo.QueryResult[ActivitySummary]
+
+type GetActivityStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=creatio"`
+	operationID                    struct{}                                           `connector:"operationId=getActivity"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetActivityInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetActivityResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetActivityResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetActivityResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetActivityResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetActivityResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ActivitySummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetActivityStep[IN any](config GetActivityStepConfig[IN]) sdkgo.QueryStep[IN, GetActivityInput, ActivitySummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("creatio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetActivityInput, ActivitySummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetActivity(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetActivityResult] {
+			branches := make([]sdkgo.BranchTarget[GetActivityResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetActivityBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetActivityBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetActivityBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetActivityBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetActivityBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListActivitiesBranchListed sdkgo.BranchID = "listed"
+const ListActivitiesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListActivitiesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListActivitiesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListActivitiesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listActivities"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListActivitiesBranchListed, Description: "Creatio returned an activity page."},
+		{ID: ListActivitiesBranchProviderRejected, Description: "Creatio rejected the activity list.", Optional: true},
+		{ID: ListActivitiesBranchInvalidResponse, Description: "Creatio returned invalid or oversized OData JSON.", Optional: true},
+		{ID: ListActivitiesBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListActivitiesResult = sdkgo.QueryResult[ActivitiesPage]
+
+type ListActivitiesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=creatio"`
+	operationID                    struct{}                                          `connector:"operationId=listActivities"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListActivitiesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListActivitiesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListActivitiesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListActivitiesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListActivitiesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ActivitiesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewListActivitiesStep[IN any](config ListActivitiesStepConfig[IN]) sdkgo.QueryStep[IN, ListActivitiesInput, ActivitiesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("creatio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListActivitiesInput, ActivitiesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListActivities(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListActivitiesResult] {
+			branches := make([]sdkgo.BranchTarget[ListActivitiesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListActivitiesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListActivitiesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListActivitiesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListActivitiesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateActivityBranchCreated sdkgo.BranchID = "created"
+const CreateActivityBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateActivityBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateActivityBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateActivityDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createActivity"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateActivityBranchCreated, Description: "Creatio created the activity."},
+		{ID: CreateActivityBranchProviderRejected, Description: "Creatio rejected creation.", Optional: true},
+		{ID: CreateActivityBranchUncertain, Description: "Creation may have succeeded but cannot be confirmed.", Optional: true},
+		{ID: CreateActivityBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateActivityResult = sdkgo.MutationResult[ActivitySummary]
+
+type CreateActivityStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=creatio"`
+	operationID                       struct{}                                              `connector:"operationId=createActivity"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateActivityInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateActivityResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateActivityResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateActivityResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateActivityResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ActivitySummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateActivityStep[IN any](config CreateActivityStepConfig[IN]) sdkgo.MutationStep[IN, CreateActivityInput, ActivitySummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("creatio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateActivityInput, ActivitySummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateActivity(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateActivityResult] {
+			branches := make([]sdkgo.BranchTarget[CreateActivityResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateActivityBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateActivityBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateActivityBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateActivityBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateActivityBranchUpdated sdkgo.BranchID = "updated"
+const UpdateActivityBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateActivityBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateActivityBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateActivityDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateActivity"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateActivityBranchUpdated, Description: "Creatio updated the activity."},
+		{ID: UpdateActivityBranchNotFound, Description: "No accessible activity has this UUID.", Optional: true},
+		{ID: UpdateActivityBranchProviderRejected, Description: "Creatio rejected the update.", Optional: true},
+		{ID: UpdateActivityBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateActivityResult = sdkgo.MutationResult[ActivityWriteOutput]
+
+type UpdateActivityStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=creatio"`
+	operationID                       struct{}                                                  `connector:"operationId=updateActivity"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateActivityInput                              `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateActivityResult]                        `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateActivityResult]                        `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateActivityResult]                        `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateActivityResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ActivityWriteOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateActivityStep[IN any](config UpdateActivityStepConfig[IN]) sdkgo.MutationStep[IN, UpdateActivityInput, ActivityWriteOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("creatio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateActivityInput, ActivityWriteOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateActivity(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateActivityResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateActivityResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateActivityBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateActivityBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateActivityBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateActivityBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteActivityBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteActivityBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteActivityBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteActivityBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteActivityDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteActivity"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteActivityBranchDeleted, Description: "Creatio deleted the activity."},
+		{ID: DeleteActivityBranchNotFound, Description: "No accessible activity has this UUID.", Optional: true},
+		{ID: DeleteActivityBranchProviderRejected, Description: "Creatio rejected the deletion.", Optional: true},
+		{ID: DeleteActivityBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteActivityResult = sdkgo.MutationResult[ActivityWriteOutput]
+
+type DeleteActivityStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=creatio"`
+	operationID                       struct{}                                                  `connector:"operationId=deleteActivity"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteActivityInput                              `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteActivityResult]                        `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteActivityResult]                        `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteActivityResult]                        `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteActivityResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ActivityWriteOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteActivityStep[IN any](config DeleteActivityStepConfig[IN]) sdkgo.MutationStep[IN, DeleteActivityInput, ActivityWriteOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("creatio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteActivityInput, ActivityWriteOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteActivity(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteActivityResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteActivityResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteActivityBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteActivityBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteActivityBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteActivityBranchDefect))
 			}
 			return branches
 		}(),

@@ -36,6 +36,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[creatio.AccountWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
 			return err
 		}},
+		{name: "getActivity/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ActivitySummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","title":"Example activity"}`)
+			return err
+		}},
+		{name: "listActivities/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ActivitiesPage](`{"activities":[{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","title":"Example activity"}]}`)
+			return err
+		}},
+		{name: "createActivity/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ActivitySummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","title":"Example activity"}`)
+			return err
+		}},
+		{name: "updateActivity/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ActivityWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
+		{name: "deleteActivity/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ActivityWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
 		{name: "getContact/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[creatio.ContactSummary](`{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","name":"Ada Lovelace","email":"ada@example.com"}`)
 			return err
@@ -80,6 +100,21 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteAccount().Definition().Operation.OperationID != "deleteAccount" {
 		t.Errorf("deleteAccount mock has another definition")
+	}
+	if mock.GetActivity().Definition().Operation.OperationID != "getActivity" {
+		t.Errorf("getActivity mock has another definition")
+	}
+	if mock.ListActivities().Definition().Operation.OperationID != "listActivities" {
+		t.Errorf("listActivities mock has another definition")
+	}
+	if mock.CreateActivity().Definition().Operation.OperationID != "createActivity" {
+		t.Errorf("createActivity mock has another definition")
+	}
+	if mock.UpdateActivity().Definition().Operation.OperationID != "updateActivity" {
+		t.Errorf("updateActivity mock has another definition")
+	}
+	if mock.DeleteActivity().Definition().Operation.OperationID != "deleteActivity" {
+		t.Errorf("deleteActivity mock has another definition")
 	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")

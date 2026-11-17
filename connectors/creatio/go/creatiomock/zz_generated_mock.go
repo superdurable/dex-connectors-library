@@ -17,17 +17,22 @@ import (
 
 // Mock is a scripted creatio connection. Script each operation through its accessor.
 type Mock struct {
-	connection    creatio.Connection
-	getAccount    *connectormock.Query[creatio.GetAccountInput, creatio.AccountSummary]
-	listAccounts  *connectormock.Query[creatio.ListAccountsInput, creatio.AccountsPage]
-	createAccount *connectormock.Mutation[creatio.CreateAccountInput, creatio.AccountSummary]
-	updateAccount *connectormock.Mutation[creatio.UpdateAccountInput, creatio.AccountWriteOutput]
-	deleteAccount *connectormock.Mutation[creatio.DeleteAccountInput, creatio.AccountWriteOutput]
-	getContact    *connectormock.Query[creatio.GetContactInput, creatio.ContactSummary]
-	listContacts  *connectormock.Query[creatio.ListContactsInput, creatio.ContactsPage]
-	createContact *connectormock.Mutation[creatio.CreateContactInput, creatio.ContactSummary]
-	updateContact *connectormock.Mutation[creatio.UpdateContactInput, creatio.ContactWriteOutput]
-	deleteContact *connectormock.Mutation[creatio.DeleteContactInput, creatio.ContactWriteOutput]
+	connection     creatio.Connection
+	getAccount     *connectormock.Query[creatio.GetAccountInput, creatio.AccountSummary]
+	listAccounts   *connectormock.Query[creatio.ListAccountsInput, creatio.AccountsPage]
+	createAccount  *connectormock.Mutation[creatio.CreateAccountInput, creatio.AccountSummary]
+	updateAccount  *connectormock.Mutation[creatio.UpdateAccountInput, creatio.AccountWriteOutput]
+	deleteAccount  *connectormock.Mutation[creatio.DeleteAccountInput, creatio.AccountWriteOutput]
+	getActivity    *connectormock.Query[creatio.GetActivityInput, creatio.ActivitySummary]
+	listActivities *connectormock.Query[creatio.ListActivitiesInput, creatio.ActivitiesPage]
+	createActivity *connectormock.Mutation[creatio.CreateActivityInput, creatio.ActivitySummary]
+	updateActivity *connectormock.Mutation[creatio.UpdateActivityInput, creatio.ActivityWriteOutput]
+	deleteActivity *connectormock.Mutation[creatio.DeleteActivityInput, creatio.ActivityWriteOutput]
+	getContact     *connectormock.Query[creatio.GetContactInput, creatio.ContactSummary]
+	listContacts   *connectormock.Query[creatio.ListContactsInput, creatio.ContactsPage]
+	createContact  *connectormock.Mutation[creatio.CreateContactInput, creatio.ContactSummary]
+	updateContact  *connectormock.Mutation[creatio.UpdateContactInput, creatio.ContactWriteOutput]
+	deleteContact  *connectormock.Mutation[creatio.DeleteContactInput, creatio.ContactWriteOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -35,22 +40,32 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getAccount:    connectormock.NewQuery[creatio.GetAccountInput, creatio.AccountSummary](t, creatio.GetAccountDefinition),
-		listAccounts:  connectormock.NewQuery[creatio.ListAccountsInput, creatio.AccountsPage](t, creatio.ListAccountsDefinition),
-		createAccount: connectormock.NewMutation[creatio.CreateAccountInput, creatio.AccountSummary](t, creatio.CreateAccountDefinition),
-		updateAccount: connectormock.NewMutation[creatio.UpdateAccountInput, creatio.AccountWriteOutput](t, creatio.UpdateAccountDefinition),
-		deleteAccount: connectormock.NewMutation[creatio.DeleteAccountInput, creatio.AccountWriteOutput](t, creatio.DeleteAccountDefinition),
-		getContact:    connectormock.NewQuery[creatio.GetContactInput, creatio.ContactSummary](t, creatio.GetContactDefinition),
-		listContacts:  connectormock.NewQuery[creatio.ListContactsInput, creatio.ContactsPage](t, creatio.ListContactsDefinition),
-		createContact: connectormock.NewMutation[creatio.CreateContactInput, creatio.ContactSummary](t, creatio.CreateContactDefinition),
-		updateContact: connectormock.NewMutation[creatio.UpdateContactInput, creatio.ContactWriteOutput](t, creatio.UpdateContactDefinition),
-		deleteContact: connectormock.NewMutation[creatio.DeleteContactInput, creatio.ContactWriteOutput](t, creatio.DeleteContactDefinition),
+		getAccount:     connectormock.NewQuery[creatio.GetAccountInput, creatio.AccountSummary](t, creatio.GetAccountDefinition),
+		listAccounts:   connectormock.NewQuery[creatio.ListAccountsInput, creatio.AccountsPage](t, creatio.ListAccountsDefinition),
+		createAccount:  connectormock.NewMutation[creatio.CreateAccountInput, creatio.AccountSummary](t, creatio.CreateAccountDefinition),
+		updateAccount:  connectormock.NewMutation[creatio.UpdateAccountInput, creatio.AccountWriteOutput](t, creatio.UpdateAccountDefinition),
+		deleteAccount:  connectormock.NewMutation[creatio.DeleteAccountInput, creatio.AccountWriteOutput](t, creatio.DeleteAccountDefinition),
+		getActivity:    connectormock.NewQuery[creatio.GetActivityInput, creatio.ActivitySummary](t, creatio.GetActivityDefinition),
+		listActivities: connectormock.NewQuery[creatio.ListActivitiesInput, creatio.ActivitiesPage](t, creatio.ListActivitiesDefinition),
+		createActivity: connectormock.NewMutation[creatio.CreateActivityInput, creatio.ActivitySummary](t, creatio.CreateActivityDefinition),
+		updateActivity: connectormock.NewMutation[creatio.UpdateActivityInput, creatio.ActivityWriteOutput](t, creatio.UpdateActivityDefinition),
+		deleteActivity: connectormock.NewMutation[creatio.DeleteActivityInput, creatio.ActivityWriteOutput](t, creatio.DeleteActivityDefinition),
+		getContact:     connectormock.NewQuery[creatio.GetContactInput, creatio.ContactSummary](t, creatio.GetContactDefinition),
+		listContacts:   connectormock.NewQuery[creatio.ListContactsInput, creatio.ContactsPage](t, creatio.ListContactsDefinition),
+		createContact:  connectormock.NewMutation[creatio.CreateContactInput, creatio.ContactSummary](t, creatio.CreateContactDefinition),
+		updateContact:  connectormock.NewMutation[creatio.UpdateContactInput, creatio.ContactWriteOutput](t, creatio.UpdateContactDefinition),
+		deleteContact:  connectormock.NewMutation[creatio.DeleteContactInput, creatio.ContactWriteOutput](t, creatio.DeleteContactDefinition),
 	}
 	mock.getAccount.Default(GetAccountDefault())
 	mock.listAccounts.Default(ListAccountsDefault())
 	mock.createAccount.Default(CreateAccountDefault())
 	mock.updateAccount.Default(UpdateAccountDefault())
 	mock.deleteAccount.Default(DeleteAccountDefault())
+	mock.getActivity.Default(GetActivityDefault())
+	mock.listActivities.Default(ListActivitiesDefault())
+	mock.createActivity.Default(CreateActivityDefault())
+	mock.updateActivity.Default(UpdateActivityDefault())
+	mock.deleteActivity.Default(DeleteActivityDefault())
 	mock.getContact.Default(GetContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
 	mock.createContact.Default(CreateContactDefault())
@@ -90,6 +105,31 @@ func (mock *Mock) UpdateAccount() *connectormock.Mutation[creatio.UpdateAccountI
 // DeleteAccount returns the deleteAccount script.
 func (mock *Mock) DeleteAccount() *connectormock.Mutation[creatio.DeleteAccountInput, creatio.AccountWriteOutput] {
 	return mock.deleteAccount
+}
+
+// GetActivity returns the getActivity script.
+func (mock *Mock) GetActivity() *connectormock.Query[creatio.GetActivityInput, creatio.ActivitySummary] {
+	return mock.getActivity
+}
+
+// ListActivities returns the listActivities script.
+func (mock *Mock) ListActivities() *connectormock.Query[creatio.ListActivitiesInput, creatio.ActivitiesPage] {
+	return mock.listActivities
+}
+
+// CreateActivity returns the createActivity script.
+func (mock *Mock) CreateActivity() *connectormock.Mutation[creatio.CreateActivityInput, creatio.ActivitySummary] {
+	return mock.createActivity
+}
+
+// UpdateActivity returns the updateActivity script.
+func (mock *Mock) UpdateActivity() *connectormock.Mutation[creatio.UpdateActivityInput, creatio.ActivityWriteOutput] {
+	return mock.updateActivity
+}
+
+// DeleteActivity returns the deleteActivity script.
+func (mock *Mock) DeleteActivity() *connectormock.Mutation[creatio.DeleteActivityInput, creatio.ActivityWriteOutput] {
+	return mock.deleteActivity
 }
 
 // GetContact returns the getContact script.
@@ -133,6 +173,21 @@ func (operations mockOperations) UpdateAccount() sdkgo.Mutation[creatio.UpdateAc
 }
 func (operations mockOperations) DeleteAccount() sdkgo.Mutation[creatio.DeleteAccountInput, creatio.AccountWriteOutput] {
 	return operations.mock.deleteAccount
+}
+func (operations mockOperations) GetActivity() sdkgo.Query[creatio.GetActivityInput, creatio.ActivitySummary] {
+	return operations.mock.getActivity
+}
+func (operations mockOperations) ListActivities() sdkgo.Query[creatio.ListActivitiesInput, creatio.ActivitiesPage] {
+	return operations.mock.listActivities
+}
+func (operations mockOperations) CreateActivity() sdkgo.Mutation[creatio.CreateActivityInput, creatio.ActivitySummary] {
+	return operations.mock.createActivity
+}
+func (operations mockOperations) UpdateActivity() sdkgo.Mutation[creatio.UpdateActivityInput, creatio.ActivityWriteOutput] {
+	return operations.mock.updateActivity
+}
+func (operations mockOperations) DeleteActivity() sdkgo.Mutation[creatio.DeleteActivityInput, creatio.ActivityWriteOutput] {
+	return operations.mock.deleteActivity
 }
 func (operations mockOperations) GetContact() sdkgo.Query[creatio.GetContactInput, creatio.ContactSummary] {
 	return operations.mock.getContact
@@ -331,6 +386,191 @@ func DeleteAccountDeletedDefault() connectormock.Case[creatio.AccountWriteOutput
 // DeleteAccountDefault is the manifest default, deletedDefault, which New installs.
 func DeleteAccountDefault() connectormock.Case[creatio.AccountWriteOutput] {
 	return DeleteAccountDeletedDefault()
+}
+
+// GetActivityFound selects the found branch: Creatio returned the selected activity.
+func GetActivityFound(value creatio.ActivitySummary, failure *sdkgo.Failure) connectormock.Case[creatio.ActivitySummary] {
+	return connectormock.Branch(creatio.GetActivityBranchFound, value, failure)
+}
+
+// GetActivityNotFound selects the notFound branch: Creatio returned no accessible activity for this UUID.
+func GetActivityNotFound(value creatio.ActivitySummary, failure *sdkgo.Failure) connectormock.Case[creatio.ActivitySummary] {
+	return connectormock.Branch(creatio.GetActivityBranchNotFound, value, failure)
+}
+
+// GetActivityProviderRejected selects the providerRejected branch: Creatio conclusively rejected the lookup.
+func GetActivityProviderRejected(value creatio.ActivitySummary, failure *sdkgo.Failure) connectormock.Case[creatio.ActivitySummary] {
+	return connectormock.Branch(creatio.GetActivityBranchProviderRejected, value, failure)
+}
+
+// GetActivityInvalidResponse selects the invalidResponse branch: Creatio returned malformed or oversized OData JSON.
+func GetActivityInvalidResponse(value creatio.ActivitySummary, failure *sdkgo.Failure) connectormock.Case[creatio.ActivitySummary] {
+	return connectormock.Branch(creatio.GetActivityBranchInvalidResponse, value, failure)
+}
+
+// GetActivityDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetActivityDefect(value creatio.ActivitySummary, failure *sdkgo.Failure) connectormock.Case[creatio.ActivitySummary] {
+	return connectormock.Branch(creatio.GetActivityBranchDefect, value, failure)
+}
+
+// GetActivityRetry asks Dex to retry the getActivity Step, after the delay when it is positive.
+func GetActivityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.ActivitySummary] {
+	return connectormock.Retry[creatio.ActivitySummary](failure, after)
+}
+
+// GetActivityFoundDefault is the manifest mock foundDefault: A sample activity is returned.
+func GetActivityFoundDefault() connectormock.Case[creatio.ActivitySummary] {
+	value := connectormock.MustDecodeOutput[creatio.ActivitySummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","title":"Example activity"}`)
+	return connectormock.Branch(creatio.GetActivityBranchFound, value, nil)
+}
+
+// GetActivityDefault is the manifest default, foundDefault, which New installs.
+func GetActivityDefault() connectormock.Case[creatio.ActivitySummary] {
+	return GetActivityFoundDefault()
+}
+
+// ListActivitiesListed selects the listed branch: Creatio returned an activity page.
+func ListActivitiesListed(value creatio.ActivitiesPage, failure *sdkgo.Failure) connectormock.Case[creatio.ActivitiesPage] {
+	return connectormock.Branch(creatio.ListActivitiesBranchListed, value, failure)
+}
+
+// ListActivitiesProviderRejected selects the providerRejected branch: Creatio rejected the activity list.
+func ListActivitiesProviderRejected(value creatio.ActivitiesPage, failure *sdkgo.Failure) connectormock.Case[creatio.ActivitiesPage] {
+	return connectormock.Branch(creatio.ListActivitiesBranchProviderRejected, value, failure)
+}
+
+// ListActivitiesInvalidResponse selects the invalidResponse branch: Creatio returned invalid or oversized OData JSON.
+func ListActivitiesInvalidResponse(value creatio.ActivitiesPage, failure *sdkgo.Failure) connectormock.Case[creatio.ActivitiesPage] {
+	return connectormock.Branch(creatio.ListActivitiesBranchInvalidResponse, value, failure)
+}
+
+// ListActivitiesDefect selects the defect branch: Input or connection credentials are invalid.
+func ListActivitiesDefect(value creatio.ActivitiesPage, failure *sdkgo.Failure) connectormock.Case[creatio.ActivitiesPage] {
+	return connectormock.Branch(creatio.ListActivitiesBranchDefect, value, failure)
+}
+
+// ListActivitiesRetry asks Dex to retry the listActivities Step, after the delay when it is positive.
+func ListActivitiesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.ActivitiesPage] {
+	return connectormock.Retry[creatio.ActivitiesPage](failure, after)
+}
+
+// ListActivitiesListedDefault is the manifest mock listedDefault: One sample activity is listed.
+func ListActivitiesListedDefault() connectormock.Case[creatio.ActivitiesPage] {
+	value := connectormock.MustDecodeOutput[creatio.ActivitiesPage](`{"activities":[{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","title":"Example activity"}]}`)
+	return connectormock.Branch(creatio.ListActivitiesBranchListed, value, nil)
+}
+
+// ListActivitiesDefault is the manifest default, listedDefault, which New installs.
+func ListActivitiesDefault() connectormock.Case[creatio.ActivitiesPage] {
+	return ListActivitiesListedDefault()
+}
+
+// CreateActivityCreated selects the created branch: Creatio created the activity.
+func CreateActivityCreated(value creatio.ActivitySummary, failure *sdkgo.Failure) connectormock.Case[creatio.ActivitySummary] {
+	return connectormock.Branch(creatio.CreateActivityBranchCreated, value, failure)
+}
+
+// CreateActivityProviderRejected selects the providerRejected branch: Creatio rejected creation.
+func CreateActivityProviderRejected(value creatio.ActivitySummary, failure *sdkgo.Failure) connectormock.Case[creatio.ActivitySummary] {
+	return connectormock.Branch(creatio.CreateActivityBranchProviderRejected, value, failure)
+}
+
+// CreateActivityUncertain returns an uncertain createActivity outcome.
+func CreateActivityUncertain(value creatio.ActivitySummary, failure sdkgo.Failure) connectormock.Case[creatio.ActivitySummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateActivityDefect selects the defect branch: Input or connection credentials are invalid.
+func CreateActivityDefect(value creatio.ActivitySummary, failure *sdkgo.Failure) connectormock.Case[creatio.ActivitySummary] {
+	return connectormock.Branch(creatio.CreateActivityBranchDefect, value, failure)
+}
+
+// CreateActivityRetry asks Dex to retry the createActivity Step, after the delay when it is positive.
+func CreateActivityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.ActivitySummary] {
+	return connectormock.Retry[creatio.ActivitySummary](failure, after)
+}
+
+// CreateActivityCreatedDefault is the manifest mock createdDefault: One sample activity is created.
+func CreateActivityCreatedDefault() connectormock.Case[creatio.ActivitySummary] {
+	value := connectormock.MustDecodeOutput[creatio.ActivitySummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","title":"Example activity"}`)
+	return connectormock.Branch(creatio.CreateActivityBranchCreated, value, nil)
+}
+
+// CreateActivityDefault is the manifest default, createdDefault, which New installs.
+func CreateActivityDefault() connectormock.Case[creatio.ActivitySummary] {
+	return CreateActivityCreatedDefault()
+}
+
+// UpdateActivityUpdated selects the updated branch: Creatio updated the activity.
+func UpdateActivityUpdated(value creatio.ActivityWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ActivityWriteOutput] {
+	return connectormock.Branch(creatio.UpdateActivityBranchUpdated, value, failure)
+}
+
+// UpdateActivityNotFound selects the notFound branch: No accessible activity has this UUID.
+func UpdateActivityNotFound(value creatio.ActivityWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ActivityWriteOutput] {
+	return connectormock.Branch(creatio.UpdateActivityBranchNotFound, value, failure)
+}
+
+// UpdateActivityProviderRejected selects the providerRejected branch: Creatio rejected the update.
+func UpdateActivityProviderRejected(value creatio.ActivityWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ActivityWriteOutput] {
+	return connectormock.Branch(creatio.UpdateActivityBranchProviderRejected, value, failure)
+}
+
+// UpdateActivityDefect selects the defect branch: Input or connection credentials are invalid.
+func UpdateActivityDefect(value creatio.ActivityWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ActivityWriteOutput] {
+	return connectormock.Branch(creatio.UpdateActivityBranchDefect, value, failure)
+}
+
+// UpdateActivityRetry asks Dex to retry the updateActivity Step, after the delay when it is positive.
+func UpdateActivityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.ActivityWriteOutput] {
+	return connectormock.Retry[creatio.ActivityWriteOutput](failure, after)
+}
+
+// UpdateActivityUpdatedDefault is the manifest mock updatedDefault: One sample activity is updated.
+func UpdateActivityUpdatedDefault() connectormock.Case[creatio.ActivityWriteOutput] {
+	value := connectormock.MustDecodeOutput[creatio.ActivityWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+	return connectormock.Branch(creatio.UpdateActivityBranchUpdated, value, nil)
+}
+
+// UpdateActivityDefault is the manifest default, updatedDefault, which New installs.
+func UpdateActivityDefault() connectormock.Case[creatio.ActivityWriteOutput] {
+	return UpdateActivityUpdatedDefault()
+}
+
+// DeleteActivityDeleted selects the deleted branch: Creatio deleted the activity.
+func DeleteActivityDeleted(value creatio.ActivityWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ActivityWriteOutput] {
+	return connectormock.Branch(creatio.DeleteActivityBranchDeleted, value, failure)
+}
+
+// DeleteActivityNotFound selects the notFound branch: No accessible activity has this UUID.
+func DeleteActivityNotFound(value creatio.ActivityWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ActivityWriteOutput] {
+	return connectormock.Branch(creatio.DeleteActivityBranchNotFound, value, failure)
+}
+
+// DeleteActivityProviderRejected selects the providerRejected branch: Creatio rejected the deletion.
+func DeleteActivityProviderRejected(value creatio.ActivityWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ActivityWriteOutput] {
+	return connectormock.Branch(creatio.DeleteActivityBranchProviderRejected, value, failure)
+}
+
+// DeleteActivityDefect selects the defect branch: Input or connection credentials are invalid.
+func DeleteActivityDefect(value creatio.ActivityWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ActivityWriteOutput] {
+	return connectormock.Branch(creatio.DeleteActivityBranchDefect, value, failure)
+}
+
+// DeleteActivityRetry asks Dex to retry the deleteActivity Step, after the delay when it is positive.
+func DeleteActivityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.ActivityWriteOutput] {
+	return connectormock.Retry[creatio.ActivityWriteOutput](failure, after)
+}
+
+// DeleteActivityDeletedDefault is the manifest mock deletedDefault: One sample activity is deleted.
+func DeleteActivityDeletedDefault() connectormock.Case[creatio.ActivityWriteOutput] {
+	value := connectormock.MustDecodeOutput[creatio.ActivityWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+	return connectormock.Branch(creatio.DeleteActivityBranchDeleted, value, nil)
+}
+
+// DeleteActivityDefault is the manifest default, deletedDefault, which New installs.
+func DeleteActivityDefault() connectormock.Case[creatio.ActivityWriteOutput] {
+	return DeleteActivityDeletedDefault()
 }
 
 // GetContactFound selects the found branch: Creatio returned the selected contact.
