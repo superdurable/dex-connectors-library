@@ -1,6 +1,6 @@
 # Wise Platform connector
 
-The Go, Python, and TypeScript `getTransfer` Query reads a Wise transfer's numeric ID, status, and source currency. Go also provides `listProfiles`, `getProfile`, `listBalances`, `listAvailableBalanceCurrencies`, `listPayinCurrencies`, `listRecipients`, `getExchangeRates`, `createQuote`, `getQuote`, `createTransfer`, and `cancelTransfer`. Profile and recipient Results contain only IDs and selected metadata; transfer Results omit recipient, customer, and payment details.
+The Go, Python, and TypeScript `getTransfer` Query reads a Wise transfer's numeric ID, status, and source currency. Go also provides `listProfiles`, `getProfile`, `getBalance`, `listBalances`, `createBalance`, `listAvailableBalanceCurrencies`, `listPayinCurrencies`, `listRecipients`, `getExchangeRates`, `createQuote`, `getQuote`, `createTransfer`, and `cancelTransfer`. Profile and recipient Results contain only IDs and selected metadata; transfer Results omit recipient, customer, and payment details.
 
 ## Connect
 
@@ -10,7 +10,11 @@ Leave `baseUrl` blank for Production at `https://api.wise.com/2026Q4`; use `http
 
 ## Go operations
 
-`listProfiles` and `getProfile` return profile IDs and types. `listBalances` returns IDs, currencies, types, and available amounts for selected balance types. `listAvailableBalanceCurrencies` returns currencies a profile may hold; `listPayinCurrencies` returns the subset that supports bank account details. `listRecipients` returns recipient IDs, currencies, and active flags without bank details. `getExchangeRates` reads a current ISO 4217 pair, and `getQuote` reads an authenticated quote by profile ID and UUID. All reads are safe to retry.
+`listProfiles` and `getProfile` return profile IDs and types. `getBalance` and `listBalances` return IDs, currencies, types, and available amounts without bank account details. `listAvailableBalanceCurrencies` returns currencies a profile may hold; `listPayinCurrencies` returns the subset that supports bank account details. `listRecipients` returns recipient IDs, currencies, and active flags without bank details. `getExchangeRates` reads a current ISO 4217 pair, and `getQuote` reads an authenticated quote by profile ID and UUID. All reads are safe to retry.
+
+`createBalance` opens a `STANDARD` balance or a named `SAVINGS` balance. Wise requires `X-idempotence-uuid`; the connector derives it from the stable Dex Call ID and reuses it across retries. The Result excludes bank account details. Closing a balance can deactivate associated bank details, so this connector does not automate closure.
+
+Wise documents [balance creation](https://docs.wise.com/api-reference/balance/balancecreate) and [single-balance retrieval](https://docs.wise.com/api-reference/balance/balanceget) for personal API tokens.
 
 `createQuote` takes a profile ID, currency pair, one positive decimal amount, and `amountSide` (`source` or `target`). Wise does not document a deduplication key for this endpoint. The connector permits at most three possible sends using a Dex single-dispatch fence, then selects `uncertain` if the quote cannot be identified. The fence requires synchronous Execute durability. Only the returned quote ID and currencies enter the Result.
 

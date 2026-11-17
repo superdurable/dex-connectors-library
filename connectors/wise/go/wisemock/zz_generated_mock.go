@@ -20,6 +20,8 @@ type Mock struct {
 	connection                     wise.Connection
 	listProfiles                   *connectormock.Query[wise.ListProfilesInput, wise.ProfilesOutput]
 	getProfile                     *connectormock.Query[wise.GetProfileInput, wise.ProfileSummary]
+	getBalance                     *connectormock.Query[wise.GetBalanceInput, wise.BalanceSummary]
+	createBalance                  *connectormock.Mutation[wise.CreateBalanceInput, wise.BalanceSummary]
 	listBalances                   *connectormock.Query[wise.ListBalancesInput, wise.BalancesOutput]
 	listAvailableBalanceCurrencies *connectormock.Query[wise.ListPayinCurrenciesInput, wise.PayinCurrenciesOutput]
 	listPayinCurrencies            *connectormock.Query[wise.ListPayinCurrenciesInput, wise.PayinCurrenciesOutput]
@@ -39,6 +41,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock := &Mock{
 		listProfiles:                   connectormock.NewQuery[wise.ListProfilesInput, wise.ProfilesOutput](t, wise.ListProfilesDefinition),
 		getProfile:                     connectormock.NewQuery[wise.GetProfileInput, wise.ProfileSummary](t, wise.GetProfileDefinition),
+		getBalance:                     connectormock.NewQuery[wise.GetBalanceInput, wise.BalanceSummary](t, wise.GetBalanceDefinition),
+		createBalance:                  connectormock.NewMutation[wise.CreateBalanceInput, wise.BalanceSummary](t, wise.CreateBalanceDefinition),
 		listBalances:                   connectormock.NewQuery[wise.ListBalancesInput, wise.BalancesOutput](t, wise.ListBalancesDefinition),
 		listAvailableBalanceCurrencies: connectormock.NewQuery[wise.ListPayinCurrenciesInput, wise.PayinCurrenciesOutput](t, wise.ListAvailableBalanceCurrenciesDefinition),
 		listPayinCurrencies:            connectormock.NewQuery[wise.ListPayinCurrenciesInput, wise.PayinCurrenciesOutput](t, wise.ListPayinCurrenciesDefinition),
@@ -52,6 +56,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	}
 	mock.listProfiles.Default(ListProfilesDefault())
 	mock.getProfile.Default(GetProfileDefault())
+	mock.getBalance.Default(GetBalanceDefault())
+	mock.createBalance.Default(CreateBalanceDefault())
 	mock.listBalances.Default(ListBalancesDefault())
 	mock.listAvailableBalanceCurrencies.Default(ListAvailableBalanceCurrenciesDefault())
 	mock.listPayinCurrencies.Default(ListPayinCurrenciesDefault())
@@ -81,6 +87,16 @@ func (mock *Mock) ListProfiles() *connectormock.Query[wise.ListProfilesInput, wi
 // GetProfile returns the getProfile script.
 func (mock *Mock) GetProfile() *connectormock.Query[wise.GetProfileInput, wise.ProfileSummary] {
 	return mock.getProfile
+}
+
+// GetBalance returns the getBalance script.
+func (mock *Mock) GetBalance() *connectormock.Query[wise.GetBalanceInput, wise.BalanceSummary] {
+	return mock.getBalance
+}
+
+// CreateBalance returns the createBalance script.
+func (mock *Mock) CreateBalance() *connectormock.Mutation[wise.CreateBalanceInput, wise.BalanceSummary] {
+	return mock.createBalance
 }
 
 // ListBalances returns the listBalances script.
@@ -140,6 +156,12 @@ func (operations mockOperations) ListProfiles() sdkgo.Query[wise.ListProfilesInp
 }
 func (operations mockOperations) GetProfile() sdkgo.Query[wise.GetProfileInput, wise.ProfileSummary] {
 	return operations.mock.getProfile
+}
+func (operations mockOperations) GetBalance() sdkgo.Query[wise.GetBalanceInput, wise.BalanceSummary] {
+	return operations.mock.getBalance
+}
+func (operations mockOperations) CreateBalance() sdkgo.Mutation[wise.CreateBalanceInput, wise.BalanceSummary] {
+	return operations.mock.createBalance
 }
 func (operations mockOperations) ListBalances() sdkgo.Query[wise.ListBalancesInput, wise.BalancesOutput] {
 	return operations.mock.listBalances
@@ -247,6 +269,83 @@ func GetProfileDefaultGetProfile() connectormock.Case[wise.ProfileSummary] {
 // GetProfileDefault is the manifest default, defaultGetProfile, which New installs.
 func GetProfileDefault() connectormock.Case[wise.ProfileSummary] {
 	return GetProfileDefaultGetProfile()
+}
+
+// GetBalanceFound selects the found branch: Wise returned the balance account.
+func GetBalanceFound(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.GetBalanceBranchFound, value, failure)
+}
+
+// GetBalanceNotFound selects the notFound branch: Wise did not expose the balance.
+func GetBalanceNotFound(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.GetBalanceBranchNotFound, value, failure)
+}
+
+// GetBalanceProviderRejected selects the providerRejected branch: Wise rejected the request.
+func GetBalanceProviderRejected(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.GetBalanceBranchProviderRejected, value, failure)
+}
+
+// GetBalanceInvalidResponse selects the invalidResponse branch: Wise returned malformed or oversized JSON.
+func GetBalanceInvalidResponse(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.GetBalanceBranchInvalidResponse, value, failure)
+}
+
+// GetBalanceDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetBalanceDefect(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.GetBalanceBranchDefect, value, failure)
+}
+
+// GetBalanceRetry asks Dex to retry the getBalance Step, after the delay when it is positive.
+func GetBalanceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Retry[wise.BalanceSummary](failure, after)
+}
+
+// GetBalanceDefaultGetBalance is the manifest mock defaultGetBalance: One EUR standard balance.
+func GetBalanceDefaultGetBalance() connectormock.Case[wise.BalanceSummary] {
+	value := connectormock.MustDecodeOutput[wise.BalanceSummary](`{"id":"301","currency":"EUR","type":"STANDARD","availableAmount":12.5}`)
+	return connectormock.Branch(wise.GetBalanceBranchFound, value, nil)
+}
+
+// GetBalanceDefault is the manifest default, defaultGetBalance, which New installs.
+func GetBalanceDefault() connectormock.Case[wise.BalanceSummary] {
+	return GetBalanceDefaultGetBalance()
+}
+
+// CreateBalanceCreated selects the created branch: Wise opened the balance account.
+func CreateBalanceCreated(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.CreateBalanceBranchCreated, value, failure)
+}
+
+// CreateBalanceProviderRejected selects the providerRejected branch: Wise rejected balance creation.
+func CreateBalanceProviderRejected(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.CreateBalanceBranchProviderRejected, value, failure)
+}
+
+// CreateBalanceInvalidResponse selects the invalidResponse branch: Wise returned malformed or oversized JSON.
+func CreateBalanceInvalidResponse(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.CreateBalanceBranchInvalidResponse, value, failure)
+}
+
+// CreateBalanceDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateBalanceDefect(value wise.BalanceSummary, failure *sdkgo.Failure) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Branch(wise.CreateBalanceBranchDefect, value, failure)
+}
+
+// CreateBalanceRetry asks Dex to retry the createBalance Step, after the delay when it is positive.
+func CreateBalanceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wise.BalanceSummary] {
+	return connectormock.Retry[wise.BalanceSummary](failure, after)
+}
+
+// CreateBalanceDefaultCreateBalance is the manifest mock defaultCreateBalance: One new EUR standard balance.
+func CreateBalanceDefaultCreateBalance() connectormock.Case[wise.BalanceSummary] {
+	value := connectormock.MustDecodeOutput[wise.BalanceSummary](`{"id":"301","currency":"EUR","type":"STANDARD","availableAmount":0}`)
+	return connectormock.Branch(wise.CreateBalanceBranchCreated, value, nil)
+}
+
+// CreateBalanceDefault is the manifest default, defaultCreateBalance, which New installs.
+func CreateBalanceDefault() connectormock.Case[wise.BalanceSummary] {
+	return CreateBalanceDefaultCreateBalance()
 }
 
 // ListBalancesListed selects the listed branch: Wise listed balance accounts.

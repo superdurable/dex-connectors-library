@@ -24,6 +24,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[wise.ProfileSummary](`{"id":"101","type":"business"}`)
 			return err
 		}},
+		{name: "getBalance/defaultGetBalance/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.BalanceSummary](`{"id":"301","currency":"EUR","type":"STANDARD","availableAmount":12.5}`)
+			return err
+		}},
+		{name: "createBalance/defaultCreateBalance/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.BalanceSummary](`{"id":"301","currency":"EUR","type":"STANDARD","availableAmount":0}`)
+			return err
+		}},
 		{name: "listBalances/defaultListBalances/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[wise.BalancesOutput](`{"balances":[{"id":"301","currency":"EUR","type":"STANDARD","availableAmount":12.5}]}`)
 			return err
@@ -79,6 +87,12 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetProfile().Definition().Operation.OperationID != "getProfile" {
 		t.Errorf("getProfile mock has another definition")
+	}
+	if mock.GetBalance().Definition().Operation.OperationID != "getBalance" {
+		t.Errorf("getBalance mock has another definition")
+	}
+	if mock.CreateBalance().Definition().Operation.OperationID != "createBalance" {
+		t.Errorf("createBalance mock has another definition")
 	}
 	if mock.ListBalances().Definition().Operation.OperationID != "listBalances" {
 		t.Errorf("listBalances mock has another definition")

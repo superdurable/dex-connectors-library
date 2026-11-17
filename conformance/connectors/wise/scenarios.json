@@ -3510,6 +3510,815 @@
       },
       "name": "listAvailableBalanceCurrencies-transport",
       "operation": "listAvailableBalanceCurrencies"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000801",
+      "exchanges": [
+        {
+          "body": "{\"id\":301,\"currency\":\"EUR\",\"type\":\"STANDARD\",\"amount\":{\"value\":12.5}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profiles/101/balances/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "availableAmount": 12.5,
+          "currency": "EUR",
+          "id": "301",
+          "type": "STANDARD"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "balanceId": "301",
+        "profileId": "101"
+      },
+      "name": "getBalance-success",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000802",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profiles/101/balances/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "availableAmount": 0,
+          "currency": "",
+          "id": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "balanceId": "301",
+        "profileId": "101"
+      },
+      "name": "getBalance-notFound",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000803",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profiles/101/balances/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "availableAmount": 0,
+          "currency": "",
+          "id": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "balanceId": "301",
+        "profileId": "101"
+      },
+      "name": "getBalance-providerRejected",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profiles/101/balances/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableAmount": 0,
+          "currency": "",
+          "id": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "balanceId": "301",
+        "profileId": "101"
+      },
+      "name": "getBalance-invalidResponse",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000805",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "availableAmount": 0,
+          "currency": "",
+          "id": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "balanceId": "301",
+        "profileId": "bad"
+      },
+      "name": "getBalance-defect",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000806",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profiles/101/balances/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "balanceId": "301",
+        "profileId": "101"
+      },
+      "name": "getBalance-retry429",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000807",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profiles/101/balances/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "balanceId": "301",
+        "profileId": "101"
+      },
+      "name": "getBalance-retry500",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000808",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profiles/101/balances/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "balanceId": "301",
+        "profileId": "101"
+      },
+      "name": "getBalance-transport",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "exchanges": [
+        {
+          "body": "{\"id\":301,\"currency\":\"EUR\",\"type\":\"SAVINGS\",\"amount\":{\"value\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/balances",
+          "requestBody": {
+            "currency": "EUR",
+            "name": "Emergency",
+            "type": "SAVINGS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotence-Uuid": [
+              "50a2aa5b-76bb-52b1-9c8c-f124131520e2"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "availableAmount": 0,
+          "currency": "EUR",
+          "id": "301",
+          "type": "SAVINGS"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "input": {
+        "currency": "EUR",
+        "name": "Emergency",
+        "profileId": "101",
+        "type": "SAVINGS"
+      },
+      "name": "createBalance-success",
+      "operation": "createBalance"
+    },
+    {
+      "callId": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/balances",
+          "requestBody": {
+            "currency": "EUR",
+            "name": "Emergency",
+            "type": "SAVINGS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotence-Uuid": [
+              "50a2aa5b-76bb-52b1-9c8c-f124131520e2"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "availableAmount": 0,
+          "currency": "",
+          "id": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "input": {
+        "currency": "EUR",
+        "name": "Emergency",
+        "profileId": "101",
+        "type": "SAVINGS"
+      },
+      "name": "createBalance-providerRejected",
+      "operation": "createBalance"
+    },
+    {
+      "callId": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/balances",
+          "requestBody": {
+            "currency": "EUR",
+            "name": "Emergency",
+            "type": "SAVINGS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotence-Uuid": [
+              "50a2aa5b-76bb-52b1-9c8c-f124131520e2"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableAmount": 0,
+          "currency": "",
+          "id": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "input": {
+        "currency": "EUR",
+        "name": "Emergency",
+        "profileId": "101",
+        "type": "SAVINGS"
+      },
+      "name": "createBalance-invalidResponse",
+      "operation": "createBalance"
+    },
+    {
+      "callId": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "availableAmount": 0,
+          "currency": "",
+          "id": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "input": {
+        "currency": "EUR",
+        "name": "Emergency",
+        "profileId": "bad",
+        "type": "SAVINGS"
+      },
+      "name": "createBalance-defect",
+      "operation": "createBalance"
+    },
+    {
+      "callId": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/balances",
+          "requestBody": {
+            "currency": "EUR",
+            "name": "Emergency",
+            "type": "SAVINGS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotence-Uuid": [
+              "50a2aa5b-76bb-52b1-9c8c-f124131520e2"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "input": {
+        "currency": "EUR",
+        "name": "Emergency",
+        "profileId": "101",
+        "type": "SAVINGS"
+      },
+      "name": "createBalance-retry429",
+      "operation": "createBalance"
+    },
+    {
+      "callId": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/balances",
+          "requestBody": {
+            "currency": "EUR",
+            "name": "Emergency",
+            "type": "SAVINGS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotence-Uuid": [
+              "50a2aa5b-76bb-52b1-9c8c-f124131520e2"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "input": {
+        "currency": "EUR",
+        "name": "Emergency",
+        "profileId": "101",
+        "type": "SAVINGS"
+      },
+      "name": "createBalance-retry500",
+      "operation": "createBalance"
+    },
+    {
+      "callId": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/balances",
+          "requestBody": {
+            "currency": "EUR",
+            "name": "Emergency",
+            "type": "SAVINGS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotence-Uuid": [
+              "50a2aa5b-76bb-52b1-9c8c-f124131520e2"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "input": {
+        "currency": "EUR",
+        "name": "Emergency",
+        "profileId": "101",
+        "type": "SAVINGS"
+      },
+      "name": "createBalance-transport",
+      "operation": "createBalance"
+    },
+    {
+      "attempts": 2,
+      "callId": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/balances",
+          "requestBody": {
+            "currency": "EUR",
+            "name": "Emergency",
+            "type": "SAVINGS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotence-Uuid": [
+              "50a2aa5b-76bb-52b1-9c8c-f124131520e2"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":301,\"currency\":\"EUR\",\"type\":\"SAVINGS\",\"amount\":{\"value\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/balances",
+          "requestBody": {
+            "currency": "EUR",
+            "name": "Emergency",
+            "type": "SAVINGS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotence-Uuid": [
+              "50a2aa5b-76bb-52b1-9c8c-f124131520e2"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "availableAmount": 0,
+          "currency": "EUR",
+          "id": "301",
+          "type": "SAVINGS"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50a2aa5b-76bb-52b1-9c8c-f124131520e2",
+      "input": {
+        "currency": "EUR",
+        "name": "Emergency",
+        "profileId": "101",
+        "type": "SAVINGS"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createBalance-idempotentRetry",
+      "operation": "createBalance"
+    },
+    {
+      "attempts": 2,
+      "callId": "f4b6a4d7-4f71-5fe0-8e0b-ebd408664420",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/transfers",
+          "requestBody": {
+            "customerTransactionId": "f4b6a4d7-4f71-5fe0-8e0b-ebd408664420",
+            "details": {
+              "reference": "Invoice 2026-001",
+              "transferPurpose": "verification.transfers.purpose.pay.bills"
+            },
+            "quoteUuid": "11144c35-9fe8-4c32-b7fd-d05c2a7734bf",
+            "targetAccount": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":16521632,\"status\":\"incoming_payment_waiting\",\"sourceCurrency\":\"EUR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/transfers",
+          "requestBody": {
+            "customerTransactionId": "f4b6a4d7-4f71-5fe0-8e0b-ebd408664420",
+            "details": {
+              "reference": "Invoice 2026-001",
+              "transferPurpose": "verification.transfers.purpose.pay.bills"
+            },
+            "quoteUuid": "11144c35-9fe8-4c32-b7fd-d05c2a7734bf",
+            "targetAccount": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "16521632",
+          "sourceCurrency": "EUR",
+          "status": "incoming_payment_waiting"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f4b6a4d7-4f71-5fe0-8e0b-ebd408664420",
+      "input": {
+        "quoteId": "11144c35-9fe8-4c32-b7fd-d05c2a7734bf",
+        "recipientId": "201",
+        "reference": "Invoice 2026-001",
+        "transferPurpose": "verification.transfers.purpose.pay.bills"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTransfer-idempotentRetry",
+      "operation": "createTransfer"
     }
   ],
   "schemaVersion": 1

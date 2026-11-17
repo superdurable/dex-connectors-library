@@ -96,6 +96,47 @@ spec:
           default: true
           description: One business profile.
           output: {id: "101", type: business}
+    - name: getBalance
+      goName: GetBalance
+      inputType: GetBalanceInput
+      outputType: BalanceSummary
+      kind: query
+      description: Get one balance without bank account details.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Wise returned the balance account.}
+        - {id: notFound, goName: NotFound, description: Wise did not expose the balance., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultGetBalance
+          branch: found
+          default: true
+          description: One EUR standard balance.
+          output: {id: "301", currency: EUR, type: STANDARD, availableAmount: 12.5}
+    - name: createBalance
+      goName: CreateBalance
+      inputType: CreateBalanceInput
+      outputType: BalanceSummary
+      kind: mutation
+      description: Open a standard or savings balance with Wise idempotency.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: created, goName: Created, description: Wise opened the balance account.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected balance creation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultCreateBalance
+          branch: created
+          default: true
+          description: One new EUR standard balance.
+          output: {id: "301", currency: EUR, type: STANDARD, availableAmount: 0}
     - name: listBalances
       goName: ListBalances
       inputType: ListBalancesInput

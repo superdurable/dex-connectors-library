@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package wise reads selected Wise transfer status in Dex Flows.
+// Package wise provides typed Dex Steps for selected Wise Platform API operations.
 package wise
 
 import (
@@ -77,6 +77,10 @@ func (client *Client) send(call sdkgo.Call, method, path string, requestBody []b
 }
 
 func (client *Client) sendWithContext(call sdkgo.Call, requestContext context.Context, method, path string, requestBody []byte) providerResponse {
+	return client.sendWithContextAndHeader(call, requestContext, method, path, requestBody, "", "")
+}
+
+func (client *Client) sendWithContextAndHeader(call sdkgo.Call, requestContext context.Context, method, path string, requestBody []byte, headerName, headerValue string) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -91,6 +95,9 @@ func (client *Client) sendWithContext(call sdkgo.Call, requestContext context.Co
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Authorization", "Bearer "+apiToken)
+	if headerName != "" {
+		request.Header.Set(headerName, headerValue)
+	}
 	if requestBody != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}

@@ -57,6 +57,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"getProfile":                     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetProfile(), reference),
 		"listRecipients":                 newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListRecipients(), reference),
 		"listBalances":                   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListBalances(), reference),
+		"getBalance":                     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetBalance(), reference),
+		"createBalance":                  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateBalance(), reference, scenario.CallID),
 		"listPayinCurrencies":            newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPayinCurrencies(), reference),
 		"listAvailableBalanceCurrencies": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAvailableBalanceCurrencies(), reference),
 		"getExchangeRates":               newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetExchangeRates(), reference),

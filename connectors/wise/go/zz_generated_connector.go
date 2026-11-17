@@ -42,6 +42,8 @@ type Connection struct {
 type Operations interface {
 	ListProfiles() sdkgo.Query[ListProfilesInput, ProfilesOutput]
 	GetProfile() sdkgo.Query[GetProfileInput, ProfileSummary]
+	GetBalance() sdkgo.Query[GetBalanceInput, BalanceSummary]
+	CreateBalance() sdkgo.Mutation[CreateBalanceInput, BalanceSummary]
 	ListBalances() sdkgo.Query[ListBalancesInput, BalancesOutput]
 	ListAvailableBalanceCurrencies() sdkgo.Query[ListPayinCurrenciesInput, PayinCurrenciesOutput]
 	ListPayinCurrencies() sdkgo.Query[ListPayinCurrenciesInput, PayinCurrenciesOutput]
@@ -61,6 +63,12 @@ func (operations clientOperations) ListProfiles() sdkgo.Query[ListProfilesInput,
 }
 func (operations clientOperations) GetProfile() sdkgo.Query[GetProfileInput, ProfileSummary] {
 	return operations.client.GetProfile()
+}
+func (operations clientOperations) GetBalance() sdkgo.Query[GetBalanceInput, BalanceSummary] {
+	return operations.client.GetBalance()
+}
+func (operations clientOperations) CreateBalance() sdkgo.Mutation[CreateBalanceInput, BalanceSummary] {
+	return operations.client.CreateBalance()
 }
 func (operations clientOperations) ListBalances() sdkgo.Query[ListBalancesInput, BalancesOutput] {
 	return operations.client.ListBalances()
@@ -370,6 +378,155 @@ func NewGetProfileStep[IN any](config GetProfileStepConfig[IN]) sdkgo.QueryStep[
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetProfileBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetBalanceBranchFound sdkgo.BranchID = "found"
+const GetBalanceBranchNotFound sdkgo.BranchID = "notFound"
+const GetBalanceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetBalanceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetBalanceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetBalanceDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getBalance"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetBalanceBranchFound, Description: "Wise returned the balance account."},
+		{ID: GetBalanceBranchNotFound, Description: "Wise did not expose the balance.", Optional: true},
+		{ID: GetBalanceBranchProviderRejected, Description: "Wise rejected the request.", Optional: true},
+		{ID: GetBalanceBranchInvalidResponse, Description: "Wise returned malformed or oversized JSON.", Optional: true},
+		{ID: GetBalanceBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetBalanceResult = sdkgo.QueryResult[BalanceSummary]
+
+type GetBalanceStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=wise"`
+	operationID                    struct{}                                          `connector:"operationId=getBalance"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetBalanceInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetBalanceResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetBalanceResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetBalanceResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetBalanceResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetBalanceResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[BalanceSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetBalanceStep[IN any](config GetBalanceStepConfig[IN]) sdkgo.QueryStep[IN, GetBalanceInput, BalanceSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wise connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetBalanceInput, BalanceSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetBalance(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetBalanceResult] {
+			branches := make([]sdkgo.BranchTarget[GetBalanceResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetBalanceBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetBalanceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetBalanceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetBalanceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetBalanceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateBalanceBranchCreated sdkgo.BranchID = "created"
+const CreateBalanceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateBalanceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateBalanceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateBalanceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createBalance"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateBalanceBranchCreated, Description: "Wise opened the balance account."},
+		{ID: CreateBalanceBranchProviderRejected, Description: "Wise rejected balance creation.", Optional: true},
+		{ID: CreateBalanceBranchInvalidResponse, Description: "Wise returned malformed or oversized JSON.", Optional: true},
+		{ID: CreateBalanceBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CreateBalanceResult = sdkgo.MutationResult[BalanceSummary]
+
+type CreateBalanceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=wise"`
+	operationID                       struct{}                                             `connector:"operationId=createBalance"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateBalanceInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateBalanceResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateBalanceResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateBalanceResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateBalanceResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[BalanceSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewCreateBalanceStep[IN any](config CreateBalanceStepConfig[IN]) sdkgo.MutationStep[IN, CreateBalanceInput, BalanceSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wise connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateBalanceInput, BalanceSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateBalance(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateBalanceResult] {
+			branches := make([]sdkgo.BranchTarget[CreateBalanceResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateBalanceBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateBalanceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateBalanceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateBalanceBranchDefect))
 			}
 			return branches
 		}(),
