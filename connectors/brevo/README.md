@@ -4,7 +4,7 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/brevo`.
 
-Brevo contact, attribute, and sender discovery operations for Dex. The module uses Brevo's public v3 REST API and a secret API key.
+Brevo contact and sender management plus attribute discovery for Dex. The module uses Brevo's public v3 REST API and a secret API key.
 
 | Operation | Method | Result |
 | --- | --- | --- |
@@ -15,10 +15,15 @@ Brevo contact, attribute, and sender discovery operations for Dex. The module us
 | `deleteContact` | `DELETE /v3/contacts/{email}` | `deleted` after HTTP 204 |
 | `listAttributes` | `GET /v3/contacts/attributes` | `listed` with attribute names, categories, and types |
 | `listSenders` | `GET /v3/senders` | `listed` with sender IDs, addresses, names, and active status |
+| `createSender` | `POST /v3/senders` | `created` with the new sender ID |
+| `updateSender` | `PUT /v3/senders/{senderId}` | `updated` after HTTP 204 |
+| `deleteSender` | `DELETE /v3/senders/{senderId}` | `deleted` after HTTP 204 |
 
 `createOrUpdateContact` identifies a contact by email and sets the provided attributes to absolute values. Brevo's `updateEnabled` makes a retry update that same contact. A 201 response includes a new contact ID; a 204 update does not. It does not expose provider attributes in the result. `getContact` returns only the contact ID and email.
 
 The new `updateContact` sets absolute uppercase named attributes. `deleteContact` removes a contact by email. These writes are repeat-safe; a retry of an update sets the same values and a retry of a deletion targets the same address. `listContacts` accepts a `limit` from 1 to 1000 and a zero-based `offset`; a zero limit uses 50. Email can be empty for phone-only contacts. The discovery Queries expose no contact attributes, sender IPs, or credentials.
+
+`createSender` uses a bounded three-send policy because Brevo does not offer an idempotency key for this endpoint. An unknown result retries until the cap, then returns `uncertain`; Brevo may send a verification email to the new sender address. `updateSender` sets an absolute display name, and `deleteSender` removes the numeric sender ID. Those two writes are repeat-safe. The sender operations do not manage dedicated IP associations.
 
 The Python package is [`dex-connector-brevo`](python/README.md), imported as
 `dex_connectors.brevo`.
@@ -42,7 +47,7 @@ Sign in at [Brevo API keys](https://app.brevo.com/settings/keys/api), open **Set
 | Invalid local input or missing credentials | `defect` |
 | Transport failure, 408, 409, 429, or 5xx | Retry with Dex's default one-hour budget |
 
-Only the happy branches are wired in the [contact sync example](go/examples/contact-sync), which now lists attribute definitions after saving a contact. Selecting an optional branch fails its Flow. No `uncertain` branch is needed for the absolute contact writes.
+Only the happy branches are wired in the [contact sync example](go/examples/contact-sync), which lists attribute definitions after saving a contact and optionally updates a sender when `senderId` and `senderName` are supplied. Selecting an optional branch fails its Flow. No `uncertain` branch is needed for the absolute contact and sender updates.
 
 ## Mocks
 
@@ -55,6 +60,7 @@ The generated `brevomock` package has realistic defaults for both operations: `s
 - [Brevo get contact](https://developers.brevo.com/reference/get-contact-info) documents the email path, HTTP 200, and 404.
 - [Brevo list contacts](https://developers.brevo.com/reference/get-contacts), [update contact](https://developers.brevo.com/reference/update-contact), and [delete contact](https://developers.brevo.com/reference/delete-contact) document pagination and contact writes.
 - [Brevo list attributes](https://developers.brevo.com/reference/get-attributes) and [list senders](https://developers.brevo.com/reference/get-senders) document discovery responses.
+- [Brevo create sender](https://developers.brevo.com/reference/create-sender), [update sender](https://developers.brevo.com/reference/update-sender), and [delete sender](https://developers.brevo.com/reference/delete-sender) document sender management and response codes.
 - [Brevo API key authentication](https://developers.brevo.com/docs/api-key-authentication) documents key setup and the header.
 
 Live Brevo authorization and real-provider calls have not been verified. The mock-backed real-Dex example is left to CI.

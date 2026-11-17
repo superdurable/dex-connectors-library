@@ -36,6 +36,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[brevo.SendersList](`{"senders":[{"id":1,"name":"Support","email":"support@example.com","active":true}]}`)
 			return err
 		}},
+		{name: "createSender/createdDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[brevo.SenderChangeResult](`{"id":1}`); return err }},
+		{name: "updateSender/updatedDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[brevo.SenderChangeResult](`{"id":1}`); return err }},
+		{name: "deleteSender/deletedDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[brevo.SenderChangeResult](`{"id":1}`); return err }},
 		{name: "createOrUpdateContact/savedDefaultContact/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[brevo.ContactWriteResult](`{"id":21,"email":"member@meridian.example","created":true}`)
 			return err
@@ -68,6 +71,15 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListSenders().Definition().Operation.OperationID != "listSenders" {
 		t.Errorf("listSenders mock has another definition")
+	}
+	if mock.CreateSender().Definition().Operation.OperationID != "createSender" {
+		t.Errorf("createSender mock has another definition")
+	}
+	if mock.UpdateSender().Definition().Operation.OperationID != "updateSender" {
+		t.Errorf("updateSender mock has another definition")
+	}
+	if mock.DeleteSender().Definition().Operation.OperationID != "deleteSender" {
+		t.Errorf("deleteSender mock has another definition")
 	}
 	if mock.CreateOrUpdateContact().Definition().Operation.OperationID != "createOrUpdateContact" {
 		t.Errorf("createOrUpdateContact mock has another definition")

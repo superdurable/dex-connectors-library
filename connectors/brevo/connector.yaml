@@ -155,6 +155,66 @@ spec:
           default: true
           description: Sample Brevo result.
           output: {senders: [{id: 1, name: Support, email: support@example.com, active: true}]}
+    - name: createSender
+      goName: CreateSender
+      inputType: CreateSenderInput
+      outputType: SenderChangeResult
+      kind: mutation
+      description: Create an email sender; Brevo sends an address verification message.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Brevo created the sender.}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the sender., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The sender may have been created after the send cap., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample created sender.
+          output: {id: 1}
+    - name: updateSender
+      goName: UpdateSender
+      inputType: UpdateSenderInput
+      outputType: SenderChangeResult
+      kind: mutation
+      description: Set an existing sender's display name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Brevo updated the sender.}
+        - {id: notFound, goName: NotFound, description: Brevo did not find the sender., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample updated sender.
+          output: {id: 1}
+    - name: deleteSender
+      goName: DeleteSender
+      inputType: DeleteSenderInput
+      outputType: SenderChangeResult
+      kind: mutation
+      description: Delete an email sender by numeric ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Brevo deleted the sender.}
+        - {id: notFound, goName: NotFound, description: Brevo did not find the sender., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample deleted sender.
+          output: {id: 1}
     - name: createOrUpdateContact
       goName: CreateOrUpdateContact
       inputType: CreateOrUpdateContactInput

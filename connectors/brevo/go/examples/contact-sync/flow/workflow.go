@@ -20,9 +20,11 @@ const (
 	ConnectionName         = "brevo"
 	upsertStepType         = "UpsertBrevoContact"
 	listAttributesStepType = "ListBrevoAttributes"
+	updateSenderStepType   = "UpdateBrevoSender"
 )
 
 var outcomeAttribute = dex.DefineAttribute[brevo.ContactWriteResult]("brevo-contact-sync-outcome")
+var senderUpdateAttribute = dex.DefineAttribute[brevo.UpdateSenderInput]("brevo-sender-update")
 
 // Request is the Dex Web Start Flow input.
 type Request struct {
@@ -30,6 +32,10 @@ type Request struct {
 	Email string `json:"email"`
 	// FirstName is the contact's first name.
 	FirstName string `json:"firstName"`
+	// SenderID optionally identifies a sender whose name should be updated.
+	SenderID int64 `json:"senderId,omitempty"`
+	// SenderName is required when SenderID is supplied.
+	SenderName string `json:"senderName,omitempty"`
 }
 
 // Flow creates or updates one Brevo contact.
@@ -44,7 +50,7 @@ func NewFlow(connection brevo.Connection) *Flow { return &Flow{connection: conne
 func (*Flow) GetFlowType() string { return FlowType }
 
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{outcomeAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{outcomeAttribute, senderUpdateAttribute}}
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
@@ -64,6 +70,13 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Listed:              sdkgo.GoTo(completeAfterAttributes{}),
 		})),
 		dex.DefineStep(completeAfterAttributes{}),
+		dex.DefineStep(brevo.NewUpdateSenderStep(brevo.UpdateSenderStepConfig[brevo.UpdateSenderInput]{
+			StepType: updateSenderStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "contact-sync", GroupLabel: "Contact sync", Explanation: "Set the chosen sender's display name in Brevo."},
+			MapToOperationInput: func(input brevo.UpdateSenderInput) brevo.UpdateSenderInput { return input },
+			Updated:             sdkgo.GoTo(completeAfterSender{}),
+		})),
+		dex.DefineStep(completeAfterSender{}),
 	}
 }
 
@@ -115,11 +128,17 @@ type start struct{ dex.StepDefaults }
 
 func (start) GetStepType() string                             { return "StartBrevoContactSync" }
 func (start) WaitFor(dex.Context, Request) (*dex.Wait, error) { return dex.SkipWaitImmediately(), nil }
-func (start) Execute(_ dex.Context, request Request) (*dex.StepDecision, error) {
+func (start) Execute(ctx dex.Context, request Request) (*dex.StepDecision, error) {
 	request.Email = strings.TrimSpace(request.Email)
 	request.FirstName = strings.TrimSpace(request.FirstName)
-	if request.Email == "" || request.FirstName == "" {
+	request.SenderName = strings.TrimSpace(request.SenderName)
+	if request.Email == "" || request.FirstName == "" || request.SenderID < 0 || (request.SenderID > 0 && request.SenderName == "") {
 		return dex.ForceFail("email and firstName are required"), nil
+	}
+	if request.SenderID > 0 {
+		if err := senderUpdateAttribute.Set(ctx, brevo.UpdateSenderInput{ID: request.SenderID, Name: request.SenderName}); err != nil {
+			return nil, err
+		}
 	}
 	return dex.GoTo(sdkgo.StepRef[Request](upsertStepType), request), nil
 }
@@ -145,6 +164,28 @@ type completeAfterAttributes struct {
 }
 
 func (completeAfterAttributes) Execute(ctx dex.Context, _ brevo.ListAttributesResult) (*dex.StepDecision, error) {
+	sender, err := senderUpdateAttribute.Get(ctx)
+	var missing *dex.AttributeNotFoundError
+	if err == nil {
+		return dex.GoTo(sdkgo.StepRef[brevo.UpdateSenderInput](updateSenderStepType), sender), nil
+	}
+	if !errors.As(err, &missing) {
+		return nil, err
+	}
+	outcome, err := outcomeAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:contact-sync group-label:"Contact sync"
+// dex:explanation text:"Complete after Brevo updates the selected sender."
+type completeAfterSender struct {
+	dex.StepDefaultsNoWaitFor[brevo.UpdateSenderResult]
+}
+
+func (completeAfterSender) Execute(ctx dex.Context, _ brevo.UpdateSenderResult) (*dex.StepDecision, error) {
 	outcome, err := outcomeAttribute.Get(ctx)
 	if err != nil {
 		return nil, err

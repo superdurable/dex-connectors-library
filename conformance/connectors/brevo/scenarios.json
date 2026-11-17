@@ -2078,6 +2078,844 @@
       "input": {},
       "name": "listSenders-transportFailure",
       "operation": "listSenders"
+    },
+    {
+      "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+      "exchanges": [
+        {
+          "body": "{\"id\":15}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/senders",
+          "requestBody": {
+            "email": "sender@example.com",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 15
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+      "input": {
+        "email": "sender@example.com",
+        "name": "Support"
+      },
+      "name": "createSender-success",
+      "operation": "createSender"
+    },
+    {
+      "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/senders",
+          "requestBody": {
+            "email": "sender@example.com",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+      "input": {
+        "email": "sender@example.com",
+        "name": "Support"
+      },
+      "name": "createSender-providerRejected",
+      "operation": "createSender"
+    },
+    {
+      "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+      "input": {
+        "email": "bad",
+        "name": "Support"
+      },
+      "name": "createSender-defect",
+      "operation": "createSender"
+    },
+    {
+      "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/senders",
+          "requestBody": {
+            "email": "sender@example.com",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+      "input": {
+        "email": "sender@example.com",
+        "name": "Support"
+      },
+      "name": "createSender-429",
+      "operation": "createSender"
+    },
+    {
+      "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/senders",
+          "requestBody": {
+            "email": "sender@example.com",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+      "input": {
+        "email": "sender@example.com",
+        "name": "Support"
+      },
+      "name": "createSender-500",
+      "operation": "createSender"
+    },
+    {
+      "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/senders",
+          "requestBody": {
+            "email": "sender@example.com",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+      "input": {
+        "email": "sender@example.com",
+        "name": "Support"
+      },
+      "name": "createSender-transportFailure",
+      "operation": "createSender"
+    },
+    {
+      "callId": "9f08be91-8966-5e40-befd-3ea41df8abd9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v3/senders/15",
+          "requestBody": {
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 15
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f08be91-8966-5e40-befd-3ea41df8abd9",
+      "input": {
+        "id": 15,
+        "name": "Support"
+      },
+      "name": "updateSender-success",
+      "operation": "updateSender"
+    },
+    {
+      "callId": "9f08be91-8966-5e40-befd-3ea41df8abd9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v3/senders/15",
+          "requestBody": {
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f08be91-8966-5e40-befd-3ea41df8abd9",
+      "input": {
+        "id": 15,
+        "name": "Support"
+      },
+      "name": "updateSender-notFound",
+      "operation": "updateSender"
+    },
+    {
+      "callId": "9f08be91-8966-5e40-befd-3ea41df8abd9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v3/senders/15",
+          "requestBody": {
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f08be91-8966-5e40-befd-3ea41df8abd9",
+      "input": {
+        "id": 15,
+        "name": "Support"
+      },
+      "name": "updateSender-providerRejected",
+      "operation": "updateSender"
+    },
+    {
+      "callId": "9f08be91-8966-5e40-befd-3ea41df8abd9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f08be91-8966-5e40-befd-3ea41df8abd9",
+      "input": {
+        "id": 0,
+        "name": "Support"
+      },
+      "name": "updateSender-defect",
+      "operation": "updateSender"
+    },
+    {
+      "callId": "9f08be91-8966-5e40-befd-3ea41df8abd9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v3/senders/15",
+          "requestBody": {
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f08be91-8966-5e40-befd-3ea41df8abd9",
+      "input": {
+        "id": 15,
+        "name": "Support"
+      },
+      "name": "updateSender-429",
+      "operation": "updateSender"
+    },
+    {
+      "callId": "9f08be91-8966-5e40-befd-3ea41df8abd9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v3/senders/15",
+          "requestBody": {
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f08be91-8966-5e40-befd-3ea41df8abd9",
+      "input": {
+        "id": 15,
+        "name": "Support"
+      },
+      "name": "updateSender-500",
+      "operation": "updateSender"
+    },
+    {
+      "callId": "9f08be91-8966-5e40-befd-3ea41df8abd9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v3/senders/15",
+          "requestBody": {
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f08be91-8966-5e40-befd-3ea41df8abd9",
+      "input": {
+        "id": 15,
+        "name": "Support"
+      },
+      "name": "updateSender-transportFailure",
+      "operation": "updateSender"
+    },
+    {
+      "callId": "491567c0-7f59-5d45-9191-34eeb0109176",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/senders/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 15
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "491567c0-7f59-5d45-9191-34eeb0109176",
+      "input": {
+        "id": 15
+      },
+      "name": "deleteSender-success",
+      "operation": "deleteSender"
+    },
+    {
+      "callId": "491567c0-7f59-5d45-9191-34eeb0109176",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/senders/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "491567c0-7f59-5d45-9191-34eeb0109176",
+      "input": {
+        "id": 15
+      },
+      "name": "deleteSender-notFound",
+      "operation": "deleteSender"
+    },
+    {
+      "callId": "491567c0-7f59-5d45-9191-34eeb0109176",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/senders/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "491567c0-7f59-5d45-9191-34eeb0109176",
+      "input": {
+        "id": 15
+      },
+      "name": "deleteSender-providerRejected",
+      "operation": "deleteSender"
+    },
+    {
+      "callId": "491567c0-7f59-5d45-9191-34eeb0109176",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "491567c0-7f59-5d45-9191-34eeb0109176",
+      "input": {
+        "id": 0
+      },
+      "name": "deleteSender-defect",
+      "operation": "deleteSender"
+    },
+    {
+      "callId": "491567c0-7f59-5d45-9191-34eeb0109176",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/senders/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "491567c0-7f59-5d45-9191-34eeb0109176",
+      "input": {
+        "id": 15
+      },
+      "name": "deleteSender-429",
+      "operation": "deleteSender"
+    },
+    {
+      "callId": "491567c0-7f59-5d45-9191-34eeb0109176",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/senders/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "491567c0-7f59-5d45-9191-34eeb0109176",
+      "input": {
+        "id": 15
+      },
+      "name": "deleteSender-500",
+      "operation": "deleteSender"
+    },
+    {
+      "callId": "491567c0-7f59-5d45-9191-34eeb0109176",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/senders/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "491567c0-7f59-5d45-9191-34eeb0109176",
+      "input": {
+        "id": 15
+      },
+      "name": "deleteSender-transportFailure",
+      "operation": "deleteSender"
+    },
+    {
+      "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+      "input": {
+        "email": "sender@example.com",
+        "name": "Support"
+      },
+      "name": "createSender-uncertainAfterSendCap",
+      "operation": "createSender",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

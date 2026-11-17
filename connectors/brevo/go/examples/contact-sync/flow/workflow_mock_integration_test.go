@@ -51,7 +51,7 @@ func TestContactSyncUsesMockWithRealDex(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	flowID := "brevo-contact-sync-" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	_, err = client.StartFlow(ctx, flow, flowID, Request{Email: "member@meridian.example", FirstName: "Meridian"}, dex.StartFlowOptions{})
+	_, err = client.StartFlow(ctx, flow, flowID, Request{Email: "member@meridian.example", FirstName: "Meridian", SenderID: 1, SenderName: "Support"}, dex.StartFlowOptions{})
 	require.NoError(t, err)
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
@@ -61,4 +61,6 @@ func TestContactSyncUsesMockWithRealDex(t *testing.T) {
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, "member@meridian.example", calls[0].Input.Email)
 	require.Len(t, mock.ListAttributes().Calls(), 1)
+	require.Len(t, mock.UpdateSender().Calls(), 1)
+	require.Equal(t, int64(1), mock.UpdateSender().Calls()[0].Input.ID)
 }

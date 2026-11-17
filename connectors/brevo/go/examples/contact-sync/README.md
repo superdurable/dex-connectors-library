@@ -1,6 +1,6 @@
 # Brevo contact sync example
 
-This runnable Flow accepts an email and first name in Dex Web Start Flow, validates them, calls `brevo.NewCreateOrUpdateContactStep`, then lists contact attribute definitions. The happy branches complete with the contact confirmation. Other branches remain unwired and fail the Flow. `ConnectionName` is statically `brevo`. Dex Web summary and display views show the completed provider outcome.
+This runnable Flow accepts an email and first name in Dex Web Start Flow, validates them, calls `brevo.NewCreateOrUpdateContactStep`, then lists contact attribute definitions. If `senderId` and `senderName` are supplied, it also calls `brevo.NewUpdateSenderStep` to set that sender's display name. The happy branches complete with the contact confirmation. Other branches remain unwired and fail the Flow. `ConnectionName` is statically `brevo`. Dex Web summary and display views show the completed provider outcome.
 
 ## Generate strict FDG 2.0
 
@@ -22,11 +22,11 @@ mkdir -p /tmp/brevo-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/brevo/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/brevo/go \
-  --version v0.2.0 --tag connectors/brevo/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/brevo/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/brevo-release/connector-release.json \
   --digest-output /tmp/brevo-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/brevo/go/build" --connector-release-override brevo=/tmp/brevo-release
+dexcli dev -open=false -dex-port 9240 -web-port 9241 --flow-rendering-dir "$PWD/connectors/brevo/go/build" --connector-release-override brevo=/tmp/brevo-release
 ```
 
 In another terminal, configure the project environment described by [`projectconfig`](../../../sdkgo/projectconfig/README.md) and start the Worker:
@@ -43,6 +43,8 @@ In Dex Web Connections, configure `brevo / brevo` using the [Brevo API key page]
 ```
 
 Use a real email address and a contact you are allowed to create or update when testing live. The example stores no credential in Flow input or output.
+
+To update a sender as part of the same Flow, add `senderId` as a positive numeric ID from `listSenders` and `senderName` as its new display name. Leave both absent to skip the sender update.
 
 ## Tests
 
