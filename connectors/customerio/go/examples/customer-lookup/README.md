@@ -1,6 +1,6 @@
 # Customer.io customer lookup Flow
 
-This runnable Flow calls `getCustomersByEmail` through the static `customerio` connection. It persists matching profile IDs in an Attribute and exposes them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+These runnable Flows call `getCustomersByEmail`, `getCampaign`, `listCampaigns`, and `getCampaignMetrics` through the static `customerio` connection. They persist typed results in Attributes and expose them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -8,6 +8,9 @@ From `connectors/customerio/go`, run:
 
 ```bash
 dexcli visualize ./examples/customer-lookup/flow/workflow.go --schema-version 2.0 --json --out /tmp/customerio-customer-lookup-fdg
+dexcli visualize ./examples/customer-lookup/flow/get_campaign.go --schema-version 2.0 --lint app --json --out /tmp/customerio-campaign-fdg
+dexcli visualize ./examples/customer-lookup/flow/list_campaigns.go --schema-version 2.0 --lint app --json --out /tmp/customerio-campaigns-fdg
+dexcli visualize ./examples/customer-lookup/flow/get_campaign_metrics.go --schema-version 2.0 --lint app --json --out /tmp/customerio-campaign-metrics-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.
@@ -23,5 +26,7 @@ GOWORK=off go run ./examples/customer-lookup
 ```
 
 Start `CustomerioCustomerLookup` with a unique Flow ID and input `{"email":"person@example.com"}`. Replace the sample with an email from the Customer.io People page. The Worker connects to Dex Server without an inbound listener.
+
+Start `CustomerioCampaignInspection` with `{"campaignId":5}`, `CustomerioCampaignSearch` with `{}`, and `CustomerioCampaignMetrics` with `{"campaignId":5,"startUnix":1735718400,"endUnix":1735804800,"resolution":"days"}`. Find the non-secret integer campaign ID in the Customer.io Automations page URL or list response. The metrics timestamps are UTC Unix seconds; blank IDs, timestamps, and resolution are invalid. These operations use the same secret App API key stored in Dex Web Connections.
 
 CI runs the fixture-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real Customer.io authorization and lookup remain unverified.
