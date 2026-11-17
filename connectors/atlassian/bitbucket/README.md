@@ -20,10 +20,15 @@ The TypeScript package is [`@superdurable/connector-atlassian-bitbucket`](typesc
 | `GetRepository` | `GetRepositoryInput` | `Repository` | `found` |
 | `GetPullRequest` | `GetPullRequestInput` | `PullRequest` | `found` |
 | `UpdatePullRequestTitle` | `UpdatePullRequestTitleInput` | `PullRequest` | `updated` |
+| `CreateRepository` | `CreateRepositoryInput` | `Repository` | `created` |
+| `UpdateRepository` | `UpdateRepositoryInput` | `Repository` | `updated` |
+| `DeleteRepository` | `DeleteRepositoryInput` | `DeletedRepository` | `deleted` |
 
-Each operation has optional `notFound`, `providerRejected`, `invalidResponse`, and `defect` branches. Unwired optional branches fail the Flow. All operations use async Execute durability and the default one-hour retry budget. Reads and absolute title replacement are safe to repeat. Only Go implements the three new operations.
+Each operation has optional `notFound`, `providerRejected`, `invalidResponse`, and `defect` branches. Unwired optional branches fail the Flow. All operations use async Execute durability and the default one-hour retry budget. Reads and absolute replacements are safe to repeat. Python and TypeScript implement only the two list operations; the remaining operations are Go-only.
 
-Workspace access tokens require Bitbucket Premium; grant Repositories > Read and Pull requests > Read, plus Pull requests > Write for title updates. [Atlassian explains token creation](https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/) and [workspace token permissions](https://support.atlassian.com/bitbucket-cloud/docs/workspace-access-token-permissions/).
+Go repository writes use a stable `workspace/repository` slug path. `CreateRepository` creates a Git repository with an explicit display name and private/public value; a 409 conflict is read back and accepted only when the existing repository matches. `UpdateRepository` replaces name and visibility. `DeleteRepository` removes the repository and returns its workspace and slug. These operations use the safe repeat tier because the target path or replacement state is absolute. Find both slugs in the Bitbucket workspace and repository URLs; blank slugs are invalid. Creating and updating need **Repositories Write/Admin** access; deleting needs **Repositories Delete**. See [Bitbucket repository API](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-repositories/).
+
+Workspace access tokens require Bitbucket Premium; grant Repositories > Read/Write/Admin/Delete for repository actions and Pull requests > Read/Write for PR actions. [Atlassian explains token creation](https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/) and [workspace token permissions](https://support.atlassian.com/bitbucket-cloud/docs/workspace-access-token-permissions/).
 
 ## Authentication and configuration
 

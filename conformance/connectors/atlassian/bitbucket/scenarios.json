@@ -2,6 +2,1166 @@
   "connector": "bitbucket",
   "scenarios": [
     {
+      "callId": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "exchanges": [
+        {
+          "body": "{\"uuid\":\"{a1b2c3d4-1234-4567-89ab-1234567890ab}\",\"name\":\"Meridian API\",\"full_name\":\"meridian/api\",\"is_private\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API",
+            "scm": "git"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "full_name": "meridian/api",
+          "is_private": true,
+          "name": "Meridian API",
+          "uuid": "{a1b2c3d4-1234-4567-89ab-1234567890ab}"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createRepository-created",
+      "operation": "createRepository"
+    },
+    {
+      "callId": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API",
+            "scm": "git"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "full_name": "",
+          "is_private": false,
+          "name": "",
+          "uuid": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createRepository-notFound",
+      "operation": "createRepository"
+    },
+    {
+      "callId": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API",
+            "scm": "git"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "full_name": "",
+          "is_private": false,
+          "name": "",
+          "uuid": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createRepository-providerRejected",
+      "operation": "createRepository"
+    },
+    {
+      "callId": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API",
+            "scm": "git"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "full_name": "",
+          "is_private": false,
+          "name": "",
+          "uuid": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createRepository-invalidResponse",
+      "operation": "createRepository"
+    },
+    {
+      "callId": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "full_name": "",
+          "is_private": false,
+          "name": "",
+          "uuid": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "invalid/workspace"
+      },
+      "name": "createRepository-defect",
+      "operation": "createRepository"
+    },
+    {
+      "callId": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API",
+            "scm": "git"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createRepository-retry429",
+      "operation": "createRepository"
+    },
+    {
+      "callId": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API",
+            "scm": "git"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createRepository-retry503",
+      "operation": "createRepository"
+    },
+    {
+      "callId": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API",
+            "scm": "git"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createRepository-transportFailure",
+      "operation": "createRepository"
+    },
+    {
+      "callId": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API",
+            "scm": "git"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"uuid\":\"{a1b2c3d4-1234-4567-89ab-1234567890ab}\",\"name\":\"Meridian API\",\"full_name\":\"meridian/api\",\"is_private\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "full_name": "meridian/api",
+          "is_private": true,
+          "name": "Meridian API",
+          "uuid": "{a1b2c3d4-1234-4567-89ab-1234567890ab}"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createRepository-reconciled",
+      "operation": "createRepository"
+    },
+    {
+      "callId": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API",
+            "scm": "git"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"uuid\":\"{a1b2c3d4-1234-4567-89ab-1234567890ab}\",\"name\":\"Different\",\"full_name\":\"meridian/api\",\"is_private\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "full_name": "",
+          "is_private": false,
+          "name": "",
+          "uuid": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "20fc3548-f017-507f-934c-0caeefc57cf9",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "createRepository-conflict",
+      "operation": "createRepository"
+    },
+    {
+      "callId": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "exchanges": [
+        {
+          "body": "{\"uuid\":\"{a1b2c3d4-1234-4567-89ab-1234567890ab}\",\"name\":\"Meridian API\",\"full_name\":\"meridian/api\",\"is_private\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "full_name": "meridian/api",
+          "is_private": true,
+          "name": "Meridian API",
+          "uuid": "{a1b2c3d4-1234-4567-89ab-1234567890ab}"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updateRepository-updated",
+      "operation": "updateRepository"
+    },
+    {
+      "callId": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "full_name": "",
+          "is_private": false,
+          "name": "",
+          "uuid": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updateRepository-notFound",
+      "operation": "updateRepository"
+    },
+    {
+      "callId": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "full_name": "",
+          "is_private": false,
+          "name": "",
+          "uuid": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updateRepository-providerRejected",
+      "operation": "updateRepository"
+    },
+    {
+      "callId": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "full_name": "",
+          "is_private": false,
+          "name": "",
+          "uuid": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updateRepository-invalidResponse",
+      "operation": "updateRepository"
+    },
+    {
+      "callId": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "full_name": "",
+          "is_private": false,
+          "name": "",
+          "uuid": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "invalid/workspace"
+      },
+      "name": "updateRepository-defect",
+      "operation": "updateRepository"
+    },
+    {
+      "callId": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updateRepository-retry429",
+      "operation": "updateRepository"
+    },
+    {
+      "callId": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updateRepository-retry503",
+      "operation": "updateRepository"
+    },
+    {
+      "callId": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/repositories/meridian/api",
+          "requestBody": {
+            "is_private": true,
+            "name": "Meridian API"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
+      "input": {
+        "is_private": true,
+        "name": "Meridian API",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "updateRepository-transportFailure",
+      "operation": "updateRepository"
+    },
+    {
+      "callId": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "repository": "api",
+          "workspace": "meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "input": {
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deleteRepository-deleted",
+      "operation": "deleteRepository"
+    },
+    {
+      "callId": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "repository": "",
+          "workspace": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "input": {
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deleteRepository-notFound",
+      "operation": "deleteRepository"
+    },
+    {
+      "callId": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "repository": "",
+          "workspace": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "input": {
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deleteRepository-providerRejected",
+      "operation": "deleteRepository"
+    },
+    {
+      "callId": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "repository": "",
+          "workspace": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "input": {
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deleteRepository-invalidResponse",
+      "operation": "deleteRepository"
+    },
+    {
+      "callId": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "repository": "",
+          "workspace": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "input": {
+        "repository": "api",
+        "workspace": "invalid/workspace"
+      },
+      "name": "deleteRepository-defect",
+      "operation": "deleteRepository"
+    },
+    {
+      "callId": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "input": {
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deleteRepository-retry429",
+      "operation": "deleteRepository"
+    },
+    {
+      "callId": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "input": {
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deleteRepository-retry503",
+      "operation": "deleteRepository"
+    },
+    {
+      "callId": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
+      "input": {
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deleteRepository-transportFailure",
+      "operation": "deleteRepository"
+    },
+    {
       "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {

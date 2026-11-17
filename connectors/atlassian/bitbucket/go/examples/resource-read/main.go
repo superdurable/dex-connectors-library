@@ -38,7 +38,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{resourceread.NewFlow(connection), resourceread.NewPullRequestTitleFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{resourceread.NewFlow(connection), resourceread.NewPullRequestTitleFlow(connection), resourceread.NewRepositoryCreateFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register bitbucket Flow: %w", err)
 	}

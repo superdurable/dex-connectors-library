@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: bitbucket
   displayName: Bitbucket
-  description: "Read repositories and pull requests, and update pull request titles through typed Dex Steps."
+  description: "Create, read, update, and delete repositories; read pull requests and update their titles through typed Dex Steps."
   company: Atlassian
   categories: [developer-tools]
   version: v0.3.0
@@ -46,14 +46,79 @@ spec:
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: "Secret Bitbucket workspace access token from https://bitbucket.org > workspace Settings > Access tokens > Create access token. Grant Repositories > Read and Pull requests > Read and Write for title updates; copy the opaque token once into this secret field. Blank prevents calls."
+        description: "Secret Bitbucket workspace access token from https://bitbucket.org > workspace Settings > Access tokens > Create access token. Grant Repositories Read/Write/Admin/Delete for repository actions and Pull requests Read/Write for PR actions; copy the opaque token once into this secret field. Blank prevents calls."
         required: true
     guide:
       startURL: https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/
       steps:
-        - "Workspace access tokens require Bitbucket Premium. In https://bitbucket.org open the workspace, choose Settings > Workspace settings > Security > Access tokens > Create access token, grant Repositories > Read and Pull requests > Read and Write for title updates, then copy the one-time opaque token into access_token. The token is secret and Dex stores it only in this credential field."
+        - "Workspace access tokens require Bitbucket Premium. In https://bitbucket.org open the workspace, choose Settings > Workspace settings > Security > Access tokens > Create access token, grant Repositories Read/Write/Admin/Delete for repository actions and Pull requests Read/Write for PR actions, then copy the one-time opaque token into access_token. The token is secret and Dex stores it only in this credential field."
         - "Set baseUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
+        - "Find the workspace slug in the Bitbucket workspace URL and repository slug in the repository URL. For creation, choose a unique non-secret slug, a display name, and an explicit private/public setting; blank slugs or names are invalid. Bitbucket uses git and assigns its oldest workspace project when none is selected. Repository delete needs the Repositories Delete token permission."
   operations:
+    - name: createRepository
+      goName: CreateRepository
+      inputType: CreateRepositoryInput
+      outputType: Repository
+      kind: mutation
+      description: Create a private Bitbucket repository under a workspace.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Bitbucket returned the requested repository state.}
+        - {id: notFound, goName: NotFound, description: The repository does not exist or is not visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected the repository request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local repository input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample repository state is returned.
+          output: {uuid: "{a1b2c3d4-1234-4567-89ab-1234567890ab}", name: Meridian API, full_name: meridian/api, is_private: true}
+    - name: updateRepository
+      goName: UpdateRepository
+      inputType: UpdateRepositoryInput
+      outputType: Repository
+      kind: mutation
+      description: Replace a repository's name and visibility.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Bitbucket returned the requested repository state.}
+        - {id: notFound, goName: NotFound, description: The repository does not exist or is not visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected the repository request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local repository input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample repository state is returned.
+          output: {uuid: "{a1b2c3d4-1234-4567-89ab-1234567890ab}", name: Meridian API, full_name: meridian/api, is_private: true}
+    - name: deleteRepository
+      goName: DeleteRepository
+      inputType: DeleteRepositoryInput
+      outputType: DeletedRepository
+      kind: mutation
+      description: Delete a repository by workspace and slug.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Bitbucket returned the requested repository state.}
+        - {id: notFound, goName: NotFound, description: The repository does not exist or is not visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected the repository request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local repository input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample repository state is returned.
+          output: {workspace: meridian, repository: api}
+
     - name: getRepository
       goName: GetRepository
       inputType: GetRepositoryInput
