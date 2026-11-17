@@ -49,6 +49,11 @@ type Operations interface {
 	ListPostings() sdkgo.Query[ListPostingsInput, PostingsPage]
 	CreatePosting() sdkgo.Mutation[CreatePostingInput, Posting]
 	UpdatePosting() sdkgo.Mutation[UpdatePostingInput, Posting]
+	GetNote() sdkgo.Query[GetNoteInput, NoteSummary]
+	ListNotes() sdkgo.Query[ListNotesInput, NotesPage]
+	CreateNote() sdkgo.Mutation[CreateNoteInput, NoteIdentity]
+	UpdateNote() sdkgo.Mutation[UpdateNoteInput, NoteIdentity]
+	DeleteNote() sdkgo.Mutation[DeleteNoteInput, NoteIdentity]
 }
 
 type clientOperations struct{ client *Client }
@@ -79,6 +84,21 @@ func (operations clientOperations) CreatePosting() sdkgo.Mutation[CreatePostingI
 }
 func (operations clientOperations) UpdatePosting() sdkgo.Mutation[UpdatePostingInput, Posting] {
 	return operations.client.UpdatePosting()
+}
+func (operations clientOperations) GetNote() sdkgo.Query[GetNoteInput, NoteSummary] {
+	return operations.client.GetNote()
+}
+func (operations clientOperations) ListNotes() sdkgo.Query[ListNotesInput, NotesPage] {
+	return operations.client.ListNotes()
+}
+func (operations clientOperations) CreateNote() sdkgo.Mutation[CreateNoteInput, NoteIdentity] {
+	return operations.client.CreateNote()
+}
+func (operations clientOperations) UpdateNote() sdkgo.Mutation[UpdateNoteInput, NoteIdentity] {
+	return operations.client.UpdateNote()
+}
+func (operations clientOperations) DeleteNote() sdkgo.Mutation[DeleteNoteInput, NoteIdentity] {
+	return operations.client.DeleteNote()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -886,6 +906,368 @@ func NewUpdatePostingStep[IN any](config UpdatePostingStepConfig[IN]) sdkgo.Muta
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(UpdatePostingBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetNoteBranchFound sdkgo.BranchID = "found"
+const GetNoteBranchNotFound sdkgo.BranchID = "notFound"
+const GetNoteBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetNoteBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetNoteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetNoteDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getNote"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetNoteBranchFound, Description: "Lever returned the note."},
+		{ID: GetNoteBranchNotFound, Description: "Lever did not expose the note.", Optional: true},
+		{ID: GetNoteBranchProviderRejected, Description: "Lever rejected the read.", Optional: true},
+		{ID: GetNoteBranchInvalidResponse, Description: "Lever returned invalid note metadata.", Optional: true},
+		{ID: GetNoteBranchDefect, Description: "Note or opportunity ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetNoteResult = sdkgo.QueryResult[NoteSummary]
+
+type GetNoteStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=lever"`
+	operationID                    struct{}                                       `connector:"operationId=getNote"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetNoteInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetNoteResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetNoteResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetNoteResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetNoteResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetNoteResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[NoteSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetNoteStep[IN any](config GetNoteStepConfig[IN]) sdkgo.QueryStep[IN, GetNoteInput, NoteSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetNoteInput, NoteSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetNote(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetNoteResult] {
+			branches := make([]sdkgo.BranchTarget[GetNoteResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetNoteBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetNoteBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetNoteBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetNoteBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetNoteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListNotesBranchListed sdkgo.BranchID = "listed"
+const ListNotesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListNotesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListNotesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListNotesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listNotes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListNotesBranchListed, Description: "Lever returned the notes."},
+		{ID: ListNotesBranchProviderRejected, Description: "Lever rejected the read.", Optional: true},
+		{ID: ListNotesBranchInvalidResponse, Description: "Lever returned invalid notes JSON.", Optional: true},
+		{ID: ListNotesBranchDefect, Description: "Opportunity ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListNotesResult = sdkgo.QueryResult[NotesPage]
+
+type ListNotesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=lever"`
+	operationID                    struct{}                                     `connector:"operationId=listNotes"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListNotesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListNotesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListNotesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListNotesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListNotesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[NotesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListNotesStep[IN any](config ListNotesStepConfig[IN]) sdkgo.QueryStep[IN, ListNotesInput, NotesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListNotesInput, NotesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListNotes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListNotesResult] {
+			branches := make([]sdkgo.BranchTarget[ListNotesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListNotesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListNotesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListNotesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListNotesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateNoteBranchCreated sdkgo.BranchID = "created"
+const CreateNoteBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateNoteBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateNoteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateNoteDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createNote"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateNoteBranchCreated, Description: "Lever confirmed the note ID."},
+		{ID: CreateNoteBranchProviderRejected, Description: "Lever rejected note creation.", Optional: true},
+		{ID: CreateNoteBranchUncertain, Description: "The note may exist but Lever did not confirm its ID at the send cap.", Optional: true},
+		{ID: CreateNoteBranchDefect, Description: "Input or dispatch checkpoint is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateNoteResult = sdkgo.MutationResult[NoteIdentity]
+
+type CreateNoteStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=lever"`
+	operationID                       struct{}                                           `connector:"operationId=createNote"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateNoteInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateNoteResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateNoteResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateNoteResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateNoteResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[NoteIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateNoteStep[IN any](config CreateNoteStepConfig[IN]) sdkgo.MutationStep[IN, CreateNoteInput, NoteIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateNoteInput, NoteIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateNote(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateNoteResult] {
+			branches := make([]sdkgo.BranchTarget[CreateNoteResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateNoteBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateNoteBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateNoteBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateNoteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateNoteBranchUpdated sdkgo.BranchID = "updated"
+const UpdateNoteBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateNoteBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateNoteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateNoteDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateNote"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateNoteBranchUpdated, Description: "Lever confirmed the note ID."},
+		{ID: UpdateNoteBranchNotFound, Description: "Lever did not expose the note.", Optional: true},
+		{ID: UpdateNoteBranchProviderRejected, Description: "Lever rejected note replacement.", Optional: true},
+		{ID: UpdateNoteBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateNoteResult = sdkgo.MutationResult[NoteIdentity]
+
+type UpdateNoteStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=lever"`
+	operationID                       struct{}                                           `connector:"operationId=updateNote"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateNoteInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateNoteResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateNoteResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateNoteResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateNoteResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[NoteIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateNoteStep[IN any](config UpdateNoteStepConfig[IN]) sdkgo.MutationStep[IN, UpdateNoteInput, NoteIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateNoteInput, NoteIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateNote(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateNoteResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateNoteResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateNoteBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateNoteBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateNoteBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateNoteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteNoteBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteNoteBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteNoteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteNoteDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteNote"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteNoteBranchDeleted, Description: "Lever deleted the note or it was already absent."},
+		{ID: DeleteNoteBranchProviderRejected, Description: "Lever rejected deletion.", Optional: true},
+		{ID: DeleteNoteBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteNoteResult = sdkgo.MutationResult[NoteIdentity]
+
+type DeleteNoteStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=lever"`
+	operationID                       struct{}                                           `connector:"operationId=deleteNote"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteNoteInput                           `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteNoteResult]                     `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteNoteResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteNoteResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[NoteIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteNoteStep[IN any](config DeleteNoteStepConfig[IN]) sdkgo.MutationStep[IN, DeleteNoteInput, NoteIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteNoteInput, NoteIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteNote(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteNoteResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteNoteResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteNoteBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteNoteBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteNoteBranchDefect))
 			}
 			return branches
 		}(),

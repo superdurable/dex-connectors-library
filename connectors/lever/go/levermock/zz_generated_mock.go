@@ -27,6 +27,11 @@ type Mock struct {
 	listPostings               *connectormock.Query[lever.ListPostingsInput, lever.PostingsPage]
 	createPosting              *connectormock.Mutation[lever.CreatePostingInput, lever.Posting]
 	updatePosting              *connectormock.Mutation[lever.UpdatePostingInput, lever.Posting]
+	getNote                    *connectormock.Query[lever.GetNoteInput, lever.NoteSummary]
+	listNotes                  *connectormock.Query[lever.ListNotesInput, lever.NotesPage]
+	createNote                 *connectormock.Mutation[lever.CreateNoteInput, lever.NoteIdentity]
+	updateNote                 *connectormock.Mutation[lever.UpdateNoteInput, lever.NoteIdentity]
+	deleteNote                 *connectormock.Mutation[lever.DeleteNoteInput, lever.NoteIdentity]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -43,6 +48,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		listPostings:               connectormock.NewQuery[lever.ListPostingsInput, lever.PostingsPage](t, lever.ListPostingsDefinition),
 		createPosting:              connectormock.NewMutation[lever.CreatePostingInput, lever.Posting](t, lever.CreatePostingDefinition),
 		updatePosting:              connectormock.NewMutation[lever.UpdatePostingInput, lever.Posting](t, lever.UpdatePostingDefinition),
+		getNote:                    connectormock.NewQuery[lever.GetNoteInput, lever.NoteSummary](t, lever.GetNoteDefinition),
+		listNotes:                  connectormock.NewQuery[lever.ListNotesInput, lever.NotesPage](t, lever.ListNotesDefinition),
+		createNote:                 connectormock.NewMutation[lever.CreateNoteInput, lever.NoteIdentity](t, lever.CreateNoteDefinition),
+		updateNote:                 connectormock.NewMutation[lever.UpdateNoteInput, lever.NoteIdentity](t, lever.UpdateNoteDefinition),
+		deleteNote:                 connectormock.NewMutation[lever.DeleteNoteInput, lever.NoteIdentity](t, lever.DeleteNoteDefinition),
 	}
 	mock.listOpportunities.Default(ListOpportunitiesDefault())
 	mock.getOpportunity.Default(GetOpportunityDefault())
@@ -53,6 +63,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listPostings.Default(ListPostingsDefault())
 	mock.createPosting.Default(CreatePostingDefault())
 	mock.updatePosting.Default(UpdatePostingDefault())
+	mock.getNote.Default(GetNoteDefault())
+	mock.listNotes.Default(ListNotesDefault())
+	mock.createNote.Default(CreateNoteDefault())
+	mock.updateNote.Default(UpdateNoteDefault())
+	mock.deleteNote.Default(DeleteNoteDefault())
 	connection, err := lever.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "lever", Name: connectionName})
 	if err != nil {
 		t.Fatalf("lever mock connection: %v", err)
@@ -109,6 +124,31 @@ func (mock *Mock) UpdatePosting() *connectormock.Mutation[lever.UpdatePostingInp
 	return mock.updatePosting
 }
 
+// GetNote returns the getNote script.
+func (mock *Mock) GetNote() *connectormock.Query[lever.GetNoteInput, lever.NoteSummary] {
+	return mock.getNote
+}
+
+// ListNotes returns the listNotes script.
+func (mock *Mock) ListNotes() *connectormock.Query[lever.ListNotesInput, lever.NotesPage] {
+	return mock.listNotes
+}
+
+// CreateNote returns the createNote script.
+func (mock *Mock) CreateNote() *connectormock.Mutation[lever.CreateNoteInput, lever.NoteIdentity] {
+	return mock.createNote
+}
+
+// UpdateNote returns the updateNote script.
+func (mock *Mock) UpdateNote() *connectormock.Mutation[lever.UpdateNoteInput, lever.NoteIdentity] {
+	return mock.updateNote
+}
+
+// DeleteNote returns the deleteNote script.
+func (mock *Mock) DeleteNote() *connectormock.Mutation[lever.DeleteNoteInput, lever.NoteIdentity] {
+	return mock.deleteNote
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOpportunities() sdkgo.Query[lever.ListOpportunitiesInput, lever.OpportunitiesPage] {
@@ -137,6 +177,21 @@ func (operations mockOperations) CreatePosting() sdkgo.Mutation[lever.CreatePost
 }
 func (operations mockOperations) UpdatePosting() sdkgo.Mutation[lever.UpdatePostingInput, lever.Posting] {
 	return operations.mock.updatePosting
+}
+func (operations mockOperations) GetNote() sdkgo.Query[lever.GetNoteInput, lever.NoteSummary] {
+	return operations.mock.getNote
+}
+func (operations mockOperations) ListNotes() sdkgo.Query[lever.ListNotesInput, lever.NotesPage] {
+	return operations.mock.listNotes
+}
+func (operations mockOperations) CreateNote() sdkgo.Mutation[lever.CreateNoteInput, lever.NoteIdentity] {
+	return operations.mock.createNote
+}
+func (operations mockOperations) UpdateNote() sdkgo.Mutation[lever.UpdateNoteInput, lever.NoteIdentity] {
+	return operations.mock.updateNote
+}
+func (operations mockOperations) DeleteNote() sdkgo.Mutation[lever.DeleteNoteInput, lever.NoteIdentity] {
+	return operations.mock.deleteNote
 }
 
 // ListOpportunitiesListed selects the listed branch: Lever returned the opportunity page.
@@ -474,3 +529,173 @@ func UpdatePostingUpdatedDefault() connectormock.Case[lever.Posting] {
 
 // UpdatePostingDefault is the manifest default, updatedDefault, which New installs.
 func UpdatePostingDefault() connectormock.Case[lever.Posting] { return UpdatePostingUpdatedDefault() }
+
+// GetNoteFound selects the found branch: Lever returned the note.
+func GetNoteFound(value lever.NoteSummary, failure *sdkgo.Failure) connectormock.Case[lever.NoteSummary] {
+	return connectormock.Branch(lever.GetNoteBranchFound, value, failure)
+}
+
+// GetNoteNotFound selects the notFound branch: Lever did not expose the note.
+func GetNoteNotFound(value lever.NoteSummary, failure *sdkgo.Failure) connectormock.Case[lever.NoteSummary] {
+	return connectormock.Branch(lever.GetNoteBranchNotFound, value, failure)
+}
+
+// GetNoteProviderRejected selects the providerRejected branch: Lever rejected the read.
+func GetNoteProviderRejected(value lever.NoteSummary, failure *sdkgo.Failure) connectormock.Case[lever.NoteSummary] {
+	return connectormock.Branch(lever.GetNoteBranchProviderRejected, value, failure)
+}
+
+// GetNoteInvalidResponse selects the invalidResponse branch: Lever returned invalid note metadata.
+func GetNoteInvalidResponse(value lever.NoteSummary, failure *sdkgo.Failure) connectormock.Case[lever.NoteSummary] {
+	return connectormock.Branch(lever.GetNoteBranchInvalidResponse, value, failure)
+}
+
+// GetNoteDefect selects the defect branch: Note or opportunity ID is invalid.
+func GetNoteDefect(value lever.NoteSummary, failure *sdkgo.Failure) connectormock.Case[lever.NoteSummary] {
+	return connectormock.Branch(lever.GetNoteBranchDefect, value, failure)
+}
+
+// GetNoteRetry asks Dex to retry the getNote Step, after the delay when it is positive.
+func GetNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.NoteSummary] {
+	return connectormock.Retry[lever.NoteSummary](failure, after)
+}
+
+// GetNoteFoundDefault is the manifest mock foundDefault: One note's metadata is visible.
+func GetNoteFoundDefault() connectormock.Case[lever.NoteSummary] {
+	value := connectormock.MustDecodeOutput[lever.NoteSummary](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3","createdAt":1420312438111,"commentCount":1}`)
+	return connectormock.Branch(lever.GetNoteBranchFound, value, nil)
+}
+
+// GetNoteDefault is the manifest default, foundDefault, which New installs.
+func GetNoteDefault() connectormock.Case[lever.NoteSummary] { return GetNoteFoundDefault() }
+
+// ListNotesListed selects the listed branch: Lever returned the notes.
+func ListNotesListed(value lever.NotesPage, failure *sdkgo.Failure) connectormock.Case[lever.NotesPage] {
+	return connectormock.Branch(lever.ListNotesBranchListed, value, failure)
+}
+
+// ListNotesProviderRejected selects the providerRejected branch: Lever rejected the read.
+func ListNotesProviderRejected(value lever.NotesPage, failure *sdkgo.Failure) connectormock.Case[lever.NotesPage] {
+	return connectormock.Branch(lever.ListNotesBranchProviderRejected, value, failure)
+}
+
+// ListNotesInvalidResponse selects the invalidResponse branch: Lever returned invalid notes JSON.
+func ListNotesInvalidResponse(value lever.NotesPage, failure *sdkgo.Failure) connectormock.Case[lever.NotesPage] {
+	return connectormock.Branch(lever.ListNotesBranchInvalidResponse, value, failure)
+}
+
+// ListNotesDefect selects the defect branch: Opportunity ID is invalid.
+func ListNotesDefect(value lever.NotesPage, failure *sdkgo.Failure) connectormock.Case[lever.NotesPage] {
+	return connectormock.Branch(lever.ListNotesBranchDefect, value, failure)
+}
+
+// ListNotesRetry asks Dex to retry the listNotes Step, after the delay when it is positive.
+func ListNotesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.NotesPage] {
+	return connectormock.Retry[lever.NotesPage](failure, after)
+}
+
+// ListNotesListedDefault is the manifest mock listedDefault: One note's metadata is visible.
+func ListNotesListedDefault() connectormock.Case[lever.NotesPage] {
+	value := connectormock.MustDecodeOutput[lever.NotesPage](`{"notes":[{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3","createdAt":1420312438111,"commentCount":1}]}`)
+	return connectormock.Branch(lever.ListNotesBranchListed, value, nil)
+}
+
+// ListNotesDefault is the manifest default, listedDefault, which New installs.
+func ListNotesDefault() connectormock.Case[lever.NotesPage] { return ListNotesListedDefault() }
+
+// CreateNoteCreated selects the created branch: Lever confirmed the note ID.
+func CreateNoteCreated(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.CreateNoteBranchCreated, value, failure)
+}
+
+// CreateNoteProviderRejected selects the providerRejected branch: Lever rejected note creation.
+func CreateNoteProviderRejected(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.CreateNoteBranchProviderRejected, value, failure)
+}
+
+// CreateNoteUncertain returns an uncertain createNote outcome.
+func CreateNoteUncertain(value lever.NoteIdentity, failure sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateNoteDefect selects the defect branch: Input or dispatch checkpoint is invalid.
+func CreateNoteDefect(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.CreateNoteBranchDefect, value, failure)
+}
+
+// CreateNoteRetry asks Dex to retry the createNote Step, after the delay when it is positive.
+func CreateNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Retry[lever.NoteIdentity](failure, after)
+}
+
+// CreateNoteCreatedDefault is the manifest mock createdDefault: Lever created one note.
+func CreateNoteCreatedDefault() connectormock.Case[lever.NoteIdentity] {
+	value := connectormock.MustDecodeOutput[lever.NoteIdentity](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3"}`)
+	return connectormock.Branch(lever.CreateNoteBranchCreated, value, nil)
+}
+
+// CreateNoteDefault is the manifest default, createdDefault, which New installs.
+func CreateNoteDefault() connectormock.Case[lever.NoteIdentity] { return CreateNoteCreatedDefault() }
+
+// UpdateNoteUpdated selects the updated branch: Lever confirmed the note ID.
+func UpdateNoteUpdated(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.UpdateNoteBranchUpdated, value, failure)
+}
+
+// UpdateNoteNotFound selects the notFound branch: Lever did not expose the note.
+func UpdateNoteNotFound(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.UpdateNoteBranchNotFound, value, failure)
+}
+
+// UpdateNoteProviderRejected selects the providerRejected branch: Lever rejected note replacement.
+func UpdateNoteProviderRejected(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.UpdateNoteBranchProviderRejected, value, failure)
+}
+
+// UpdateNoteDefect selects the defect branch: Input or credentials are invalid.
+func UpdateNoteDefect(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.UpdateNoteBranchDefect, value, failure)
+}
+
+// UpdateNoteRetry asks Dex to retry the updateNote Step, after the delay when it is positive.
+func UpdateNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Retry[lever.NoteIdentity](failure, after)
+}
+
+// UpdateNoteUpdatedDefault is the manifest mock updatedDefault: Lever replaced one note.
+func UpdateNoteUpdatedDefault() connectormock.Case[lever.NoteIdentity] {
+	value := connectormock.MustDecodeOutput[lever.NoteIdentity](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3"}`)
+	return connectormock.Branch(lever.UpdateNoteBranchUpdated, value, nil)
+}
+
+// UpdateNoteDefault is the manifest default, updatedDefault, which New installs.
+func UpdateNoteDefault() connectormock.Case[lever.NoteIdentity] { return UpdateNoteUpdatedDefault() }
+
+// DeleteNoteDeleted selects the deleted branch: Lever deleted the note or it was already absent.
+func DeleteNoteDeleted(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.DeleteNoteBranchDeleted, value, failure)
+}
+
+// DeleteNoteProviderRejected selects the providerRejected branch: Lever rejected deletion.
+func DeleteNoteProviderRejected(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.DeleteNoteBranchProviderRejected, value, failure)
+}
+
+// DeleteNoteDefect selects the defect branch: Input or credentials are invalid.
+func DeleteNoteDefect(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.DeleteNoteBranchDefect, value, failure)
+}
+
+// DeleteNoteRetry asks Dex to retry the deleteNote Step, after the delay when it is positive.
+func DeleteNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Retry[lever.NoteIdentity](failure, after)
+}
+
+// DeleteNoteDeletedDefault is the manifest mock deletedDefault: The note is absent.
+func DeleteNoteDeletedDefault() connectormock.Case[lever.NoteIdentity] {
+	value := connectormock.MustDecodeOutput[lever.NoteIdentity](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3"}`)
+	return connectormock.Branch(lever.DeleteNoteBranchDeleted, value, nil)
+}
+
+// DeleteNoteDefault is the manifest default, deletedDefault, which New installs.
+func DeleteNoteDefault() connectormock.Case[lever.NoteIdentity] { return DeleteNoteDeletedDefault() }

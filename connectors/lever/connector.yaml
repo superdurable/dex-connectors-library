@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: lever
   displayName: Lever
-  description: Read and manage Lever opportunities through the Data API.
+  description: Read and manage Lever opportunities, postings, and notes through the Data API.
   company: Lever
   categories: [hr-recruiting]
   version: v0.2.0
@@ -38,7 +38,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete opportunity response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large metadata.
+        description: Maximum complete Lever response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large metadata.
         default: 1048576
   auth:
     type: apiKey
@@ -52,8 +52,8 @@ spec:
     guide:
       startURL: https://hire.lever.co
       steps:
-        - In Lever, open Settings > Integrations and API > API Credentials, create an API key with read access to opportunities and postings and write access if using Go mutations, then copy the opaque secret into Dex Web api_key. Blank is invalid; revoke or rotate it on the same page.
-        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret opportunity or posting UID in Lever or the respective list operation and pass it as the relevant ID; blank is invalid. Confidential records require corresponding account access.
+        - In Lever, open Settings > Integrations and API > API Credentials, create an API key with read access to opportunities, postings, and notes and write access if using Go mutations, then copy the opaque secret into Dex Web api_key. Blank is invalid; revoke or rotate it on the same page.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret opportunity, posting, or note UID in Lever or the respective list operation and pass it as the relevant ID; blank is invalid. Confidential records require corresponding account access.
   operations:
     - name: listOpportunities
       goName: ListOpportunities
@@ -244,3 +244,103 @@ spec:
           default: true
           description: Lever confirmed the changed posting.
           output: {id: f2f01e16-27f8-4711-a728-7d49499795a0, title: Infrastructure Engineer, state: draft}
+    - name: getNote
+      goName: GetNote
+      inputType: GetNoteInput
+      outputType: NoteSummary
+      kind: query
+      description: Read the metadata of one opportunity note without exposing its text.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Lever returned the note.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the note., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned invalid note metadata., optional: true}
+        - {id: defect, goName: Defect, description: Note or opportunity ID is invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One note's metadata is visible.
+          output: {id: b1dbbcfe-281c-46a0-8f51-57049158d3f3, createdAt: 1420312438111, commentCount: 1}
+    - name: listNotes
+      goName: ListNotes
+      inputType: ListNotesInput
+      outputType: NotesPage
+      kind: query
+      description: List metadata for one opportunity's notes without exposing note text.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Lever returned the notes.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned invalid notes JSON., optional: true}
+        - {id: defect, goName: Defect, description: Opportunity ID is invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One note's metadata is visible.
+          output: {notes: [{id: b1dbbcfe-281c-46a0-8f51-57049158d3f3, createdAt: 1420312438111, commentCount: 1}]}
+    - name: createNote
+      goName: CreateNote
+      inputType: CreateNoteInput
+      outputType: NoteIdentity
+      kind: mutation
+      description: Create a note on one opportunity.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Lever confirmed the note ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected note creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The note may exist but Lever did not confirm its ID at the send cap., optional: true}
+        - {id: defect, goName: Defect, description: Input or dispatch checkpoint is invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Lever created one note.
+          output: {id: b1dbbcfe-281c-46a0-8f51-57049158d3f3}
+    - name: updateNote
+      goName: UpdateNote
+      inputType: UpdateNoteInput
+      outputType: NoteIdentity
+      kind: mutation
+      description: Replace all comments of an API-created note.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Lever confirmed the note ID.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the note., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected note replacement., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Lever replaced one note.
+          output: {id: b1dbbcfe-281c-46a0-8f51-57049158d3f3}
+    - name: deleteNote
+      goName: DeleteNote
+      inputType: DeleteNoteInput
+      outputType: NoteIdentity
+      kind: mutation
+      description: Delete an API-created opportunity note.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Lever deleted the note or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: The note is absent.
+          output: {id: b1dbbcfe-281c-46a0-8f51-57049158d3f3}

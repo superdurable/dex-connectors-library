@@ -33,6 +33,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listPostings":               newConformanceQueryInvocation(t, scenario.Input, attemptContext, client.ListPostings(), reference),
 		"createPosting":              newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.CreatePosting(), reference, scenario.CallID),
 		"updatePosting":              newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.UpdatePosting(), reference, scenario.CallID),
+		"getNote":                    newConformanceQueryInvocation(t, scenario.Input, attemptContext, client.GetNote(), reference),
+		"listNotes":                  newConformanceQueryInvocation(t, scenario.Input, attemptContext, client.ListNotes(), reference),
+		"createNote":                 newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.CreateNote(), reference, scenario.CallID),
+		"updateNote":                 newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.UpdateNote(), reference, scenario.CallID),
+		"deleteNote":                 newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.DeleteNote(), reference, scenario.CallID),
 	}}
 }
 

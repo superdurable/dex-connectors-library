@@ -3187,6 +3187,1446 @@
       },
       "name": "updatePosting-transportFailure",
       "operation": "updatePosting"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"b1dbbcfe-281c-46a0-8f51-57049158d3f3\",\"createdAt\":1420312438111,\"fields\":[{\"type\":\"note\",\"value\":\"Candidate information\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "commentCount": 1,
+          "createdAt": 1420312438111,
+          "id": "b1dbbcfe-281c-46a0-8f51-57049158d3f3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "getNote-found",
+      "operation": "getNote"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "commentCount": 0,
+          "createdAt": 0,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "getNote-notFound",
+      "operation": "getNote"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "commentCount": 0,
+          "createdAt": 0,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "getNote-providerRejected",
+      "operation": "getNote"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"invalid\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "commentCount": 0,
+          "createdAt": 0,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "getNote-invalidResponse",
+      "operation": "getNote"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "commentCount": 0,
+          "createdAt": 0,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "bad"
+      },
+      "name": "getNote-defect",
+      "operation": "getNote"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "getNote-final429",
+      "operation": "getNote"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "getNote-final503",
+      "operation": "getNote"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "getNote-transportFailure",
+      "operation": "getNote"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"b1dbbcfe-281c-46a0-8f51-57049158d3f3\",\"createdAt\":1420312438111,\"fields\":[{\"type\":\"note\",\"value\":\"Candidate information\"}]}],\"hasNext\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "notes": [
+            {
+              "commentCount": 1,
+              "createdAt": 1420312438111,
+              "id": "b1dbbcfe-281c-46a0-8f51-57049158d3f3"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "listNotes-listed",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "notes": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "listNotes-providerRejected",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "notes": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "listNotes-invalidResponse",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "notes": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "bad"
+      },
+      "name": "listNotes-defect",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "listNotes-final429",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "listNotes-final503",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "listNotes-transportFailure",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"noteId\":\"b1dbbcfe-281c-46a0-8f51-57049158d3f3\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+          "providerId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "b1dbbcfe-281c-46a0-8f51-57049158d3f3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "value": "Please review the candidate"
+      },
+      "name": "createNote-created",
+      "operation": "createNote"
+    },
+    {
+      "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "value": "Please review the candidate"
+      },
+      "name": "createNote-providerRejected",
+      "operation": "createNote"
+    },
+    {
+      "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "input": {
+        "opportunityId": "bad",
+        "value": "Please review the candidate"
+      },
+      "name": "createNote-defect",
+      "operation": "createNote"
+    },
+    {
+      "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "value": "Please review the candidate"
+      },
+      "name": "createNote-final429",
+      "operation": "createNote"
+    },
+    {
+      "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "value": "Please review the candidate"
+      },
+      "name": "createNote-final503",
+      "operation": "createNote"
+    },
+    {
+      "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "value": "Please review the candidate"
+      },
+      "name": "createNote-transportFailure",
+      "operation": "createNote"
+    },
+    {
+      "attempts": 3,
+      "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "value": "Please review the candidate"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createNote-uncertain",
+      "operation": "createNote"
+    },
+    {
+      "callId": "5408cd51-7a5c-55a9-8217-96c9e083a7bc",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"noteId\":\"b1dbbcfe-281c-46a0-8f51-57049158d3f3\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestBody": {
+            "values": [
+              {
+                "value": "Updated assessment"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "b1dbbcfe-281c-46a0-8f51-57049158d3f3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5408cd51-7a5c-55a9-8217-96c9e083a7bc",
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "values": [
+          "Updated assessment"
+        ]
+      },
+      "name": "updateNote-updated",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "5408cd51-7a5c-55a9-8217-96c9e083a7bc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestBody": {
+            "values": [
+              {
+                "value": "Updated assessment"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5408cd51-7a5c-55a9-8217-96c9e083a7bc",
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "values": [
+          "Updated assessment"
+        ]
+      },
+      "name": "updateNote-notFound",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "5408cd51-7a5c-55a9-8217-96c9e083a7bc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestBody": {
+            "values": [
+              {
+                "value": "Updated assessment"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5408cd51-7a5c-55a9-8217-96c9e083a7bc",
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "values": [
+          "Updated assessment"
+        ]
+      },
+      "name": "updateNote-providerRejected",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "5408cd51-7a5c-55a9-8217-96c9e083a7bc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5408cd51-7a5c-55a9-8217-96c9e083a7bc",
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "bad",
+        "values": [
+          "Updated assessment"
+        ]
+      },
+      "name": "updateNote-defect",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "5408cd51-7a5c-55a9-8217-96c9e083a7bc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestBody": {
+            "values": [
+              {
+                "value": "Updated assessment"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5408cd51-7a5c-55a9-8217-96c9e083a7bc",
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "values": [
+          "Updated assessment"
+        ]
+      },
+      "name": "updateNote-final429",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "5408cd51-7a5c-55a9-8217-96c9e083a7bc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestBody": {
+            "values": [
+              {
+                "value": "Updated assessment"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5408cd51-7a5c-55a9-8217-96c9e083a7bc",
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "values": [
+          "Updated assessment"
+        ]
+      },
+      "name": "updateNote-final503",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "5408cd51-7a5c-55a9-8217-96c9e083a7bc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestBody": {
+            "values": [
+              {
+                "value": "Updated assessment"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5408cd51-7a5c-55a9-8217-96c9e083a7bc",
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "values": [
+          "Updated assessment"
+        ]
+      },
+      "name": "updateNote-transportFailure",
+      "operation": "updateNote"
+    },
+    {
+      "callId": "101a0c62-f91a-50b1-b755-b6cbc334e627",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "b1dbbcfe-281c-46a0-8f51-57049158d3f3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "101a0c62-f91a-50b1-b755-b6cbc334e627",
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "deleteNote-deleted",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "101a0c62-f91a-50b1-b755-b6cbc334e627",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "101a0c62-f91a-50b1-b755-b6cbc334e627",
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "deleteNote-providerRejected",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "101a0c62-f91a-50b1-b755-b6cbc334e627",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "101a0c62-f91a-50b1-b755-b6cbc334e627",
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "bad"
+      },
+      "name": "deleteNote-defect",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "101a0c62-f91a-50b1-b755-b6cbc334e627",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "101a0c62-f91a-50b1-b755-b6cbc334e627",
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "deleteNote-final429",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "101a0c62-f91a-50b1-b755-b6cbc334e627",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "101a0c62-f91a-50b1-b755-b6cbc334e627",
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "deleteNote-final503",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "101a0c62-f91a-50b1-b755-b6cbc334e627",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes/b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "101a0c62-f91a-50b1-b755-b6cbc334e627",
+      "input": {
+        "noteId": "b1dbbcfe-281c-46a0-8f51-57049158d3f3",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145"
+      },
+      "name": "deleteNote-transportFailure",
+      "operation": "deleteNote"
     }
   ],
   "schemaVersion": 1

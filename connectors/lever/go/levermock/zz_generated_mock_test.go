@@ -52,6 +52,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[lever.Posting](`{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}`)
 			return err
 		}},
+		{name: "getNote/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.NoteSummary](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3","createdAt":1420312438111,"commentCount":1}`)
+			return err
+		}},
+		{name: "listNotes/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.NotesPage](`{"notes":[{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3","createdAt":1420312438111,"commentCount":1}]}`)
+			return err
+		}},
+		{name: "createNote/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.NoteIdentity](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3"}`)
+			return err
+		}},
+		{name: "updateNote/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.NoteIdentity](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3"}`)
+			return err
+		}},
+		{name: "deleteNote/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.NoteIdentity](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -88,5 +108,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.UpdatePosting().Definition().Operation.OperationID != "updatePosting" {
 		t.Errorf("updatePosting mock has another definition")
+	}
+	if mock.GetNote().Definition().Operation.OperationID != "getNote" {
+		t.Errorf("getNote mock has another definition")
+	}
+	if mock.ListNotes().Definition().Operation.OperationID != "listNotes" {
+		t.Errorf("listNotes mock has another definition")
+	}
+	if mock.CreateNote().Definition().Operation.OperationID != "createNote" {
+		t.Errorf("createNote mock has another definition")
+	}
+	if mock.UpdateNote().Definition().Operation.OperationID != "updateNote" {
+		t.Errorf("updateNote mock has another definition")
+	}
+	if mock.DeleteNote().Definition().Operation.OperationID != "deleteNote" {
+		t.Errorf("deleteNote mock has another definition")
 	}
 }
