@@ -1,0 +1,65 @@
+{
+  "connectorId": "fanruan",
+  "releaseTag": "connectors/fanruan/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-fanruan",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_apps_page_step",
+      "kind": "query",
+      "operationId": "listAppsPage",
+      "inputType": "ListAppsPageInput",
+      "description": "List one page of applications authorized by the API Key.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListAppsPageInput selects one page of authorized applications.",
+        "properties": {
+          "limit": {
+            "description": "Limit is the page size from 1 through 100; zero uses 100.",
+            "type": "integer"
+          },
+          "skip": {
+            "description": "Skip omits this many earlier applications, starting at zero.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "skip"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
