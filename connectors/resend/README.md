@@ -236,6 +236,14 @@ Every non-happy branch is optional. The example wires only the happy branch;
 an unwired optional outcome fails the Flow. Provider error response text and
 credentials never enter a Dex result, receipt, Stream, or log.
 
+## Inboxes
+
+`CreateInbox` uses bounded `limited` retries and reads back by inbox email
+after an unknown send. Get/list, absolute name updates, and deletion are
+safe. Forwarding provisions a receiving address when the team has an inbound
+domain. The runnable [`create-inbox` example](go/examples/create-inbox/README.md)
+exercises creation through a real Dex Worker and generated provider mock.
+
 ## Automations
 
 `CreateAutomation` and `DuplicateAutomation` use bounded `limited` retries.

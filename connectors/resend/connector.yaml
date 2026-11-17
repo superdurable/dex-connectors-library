@@ -1726,3 +1726,86 @@ spec:
     execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: getAutomationRunDefault, branch: found, default: true, description: Resend completed the automation request., output: {id: run-1, status: completed}}
+  - name: createInbox
+    goName: CreateInbox
+    inputType: CreateInboxInput
+    outputType: InboxReference
+    kind: mutation
+    description: Create a sending and receiving inbox on a verified domain.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the inbox request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createInboxDefault, branch: created, default: true, description: Resend completed the inbox request., output: {id: inbox-1}}
+  - name: getInbox
+    goName: GetInbox
+    inputType: GetInboxInput
+    outputType: Inbox
+    kind: query
+    description: Retrieve inbox metadata by ID or email address.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the inbox request.}
+    - {id: notFound, goName: NotFound, description: The inbox does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getInboxDefault, branch: found, default: true, description: Resend completed the inbox request., output: {id: inbox-1, email_address: support@example.test, name: Support}}
+  - name: listInboxes
+    goName: ListInboxes
+    inputType: ListInboxesInput
+    outputType: InboxPage
+    kind: query
+    description: List inbox metadata.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the inbox request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listInboxesDefault, branch: listed, default: true, description: Resend completed the inbox request., output: {data: [{id: inbox-1, email_address: support@example.test, name: Support}], has_more: false}}
+  - name: updateInbox
+    goName: UpdateInbox
+    inputType: UpdateInboxInput
+    outputType: InboxReference
+    kind: mutation
+    description: Replace the internal or recipient-visible inbox name.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the inbox request.}
+    - {id: notFound, goName: NotFound, description: The inbox does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateInboxDefault, branch: updated, default: true, description: Resend completed the inbox request., output: {id: inbox-1}}
+  - name: deleteInbox
+    goName: DeleteInbox
+    inputType: DeleteInboxInput
+    outputType: DeletedInbox
+    kind: mutation
+    description: Delete one inbox.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the inbox request.}
+    - {id: notFound, goName: NotFound, description: The inbox does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteInboxDefault, branch: deleted, default: true, description: Resend completed the inbox request., output: {id: inbox-1, deleted: true}}

@@ -38886,6 +38886,1961 @@
       ],
       "name": "duplicateAutomation-send-cap",
       "operation": "duplicateAutomation"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox\",\"id\":\"inbox-1\",\"email_address\":\"support@example.test\",\"name\":\"Support\",\"from_name\":\"Team\",\"domain_id\":\"domain-1\",\"receiving_address\":\"forward@resend.test\",\"unread\":2,\"drafts\":1,\"created_at\":\"2026-11-16T00:00:00Z\",\"updated_at\":\"2026-11-16T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "created_at": "2026-11-16T00:00:00Z",
+          "domain_id": "domain-1",
+          "drafts": 1,
+          "email_address": "support@example.test",
+          "from_name": "Team",
+          "id": "inbox-1",
+          "last_received": "",
+          "name": "Support",
+          "receiving_address": "forward@resend.test",
+          "unread": 2,
+          "updated_at": "2026-11-16T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "inbox-1"
+      },
+      "name": "getInbox-success",
+      "operation": "getInbox"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "created_at": "",
+          "domain_id": "",
+          "drafts": 0,
+          "email_address": "",
+          "from_name": "",
+          "id": "",
+          "last_received": "",
+          "name": "",
+          "receiving_address": "",
+          "unread": 0,
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "inbox-1"
+      },
+      "name": "getInbox-missing",
+      "operation": "getInbox"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "created_at": "",
+          "domain_id": "",
+          "drafts": 0,
+          "email_address": "",
+          "from_name": "",
+          "id": "",
+          "last_received": "",
+          "name": "",
+          "receiving_address": "",
+          "unread": 0,
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "inbox-1"
+      },
+      "name": "getInbox-rejected",
+      "operation": "getInbox"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created_at": "",
+          "domain_id": "",
+          "drafts": 0,
+          "email_address": "",
+          "from_name": "",
+          "id": "",
+          "last_received": "",
+          "name": "",
+          "receiving_address": "",
+          "unread": 0,
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "inbox-1"
+      },
+      "name": "getInbox-invalid",
+      "operation": "getInbox"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created_at": "",
+          "domain_id": "",
+          "drafts": 0,
+          "email_address": "",
+          "from_name": "",
+          "id": "",
+          "last_received": "",
+          "name": "",
+          "receiving_address": "",
+          "unread": 0,
+          "updated_at": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getInbox-defect",
+      "operation": "getInbox"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "inbox-1"
+      },
+      "name": "getInbox-rate",
+      "operation": "getInbox"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "inbox-1"
+      },
+      "name": "getInbox-server",
+      "operation": "getInbox"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/inbox-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "inbox-1"
+      },
+      "name": "getInbox-transport",
+      "operation": "getInbox"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"inbox\",\"id\":\"inbox-1\",\"email_address\":\"support@example.test\",\"name\":\"Support\",\"from_name\":\"Team\",\"domain_id\":\"domain-1\",\"receiving_address\":\"forward@resend.test\",\"unread\":2,\"drafts\":1,\"created_at\":\"2026-11-16T00:00:00Z\",\"updated_at\":\"2026-11-16T00:00:00Z\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes",
+          "query": {
+            "after": [
+              "inbox-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "created_at": "2026-11-16T00:00:00Z",
+              "domain_id": "domain-1",
+              "drafts": 1,
+              "email_address": "support@example.test",
+              "from_name": "Team",
+              "id": "inbox-1",
+              "last_received": "",
+              "name": "Support",
+              "receiving_address": "forward@resend.test",
+              "unread": 2,
+              "updated_at": "2026-11-16T00:00:00Z"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "inbox-0",
+        "limit": 10
+      },
+      "name": "listInboxes-success",
+      "operation": "listInboxes"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes",
+          "query": {
+            "after": [
+              "inbox-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "inbox-0",
+        "limit": 10
+      },
+      "name": "listInboxes-rejected",
+      "operation": "listInboxes"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes",
+          "query": {
+            "after": [
+              "inbox-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "inbox-0",
+        "limit": 10
+      },
+      "name": "listInboxes-invalid",
+      "operation": "listInboxes"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "inbox-0",
+        "limit": -1
+      },
+      "name": "listInboxes-defect",
+      "operation": "listInboxes"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes",
+          "query": {
+            "after": [
+              "inbox-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "inbox-0",
+        "limit": 10
+      },
+      "name": "listInboxes-rate",
+      "operation": "listInboxes"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes",
+          "query": {
+            "after": [
+              "inbox-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "inbox-0",
+        "limit": 10
+      },
+      "name": "listInboxes-server",
+      "operation": "listInboxes"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes",
+          "query": {
+            "after": [
+              "inbox-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "inbox-0",
+        "limit": 10
+      },
+      "name": "listInboxes-transport",
+      "operation": "listInboxes"
+    },
+    {
+      "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox\",\"id\":\"inbox-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes",
+          "requestBody": {
+            "email_address": "support@example.test",
+            "forwarding": true,
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "inbox-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "input": {
+        "emailAddress": "support@example.test",
+        "forwarding": true,
+        "fromName": "Team",
+        "name": "Support"
+      },
+      "name": "createInbox-success",
+      "operation": "createInbox"
+    },
+    {
+      "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes",
+          "requestBody": {
+            "email_address": "support@example.test",
+            "forwarding": true,
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "input": {
+        "emailAddress": "support@example.test",
+        "forwarding": true,
+        "fromName": "Team",
+        "name": "Support"
+      },
+      "name": "createInbox-rejected",
+      "operation": "createInbox"
+    },
+    {
+      "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes",
+          "requestBody": {
+            "email_address": "support@example.test",
+            "forwarding": true,
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "input": {
+        "emailAddress": "support@example.test",
+        "forwarding": true,
+        "fromName": "Team",
+        "name": "Support"
+      },
+      "name": "createInbox-429",
+      "operation": "createInbox"
+    },
+    {
+      "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes",
+          "requestBody": {
+            "email_address": "support@example.test",
+            "forwarding": true,
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "input": {
+        "emailAddress": "support@example.test",
+        "forwarding": true,
+        "fromName": "Team",
+        "name": "Support"
+      },
+      "name": "createInbox-5xx",
+      "operation": "createInbox"
+    },
+    {
+      "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes",
+          "requestBody": {
+            "email_address": "support@example.test",
+            "forwarding": true,
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "input": {
+        "emailAddress": "support@example.test",
+        "forwarding": true,
+        "fromName": "Team",
+        "name": "Support"
+      },
+      "name": "createInbox-transport",
+      "operation": "createInbox"
+    },
+    {
+      "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "input": {
+        "emailAddress": "",
+        "forwarding": true,
+        "fromName": "Team",
+        "name": "Support"
+      },
+      "name": "createInbox-defect",
+      "operation": "createInbox"
+    },
+    {
+      "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes",
+          "requestBody": {
+            "email_address": "support@example.test",
+            "forwarding": true,
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "input": {
+        "emailAddress": "support@example.test",
+        "forwarding": true,
+        "fromName": "Team",
+        "name": "Support"
+      },
+      "name": "createInbox-conflict",
+      "operation": "createInbox"
+    },
+    {
+      "attempts": 2,
+      "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes",
+          "requestBody": {
+            "email_address": "support@example.test",
+            "forwarding": true,
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"inbox\",\"id\":\"inbox-1\",\"email_address\":\"support@example.test\",\"name\":\"Support\",\"from_name\":\"Team\",\"domain_id\":\"domain-1\",\"receiving_address\":\"forward@resend.test\",\"unread\":2,\"drafts\":1,\"created_at\":\"2026-11-16T00:00:00Z\",\"updated_at\":\"2026-11-16T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/support@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "inbox-1"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "input": {
+        "emailAddress": "support@example.test",
+        "forwarding": true,
+        "fromName": "Team",
+        "name": "Support"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createInbox-retry-readback",
+      "operation": "createInbox"
+    },
+    {
+      "attempts": 3,
+      "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes",
+          "requestBody": {
+            "email_address": "support@example.test",
+            "forwarding": true,
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/support@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes",
+          "requestBody": {
+            "email_address": "support@example.test",
+            "forwarding": true,
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/inboxes/support@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes",
+          "requestBody": {
+            "email_address": "support@example.test",
+            "forwarding": true,
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+      "input": {
+        "emailAddress": "support@example.test",
+        "forwarding": true,
+        "fromName": "Team",
+        "name": "Support"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createInbox-send-cap",
+      "operation": "createInbox"
+    },
+    {
+      "callId": "246be095-f428-513d-b55f-a38076fc517e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox\",\"id\":\"inbox-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1",
+          "requestBody": {
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "inbox-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "246be095-f428-513d-b55f-a38076fc517e",
+      "input": {
+        "fromName": "Team",
+        "id": "inbox-1",
+        "name": "Support"
+      },
+      "name": "updateInbox-success",
+      "operation": "updateInbox"
+    },
+    {
+      "callId": "246be095-f428-513d-b55f-a38076fc517e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1",
+          "requestBody": {
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "246be095-f428-513d-b55f-a38076fc517e",
+      "input": {
+        "fromName": "Team",
+        "id": "inbox-1",
+        "name": "Support"
+      },
+      "name": "updateInbox-notFound",
+      "operation": "updateInbox"
+    },
+    {
+      "callId": "246be095-f428-513d-b55f-a38076fc517e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1",
+          "requestBody": {
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "246be095-f428-513d-b55f-a38076fc517e",
+      "input": {
+        "fromName": "Team",
+        "id": "inbox-1",
+        "name": "Support"
+      },
+      "name": "updateInbox-providerRejected",
+      "operation": "updateInbox"
+    },
+    {
+      "callId": "246be095-f428-513d-b55f-a38076fc517e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1",
+          "requestBody": {
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "246be095-f428-513d-b55f-a38076fc517e",
+      "input": {
+        "fromName": "Team",
+        "id": "inbox-1",
+        "name": "Support"
+      },
+      "name": "updateInbox-invalidResponse",
+      "operation": "updateInbox"
+    },
+    {
+      "callId": "246be095-f428-513d-b55f-a38076fc517e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "246be095-f428-513d-b55f-a38076fc517e",
+      "input": {
+        "fromName": "Team",
+        "id": "",
+        "name": "Support"
+      },
+      "name": "updateInbox-defect",
+      "operation": "updateInbox"
+    },
+    {
+      "callId": "246be095-f428-513d-b55f-a38076fc517e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1",
+          "requestBody": {
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "246be095-f428-513d-b55f-a38076fc517e",
+      "input": {
+        "fromName": "Team",
+        "id": "inbox-1",
+        "name": "Support"
+      },
+      "name": "updateInbox-429",
+      "operation": "updateInbox"
+    },
+    {
+      "callId": "246be095-f428-513d-b55f-a38076fc517e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1",
+          "requestBody": {
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "246be095-f428-513d-b55f-a38076fc517e",
+      "input": {
+        "fromName": "Team",
+        "id": "inbox-1",
+        "name": "Support"
+      },
+      "name": "updateInbox-5xx",
+      "operation": "updateInbox"
+    },
+    {
+      "callId": "246be095-f428-513d-b55f-a38076fc517e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/inboxes/inbox-1",
+          "requestBody": {
+            "from_name": "Team",
+            "name": "Support"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "246be095-f428-513d-b55f-a38076fc517e",
+      "input": {
+        "fromName": "Team",
+        "id": "inbox-1",
+        "name": "Support"
+      },
+      "name": "updateInbox-transport",
+      "operation": "updateInbox"
+    },
+    {
+      "callId": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"inbox\",\"id\":\"inbox-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "inbox-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "input": {
+        "id": "inbox-1"
+      },
+      "name": "deleteInbox-success",
+      "operation": "deleteInbox"
+    },
+    {
+      "callId": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "input": {
+        "id": "inbox-1"
+      },
+      "name": "deleteInbox-notFound",
+      "operation": "deleteInbox"
+    },
+    {
+      "callId": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "input": {
+        "id": "inbox-1"
+      },
+      "name": "deleteInbox-rejected",
+      "operation": "deleteInbox"
+    },
+    {
+      "callId": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "input": {
+        "id": "inbox-1"
+      },
+      "name": "deleteInbox-invalid",
+      "operation": "deleteInbox"
+    },
+    {
+      "callId": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "input": {
+        "id": "inbox-1"
+      },
+      "name": "deleteInbox-429",
+      "operation": "deleteInbox"
+    },
+    {
+      "callId": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "input": {
+        "id": "inbox-1"
+      },
+      "name": "deleteInbox-5xx",
+      "operation": "deleteInbox"
+    },
+    {
+      "callId": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/inboxes/inbox-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "input": {
+        "id": "inbox-1"
+      },
+      "name": "deleteInbox-transport",
+      "operation": "deleteInbox"
+    },
+    {
+      "callId": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "480b04e8-27a3-5f44-adfe-5d8617947786",
+      "input": {
+        "id": ""
+      },
+      "name": "deleteInbox-defect",
+      "operation": "deleteInbox"
     }
   ],
   "schemaVersion": 1

@@ -404,6 +404,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.AutomationRun](`{"id":"run-1","status":"completed"}`)
 			return err
 		}},
+		{name: "createInbox/createInboxDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxReference](`{"id":"inbox-1"}`)
+			return err
+		}},
+		{name: "getInbox/getInboxDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Inbox](`{"id":"inbox-1","email_address":"support@example.test","name":"Support"}`)
+			return err
+		}},
+		{name: "listInboxes/listInboxesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxPage](`{"data":[{"id":"inbox-1","email_address":"support@example.test","name":"Support"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateInbox/updateInboxDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxReference](`{"id":"inbox-1"}`)
+			return err
+		}},
+		{name: "deleteInbox/deleteInboxDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedInbox](`{"id":"inbox-1","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -704,5 +724,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetAutomationRun().Definition().Operation.OperationID != "getAutomationRun" {
 		t.Errorf("getAutomationRun mock has another definition")
+	}
+	if mock.CreateInbox().Definition().Operation.OperationID != "createInbox" {
+		t.Errorf("createInbox mock has another definition")
+	}
+	if mock.GetInbox().Definition().Operation.OperationID != "getInbox" {
+		t.Errorf("getInbox mock has another definition")
+	}
+	if mock.ListInboxes().Definition().Operation.OperationID != "listInboxes" {
+		t.Errorf("listInboxes mock has another definition")
+	}
+	if mock.UpdateInbox().Definition().Operation.OperationID != "updateInbox" {
+		t.Errorf("updateInbox mock has another definition")
+	}
+	if mock.DeleteInbox().Definition().Operation.OperationID != "deleteInbox" {
+		t.Errorf("deleteInbox mock has another definition")
 	}
 }

@@ -137,6 +137,11 @@ type Operations interface {
 	StopAutomation() sdkgo.Mutation[StopAutomationInput, AutomationStatus]
 	ListAutomationRuns() sdkgo.Query[ListAutomationRunsInput, AutomationRunPage]
 	GetAutomationRun() sdkgo.Query[GetAutomationRunInput, AutomationRun]
+	CreateInbox() sdkgo.Mutation[CreateInboxInput, InboxReference]
+	GetInbox() sdkgo.Query[GetInboxInput, Inbox]
+	ListInboxes() sdkgo.Query[ListInboxesInput, InboxPage]
+	UpdateInbox() sdkgo.Mutation[UpdateInboxInput, InboxReference]
+	DeleteInbox() sdkgo.Mutation[DeleteInboxInput, DeletedInbox]
 }
 
 type clientOperations struct{ client *Client }
@@ -431,6 +436,21 @@ func (operations clientOperations) ListAutomationRuns() sdkgo.Query[ListAutomati
 }
 func (operations clientOperations) GetAutomationRun() sdkgo.Query[GetAutomationRunInput, AutomationRun] {
 	return operations.client.GetAutomationRun()
+}
+func (operations clientOperations) CreateInbox() sdkgo.Mutation[CreateInboxInput, InboxReference] {
+	return operations.client.CreateInbox()
+}
+func (operations clientOperations) GetInbox() sdkgo.Query[GetInboxInput, Inbox] {
+	return operations.client.GetInbox()
+}
+func (operations clientOperations) ListInboxes() sdkgo.Query[ListInboxesInput, InboxPage] {
+	return operations.client.ListInboxes()
+}
+func (operations clientOperations) UpdateInbox() sdkgo.Mutation[UpdateInboxInput, InboxReference] {
+	return operations.client.UpdateInbox()
+}
+func (operations clientOperations) DeleteInbox() sdkgo.Mutation[DeleteInboxInput, DeletedInbox] {
+	return operations.client.DeleteInbox()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -7848,6 +7868,386 @@ func NewGetAutomationRunStep[IN any](config GetAutomationRunStepConfig[IN]) sdkg
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetAutomationRunBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateInboxBranchCreated sdkgo.BranchID = "created"
+const CreateInboxBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateInboxBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateInboxBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateInboxDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createInbox"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateInboxBranchCreated, Description: "Resend completed the inbox request."},
+		{ID: CreateInboxBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: CreateInboxBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateInboxBranchUncertain, Description: "Bounded sends ended without confirming the request.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateInboxResult = sdkgo.MutationResult[InboxReference]
+
+type CreateInboxStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=resend"`
+	operationID                       struct{}                                             `connector:"operationId=createInbox"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateInboxInput                            `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateInboxResult]                      `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateInboxResult]                      `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateInboxResult]                      `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateInboxResult]                      `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InboxReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateInboxStep[IN any](config CreateInboxStepConfig[IN]) sdkgo.MutationStep[IN, CreateInboxInput, InboxReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateInboxInput, InboxReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateInbox(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateInboxResult] {
+			branches := make([]sdkgo.BranchTarget[CreateInboxResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateInboxBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateInboxBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateInboxBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateInboxBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetInboxBranchFound sdkgo.BranchID = "found"
+const GetInboxBranchNotFound sdkgo.BranchID = "notFound"
+const GetInboxBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetInboxBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetInboxBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetInboxDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getInbox"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetInboxBranchFound, Description: "Resend completed the inbox request."},
+		{ID: GetInboxBranchNotFound, Description: "The inbox does not exist.", Optional: true},
+		{ID: GetInboxBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetInboxBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetInboxBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetInboxResult = sdkgo.QueryResult[Inbox]
+
+type GetInboxStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                 `connector:"connectorId=resend"`
+	operationID                    struct{}                                 `connector:"operationId=getInbox"`
+	StepType                       string                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                    `connector:"annotations"`
+	Connection                     Connection                               `connector:"connection"`
+	ConnectionName                 string                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetInboxInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetInboxResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetInboxResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetInboxResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetInboxResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetInboxResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Inbox]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                         `connector:"stepOptionsOverride"`
+}
+
+func NewGetInboxStep[IN any](config GetInboxStepConfig[IN]) sdkgo.QueryStep[IN, GetInboxInput, Inbox] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetInboxInput, Inbox]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetInbox(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetInboxResult] {
+			branches := make([]sdkgo.BranchTarget[GetInboxResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetInboxBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetInboxBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetInboxBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetInboxBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetInboxBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListInboxesBranchListed sdkgo.BranchID = "listed"
+const ListInboxesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListInboxesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListInboxesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListInboxesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listInboxes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListInboxesBranchListed, Description: "Resend completed the inbox request."},
+		{ID: ListInboxesBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListInboxesBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListInboxesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListInboxesResult = sdkgo.QueryResult[InboxPage]
+
+type ListInboxesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=resend"`
+	operationID                    struct{}                                     `connector:"operationId=listInboxes"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListInboxesInput                    `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListInboxesResult]              `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListInboxesResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListInboxesResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListInboxesResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InboxPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListInboxesStep[IN any](config ListInboxesStepConfig[IN]) sdkgo.QueryStep[IN, ListInboxesInput, InboxPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListInboxesInput, InboxPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListInboxes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListInboxesResult] {
+			branches := make([]sdkgo.BranchTarget[ListInboxesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListInboxesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListInboxesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListInboxesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListInboxesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateInboxBranchUpdated sdkgo.BranchID = "updated"
+const UpdateInboxBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateInboxBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateInboxBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateInboxBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateInboxDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateInbox"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateInboxBranchUpdated, Description: "Resend completed the inbox request."},
+		{ID: UpdateInboxBranchNotFound, Description: "The inbox does not exist.", Optional: true},
+		{ID: UpdateInboxBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: UpdateInboxBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: UpdateInboxBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateInboxResult = sdkgo.MutationResult[InboxReference]
+
+type UpdateInboxStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=resend"`
+	operationID                       struct{}                                             `connector:"operationId=updateInbox"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateInboxInput                            `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateInboxResult]                      `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateInboxResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateInboxResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateInboxResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateInboxResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InboxReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateInboxStep[IN any](config UpdateInboxStepConfig[IN]) sdkgo.MutationStep[IN, UpdateInboxInput, InboxReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateInboxInput, InboxReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateInbox(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateInboxResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateInboxResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateInboxBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateInboxBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateInboxBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateInboxBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateInboxBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteInboxBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteInboxBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteInboxBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteInboxBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteInboxBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteInboxDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteInbox"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteInboxBranchDeleted, Description: "Resend completed the inbox request."},
+		{ID: DeleteInboxBranchNotFound, Description: "The inbox does not exist.", Optional: true},
+		{ID: DeleteInboxBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: DeleteInboxBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: DeleteInboxBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteInboxResult = sdkgo.MutationResult[DeletedInbox]
+
+type DeleteInboxStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=resend"`
+	operationID                       struct{}                                           `connector:"operationId=deleteInbox"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteInboxInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteInboxResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteInboxResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteInboxResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteInboxResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteInboxResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedInbox]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteInboxStep[IN any](config DeleteInboxStepConfig[IN]) sdkgo.MutationStep[IN, DeleteInboxInput, DeletedInbox] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteInboxInput, DeletedInbox]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteInbox(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteInboxResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteInboxResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteInboxBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteInboxBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteInboxBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteInboxBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteInboxBranchDefect))
 			}
 			return branches
 		}(),
