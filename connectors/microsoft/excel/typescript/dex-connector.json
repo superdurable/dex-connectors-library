@@ -1,10 +1,10 @@
 {
   "connectorId": "microsoft-excel",
-  "releaseTag": "connectors/microsoft/excel/go/v0.24.0",
+  "releaseTag": "connectors/microsoft/excel/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-microsoft-excel",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -234,7 +234,7 @@
       "kind": "mutation",
       "operationId": "appendTableRows",
       "inputType": "AppendTableRowsInput",
-      "description": "Append rows to the end of one Excel table in one request, skipping every row whose key column value the table already holds. Microsoft Graph offers no idempotency key, so the Step runs with sync durability, records a Dex heartbeat checkpoint before it sends the append, and sends it at most once per Step execution.",
+      "description": "Append rows to the end of one Excel table in one request, skipping every row whose key column value the table already holds. Microsoft Graph offers no idempotency key, so the Step runs with sync durability and a single-dispatch fence that counts possible sends. Every attempt reads the key column before it sends, so an unknown outcome is resent only for rows still missing and only up to the send cap (maxSends, default 3).",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

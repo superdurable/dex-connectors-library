@@ -1,8 +1,8 @@
 # Microsoft Excel TypeScript connector
 
-`@superdurable/connector-microsoft-excel` implements `getTableRows`, `getValues`, `updateValues`, and `appendTableRows` using Microsoft Graph workbook APIs. It uses the manifest-generated OAuth refresh declaration and Connector SDK 0.7.0. The connection name in the checked in example is `approvals`.
+`@superdurable/connector-microsoft-excel` implements `getTableRows`, `getValues`, `updateValues`, and `appendTableRows` using Microsoft Graph workbook APIs. It uses the manifest-generated OAuth refresh declaration and Connector SDK 0.12.0. The connection name in the checked in example is `approvals`.
 
-The [runnable example](examples/approval-decision/README.md) registers four Dex Flows, one per operation. Its integration test runs all four through a real `dexcli dev` Worker and Client against an inert Graph fixture. Go-recorded [conformance scenarios](../../../../conformance/connectors/microsoft/excel/scenarios.json) check provider requests, branches, Retry, uncertainty, and the append heartbeat checkpoint.
+The [runnable example](examples/approval-decision/README.md) registers four Dex Flows, one per operation. Its integration test runs all four through a real `dexcli dev` Worker and Client against an inert Graph fixture. Go-recorded [conformance scenarios](../../../../conformance/connectors/microsoft/excel/scenarios.json) check provider requests, branches, Retry, uncertainty, and the append send cap: an unknown append outcome is resent after a key column miss until `maxSends` (default 3), then selects `uncertain`.
 
 Install and verify from this directory:
 

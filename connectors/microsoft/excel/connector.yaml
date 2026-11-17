@@ -6,17 +6,17 @@ metadata:
   description: Read Excel tables as rows keyed by column name, read and write bounded ranges, and append table rows without duplicates in workbooks stored in OneDrive for work or school and SharePoint, through Microsoft Graph.
   company: Microsoft
   categories: [productivity]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: microsoft
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-microsoft-excel"
       operations: [getTableRows, getValues, updateValues, appendTableRows]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-microsoft-excel
       operations: [getTableRows, getValues, updateValues, appendTableRows]
       triggers: []
@@ -273,6 +273,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The values are absolute, so a repeated PATCH leaves the same range.
+        repeatOnUnknown: safe
       mocks:
         - name: approvedSummaryWritten
           branch: updated
@@ -292,7 +294,7 @@ spec:
       inputType: AppendTableRowsInput
       outputType: AppendTableRowsOutput
       kind: mutation
-      description: Append rows to the end of one Excel table in one request, skipping every row whose key column value the table already holds. Microsoft Graph offers no idempotency key, so the Step runs with sync durability, records a Dex heartbeat checkpoint before it sends the append, and sends it at most once per Step execution.
+      description: Append rows to the end of one Excel table in one request, skipping every row whose key column value the table already holds. Microsoft Graph offers no idempotency key, so the Step runs with sync durability and a single-dispatch fence that counts possible sends. Every attempt reads the key column before it sends, so an unknown outcome is resent only for rows still missing and only up to the send cap (maxSends, default 3).
       idempotency: required
       branches:
         - {id: appended, goName: Appended, description: "The table holds every requested key: this attempt appended the missing rows, or an earlier attempt or Flow already had."}
@@ -300,11 +302,12 @@ spec:
         - {id: columnsMismatch, goName: ColumnsMismatch, description: The table has no column with the key column's name or with a name a row uses; nothing was written., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft conclusively rejected the append or the key lookup, such as a protected worksheet or a missing permission; nothing was written.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Microsoft returned an invalid or oversized response before the append was sent., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The append was sent but its outcome cannot be confirmed and the table does not show its rows yet; the connector never sends it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The append reached the send cap, or a send was refused after an earlier unconfirmed send, and the table still does not show every row.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
+        dispatchFence: true
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated append POST could add the rows again if key-column read-back misses the first append; Excel enforces no append key."}}
       mocks:
         - name: approvedDecisionLogged

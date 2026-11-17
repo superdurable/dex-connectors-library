@@ -68,7 +68,7 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/microsoft/excel/conn
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/excel/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go \
-  --version v0.24.0 --tag connectors/microsoft/excel/go/v0.24.0 \
+  --version v0.24.1 --tag connectors/microsoft/excel/go/v0.24.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/microsoft-excel-release/connector-ui.tgz \
   --ui-digest /tmp/microsoft-excel-release/connector-ui.tgz.sha256 \
@@ -134,8 +134,10 @@ bearer token and stores typed input as Excel does. They prove that:
 - a delayed append completes with one request;
 - an append applied before a 504 is found in the key column instead of being
   resent;
-- an unconfirmed append, and a Worker lost while the append is in flight,
-  fail through the unwired `uncertain` branch without a second append;
+- an append that stays invisible in the key column is resent up to the send
+  cap of 3 and then fails through the unwired `uncertain` branch, and a
+  Worker lost while the append is in flight leads to one resend that
+  completes the Flow;
 - a throttled append is retried after `Retry-After` and applied once;
 - a summary write replayed after Worker loss leaves the same values;
 - a throttled read waits for `Retry-After`, a missing table fails the Flow

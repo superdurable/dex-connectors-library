@@ -467,6 +467,17 @@ func mutationAttemptFromReadOutcome[T any](outcome *readOutcome) sdkgo.MutationA
 
 func isSuccessStatus(status int) bool { return status >= 200 && status < 300 }
 
+// isDefiniteRefusalStatus reports a status that proves Microsoft refused a write; others leave it unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
 func excelFailure(kind sdkgo.FailureKind, operationID string, message string) sdkgo.Failure {
 	return sdkgo.Failure{Kind: kind, Provider: providerName, Operation: operationID, Message: message}
 }

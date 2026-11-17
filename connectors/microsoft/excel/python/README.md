@@ -1,8 +1,8 @@
 # Microsoft Excel Python connector
 
-Install `dex-connector-microsoft-excel==0.1.0`. The import path is
-`dex_connectors.microsoft_excel`. The package requires `dex-connectors-sdk==0.6.0`
-and Dex Python SDK 1.28.0 or newer.
+Install `dex-connector-microsoft-excel==0.1.1`. The import path is
+`dex_connectors.microsoft_excel`. The package requires `dex-connectors-sdk`
+0.12.0 or newer below 1, and Dex Python SDK 1.28.0 or newer.
 
 The package implements four Graph Excel operations: `getTableRows`, `getValues`,
 `updateValues`, and `appendTableRows`. Use the operation-specific
@@ -19,10 +19,12 @@ connection store; Flow input, Attributes, Results, and receipts contain no
 credentials.
 
 `getTableRows` and `getValues` read tables and ranges. `updateValues` writes
-literal absolute values and safely retries an ambiguous response.
-`appendTableRows` reads existing keys, records a heartbeat before sending one
-append, and never sends that append again after a possibly accepted request.
-An unresolved earlier append selects `uncertain`. Optional branches left
+literal absolute values, declares `repeatOnUnknown: safe`, and retries every
+outcome except a definite refusal. `appendTableRows` reads existing keys before
+every send and counts possible sends with a single-dispatch fence. An unknown
+outcome retries; the next attempt resends only rows still missing, while
+possible sends stay below `call.max_sends` (default 3), and selects `uncertain`
+at the cap. Optional branches left
 unwired in a Flow fail that Flow.
 
 To verify locally, run `dexcli dev` with a free Dex port, set
