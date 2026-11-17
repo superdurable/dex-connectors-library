@@ -16,8 +16,9 @@ const (
 	// FlowType is the stable example Flow identity.
 	FlowType = "IterableUserInspection"
 	// ConnectionName is the static Dex Web connection used by this example.
-	ConnectionName    = "iterable"
-	operationStepType = "CallGetUser"
+	ConnectionName     = "iterable"
+	operationStepType  = "CallGetUser"
+	lookupByIDStepType = "CallGetUserByID"
 )
 
 var userAttribute = dex.DefineAttribute[iterable.UserIdentity]("iterable-user")
@@ -45,9 +46,19 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Iterable", Explanation: "Read a user from Iterable."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
-			Found:               sdkgo.GoTo(completeResult{}),
+			Found:               sdkgo.GoTo(sdkgo.StepRef[iterable.GetUserResult](lookupByIDStepType)),
+		})),
+		dex.DefineStep(iterable.NewGetUserByIDStep(iterable.GetUserByIDStepConfig[iterable.GetUserResult]{
+			StepType: lookupByIDStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Iterable", Explanation: "Confirm the selected user by stable ID."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(result iterable.GetUserResult) iterable.GetUserByIDInput {
+				return iterable.GetUserByIDInput{UserID: result.Value.UserID}
+			},
+			Found: sdkgo.GoTo(completeByID{}),
 		})),
 		dex.DefineStep(completeResult{}),
+		dex.DefineStep(completeByID{}),
 	}
 }
 
@@ -110,6 +121,20 @@ type completeResult struct {
 
 func (completeResult) GetStepType() string { return "CompleteGetUser" }
 func (completeResult) Execute(ctx dex.Context, result iterable.GetUserResult) (*dex.StepDecision, error) {
+	if err := userAttribute.Set(ctx, result.Value); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(result.Value), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete the Flow with the ID-confirmed user identity."
+type completeByID struct {
+	dex.StepDefaultsNoWaitFor[iterable.GetUserByIDResult]
+}
+
+func (completeByID) GetStepType() string { return "CompleteGetUserByID" }
+func (completeByID) Execute(ctx dex.Context, result iterable.GetUserByIDResult) (*dex.StepDecision, error) {
 	if err := userAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}
