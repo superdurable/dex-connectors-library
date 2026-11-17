@@ -48,6 +48,9 @@ type Operations interface {
 	CreateTemplate() sdkgo.Mutation[CreateTemplateInput, Template]
 	UpdateTemplate() sdkgo.Mutation[UpdateTemplateInput, Template]
 	DeleteTemplate() sdkgo.Mutation[DeleteTemplateInput, DeletedTemplate]
+	ListBounces() sdkgo.Query[ListBouncesInput, BouncePage]
+	GetBounce() sdkgo.Query[GetBounceInput, Bounce]
+	ActivateBounce() sdkgo.Mutation[ActivateBounceInput, Bounce]
 }
 
 type clientOperations struct{ client *Client }
@@ -75,6 +78,15 @@ func (operations clientOperations) UpdateTemplate() sdkgo.Mutation[UpdateTemplat
 }
 func (operations clientOperations) DeleteTemplate() sdkgo.Mutation[DeleteTemplateInput, DeletedTemplate] {
 	return operations.client.DeleteTemplate()
+}
+func (operations clientOperations) ListBounces() sdkgo.Query[ListBouncesInput, BouncePage] {
+	return operations.client.ListBounces()
+}
+func (operations clientOperations) GetBounce() sdkgo.Query[GetBounceInput, Bounce] {
+	return operations.client.GetBounce()
+}
+func (operations clientOperations) ActivateBounce() sdkgo.Mutation[ActivateBounceInput, Bounce] {
+	return operations.client.ActivateBounce()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -786,6 +798,220 @@ func NewDeleteTemplateStep[IN any](config DeleteTemplateStepConfig[IN]) sdkgo.Mu
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteTemplateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListBouncesBranchListed sdkgo.BranchID = "listed"
+const ListBouncesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListBouncesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListBouncesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListBouncesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listBounces"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListBouncesBranchListed, Description: "Postmark returned the requested bounce outcome."},
+		{ID: ListBouncesBranchProviderRejected, Description: "Postmark providerRejected outcome.", Optional: true},
+		{ID: ListBouncesBranchInvalidResponse, Description: "Postmark invalidResponse outcome.", Optional: true},
+		{ID: ListBouncesBranchDefect, Description: "Postmark defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListBouncesResult = sdkgo.QueryResult[BouncePage]
+
+type ListBouncesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=postmark"`
+	operationID                    struct{}                                      `connector:"operationId=listBounces"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListBouncesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListBouncesResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListBouncesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListBouncesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListBouncesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[BouncePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListBouncesStep[IN any](config ListBouncesStepConfig[IN]) sdkgo.QueryStep[IN, ListBouncesInput, BouncePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("postmark connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListBouncesInput, BouncePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListBounces(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListBouncesResult] {
+			branches := make([]sdkgo.BranchTarget[ListBouncesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListBouncesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListBouncesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListBouncesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListBouncesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetBounceBranchFound sdkgo.BranchID = "found"
+const GetBounceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetBounceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetBounceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetBounceDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getBounce"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetBounceBranchFound, Description: "Postmark returned the requested bounce outcome."},
+		{ID: GetBounceBranchProviderRejected, Description: "Postmark providerRejected outcome.", Optional: true},
+		{ID: GetBounceBranchInvalidResponse, Description: "Postmark invalidResponse outcome.", Optional: true},
+		{ID: GetBounceBranchDefect, Description: "Postmark defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetBounceResult = sdkgo.QueryResult[Bounce]
+
+type GetBounceStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                  `connector:"connectorId=postmark"`
+	operationID                    struct{}                                  `connector:"operationId=getBounce"`
+	StepType                       string                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                     `connector:"annotations"`
+	Connection                     Connection                                `connector:"connection"`
+	ConnectionName                 string                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetBounceInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetBounceResult]             `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetBounceResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetBounceResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetBounceResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Bounce]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                          `connector:"stepOptionsOverride"`
+}
+
+func NewGetBounceStep[IN any](config GetBounceStepConfig[IN]) sdkgo.QueryStep[IN, GetBounceInput, Bounce] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("postmark connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetBounceInput, Bounce]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetBounce(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetBounceResult] {
+			branches := make([]sdkgo.BranchTarget[GetBounceResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetBounceBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetBounceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetBounceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetBounceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ActivateBounceBranchActivated sdkgo.BranchID = "activated"
+const ActivateBounceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ActivateBounceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ActivateBounceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ActivateBounceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "activateBounce"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ActivateBounceBranchActivated, Description: "Postmark returned the requested bounce outcome."},
+		{ID: ActivateBounceBranchProviderRejected, Description: "Postmark providerRejected outcome.", Optional: true},
+		{ID: ActivateBounceBranchInvalidResponse, Description: "Postmark invalidResponse outcome.", Optional: true},
+		{ID: ActivateBounceBranchDefect, Description: "Postmark defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ActivateBounceResult = sdkgo.MutationResult[Bounce]
+
+type ActivateBounceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                     `connector:"connectorId=postmark"`
+	operationID                       struct{}                                     `connector:"operationId=activateBounce"`
+	StepType                          string                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                        Connection                                   `connector:"connection"`
+	ConnectionName                    string                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) ActivateBounceInput                 `connector:"mapToOperationInput"`
+	Activated                         sdkgo.Target[ActivateBounceResult]           `connector:"branch=activated"`
+	ProviderRejected                  sdkgo.Target[ActivateBounceResult]           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ActivateBounceResult]           `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ActivateBounceResult]           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Bounce]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewActivateBounceStep[IN any](config ActivateBounceStepConfig[IN]) sdkgo.MutationStep[IN, ActivateBounceInput, Bounce] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("postmark connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ActivateBounceInput, Bounce]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ActivateBounce(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ActivateBounceResult] {
+			branches := make([]sdkgo.BranchTarget[ActivateBounceResult], 0, 4)
+			if config.Activated.HasStep() {
+				branches = append(branches, config.Activated.BranchTarget(ActivateBounceBranchActivated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ActivateBounceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ActivateBounceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ActivateBounceBranchDefect))
 			}
 			return branches
 		}(),

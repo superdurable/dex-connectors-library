@@ -365,3 +365,120 @@ spec:
       default: true
       output:
         deleted: true
+  - name: listBounces
+    goName: ListBounces
+    inputType: ListBouncesInput
+    outputType: BouncePage
+    kind: query
+    description: ListBounces through the Postmark server-token Bounce API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: Postmark returned the requested bounce outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: listBouncesDefault
+      branch: listed
+      description: Representative Postmark bounce response.
+      default: true
+      output:
+        totalCount: 1
+        bounces:
+        - id: 692560173
+          type: HardBounce
+          email: recipient@example.com
+          inactive: true
+          canActivate: true
+  - name: getBounce
+    goName: GetBounce
+    inputType: GetBounceInput
+    outputType: Bounce
+    kind: query
+    description: GetBounce through the Postmark server-token Bounce API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: Postmark returned the requested bounce outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getBounceDefault
+      branch: found
+      description: Representative Postmark bounce response.
+      default: true
+      output:
+        id: 692560173
+        type: HardBounce
+        email: recipient@example.com
+        inactive: true
+        canActivate: true
+  - name: activateBounce
+    goName: ActivateBounce
+    inputType: ActivateBounceInput
+    outputType: Bounce
+    kind: mutation
+    description: ActivateBounce through the Postmark server-token Bounce API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: activated
+      goName: Activated
+      description: Postmark returned the requested bounce outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+      repeatOnUnknown: safe
+    mocks:
+    - name: activateBounceDefault
+      branch: activated
+      description: Representative Postmark bounce response.
+      default: true
+      output:
+        id: 692560173
+        type: HardBounce
+        email: recipient@example.com
+        inactive: false
+        canActivate: true

@@ -48,6 +48,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[postmark.DeletedTemplate](`{"deleted":true}`)
 			return err
 		}},
+		{name: "listBounces/listBouncesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.BouncePage](`{"totalCount":1,"bounces":[{"id":692560173,"type":"HardBounce","email":"recipient@example.com","inactive":true,"canActivate":true}]}`)
+			return err
+		}},
+		{name: "getBounce/getBounceDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.Bounce](`{"id":692560173,"type":"HardBounce","email":"recipient@example.com","inactive":true,"canActivate":true}`)
+			return err
+		}},
+		{name: "activateBounce/activateBounceDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.Bounce](`{"id":692560173,"type":"HardBounce","email":"recipient@example.com","inactive":false,"canActivate":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -81,5 +93,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteTemplate().Definition().Operation.OperationID != "deleteTemplate" {
 		t.Errorf("deleteTemplate mock has another definition")
+	}
+	if mock.ListBounces().Definition().Operation.OperationID != "listBounces" {
+		t.Errorf("listBounces mock has another definition")
+	}
+	if mock.GetBounce().Definition().Operation.OperationID != "getBounce" {
+		t.Errorf("getBounce mock has another definition")
+	}
+	if mock.ActivateBounce().Definition().Operation.OperationID != "activateBounce" {
+		t.Errorf("activateBounce mock has another definition")
 	}
 }

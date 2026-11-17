@@ -26,6 +26,9 @@ type Mock struct {
 	createTemplate       *connectormock.Mutation[postmark.CreateTemplateInput, postmark.Template]
 	updateTemplate       *connectormock.Mutation[postmark.UpdateTemplateInput, postmark.Template]
 	deleteTemplate       *connectormock.Mutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate]
+	listBounces          *connectormock.Query[postmark.ListBouncesInput, postmark.BouncePage]
+	getBounce            *connectormock.Query[postmark.GetBounceInput, postmark.Bounce]
+	activateBounce       *connectormock.Mutation[postmark.ActivateBounceInput, postmark.Bounce]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -41,6 +44,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		createTemplate:       connectormock.NewMutation[postmark.CreateTemplateInput, postmark.Template](t, postmark.CreateTemplateDefinition),
 		updateTemplate:       connectormock.NewMutation[postmark.UpdateTemplateInput, postmark.Template](t, postmark.UpdateTemplateDefinition),
 		deleteTemplate:       connectormock.NewMutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate](t, postmark.DeleteTemplateDefinition),
+		listBounces:          connectormock.NewQuery[postmark.ListBouncesInput, postmark.BouncePage](t, postmark.ListBouncesDefinition),
+		getBounce:            connectormock.NewQuery[postmark.GetBounceInput, postmark.Bounce](t, postmark.GetBounceDefinition),
+		activateBounce:       connectormock.NewMutation[postmark.ActivateBounceInput, postmark.Bounce](t, postmark.ActivateBounceDefinition),
 	}
 	mock.listOutboundMessages.Default(ListOutboundMessagesDefault())
 	mock.getMessageDetails.Default(GetMessageDetailsDefault())
@@ -50,6 +56,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createTemplate.Default(CreateTemplateDefault())
 	mock.updateTemplate.Default(UpdateTemplateDefault())
 	mock.deleteTemplate.Default(DeleteTemplateDefault())
+	mock.listBounces.Default(ListBouncesDefault())
+	mock.getBounce.Default(GetBounceDefault())
+	mock.activateBounce.Default(ActivateBounceDefault())
 	connection, err := postmark.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "postmark", Name: connectionName})
 	if err != nil {
 		t.Fatalf("postmark mock connection: %v", err)
@@ -101,6 +110,21 @@ func (mock *Mock) DeleteTemplate() *connectormock.Mutation[postmark.DeleteTempla
 	return mock.deleteTemplate
 }
 
+// ListBounces returns the listBounces script.
+func (mock *Mock) ListBounces() *connectormock.Query[postmark.ListBouncesInput, postmark.BouncePage] {
+	return mock.listBounces
+}
+
+// GetBounce returns the getBounce script.
+func (mock *Mock) GetBounce() *connectormock.Query[postmark.GetBounceInput, postmark.Bounce] {
+	return mock.getBounce
+}
+
+// ActivateBounce returns the activateBounce script.
+func (mock *Mock) ActivateBounce() *connectormock.Mutation[postmark.ActivateBounceInput, postmark.Bounce] {
+	return mock.activateBounce
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOutboundMessages() sdkgo.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage] {
@@ -126,6 +150,15 @@ func (operations mockOperations) UpdateTemplate() sdkgo.Mutation[postmark.Update
 }
 func (operations mockOperations) DeleteTemplate() sdkgo.Mutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate] {
 	return operations.mock.deleteTemplate
+}
+func (operations mockOperations) ListBounces() sdkgo.Query[postmark.ListBouncesInput, postmark.BouncePage] {
+	return operations.mock.listBounces
+}
+func (operations mockOperations) GetBounce() sdkgo.Query[postmark.GetBounceInput, postmark.Bounce] {
+	return operations.mock.getBounce
+}
+func (operations mockOperations) ActivateBounce() sdkgo.Mutation[postmark.ActivateBounceInput, postmark.Bounce] {
+	return operations.mock.activateBounce
 }
 
 // ListOutboundMessagesListed selects the listed branch: Postmark returned the requested result.
@@ -412,4 +445,110 @@ func DeleteTemplateDeleteTemplateDefault() connectormock.Case[postmark.DeletedTe
 // DeleteTemplateDefault is the manifest default, deleteTemplateDefault, which New installs.
 func DeleteTemplateDefault() connectormock.Case[postmark.DeletedTemplate] {
 	return DeleteTemplateDeleteTemplateDefault()
+}
+
+// ListBouncesListed selects the listed branch: Postmark returned the requested bounce outcome.
+func ListBouncesListed(value postmark.BouncePage, failure *sdkgo.Failure) connectormock.Case[postmark.BouncePage] {
+	return connectormock.Branch(postmark.ListBouncesBranchListed, value, failure)
+}
+
+// ListBouncesProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func ListBouncesProviderRejected(value postmark.BouncePage, failure *sdkgo.Failure) connectormock.Case[postmark.BouncePage] {
+	return connectormock.Branch(postmark.ListBouncesBranchProviderRejected, value, failure)
+}
+
+// ListBouncesInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func ListBouncesInvalidResponse(value postmark.BouncePage, failure *sdkgo.Failure) connectormock.Case[postmark.BouncePage] {
+	return connectormock.Branch(postmark.ListBouncesBranchInvalidResponse, value, failure)
+}
+
+// ListBouncesDefect selects the defect branch: Postmark defect outcome.
+func ListBouncesDefect(value postmark.BouncePage, failure *sdkgo.Failure) connectormock.Case[postmark.BouncePage] {
+	return connectormock.Branch(postmark.ListBouncesBranchDefect, value, failure)
+}
+
+// ListBouncesRetry asks Dex to retry the listBounces Step, after the delay when it is positive.
+func ListBouncesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.BouncePage] {
+	return connectormock.Retry[postmark.BouncePage](failure, after)
+}
+
+// ListBouncesListBouncesDefault is the manifest mock listBouncesDefault: Representative Postmark bounce response.
+func ListBouncesListBouncesDefault() connectormock.Case[postmark.BouncePage] {
+	value := connectormock.MustDecodeOutput[postmark.BouncePage](`{"totalCount":1,"bounces":[{"id":692560173,"type":"HardBounce","email":"recipient@example.com","inactive":true,"canActivate":true}]}`)
+	return connectormock.Branch(postmark.ListBouncesBranchListed, value, nil)
+}
+
+// ListBouncesDefault is the manifest default, listBouncesDefault, which New installs.
+func ListBouncesDefault() connectormock.Case[postmark.BouncePage] {
+	return ListBouncesListBouncesDefault()
+}
+
+// GetBounceFound selects the found branch: Postmark returned the requested bounce outcome.
+func GetBounceFound(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.GetBounceBranchFound, value, failure)
+}
+
+// GetBounceProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func GetBounceProviderRejected(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.GetBounceBranchProviderRejected, value, failure)
+}
+
+// GetBounceInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func GetBounceInvalidResponse(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.GetBounceBranchInvalidResponse, value, failure)
+}
+
+// GetBounceDefect selects the defect branch: Postmark defect outcome.
+func GetBounceDefect(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.GetBounceBranchDefect, value, failure)
+}
+
+// GetBounceRetry asks Dex to retry the getBounce Step, after the delay when it is positive.
+func GetBounceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.Bounce] {
+	return connectormock.Retry[postmark.Bounce](failure, after)
+}
+
+// GetBounceGetBounceDefault is the manifest mock getBounceDefault: Representative Postmark bounce response.
+func GetBounceGetBounceDefault() connectormock.Case[postmark.Bounce] {
+	value := connectormock.MustDecodeOutput[postmark.Bounce](`{"id":692560173,"type":"HardBounce","email":"recipient@example.com","inactive":true,"canActivate":true}`)
+	return connectormock.Branch(postmark.GetBounceBranchFound, value, nil)
+}
+
+// GetBounceDefault is the manifest default, getBounceDefault, which New installs.
+func GetBounceDefault() connectormock.Case[postmark.Bounce] { return GetBounceGetBounceDefault() }
+
+// ActivateBounceActivated selects the activated branch: Postmark returned the requested bounce outcome.
+func ActivateBounceActivated(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.ActivateBounceBranchActivated, value, failure)
+}
+
+// ActivateBounceProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func ActivateBounceProviderRejected(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.ActivateBounceBranchProviderRejected, value, failure)
+}
+
+// ActivateBounceInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func ActivateBounceInvalidResponse(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.ActivateBounceBranchInvalidResponse, value, failure)
+}
+
+// ActivateBounceDefect selects the defect branch: Postmark defect outcome.
+func ActivateBounceDefect(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.ActivateBounceBranchDefect, value, failure)
+}
+
+// ActivateBounceRetry asks Dex to retry the activateBounce Step, after the delay when it is positive.
+func ActivateBounceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.Bounce] {
+	return connectormock.Retry[postmark.Bounce](failure, after)
+}
+
+// ActivateBounceActivateBounceDefault is the manifest mock activateBounceDefault: Representative Postmark bounce response.
+func ActivateBounceActivateBounceDefault() connectormock.Case[postmark.Bounce] {
+	value := connectormock.MustDecodeOutput[postmark.Bounce](`{"id":692560173,"type":"HardBounce","email":"recipient@example.com","inactive":false,"canActivate":true}`)
+	return connectormock.Branch(postmark.ActivateBounceBranchActivated, value, nil)
+}
+
+// ActivateBounceDefault is the manifest default, activateBounceDefault, which New installs.
+func ActivateBounceDefault() connectormock.Case[postmark.Bounce] {
+	return ActivateBounceActivateBounceDefault()
 }

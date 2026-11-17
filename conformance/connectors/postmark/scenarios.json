@@ -3439,6 +3439,1001 @@
       },
       "name": "deleteTemplate-already-absent",
       "operation": "deleteTemplate"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"TotalCount\":1,\"Bounces\":[{\"ID\":692560173,\"Type\":\"HardBounce\",\"Email\":\"recipient@example.com\",\"Inactive\":true,\"CanActivate\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bounces",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "Bounces": [
+            {
+              "CanActivate": true,
+              "Email": "recipient@example.com",
+              "ID": 692560173,
+              "Inactive": true,
+              "Type": "HardBounce"
+            }
+          ],
+          "TotalCount": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1
+      },
+      "name": "listBounces-success",
+      "operation": "listBounces"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":500,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bounces",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "Bounces": [],
+          "TotalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1
+      },
+      "name": "listBounces-provider-rejected",
+      "operation": "listBounces"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bounces",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1
+      },
+      "name": "listBounces-rate-limited",
+      "operation": "listBounces"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bounces",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1
+      },
+      "name": "listBounces-service-unavailable",
+      "operation": "listBounces"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bounces",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1
+      },
+      "name": "listBounces-unknown-5xx",
+      "operation": "listBounces"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bounces",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "Bounces": [],
+          "TotalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1
+      },
+      "name": "listBounces-invalid-response",
+      "operation": "listBounces"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bounces",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1
+      },
+      "name": "listBounces-transport",
+      "operation": "listBounces"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "Bounces": [],
+          "TotalCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": -1,
+        "offset": 0
+      },
+      "name": "listBounces-defect",
+      "operation": "listBounces"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ID\":692560173,\"Type\":\"HardBounce\",\"Email\":\"recipient@example.com\",\"Inactive\":true,\"CanActivate\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bounces/692560173",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "CanActivate": true,
+          "Email": "recipient@example.com",
+          "ID": 692560173,
+          "Inactive": true,
+          "Type": "HardBounce"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bounceId": 692560173
+      },
+      "name": "getBounce-success",
+      "operation": "getBounce"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":500,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bounces/692560173",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "CanActivate": false,
+          "Email": "",
+          "ID": 0,
+          "Inactive": false,
+          "Type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bounceId": 692560173
+      },
+      "name": "getBounce-provider-rejected",
+      "operation": "getBounce"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bounces/692560173",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bounceId": 692560173
+      },
+      "name": "getBounce-rate-limited",
+      "operation": "getBounce"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bounces/692560173",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bounceId": 692560173
+      },
+      "name": "getBounce-service-unavailable",
+      "operation": "getBounce"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bounces/692560173",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bounceId": 692560173
+      },
+      "name": "getBounce-unknown-5xx",
+      "operation": "getBounce"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bounces/692560173",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "CanActivate": false,
+          "Email": "",
+          "ID": 0,
+          "Inactive": false,
+          "Type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bounceId": 692560173
+      },
+      "name": "getBounce-invalid-response",
+      "operation": "getBounce"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bounces/692560173",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bounceId": 692560173
+      },
+      "name": "getBounce-transport",
+      "operation": "getBounce"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "CanActivate": false,
+          "Email": "",
+          "ID": 0,
+          "Inactive": false,
+          "Type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bounceId": 0
+      },
+      "name": "getBounce-defect",
+      "operation": "getBounce"
+    },
+    {
+      "callId": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "exchanges": [
+        {
+          "body": "{\"Message\":\"OK\",\"Bounce\":{\"ID\":692560173,\"Type\":\"HardBounce\",\"Email\":\"recipient@example.com\",\"Inactive\":false,\"CanActivate\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/bounces/692560173/activate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "activated",
+        "failureKind": "",
+        "output": {
+          "CanActivate": true,
+          "Email": "recipient@example.com",
+          "ID": 692560173,
+          "Inactive": false,
+          "Type": "HardBounce"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "input": {
+        "bounceId": 692560173
+      },
+      "name": "activateBounce-success",
+      "operation": "activateBounce"
+    },
+    {
+      "callId": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":500,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/bounces/692560173/activate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "CanActivate": false,
+          "Email": "",
+          "ID": 0,
+          "Inactive": false,
+          "Type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "input": {
+        "bounceId": 692560173
+      },
+      "name": "activateBounce-provider-rejected",
+      "operation": "activateBounce"
+    },
+    {
+      "callId": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/bounces/692560173/activate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "input": {
+        "bounceId": 692560173
+      },
+      "name": "activateBounce-rate-limited",
+      "operation": "activateBounce"
+    },
+    {
+      "callId": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/bounces/692560173/activate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "input": {
+        "bounceId": 692560173
+      },
+      "name": "activateBounce-service-unavailable",
+      "operation": "activateBounce"
+    },
+    {
+      "callId": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/bounces/692560173/activate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "input": {
+        "bounceId": 692560173
+      },
+      "name": "activateBounce-unknown-5xx",
+      "operation": "activateBounce"
+    },
+    {
+      "callId": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/bounces/692560173/activate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "CanActivate": false,
+          "Email": "",
+          "ID": 0,
+          "Inactive": false,
+          "Type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "input": {
+        "bounceId": 692560173
+      },
+      "name": "activateBounce-invalid-response",
+      "operation": "activateBounce"
+    },
+    {
+      "callId": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/bounces/692560173/activate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "input": {
+        "bounceId": 692560173
+      },
+      "name": "activateBounce-transport",
+      "operation": "activateBounce"
+    },
+    {
+      "callId": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "CanActivate": false,
+          "Email": "",
+          "ID": 0,
+          "Inactive": false,
+          "Type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6c02768-c1f8-5b2f-9580-615043819dcc",
+      "input": {
+        "bounceId": 0
+      },
+      "name": "activateBounce-defect",
+      "operation": "activateBounce"
     }
   ],
   "schemaVersion": 1

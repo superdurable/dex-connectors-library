@@ -29,6 +29,9 @@ uses the static `postmark` connection and a real Dex Worker and Client.
 | `createTemplate` | limited mutation | Template |
 | `updateTemplate` | safe mutation | Template |
 | `deleteTemplate` | safe mutation | DeletedTemplate |
+| `listBounces` | query | BouncePage |
+| `getBounce` | query | Bounce |
+| `activateBounce` | safe mutation | Bounce |
 
 `sendEmail` accepts one plain text message from a verified sender. Postmark does
 not document a deduplication key for sends, so the connector uses Dex's durable
@@ -41,6 +44,10 @@ without confirmation. Outbound messages expire after the server's retention peri
 the exact new template before another possible creation. Supply the template name,
 subject, and a text or HTML body. `updateTemplate` sends the complete replacement
 content; `deleteTemplate` treats an already missing template as deleted.
+
+`listBounces` and `getBounce` inspect delivery failures for the current server.
+`activateBounce` applies Postmark's recipient reactivation action to a bounce ID;
+use it only after deciding the recipient should receive mail again.
 
 ## Authorization
 
@@ -85,6 +92,7 @@ flow := NewFlow(mock.Connection())
 - [https://postmarkapp.com/developer/api/messages-api](https://postmarkapp.com/developer/api/messages-api)
 - [https://postmarkapp.com/developer/api/email-api](https://postmarkapp.com/developer/api/email-api)
 - [https://postmarkapp.com/developer/api/templates-api](https://postmarkapp.com/developer/api/templates-api)
+- [https://postmarkapp.com/developer/api/bounce-api](https://postmarkapp.com/developer/api/bounce-api)
 - [https://postmarkapp.com/developer/api/overview](https://postmarkapp.com/developer/api/overview)
 
 The HTTP unit tests verify request shapes and local classification against
