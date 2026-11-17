@@ -7,3 +7,5 @@ export * from './generated/steps.js';
 export { Connection, newConnection, newConnectionWithOperations } from './generated/connection.js';
 export { newProjectConnection } from './project.js';
 export { WebhookClient, SendEventOperation, type WebhookClientOptions, type WebhookRequestSender } from './client.js';
+export * from './trigger.js';
+export { type WebhookRequestEvent } from './request.js';
