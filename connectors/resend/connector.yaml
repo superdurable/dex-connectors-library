@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: resend
   displayName: Resend
-  description: Send and manage emails, contacts, and verified domains through the Resend API.
+  description: Send and manage email, audiences, domains, webhooks, automations, and inboxes through the Resend API.
   company: Resend
   categories: [communication, developer-tools]
   version: v0.3.0
@@ -58,9 +58,7 @@ spec:
       startURL: https://resend.com/api-keys
       steps:
       - Open https://resend.com/api-keys and sign in or create an account.
-      - Follow API Keys > Create API Key. Create a full access API key for email, contact, domain, topic, and segment operations; a sending-only key still supports sendEmail but cannot use every operation.
-        then copy its secret value. It is an opaque secret string; blank prevents
-        requests.
+      - Follow API Keys > Create API Key. Create a full access API key for the declared operations; a sending-only key supports sending but cannot manage account resources. Copy the secret value.
       - Paste the token into the secret api_key field and save the connection; leave
         baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
