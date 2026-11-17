@@ -2247,6 +2247,1022 @@
       },
       "name": "capturePayment-wrongAmount",
       "operation": "capturePayment"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{\"entity\":\"collection\",\"count\":1,\"items\":[{\"id\":\"rfnd_FP8QHiV938haTz\",\"entity\":\"refund\",\"payment_id\":\"pay_DG4ZdRK8ZnXC3k\",\"status\":\"processed\",\"amount\":100,\"currency\":\"INR\",\"notes\":{\"private\":\"ignored\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "count": 1,
+          "refunds": [
+            {
+              "amount": 100,
+              "currencyCode": "INR",
+              "id": "rfnd_FP8QHiV938haTz",
+              "paymentId": "pay_DG4ZdRK8ZnXC3k",
+              "status": "processed"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listRefunds-listed",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "count": 0,
+          "refunds": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listRefunds-providerRejected",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "count": 0,
+          "refunds": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listRefunds-invalidResponse",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "count": 0,
+          "refunds": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 0,
+        "skip": 1
+      },
+      "name": "listRefunds-defect",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listRefunds-rateLimit",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listRefunds-serviceUnavailable",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listRefunds-serverError",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listRefunds-transportFailure",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"rfnd_FP8QHiV938haTz\",\"entity\":\"refund\",\"payment_id\":\"pay_DG4ZdRK8ZnXC3k\",\"status\":\"processed\",\"amount\":100,\"currency\":\"INR\",\"notes\":{\"private\":\"ignored\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/rfnd_FP8QHiV938haTz",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "amount": 100,
+          "currencyCode": "INR",
+          "id": "rfnd_FP8QHiV938haTz",
+          "paymentId": "pay_DG4ZdRK8ZnXC3k",
+          "status": "processed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "rfnd_FP8QHiV938haTz"
+      },
+      "name": "getRefund-found",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/rfnd_FP8QHiV938haTz",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "paymentId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "rfnd_FP8QHiV938haTz"
+      },
+      "name": "getRefund-notFound",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/rfnd_FP8QHiV938haTz",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "paymentId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "rfnd_FP8QHiV938haTz"
+      },
+      "name": "getRefund-providerRejected",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/rfnd_FP8QHiV938haTz",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "paymentId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "rfnd_FP8QHiV938haTz"
+      },
+      "name": "getRefund-invalidResponse",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "paymentId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": ""
+      },
+      "name": "getRefund-defect",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/rfnd_FP8QHiV938haTz",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "rfnd_FP8QHiV938haTz"
+      },
+      "name": "getRefund-rateLimit",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/rfnd_FP8QHiV938haTz",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "rfnd_FP8QHiV938haTz"
+      },
+      "name": "getRefund-serviceUnavailable",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/rfnd_FP8QHiV938haTz",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "rfnd_FP8QHiV938haTz"
+      },
+      "name": "getRefund-serverError",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "1d66b2dd-cb55-5711-a185-60b7310ea187",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/rfnd_FP8QHiV938haTz",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "rfnd_FP8QHiV938haTz"
+      },
+      "name": "getRefund-transportFailure",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"rfnd_FP8QHiV938haTz\",\"entity\":\"refund\",\"payment_id\":\"pay_DG4ZdRK8ZnXC3k\",\"status\":\"processed\",\"amount\":100,\"currency\":\"INR\",\"notes\":{\"private\":\"ignored\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/refund",
+          "requestBody": {
+            "amount": 100
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Refund-Idempotency": [
+              "2e079968-e36a-5deb-9d87-5a574b85cc80"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amount": 100,
+          "currencyCode": "INR",
+          "id": "rfnd_FP8QHiV938haTz",
+          "paymentId": "pay_DG4ZdRK8ZnXC3k",
+          "status": "processed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "input": {
+        "amount": 100,
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "createNormalRefund-created",
+      "operation": "createNormalRefund"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/refund",
+          "requestBody": {
+            "amount": 100
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Refund-Idempotency": [
+              "2e079968-e36a-5deb-9d87-5a574b85cc80"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "paymentId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "input": {
+        "amount": 100,
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "createNormalRefund-providerRejected",
+      "operation": "createNormalRefund"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "paymentId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "input": {
+        "amount": 0,
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "createNormalRefund-defect",
+      "operation": "createNormalRefund"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/refund",
+          "requestBody": {
+            "amount": 100
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Refund-Idempotency": [
+              "2e079968-e36a-5deb-9d87-5a574b85cc80"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "input": {
+        "amount": 100,
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "createNormalRefund-rateLimit",
+      "operation": "createNormalRefund"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/refund",
+          "requestBody": {
+            "amount": 100
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Refund-Idempotency": [
+              "2e079968-e36a-5deb-9d87-5a574b85cc80"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "input": {
+        "amount": 100,
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "createNormalRefund-serviceUnavailable",
+      "operation": "createNormalRefund"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/refund",
+          "requestBody": {
+            "amount": 100
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Refund-Idempotency": [
+              "2e079968-e36a-5deb-9d87-5a574b85cc80"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "input": {
+        "amount": 100,
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "createNormalRefund-serverError",
+      "operation": "createNormalRefund"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/refund",
+          "requestBody": {
+            "amount": 100
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Refund-Idempotency": [
+              "2e079968-e36a-5deb-9d87-5a574b85cc80"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "input": {
+        "amount": 100,
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "createNormalRefund-conflict",
+      "operation": "createNormalRefund"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k/refund",
+          "requestBody": {
+            "amount": 100
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Refund-Idempotency": [
+              "2e079968-e36a-5deb-9d87-5a574b85cc80"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "input": {
+        "amount": 100,
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "createNormalRefund-transportFailure",
+      "operation": "createNormalRefund"
     }
   ],
   "schemaVersion": 1

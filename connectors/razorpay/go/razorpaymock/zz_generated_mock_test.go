@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listRefunds/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.RefundPage](`{"refunds":[{"id":"rfnd_FP8QHiV938haTz","paymentId":"pay_DG4ZdRK8ZnXC3k","status":"processed","amount":100,"currencyCode":"INR"}],"count":1}`)
+			return err
+		}},
+		{name: "getRefund/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.RefundStatus](`{"id":"rfnd_FP8QHiV938haTz","paymentId":"pay_DG4ZdRK8ZnXC3k","status":"processed","amount":100,"currencyCode":"INR"}`)
+			return err
+		}},
+		{name: "createNormalRefund/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.RefundStatus](`{"id":"rfnd_FP8QHiV938haTz","paymentId":"pay_DG4ZdRK8ZnXC3k","status":"processed","amount":100,"currencyCode":"INR"}`)
+			return err
+		}},
 		{name: "listPayments/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[razorpay.PaymentPage](`{"payments":[{"id":"pay_DG4ZdRK8ZnXC3k","status":"captured","amount":100,"currencyCode":"INR"}],"count":1}`)
 			return err
@@ -50,6 +62,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListRefunds().Definition().Operation.OperationID != "listRefunds" {
+		t.Errorf("listRefunds mock has another definition")
+	}
+	if mock.GetRefund().Definition().Operation.OperationID != "getRefund" {
+		t.Errorf("getRefund mock has another definition")
+	}
+	if mock.CreateNormalRefund().Definition().Operation.OperationID != "createNormalRefund" {
+		t.Errorf("createNormalRefund mock has another definition")
+	}
 	if mock.ListPayments().Definition().Operation.OperationID != "listPayments" {
 		t.Errorf("listPayments mock has another definition")
 	}

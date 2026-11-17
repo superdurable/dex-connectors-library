@@ -41,6 +41,9 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListRefunds() sdkgo.Query[ListRefundsInput, RefundPage]
+	GetRefund() sdkgo.Query[GetRefundInput, RefundStatus]
+	CreateNormalRefund() sdkgo.Mutation[CreateNormalRefundInput, RefundStatus]
 	ListPayments() sdkgo.Query[ListPaymentsInput, PaymentPage]
 	CapturePayment() sdkgo.Mutation[CapturePaymentInput, PaymentStatus]
 	ListOrders() sdkgo.Query[ListOrdersInput, OrderPage]
@@ -51,6 +54,15 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListRefunds() sdkgo.Query[ListRefundsInput, RefundPage] {
+	return operations.client.ListRefunds()
+}
+func (operations clientOperations) GetRefund() sdkgo.Query[GetRefundInput, RefundStatus] {
+	return operations.client.GetRefund()
+}
+func (operations clientOperations) CreateNormalRefund() sdkgo.Mutation[CreateNormalRefundInput, RefundStatus] {
+	return operations.client.CreateNormalRefund()
+}
 func (operations clientOperations) ListPayments() sdkgo.Query[ListPaymentsInput, PaymentPage] {
 	return operations.client.ListPayments()
 }
@@ -210,6 +222,220 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential key_secret is required")
 	}
 	return nil
+}
+
+const ListRefundsBranchListed sdkgo.BranchID = "listed"
+const ListRefundsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListRefundsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListRefundsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListRefundsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listRefunds"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListRefundsBranchListed, Description: "Razorpay returned a refund page."},
+		{ID: ListRefundsBranchProviderRejected, Description: "Razorpay conclusively rejected the refund list.", Optional: true},
+		{ID: ListRefundsBranchInvalidResponse, Description: "Razorpay returned unusable refund data.", Optional: true},
+		{ID: ListRefundsBranchDefect, Description: "The page input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListRefundsResult = sdkgo.QueryResult[RefundPage]
+
+type ListRefundsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=razorpay"`
+	operationID                    struct{}                                      `connector:"operationId=listRefunds"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListRefundsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListRefundsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListRefundsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListRefundsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListRefundsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[RefundPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListRefundsStep[IN any](config ListRefundsStepConfig[IN]) sdkgo.QueryStep[IN, ListRefundsInput, RefundPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("razorpay connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListRefundsInput, RefundPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListRefunds(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListRefundsResult] {
+			branches := make([]sdkgo.BranchTarget[ListRefundsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListRefundsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListRefundsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListRefundsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListRefundsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetRefundBranchFound sdkgo.BranchID = "found"
+const GetRefundBranchNotFound sdkgo.BranchID = "notFound"
+const GetRefundBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetRefundBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetRefundBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetRefundDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getRefund"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetRefundBranchFound, Description: "Razorpay returned the refund."},
+		{ID: GetRefundBranchNotFound, Description: "The refund was not found.", Optional: true},
+		{ID: GetRefundBranchProviderRejected, Description: "Razorpay conclusively rejected the refund lookup.", Optional: true},
+		{ID: GetRefundBranchInvalidResponse, Description: "Razorpay returned unusable refund data.", Optional: true},
+		{ID: GetRefundBranchDefect, Description: "The refund ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetRefundResult = sdkgo.QueryResult[RefundStatus]
+
+type GetRefundStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=razorpay"`
+	operationID                    struct{}                                        `connector:"operationId=getRefund"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetRefundInput                         `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetRefundResult]                   `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetRefundResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetRefundResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetRefundResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetRefundResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[RefundStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetRefundStep[IN any](config GetRefundStepConfig[IN]) sdkgo.QueryStep[IN, GetRefundInput, RefundStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("razorpay connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetRefundInput, RefundStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetRefund(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetRefundResult] {
+			branches := make([]sdkgo.BranchTarget[GetRefundResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetRefundBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetRefundBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetRefundBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetRefundBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetRefundBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateNormalRefundBranchCreated sdkgo.BranchID = "created"
+const CreateNormalRefundBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateNormalRefundBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateNormalRefundDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createNormalRefund"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateNormalRefundBranchCreated, Description: "Razorpay accepted the normal refund."},
+		{ID: CreateNormalRefundBranchProviderRejected, Description: "Razorpay conclusively rejected the refund.", Optional: true},
+		{ID: CreateNormalRefundBranchDefect, Description: "The refund input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CreateNormalRefundResult = sdkgo.MutationResult[RefundStatus]
+
+type CreateNormalRefundStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=razorpay"`
+	operationID                       struct{}                                           `connector:"operationId=createNormalRefund"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateNormalRefundInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateNormalRefundResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateNormalRefundResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateNormalRefundResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[RefundStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewCreateNormalRefundStep[IN any](config CreateNormalRefundStepConfig[IN]) sdkgo.MutationStep[IN, CreateNormalRefundInput, RefundStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("razorpay connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateNormalRefundInput, RefundStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateNormalRefund(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateNormalRefundResult] {
+			branches := make([]sdkgo.BranchTarget[CreateNormalRefundResult], 0, 3)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateNormalRefundBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateNormalRefundBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateNormalRefundBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListPaymentsBranchListed sdkgo.BranchID = "listed"

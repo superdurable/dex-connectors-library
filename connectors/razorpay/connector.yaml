@@ -60,6 +60,66 @@ spec:
         - Sign in to the Razorpay Dashboard, select Test or Live Mode, then open Account & Settings > API Keys > Generate Key. Copy the Key ID beginning rzp_test_ or rzp_live_ and its paired opaque Key Secret into Dex Web secret key_id and key_secret. Blank is invalid. Regenerate the pair on the same page to rotate it; Test and Live keys cannot be mixed.
         - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret pay_ payment ID on the Dashboard Payments page or from an API response and pass it as paymentId; blank is invalid. The payment amount returned is in currency subunits.
   operations:
+    - name: listRefunds
+      goName: ListRefunds
+      inputType: ListRefundsInput
+      outputType: RefundPage
+      kind: query
+      description: List one bounded page of refund statuses.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Razorpay returned a refund page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the refund list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned unusable refund data., optional: true}
+        - {id: defect, goName: Defect, description: The page input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample refund page was returned.
+          output: {refunds: [{id: rfnd_FP8QHiV938haTz, paymentId: pay_DG4ZdRK8ZnXC3k, status: processed, amount: 100, currencyCode: INR}], count: 1}
+    - name: getRefund
+      goName: GetRefund
+      inputType: GetRefundInput
+      outputType: RefundStatus
+      kind: query
+      description: Read one refund by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Razorpay returned the refund.}
+        - {id: notFound, goName: NotFound, description: The refund was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the refund lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned unusable refund data., optional: true}
+        - {id: defect, goName: Defect, description: The refund ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample processed refund was returned.
+          output: {id: rfnd_FP8QHiV938haTz, paymentId: pay_DG4ZdRK8ZnXC3k, status: processed, amount: 100, currencyCode: INR}
+    - name: createNormalRefund
+      goName: CreateNormalRefund
+      inputType: CreateNormalRefundInput
+      outputType: RefundStatus
+      kind: mutation
+      description: Create a normal refund using Razorpay's idempotency header.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Razorpay accepted the normal refund.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the refund., optional: true}
+        - {id: defect, goName: Defect, description: The refund input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One normal refund was accepted.
+          output: {id: rfnd_FP8QHiV938haTz, paymentId: pay_DG4ZdRK8ZnXC3k, status: processed, amount: 100, currencyCode: INR}
     - name: listPayments
       goName: ListPayments
       inputType: ListPaymentsInput
