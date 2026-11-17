@@ -1,0 +1,451 @@
+{
+  "connector": "emq",
+  "scenarios": [
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "[{\"connections\":1000,\"tps\":1000,\"createAt\":\"2024-11-21 02:51\",\"deploymentID\":\"mdfba81f\",\"deploymentName\":\"deployment-mdfba81f\",\"deploymentType\":\"serverless\",\"platform\":\"AWS\",\"projectName\":\"default\",\"region\":\"N. Virginia (us-east-1)\",\"status\":\"stopped\",\"version\":\"v5\",\"private\":\"private-data\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/public_api/v1/deployments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1wbGF0Zm9ybS1rZXk6dGVzdC1wbGF0Zm9ybS1zZWNyZXQ="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "deployments": [
+            {
+              "connections": 1000,
+              "createdAt": "2024-11-21 02:51",
+              "deploymentId": "mdfba81f",
+              "deploymentName": "deployment-mdfba81f",
+              "deploymentType": "serverless",
+              "platform": "AWS",
+              "projectName": "default",
+              "region": "N. Virginia (us-east-1)",
+              "status": "stopped",
+              "tps": 1000,
+              "version": "v5"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDeployments-listed",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/public_api/v1/deployments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1wbGF0Zm9ybS1rZXk6dGVzdC1wbGF0Zm9ybS1zZWNyZXQ="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "deployments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDeployments-empty",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"test-platform-secret\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/public_api/v1/deployments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1wbGF0Zm9ybS1rZXk6dGVzdC1wbGF0Zm9ybS1zZWNyZXQ="
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "deployments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDeployments-unauthorized",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/public_api/v1/deployments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1wbGF0Zm9ybS1rZXk6dGVzdC1wbGF0Zm9ybS1zZWNyZXQ="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "deployments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDeployments-forbidden",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/public_api/v1/deployments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1wbGF0Zm9ybS1rZXk6dGVzdC1wbGF0Zm9ybS1zZWNyZXQ="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deployments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDeployments-bad-request",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"deployments\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/public_api/v1/deployments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1wbGF0Zm9ybS1rZXk6dGVzdC1wbGF0Zm9ybS1zZWNyZXQ="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deployments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDeployments-malformed",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "[{\"deploymentName\":\"bad\",\"deploymentType\":\"serverless\",\"status\":\"running\",\"connections\":1,\"tps\":1}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/public_api/v1/deployments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1wbGF0Zm9ybS1rZXk6dGVzdC1wbGF0Zm9ybS1zZWNyZXQ="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deployments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDeployments-missing-id",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "[{\"deploymentID\":\"x\",\"deploymentName\":\"bad\",\"deploymentType\":\"serverless\",\"status\":\"running\",\"connections\":-1,\"tps\":1}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/public_api/v1/deployments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1wbGF0Zm9ybS1rZXk6dGVzdC1wbGF0Zm9ybS1zZWNyZXQ="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deployments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDeployments-negative-capacity",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "[                                                                                                    ]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/public_api/v1/deployments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1wbGF0Zm9ybS1rZXk6dGVzdC1wbGF0Zm9ybS1zZWNyZXQ="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "deployments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDeployments-oversize",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/public_api/v1/deployments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1wbGF0Zm9ybS1rZXk6dGVzdC1wbGF0Zm9ybS1zZWNyZXQ="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDeployments-rate-limit",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/public_api/v1/deployments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1wbGF0Zm9ybS1rZXk6dGVzdC1wbGF0Zm9ybS1zZWNyZXQ="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDeployments-server-error",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/public_api/v1/deployments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1wbGF0Zm9ybS1rZXk6dGVzdC1wbGF0Zm9ybS1zZWNyZXQ="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDeployments-transport-before-send",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "deployments": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDeployments-missing-key",
+      "operation": "listDeployments"
+    }
+  ],
+  "schemaVersion": 1
+}
