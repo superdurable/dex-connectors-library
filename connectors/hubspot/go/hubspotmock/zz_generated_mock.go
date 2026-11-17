@@ -187,7 +187,7 @@ func UpsertObjectUpserted(value hubspot.UpsertedObject, failure *sdkgo.Failure) 
 	return connectormock.Branch(hubspot.UpsertObjectBranchUpserted, value, failure)
 }
 
-// UpsertObjectConflict selects the conflict branch: HubSpot's batch answer reports that the properties conflict with another record, such as an email that another contact already owns; an HTTP 409 is retried instead.
+// UpsertObjectConflict selects the conflict branch: HubSpot reports with a documented CONFLICT, in its batch answer or in a second HTTP 409, that the properties conflict with another record, such as an email that another contact already owns; a 409 without that category is retried.
 func UpsertObjectConflict(value hubspot.UpsertedObject, failure *sdkgo.Failure) connectormock.Case[hubspot.UpsertedObject] {
 	return connectormock.Branch(hubspot.UpsertObjectBranchConflict, value, failure)
 }
@@ -245,7 +245,7 @@ func UpdateObjectNotFound(value hubspot.CRMObject, failure *sdkgo.Failure) conne
 	return connectormock.Branch(hubspot.UpdateObjectBranchNotFound, value, failure)
 }
 
-// UpdateObjectConflict selects the conflict branch: The properties conflict with another record, such as an email that another contact already owns.
+// UpdateObjectConflict selects the conflict branch: HubSpot answered 409 with its documented CONFLICT category: the properties conflict with another record, such as an email that another contact already owns.
 func UpdateObjectConflict(value hubspot.CRMObject, failure *sdkgo.Failure) connectormock.Case[hubspot.CRMObject] {
 	return connectormock.Branch(hubspot.UpdateObjectBranchConflict, value, failure)
 }

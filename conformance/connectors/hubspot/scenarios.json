@@ -1761,7 +1761,7 @@
       "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"category\":\"CONFLICT\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -1972,7 +1972,7 @@
       "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"category\":\"CONFLICT\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

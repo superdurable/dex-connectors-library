@@ -68,7 +68,7 @@ UPSERT_OBJECT_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, UPSERT_OBJECT_OPERATION_ID),
     (
         BranchDefinition(UPSERTED, "HubSpot created the record or updated the record that owns the unique value.", False),
-        BranchDefinition(CONFLICT, "HubSpot's batch answer reports that the properties conflict with another record, such as an email that another contact already owns; an HTTP 409 is retried instead.", True),
+        BranchDefinition(CONFLICT, "HubSpot reports with a documented CONFLICT, in its batch answer or in a second HTTP 409, that the properties conflict with another record, such as an email that another contact already owns; a 409 without that category is retried.", True),
         BranchDefinition(PROVIDER_REJECTED, "HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit.", True),
         BranchDefinition(INVALID_RESPONSE, "HubSpot applied or rejected the upsert but returned an invalid or oversized response.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
@@ -86,7 +86,7 @@ UPDATE_OBJECT_DEFINITION = MutationDefinition(
     (
         BranchDefinition(UPDATED, "HubSpot updated the record and returned it.", False),
         BranchDefinition(NOT_FOUND, "No unarchived record of that object type has the record ID.", True),
-        BranchDefinition(CONFLICT, "The properties conflict with another record, such as an email that another contact already owns.", True),
+        BranchDefinition(CONFLICT, "HubSpot answered 409 with its documented CONFLICT category: the properties conflict with another record, such as an email that another contact already owns.", True),
         BranchDefinition(PROVIDER_REJECTED, "HubSpot conclusively rejected the update, such as an invalid property value, a missing scope, a rejected token, or an exhausted daily limit.", True),
         BranchDefinition(INVALID_RESPONSE, "HubSpot applied or rejected the update but returned an invalid or oversized response.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),

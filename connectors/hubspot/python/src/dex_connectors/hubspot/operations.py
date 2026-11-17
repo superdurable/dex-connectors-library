@@ -313,9 +313,12 @@ def _mutation_outcome(
     object_id: str = "",
     is_http_status: bool = True,
 ) -> MutationAttempt[Output]:
-    # Both writes are repeat-safe, so an HTTP status that does not prove a refusal, such as 409, is retried.
+    # Both writes are repeat-safe, so an HTTP status that does not prove a refusal, such as a bare 409,
+    # is retried. A documented CONFLICT is definite even after an earlier send: repeating our own
+    # write sets the same values on the same record and cannot conflict with it.
     is_unknown_status = (
         is_http_status
+        and result.disposition != "conflict"
         and result.status != 0
         and not 200 <= result.status < 300
         and result.status not in _DEFINITE_REFUSAL_STATUSES

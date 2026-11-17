@@ -74,7 +74,7 @@ export interface UpsertObjectStepConfig<StepInput, OperationInput = UpsertObject
   connectionName: string;
   /** HubSpot created the record or updated the record that owns the unique value. */
   upserted: StepTarget<MutationResult<OperationOutput>>;
-  /** HubSpot's batch answer reports that the properties conflict with another record, such as an email that another contact already owns; an HTTP 409 is retried instead. */
+  /** HubSpot reports with a documented CONFLICT, in its batch answer or in a second HTTP 409, that the properties conflict with another record, such as an email that another contact already owns; a 409 without that category is retried. */
   conflict?: StepTarget<MutationResult<OperationOutput>>;
   /** HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
@@ -107,7 +107,7 @@ export interface UpdateObjectStepConfig<StepInput, OperationInput = UpdateObject
   updated: StepTarget<MutationResult<OperationOutput>>;
   /** No unarchived record of that object type has the record ID. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
-  /** The properties conflict with another record, such as an email that another contact already owns. */
+  /** HubSpot answered 409 with its documented CONFLICT category: the properties conflict with another record, such as an email that another contact already owns. */
   conflict?: StepTarget<MutationResult<OperationOutput>>;
   /** HubSpot conclusively rejected the update, such as an invalid property value, a missing scope, a rejected token, or an exhausted daily limit. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;

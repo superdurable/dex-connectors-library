@@ -149,7 +149,9 @@ export class HubSpotClient {
     if (status === 403 && errorBody.category === 'MISSING_SCOPES') return this.failure('rejected', operation, 'AUTHORIZATION', `HubSpot access token lacks a required scope${detail}`, receipt);
     if (status === 403) return this.failure('rejected', operation, 'AUTHORIZATION', `HubSpot denied access to the record${detail}`, receipt);
     if (status === 404) return this.failure('notFound', operation, 'NOT_FOUND', `HubSpot found no such record${detail}`, receipt);
-    if (status === 409) return this.failure('conflict', operation, 'CONFLICT', `HubSpot reported a conflict with another record${detail}`, receipt);
+    if (status === 409 && (errorBody.category === 'CONFLICT' || errorBody.category === 'OBJECT_ALREADY_EXISTS')) return this.failure('conflict', operation, 'CONFLICT', `HubSpot reported a conflict with another record${detail}`, receipt);
+    // A write answered with a bare 409 has an unknown outcome and is retried.
+    if (status === 409) return this.failure('rejected', operation, 'CONFLICT', `HubSpot answered HTTP 409 without a documented conflict category${detail}`, receipt);
     if (status === 400 || status === 422 || errorBody.category === 'VALIDATION_ERROR') return this.failure('rejected', operation, 'VALIDATION', `HubSpot rejected the request as invalid${detail}`, receipt);
     if (status >= 300 && status < 400) return this.failure('rejected', operation, 'PROTOCOL', `HubSpot redirected the request (HTTP ${status})`, receipt);
     return this.failure('rejected', operation, 'PROVIDER_REJECTION', `HubSpot rejected the request (HTTP ${status})${detail}`, receipt);

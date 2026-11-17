@@ -120,8 +120,9 @@ function queryOutcome<T>(outcome: ExchangeFailure, zero: T, rejected: string, no
 const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 
 function mutationOutcome<T>(outcome: ExchangeFailure, zero: T, rejected: string, notFound = rejected, conflict = rejected): MutationAttempt<T> {
-  // Both writes are repeat-safe, so an HTTP status that does not prove a refusal, such as 409, is retried.
-  const isUnknownStatus = outcome.status !== undefined && (outcome.status < 200 || outcome.status >= 300) && !definiteRefusalStatuses.has(outcome.status) && outcome.failure.kind !== 'QUOTA_EXHAUSTED';
+  // Both writes are repeat-safe, so an HTTP status that does not prove a refusal, such as a bare 409, is retried.
+  // A documented CONFLICT is definite even after an earlier send: repeating our own write cannot conflict with it.
+  const isUnknownStatus = outcome.disposition !== 'conflict' && outcome.status !== undefined &&(outcome.status < 200 || outcome.status >= 300) && !definiteRefusalStatuses.has(outcome.status) && outcome.failure.kind !== 'QUOTA_EXHAUSTED';
   if (outcome.disposition === 'retry' || isUnknownStatus) return newMutationRetry(outcome.failure, outcome.retryAfterMs);
   const branch = outcome.disposition === 'notFound' ? notFound : outcome.disposition === 'conflict' ? conflict : outcome.disposition === 'rejected' ? rejected : outcome.disposition;
   return newMutationBranch(branch, zero, outcome.receipt, outcome.failure);

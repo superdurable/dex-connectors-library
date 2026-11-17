@@ -509,7 +509,7 @@ var UpsertObjectDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "upsertObject"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertObjectBranchUpserted, Description: "HubSpot created the record or updated the record that owns the unique value."},
-		{ID: UpsertObjectBranchConflict, Description: "HubSpot's batch answer reports that the properties conflict with another record, such as an email that another contact already owns; an HTTP 409 is retried instead.", Optional: true},
+		{ID: UpsertObjectBranchConflict, Description: "HubSpot reports with a documented CONFLICT, in its batch answer or in a second HTTP 409, that the properties conflict with another record, such as an email that another contact already owns; a 409 without that category is retried.", Optional: true},
 		{ID: UpsertObjectBranchProviderRejected, Description: "HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit.", Optional: true},
 		{ID: UpsertObjectBranchInvalidResponse, Description: "HubSpot applied or rejected the upsert but returned an invalid or oversized response.", Optional: true},
 		{ID: UpsertObjectBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
@@ -591,7 +591,7 @@ var UpdateObjectDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpdateObjectBranchUpdated, Description: "HubSpot updated the record and returned it."},
 		{ID: UpdateObjectBranchNotFound, Description: "No unarchived record of that object type has the record ID.", Optional: true},
-		{ID: UpdateObjectBranchConflict, Description: "The properties conflict with another record, such as an email that another contact already owns.", Optional: true},
+		{ID: UpdateObjectBranchConflict, Description: "HubSpot answered 409 with its documented CONFLICT category: the properties conflict with another record, such as an email that another contact already owns.", Optional: true},
 		{ID: UpdateObjectBranchProviderRejected, Description: "HubSpot conclusively rejected the update, such as an invalid property value, a missing scope, a rejected token, or an exhausted daily limit.", Optional: true},
 		{ID: UpdateObjectBranchInvalidResponse, Description: "HubSpot applied or rejected the update but returned an invalid or oversized response.", Optional: true},
 		{ID: UpdateObjectBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},

@@ -293,17 +293,36 @@ func TestUpsertObjectResendsOnceAfterAConflict(t *testing.T) {
 	}
 }
 
-func TestUpsertObjectRetriesALastingHTTPConflict(t *testing.T) {
+func TestUpsertObjectSelectsConflictForALastingDocumentedConflict(t *testing.T) {
 	provider := newRecordingHubSpot(t, func(response http.ResponseWriter, _ recordedRequest) {
 		writeJSON(t, response, http.StatusConflict, `{"category":"CONFLICT","message":"`+providerMessageSentinel+`"}`)
 	})
 	client := newStaticTokenClient(t, provider.URL, hubspot.Config{})
-	_, err := sdkgo.RunMutation(newStepDexContext("upsert-http-conflict"), client.UpsertObject(), hubspotConnection, hubspot.UpsertObjectInput{
+	result, err := sdkgo.RunMutation(newStepDexContext("upsert-http-conflict"), client.UpsertObject(), hubspotConnection, hubspot.UpsertObjectInput{
+		ObjectType: hubspot.ObjectTypeContacts, IDProperty: "email", IDValue: "ada@example.com",
+	})
+	require.NoError(t, err, "a documented CONFLICT is a definite business outcome")
+	require.Equal(t, hubspot.UpsertObjectBranchConflict, result.Branch)
+	require.Equal(t, sdkgo.FailureConflict, result.Failure.Kind)
+	require.NotContains(t, result.Failure.Message, providerMessageSentinel)
+	require.Len(t, provider.recordedRequests(), 2, "the upsert resends once inside the attempt")
+}
+
+func TestWritesRetryABare409WithoutADocumentedConflictCategory(t *testing.T) {
+	provider := newRecordingHubSpot(t, func(response http.ResponseWriter, _ recordedRequest) {
+		writeJSON(t, response, http.StatusConflict, `{}`)
+	})
+	client := newStaticTokenClient(t, provider.URL, hubspot.Config{})
+	_, err := sdkgo.RunMutation(newStepDexContext("upsert-bare-409"), client.UpsertObject(), hubspotConnection, hubspot.UpsertObjectInput{
 		ObjectType: hubspot.ObjectTypeContacts, IDProperty: "email", IDValue: "ada@example.com",
 	})
 	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry, "an HTTP 409 does not prove a refusal, and the upsert is repeat-safe")
-	require.Len(t, provider.recordedRequests(), 2, "the upsert resends once inside the attempt")
+	require.ErrorAs(t, err, &retry, "a bare 409 does not prove a refusal, and the upsert is repeat-safe")
+	require.Len(t, provider.recordedRequests(), 1, "only a documented conflict resends inside the attempt")
+	_, err = sdkgo.RunMutation(newStepDexContext("update-bare-409"), client.UpdateObject(), hubspotConnection, hubspot.UpdateObjectInput{
+		ObjectType: hubspot.ObjectTypeContacts, ObjectID: "501", Properties: map[string]string{"email": "ada@example.com"},
+	})
+	require.ErrorAs(t, err, &retry, "a bare 409 does not prove a refusal, and the update is repeat-safe")
 }
 
 func TestUpsertObjectClassifiesBatchErrorsAndMalformedResults(t *testing.T) {

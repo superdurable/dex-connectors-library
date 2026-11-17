@@ -13,12 +13,14 @@ import dex_connectors.hubspot as hubspot
 CONNECTION = sdk.ConnectionRef("hubspot", "hubspot-crm")
 
 
-def make_client(status: int, requests: list[httpx.Request]) -> tuple[hubspot.Client, httpx.AsyncClient]:
-    """Build a client whose provider answers every request with one status."""
+def make_client(
+    status: int, requests: list[httpx.Request], category: str = "UNKNOWN"
+) -> tuple[hubspot.Client, httpx.AsyncClient]:
+    """Build a client whose provider answers every request with one status and error category."""
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        return httpx.Response(status, json={"category": "CONFLICT" if status == 409 else "UNKNOWN"})
+        return httpx.Response(status, json={"category": category})
 
     transport = httpx.AsyncClient(transport=httpx.MockTransport(respond))
     client = hubspot.Client(
@@ -40,16 +42,16 @@ def call(operation: str) -> sdk.Call:
 
 
 @pytest.mark.asyncio
-async def test_lasting_http_conflict_retries_an_upsert_and_keeps_conflict_for_an_update() -> None:
+async def test_lasting_documented_conflict_selects_conflict_for_both_writes() -> None:
     requests: list[httpx.Request] = []
-    client, transport = make_client(409, requests)
+    client, transport = make_client(409, requests, "CONFLICT")
     async with transport:
-        with pytest.raises(sdk.RetryError):
-            await sdk.run_mutation(
-                client.upsert_object(),
-                call("upsertObject"),
-                hubspot.UpsertObjectInput("contacts", "email", "ada@example.com"),
-            )
+        upsert = await sdk.run_mutation(
+            client.upsert_object(),
+            call("upsertObject"),
+            hubspot.UpsertObjectInput("contacts", "email", "ada@example.com"),
+        )
+        assert upsert.branch == "conflict"
         assert len(requests) == 2, "the upsert resends once inside the attempt"
         update = await sdk.run_mutation(
             client.update_object(),
@@ -60,7 +62,7 @@ async def test_lasting_http_conflict_retries_an_upsert_and_keeps_conflict_for_an
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("status", [501, 302, 418])
+@pytest.mark.parametrize("status", [501, 302, 418, 409])
 async def test_writes_retry_a_status_that_does_not_prove_a_refusal(status: int) -> None:
     client, transport = make_client(status, [])
     async with transport:

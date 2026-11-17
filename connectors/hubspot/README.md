@@ -117,11 +117,13 @@ record.
 Both Mutations declare `repeatOnUnknown: safe`. If HubSpot answers
 `409 CONFLICT`, the connector resends the same upsert once in the same attempt.
 A concurrent dispatch of the same upsert may have created the record first, and
-the resend updates it. An HTTP `409` does not prove that HubSpot refused the
-write, so a second one returns Retry; an email another contact owns therefore
-retries until the Step retry policy is exhausted. Only a conflict in HubSpot's
-2xx batch answer selects `conflict` for `upsertObject`. `updateObject` keeps
-selecting `conflict` for HubSpot's `409 CONFLICT`.
+the resend updates it. A second `409 CONFLICT`, or a conflict in HubSpot's 2xx
+batch answer, is a definite business outcome, such as an email another contact
+owns, and selects `conflict`. `updateObject` selects `conflict` for
+`409 CONFLICT` too. Repeating our own write sets the same values on the same
+record, so a documented conflict stays definite after an earlier attempt. A
+`409` without the documented `CONFLICT` or `OBJECT_ALREADY_EXISTS` category does
+not prove a refusal, so both writes return Retry for it.
 
 ### updateObject
 
@@ -135,11 +137,11 @@ as any last-write-wins retry does.
 | HubSpot response | Result |
 | --- | --- |
 | `400`/`422`, or `VALIDATION_ERROR` on a read | `providerRejected`, `VALIDATION` |
-| a Mutation's `3xx`, `501`, or `4xx` other than `400`, `401`, `403`, `404`, `409`, `411`, `413`, `414`, `415`, `422`, or a `429` `DAILY` | Retry |
+| a Mutation's `3xx`, `501`, `409` without a documented conflict category, or `4xx` other than `400`, `401`, `403`, `404`, `409`, `411`, `413`, `414`, `415`, `422`, or a `429` `DAILY` | Retry |
 | `401` | `providerRejected`, `AUTHENTICATION`, after one OAuth refresh and resend only when the stored token has expired |
 | `403` `MISSING_SCOPES` or other `403` | `providerRejected`, `AUTHORIZATION` |
 | `404` `OBJECT_NOT_FOUND` | `notFound` on `getObject` and `updateObject`; `providerRejected` otherwise |
-| `409` `CONFLICT` | Retry on `upsertObject` after one resend; `conflict` on `updateObject`; `providerRejected` on reads |
+| `409` `CONFLICT` or `OBJECT_ALREADY_EXISTS` | `conflict` on `upsertObject` after one resend and on `updateObject`; `providerRejected` on reads |
 | a 2xx batch upsert error with a conflict | `conflict`, after one resend |
 | `429` with policy `DAILY` | `providerRejected`, `QUOTA_EXHAUSTED` |
 | other `429` (`RATE_LIMITS`) | Retry after `Retry-After`, or HubSpot's rate-limit interval up to 10 seconds |

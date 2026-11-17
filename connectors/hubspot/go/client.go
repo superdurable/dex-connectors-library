@@ -367,8 +367,11 @@ func classifyErrorResponse(operation string, response providerResponse, now time
 		return terminalOutcome(outcomeRejected, operation, sdkgo.FailureAuthorization, "HubSpot denied access to the record"+detail)
 	case status == http.StatusNotFound:
 		return terminalOutcome(outcomeNotFound, operation, sdkgo.FailureNotFound, "HubSpot found no such record"+detail)
-	case status == http.StatusConflict:
+	case status == http.StatusConflict && isDocumentedConflictCategory(errorBody.Category):
 		return terminalOutcome(outcomeConflict, operation, sdkgo.FailureConflict, "HubSpot reported a conflict with another record"+detail)
+	case status == http.StatusConflict:
+		// A write answered with a bare 409 has an unknown outcome and is retried.
+		return terminalOutcome(outcomeRejected, operation, sdkgo.FailureConflict, "HubSpot answered HTTP 409 without a documented conflict category"+detail)
 	case status == http.StatusBadRequest || status == http.StatusUnprocessableEntity || errorBody.Category == "VALIDATION_ERROR":
 		return terminalOutcome(outcomeRejected, operation, sdkgo.FailureValidation, "HubSpot rejected the request as invalid"+detail)
 	case status >= 300 && status < 400:
@@ -441,9 +444,12 @@ func queryAttemptForOutcome[T any](outcome providerOutcome, branches operationBr
 // mutationAttemptForOutcome maps an unsuccessful exchange to Retry or a branch; idempotent writes never select uncertain.
 func mutationAttemptForOutcome[T any](outcome providerOutcome, branches operationBranches) sdkgo.MutationAttempt[T] {
 	var zero T
-	// Both writes are repeat-safe, so a status that does not prove a refusal, such as 409, is retried.
+	// Both writes are repeat-safe, so a status that does not prove a refusal, such as a bare 409, is
+	// retried. A documented CONFLICT is definite even after an earlier send: repeating our own write
+	// sets the same values on the same record and cannot conflict with it.
 	isUnknownStatus := outcome.statusCode != 0 && (outcome.statusCode < 200 || outcome.statusCode >= 300) &&
-		!isDefiniteRefusalStatus(outcome.statusCode) && outcome.failure.Kind != sdkgo.FailureQuotaExhausted
+		!isDefiniteRefusalStatus(outcome.statusCode) && outcome.failure.Kind != sdkgo.FailureQuotaExhausted &&
+		outcome.disposition != outcomeConflict
 	if outcome.disposition == outcomeRetry || isUnknownStatus {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
 	}
@@ -463,6 +469,11 @@ func (branches operationBranches) branchFor(disposition outcomeDisposition) sdkg
 	default:
 		return branches.defect
 	}
+}
+
+// isDocumentedConflictCategory reports the error categories HubSpot documents for a 409 business conflict.
+func isDocumentedConflictCategory(category string) bool {
+	return category == "CONFLICT" || category == "OBJECT_ALREADY_EXISTS"
 }
 
 // isDefiniteRefusalStatus reports a status that proves HubSpot refused a write.
