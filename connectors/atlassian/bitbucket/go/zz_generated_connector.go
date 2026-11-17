@@ -40,6 +40,9 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreatePullRequest() sdkgo.Mutation[CreatePullRequestInput, PullRequest]
+	MergePullRequest() sdkgo.Mutation[PullRequestActionInput, PullRequest]
+	DeclinePullRequest() sdkgo.Mutation[PullRequestActionInput, PullRequest]
 	CreateRepository() sdkgo.Mutation[CreateRepositoryInput, Repository]
 	UpdateRepository() sdkgo.Mutation[UpdateRepositoryInput, Repository]
 	DeleteRepository() sdkgo.Mutation[DeleteRepositoryInput, DeletedRepository]
@@ -52,6 +55,15 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreatePullRequest() sdkgo.Mutation[CreatePullRequestInput, PullRequest] {
+	return operations.client.CreatePullRequest()
+}
+func (operations clientOperations) MergePullRequest() sdkgo.Mutation[PullRequestActionInput, PullRequest] {
+	return operations.client.MergePullRequest()
+}
+func (operations clientOperations) DeclinePullRequest() sdkgo.Mutation[PullRequestActionInput, PullRequest] {
+	return operations.client.DeclinePullRequest()
+}
 func (operations clientOperations) CreateRepository() sdkgo.Mutation[CreateRepositoryInput, Repository] {
 	return operations.client.CreateRepository()
 }
@@ -214,6 +226,238 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+const CreatePullRequestBranchCreated sdkgo.BranchID = "created"
+const CreatePullRequestBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreatePullRequestBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreatePullRequestBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreatePullRequestDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createPullRequest"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreatePullRequestBranchCreated, Description: "Bitbucket created the pull request."},
+		{ID: CreatePullRequestBranchProviderRejected, Description: "Bitbucket conclusively rejected the request.", Optional: true},
+		{ID: CreatePullRequestBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreatePullRequestBranchUncertain, Description: "An earlier creation could not be confirmed.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreatePullRequestResult = sdkgo.MutationResult[PullRequest]
+
+type CreatePullRequestStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=bitbucket"`
+	operationID                       struct{}                                          `connector:"operationId=createPullRequest"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreatePullRequestInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreatePullRequestResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreatePullRequestResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreatePullRequestResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreatePullRequestResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PullRequest]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreatePullRequestStep[IN any](config CreatePullRequestStepConfig[IN]) sdkgo.MutationStep[IN, CreatePullRequestInput, PullRequest] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreatePullRequestInput, PullRequest]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreatePullRequest(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreatePullRequestResult] {
+			branches := make([]sdkgo.BranchTarget[CreatePullRequestResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreatePullRequestBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreatePullRequestBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreatePullRequestBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreatePullRequestBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const MergePullRequestBranchMerged sdkgo.BranchID = "merged"
+const MergePullRequestBranchNotFound sdkgo.BranchID = "notFound"
+const MergePullRequestBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const MergePullRequestBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const MergePullRequestBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var MergePullRequestDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "mergePullRequest"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: MergePullRequestBranchMerged, Description: "Bitbucket returned a merged pull request."},
+		{ID: MergePullRequestBranchNotFound, Description: "The pull request does not exist or is not visible.", Optional: true},
+		{ID: MergePullRequestBranchProviderRejected, Description: "Bitbucket conclusively rejected merging.", Optional: true},
+		{ID: MergePullRequestBranchInvalidResponse, Description: "Bitbucket returned malformed or oversized JSON.", Optional: true},
+		{ID: MergePullRequestBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type MergePullRequestResult = sdkgo.MutationResult[PullRequest]
+
+type MergePullRequestStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=bitbucket"`
+	operationID                       struct{}                                          `connector:"operationId=mergePullRequest"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) PullRequestActionInput                   `connector:"mapToOperationInput"`
+	Merged                            sdkgo.Target[MergePullRequestResult]              `connector:"branch=merged"`
+	NotFound                          sdkgo.Target[MergePullRequestResult]              `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[MergePullRequestResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[MergePullRequestResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[MergePullRequestResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PullRequest]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewMergePullRequestStep[IN any](config MergePullRequestStepConfig[IN]) sdkgo.MutationStep[IN, PullRequestActionInput, PullRequest] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PullRequestActionInput, PullRequest]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.MergePullRequest(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[MergePullRequestResult] {
+			branches := make([]sdkgo.BranchTarget[MergePullRequestResult], 0, 5)
+			if config.Merged.HasStep() {
+				branches = append(branches, config.Merged.BranchTarget(MergePullRequestBranchMerged))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(MergePullRequestBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(MergePullRequestBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(MergePullRequestBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(MergePullRequestBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeclinePullRequestBranchDeclined sdkgo.BranchID = "declined"
+const DeclinePullRequestBranchNotFound sdkgo.BranchID = "notFound"
+const DeclinePullRequestBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeclinePullRequestBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeclinePullRequestBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeclinePullRequestDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "declinePullRequest"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeclinePullRequestBranchDeclined, Description: "Bitbucket returned a declined pull request."},
+		{ID: DeclinePullRequestBranchNotFound, Description: "The pull request does not exist or is not visible.", Optional: true},
+		{ID: DeclinePullRequestBranchProviderRejected, Description: "Bitbucket conclusively rejected declining.", Optional: true},
+		{ID: DeclinePullRequestBranchInvalidResponse, Description: "Bitbucket returned malformed or oversized JSON.", Optional: true},
+		{ID: DeclinePullRequestBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeclinePullRequestResult = sdkgo.MutationResult[PullRequest]
+
+type DeclinePullRequestStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=bitbucket"`
+	operationID                       struct{}                                          `connector:"operationId=declinePullRequest"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) PullRequestActionInput                   `connector:"mapToOperationInput"`
+	Declined                          sdkgo.Target[DeclinePullRequestResult]            `connector:"branch=declined"`
+	NotFound                          sdkgo.Target[DeclinePullRequestResult]            `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeclinePullRequestResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeclinePullRequestResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeclinePullRequestResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PullRequest]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeclinePullRequestStep[IN any](config DeclinePullRequestStepConfig[IN]) sdkgo.MutationStep[IN, PullRequestActionInput, PullRequest] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PullRequestActionInput, PullRequest]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeclinePullRequest(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeclinePullRequestResult] {
+			branches := make([]sdkgo.BranchTarget[DeclinePullRequestResult], 0, 5)
+			if config.Declined.HasStep() {
+				branches = append(branches, config.Declined.BranchTarget(DeclinePullRequestBranchDeclined))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeclinePullRequestBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeclinePullRequestBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeclinePullRequestBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeclinePullRequestBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const CreateRepositoryBranchCreated sdkgo.BranchID = "created"
 const CreateRepositoryBranchNotFound sdkgo.BranchID = "notFound"
 const CreateRepositoryBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -234,6 +478,7 @@ var CreateRepositoryDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type CreateRepositoryResult = sdkgo.MutationResult[Repository]
@@ -311,6 +556,7 @@ var UpdateRepositoryDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateRepositoryResult = sdkgo.MutationResult[Repository]
@@ -388,6 +634,7 @@ var DeleteRepositoryDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteRepositoryResult = sdkgo.MutationResult[DeletedRepository]
@@ -619,6 +866,7 @@ var UpdatePullRequestTitleDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdatePullRequestTitleResult = sdkgo.MutationResult[PullRequest]

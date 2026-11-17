@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: bitbucket
   displayName: Bitbucket
-  description: "Create, read, update, and delete repositories; read pull requests and update their titles through typed Dex Steps."
+  description: "Manage repositories and pull requests through typed Dex Steps."
   company: Atlassian
   categories: [developer-tools]
   version: v0.3.0
@@ -54,7 +54,70 @@ spec:
         - "Workspace access tokens require Bitbucket Premium. In https://bitbucket.org open the workspace, choose Settings > Workspace settings > Security > Access tokens > Create access token, grant Repositories Read/Write/Admin/Delete for repository actions and Pull requests Read/Write for PR actions, then copy the one-time opaque token into access_token. The token is secret and Dex stores it only in this credential field."
         - "Set baseUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
         - "Find the workspace slug in the Bitbucket workspace URL and repository slug in the repository URL. For creation, choose a unique non-secret slug, a display name, and an explicit private/public setting; blank slugs or names are invalid. Bitbucket uses git and assigns its oldest workspace project when none is selected. Repository delete needs the Repositories Delete token permission."
+        - "For pull requests, open https://bitbucket.org > workspace > repository > Branches to find source and destination branch names; supply both non-secret names and a non-blank title. Find the positive pull request ID at repository > Pull requests > selected pull request, in its URL. Blank branch names or IDs are invalid. Pull requests Write permits creation, merge, and decline."
   operations:
+    - name: createPullRequest
+      goName: CreatePullRequest
+      inputType: CreatePullRequestInput
+      outputType: PullRequest
+      kind: mutation
+      description: Create a pull request between two branches of one repository.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Bitbucket created the pull request.}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: An earlier creation could not be confirmed., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A new open pull request is returned.
+          output: {id: 8, title: Add client tests, state: OPEN}
+    - name: mergePullRequest
+      goName: MergePullRequest
+      inputType: PullRequestActionInput
+      outputType: PullRequest
+      kind: mutation
+      description: Merge an open pull request into its destination branch.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: merged, goName: Merged, description: Bitbucket returned a merged pull request.}
+        - {id: notFound, goName: NotFound, description: The pull request does not exist or is not visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected merging., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: mergedDefault
+          branch: merged
+          default: true
+          description: The pull request is merged.
+          output: {id: 7, title: Add client tests, state: MERGED}
+    - name: declinePullRequest
+      goName: DeclinePullRequest
+      inputType: PullRequestActionInput
+      outputType: PullRequest
+      kind: mutation
+      description: Decline an open pull request.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: declined, goName: Declined, description: Bitbucket returned a declined pull request.}
+        - {id: notFound, goName: NotFound, description: The pull request does not exist or is not visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected declining., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bitbucket returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: declinedDefault
+          branch: declined
+          default: true
+          description: The pull request is declined.
+          output: {id: 7, title: Add client tests, state: DECLINED}
     - name: createRepository
       goName: CreateRepository
       inputType: CreateRepositoryInput

@@ -2,6 +2,1101 @@
   "connector": "bitbucket",
   "scenarios": [
     {
+      "callId": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/decline",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "declinePullRequest-notFound",
+      "operation": "declinePullRequest"
+    },
+    {
+      "callId": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/decline",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "declinePullRequest-rejected",
+      "operation": "declinePullRequest"
+    },
+    {
+      "callId": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/decline",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "declinePullRequest-invalidResponse",
+      "operation": "declinePullRequest"
+    },
+    {
+      "callId": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/decline",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "declinePullRequest-rateLimited",
+      "operation": "declinePullRequest"
+    },
+    {
+      "callId": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/decline",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "declinePullRequest-unavailable",
+      "operation": "declinePullRequest"
+    },
+    {
+      "callId": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/decline",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "declinePullRequest-transportFailure",
+      "operation": "declinePullRequest"
+    },
+    {
+      "callId": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/decline",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":7,\"title\":\"Add client tests\",\"state\":\"DECLINED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "declined",
+        "failureKind": "",
+        "output": {
+          "id": 7,
+          "state": "DECLINED",
+          "title": "Add client tests"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "declinePullRequest-conflictConfirmed",
+      "operation": "declinePullRequest"
+    },
+    {
+      "callId": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "input": {
+        "pullRequestId": 0,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "declinePullRequest-defect",
+      "operation": "declinePullRequest"
+    },
+    {
+      "callId": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/merge",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "mergePullRequest-notFound",
+      "operation": "mergePullRequest"
+    },
+    {
+      "callId": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/merge",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "mergePullRequest-rejected",
+      "operation": "mergePullRequest"
+    },
+    {
+      "callId": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/merge",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "mergePullRequest-invalidResponse",
+      "operation": "mergePullRequest"
+    },
+    {
+      "callId": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/merge",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "mergePullRequest-rateLimited",
+      "operation": "mergePullRequest"
+    },
+    {
+      "callId": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/merge",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "mergePullRequest-unavailable",
+      "operation": "mergePullRequest"
+    },
+    {
+      "callId": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/merge",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "mergePullRequest-transportFailure",
+      "operation": "mergePullRequest"
+    },
+    {
+      "callId": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/merge",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":7,\"title\":\"Add client tests\",\"state\":\"MERGED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "merged",
+        "failureKind": "",
+        "output": {
+          "id": 7,
+          "state": "MERGED",
+          "title": "Add client tests"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "mergePullRequest-conflictConfirmed",
+      "operation": "mergePullRequest"
+    },
+    {
+      "callId": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "input": {
+        "pullRequestId": 0,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "mergePullRequest-defect",
+      "operation": "mergePullRequest"
+    },
+    {
+      "callId": "7995d08a-01ea-5f1e-a920-54526681db55",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests",
+          "requestBody": {
+            "destination": {
+              "branch": {
+                "name": "main"
+              }
+            },
+            "source": {
+              "branch": {
+                "name": "feature/tests"
+              }
+            },
+            "title": "Add client tests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7995d08a-01ea-5f1e-a920-54526681db55",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7995d08a-01ea-5f1e-a920-54526681db55",
+      "input": {
+        "destinationBranch": "main",
+        "repository": "api",
+        "sourceBranch": "feature/tests",
+        "title": "Add client tests",
+        "workspace": "meridian"
+      },
+      "name": "createPullRequest-rejected",
+      "operation": "createPullRequest"
+    },
+    {
+      "callId": "7995d08a-01ea-5f1e-a920-54526681db55",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests",
+          "requestBody": {
+            "destination": {
+              "branch": {
+                "name": "main"
+              }
+            },
+            "source": {
+              "branch": {
+                "name": "feature/tests"
+              }
+            },
+            "title": "Add client tests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7995d08a-01ea-5f1e-a920-54526681db55",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7995d08a-01ea-5f1e-a920-54526681db55",
+      "input": {
+        "destinationBranch": "main",
+        "repository": "api",
+        "sourceBranch": "feature/tests",
+        "title": "Add client tests",
+        "workspace": "meridian"
+      },
+      "name": "createPullRequest-rateLimited",
+      "operation": "createPullRequest"
+    },
+    {
+      "callId": "7995d08a-01ea-5f1e-a920-54526681db55",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests",
+          "requestBody": {
+            "destination": {
+              "branch": {
+                "name": "main"
+              }
+            },
+            "source": {
+              "branch": {
+                "name": "feature/tests"
+              }
+            },
+            "title": "Add client tests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7995d08a-01ea-5f1e-a920-54526681db55",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7995d08a-01ea-5f1e-a920-54526681db55",
+      "input": {
+        "destinationBranch": "main",
+        "repository": "api",
+        "sourceBranch": "feature/tests",
+        "title": "Add client tests",
+        "workspace": "meridian"
+      },
+      "name": "createPullRequest-unavailable",
+      "operation": "createPullRequest"
+    },
+    {
+      "callId": "7995d08a-01ea-5f1e-a920-54526681db55",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests",
+          "requestBody": {
+            "destination": {
+              "branch": {
+                "name": "main"
+              }
+            },
+            "source": {
+              "branch": {
+                "name": "feature/tests"
+              }
+            },
+            "title": "Add client tests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7995d08a-01ea-5f1e-a920-54526681db55",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7995d08a-01ea-5f1e-a920-54526681db55",
+      "input": {
+        "destinationBranch": "main",
+        "repository": "api",
+        "sourceBranch": "feature/tests",
+        "title": "Add client tests",
+        "workspace": "meridian"
+      },
+      "name": "createPullRequest-transportFailure",
+      "operation": "createPullRequest"
+    },
+    {
+      "callId": "7995d08a-01ea-5f1e-a920-54526681db55",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7995d08a-01ea-5f1e-a920-54526681db55",
+      "input": {
+        "destinationBranch": "main",
+        "repository": "api",
+        "sourceBranch": "feature/tests",
+        "title": "Add client tests",
+        "workspace": "meridian"
+      },
+      "name": "createPullRequest-uncertain",
+      "operation": "createPullRequest",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "7995d08a-01ea-5f1e-a920-54526681db55",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "7995d08a-01ea-5f1e-a920-54526681db55",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7995d08a-01ea-5f1e-a920-54526681db55",
+      "input": {
+        "destinationBranch": "main",
+        "repository": "api",
+        "sourceBranch": "main",
+        "title": "Add client tests",
+        "workspace": "meridian"
+      },
+      "name": "createPullRequest-defect",
+      "operation": "createPullRequest"
+    },
+    {
+      "callId": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "exchanges": [
+        {
+          "body": "{\"id\":7,\"title\":\"Add client tests\",\"state\":\"MERGED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/merge",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "merged",
+        "failureKind": "",
+        "output": {
+          "id": 7,
+          "state": "MERGED",
+          "title": "Add client tests"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "mergePullRequest-merged",
+      "operation": "mergePullRequest"
+    },
+    {
+      "callId": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "exchanges": [
+        {
+          "body": "{\"id\":7,\"title\":\"Add client tests\",\"state\":\"DECLINED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests/7/decline",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "declined",
+        "failureKind": "",
+        "output": {
+          "id": 7,
+          "state": "DECLINED",
+          "title": "Add client tests"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
+      "input": {
+        "pullRequestId": 7,
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "declinePullRequest-declined",
+      "operation": "declinePullRequest"
+    },
+    {
+      "callId": "7995d08a-01ea-5f1e-a920-54526681db55",
+      "exchanges": [
+        {
+          "body": "{\"id\":8,\"title\":\"Add client tests\",\"state\":\"OPEN\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/pullrequests",
+          "requestBody": {
+            "destination": {
+              "branch": {
+                "name": "main"
+              }
+            },
+            "source": {
+              "branch": {
+                "name": "feature/tests"
+              }
+            },
+            "title": "Add client tests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7995d08a-01ea-5f1e-a920-54526681db55",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 8,
+          "state": "OPEN",
+          "title": "Add client tests"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7995d08a-01ea-5f1e-a920-54526681db55",
+      "input": {
+        "destinationBranch": "main",
+        "repository": "api",
+        "sourceBranch": "feature/tests",
+        "title": "Add client tests",
+        "workspace": "meridian"
+      },
+      "name": "createPullRequest-created",
+      "operation": "createPullRequest"
+    },
+    {
       "callId": "20fc3548-f017-507f-934c-0caeefc57cf9",
       "exchanges": [
         {

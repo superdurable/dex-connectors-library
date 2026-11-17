@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createPullRequest/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequest](`{"id":8,"title":"Add client tests","state":"OPEN"}`)
+			return err
+		}},
+		{name: "mergePullRequest/mergedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequest](`{"id":7,"title":"Add client tests","state":"MERGED"}`)
+			return err
+		}},
+		{name: "declinePullRequest/declinedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.PullRequest](`{"id":7,"title":"Add client tests","state":"DECLINED"}`)
+			return err
+		}},
 		{name: "createRepository/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[bitbucket.Repository](`{"uuid":"{a1b2c3d4-1234-4567-89ab-1234567890ab}","name":"Meridian API","full_name":"meridian/api","is_private":true}`)
 			return err
@@ -58,6 +70,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreatePullRequest().Definition().Operation.OperationID != "createPullRequest" {
+		t.Errorf("createPullRequest mock has another definition")
+	}
+	if mock.MergePullRequest().Definition().Operation.OperationID != "mergePullRequest" {
+		t.Errorf("mergePullRequest mock has another definition")
+	}
+	if mock.DeclinePullRequest().Definition().Operation.OperationID != "declinePullRequest" {
+		t.Errorf("declinePullRequest mock has another definition")
+	}
 	if mock.CreateRepository().Definition().Operation.OperationID != "createRepository" {
 		t.Errorf("createRepository mock has another definition")
 	}

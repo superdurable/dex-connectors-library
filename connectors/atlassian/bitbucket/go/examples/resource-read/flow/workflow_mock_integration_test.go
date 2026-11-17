@@ -112,6 +112,49 @@ func TestRepositoryCreateUsesManifestMockWithRealDex(t *testing.T) {
 	require.Equal(t, input, calls[0].Input)
 	require.Equal(t, bitbucket.CreateRepositoryBranchCreated, calls[0].Branch)
 }
+
+func TestPullRequestCreateUsesManifestMockWithRealDex(t *testing.T) {
+	mock := bitbucketmock.New(t, ConnectionName)
+	flow := NewPullRequestCreateFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
+	if serverAddress == "" {
+		serverAddress = "127.0.0.1:8801"
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(ctx), <-workerResult, client.Close(), cache.Close()))
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+	flowID := "bitbucket-pr-create-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	input := bitbucket.CreatePullRequestInput{Workspace: "meridian", Repository: "api", Title: "Add client tests", SourceBranch: "feature/tests", DestinationBranch: "main"}
+	_, err = client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var output bitbucket.PullRequest
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Equal(t, input.Title, output.Title)
+	require.Equal(t, "OPEN", output.State)
+	calls := mock.CreatePullRequest().Calls()
+	require.Len(t, calls, 1)
+	require.Equal(t, input, calls[0].Input)
+	require.Equal(t, bitbucket.CreatePullRequestBranchCreated, calls[0].Branch)
+}
+
 func TestPullRequestTitleUsesManifestMockWithRealDex(t *testing.T) {
 	mock := bitbucketmock.New(t, ConnectionName)
 	flow := NewPullRequestTitleFlow(mock.Connection())
