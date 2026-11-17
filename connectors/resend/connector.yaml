@@ -740,6 +740,88 @@ spec:
     execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: getContactImportDefault, branch: found, default: true, description: Resend returned contact import status., output: {"id":"import-1","status":"completed","created_at":"2026-11-01T00:00:00Z"}}
+  - name: createContactProperty
+    goName: CreateContactProperty
+    inputType: CreateContactPropertyInput
+    outputType: ContactPropertyReference
+    kind: mutation
+    description: Create Contact Property through the Resend Contact Properties API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend created the contact property.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createContactPropertyDefault, branch: created, default: true, description: Resend created the contact property., output: {"id":"property-1"}}
+  - name: getContactProperty
+    goName: GetContactProperty
+    inputType: GetContactPropertyInput
+    outputType: ContactProperty
+    kind: query
+    description: Get Contact Property through the Resend Contact Properties API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend found the contact property.}
+    - {id: notFound, goName: NotFound, description: The property does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getContactPropertyDefault, branch: found, default: true, description: Resend found the contact property., output: {"id":"property-1","key":"company_name","type":"string","fallback_value":"Acme"}}
+  - name: listContactProperties
+    goName: ListContactProperties
+    inputType: ListContactPropertiesInput
+    outputType: ContactPropertyPage
+    kind: query
+    description: List Contact Properties through the Resend Contact Properties API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the contact property.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listContactPropertiesDefault, branch: listed, default: true, description: Resend listed the contact property., output: {"data":[{"id":"property-1","key":"company_name","type":"string","fallback_value":"Acme"}],"has_more":false}}
+  - name: updateContactProperty
+    goName: UpdateContactProperty
+    inputType: UpdateContactPropertyInput
+    outputType: ContactPropertyReference
+    kind: mutation
+    description: Update Contact Property through the Resend Contact Properties API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the contact property.}
+    - {id: notFound, goName: NotFound, description: The property does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateContactPropertyDefault, branch: updated, default: true, description: Resend updated the contact property., output: {"id":"property-1"}}
+  - name: deleteContactProperty
+    goName: DeleteContactProperty
+    inputType: DeleteContactPropertyInput
+    outputType: DeletedContactProperty
+    kind: mutation
+    description: Delete Contact Property through the Resend Contact Properties API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend deleted the contact property.}
+    - {id: notFound, goName: NotFound, description: The property does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteContactPropertyDefault, branch: deleted, default: true, description: Resend deleted the contact property., output: {"id":"property-1","deleted":true}}
   - name: getContact
     goName: GetContact
     inputType: GetContactInput

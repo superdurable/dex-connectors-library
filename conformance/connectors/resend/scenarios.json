@@ -15861,6 +15861,1907 @@
       },
       "name": "getContactImport-transport",
       "operation": "getContactImport"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"property-1\",\"key\":\"company_name\",\"type\":\"string\",\"fallback_value\":\"Acme\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties/property-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fallback_value": "Acme",
+          "id": "property-1",
+          "key": "company_name",
+          "type": "string"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "property-1"
+      },
+      "name": "getContactProperty-success",
+      "operation": "getContactProperty"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties/property-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fallback_value": null,
+          "id": "",
+          "key": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "property-1"
+      },
+      "name": "getContactProperty-missing",
+      "operation": "getContactProperty"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties/property-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "fallback_value": null,
+          "id": "",
+          "key": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "property-1"
+      },
+      "name": "getContactProperty-rejected",
+      "operation": "getContactProperty"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"property-1\",\"key\":\"company_name\",\"type\":\"string\",\"fallback_value\":\"Acme\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties/property-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fallback_value": "Acme",
+          "id": "property-1",
+          "key": "company_name",
+          "type": "string"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "property-1"
+      },
+      "name": "getContactProperty-invalid",
+      "operation": "getContactProperty"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fallback_value": null,
+          "id": "",
+          "key": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getContactProperty-defect",
+      "operation": "getContactProperty"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties/property-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "property-1"
+      },
+      "name": "getContactProperty-rate",
+      "operation": "getContactProperty"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties/property-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "property-1"
+      },
+      "name": "getContactProperty-server",
+      "operation": "getContactProperty"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties/property-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "property-1"
+      },
+      "name": "getContactProperty-transport",
+      "operation": "getContactProperty"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"property-1\",\"key\":\"company_name\",\"type\":\"string\",\"fallback_value\":\"Acme\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties",
+          "query": {
+            "after": [
+              "property-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "fallback_value": "Acme",
+              "id": "property-1",
+              "key": "company_name",
+              "type": "string"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "property-0",
+        "limit": 10
+      },
+      "name": "listContactProperties-success",
+      "operation": "listContactProperties"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties",
+          "query": {
+            "after": [
+              "property-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "property-0",
+        "limit": 10
+      },
+      "name": "listContactProperties-rejected",
+      "operation": "listContactProperties"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"property-1\",\"key\":\"company_name\",\"type\":\"string\",\"fallback_value\":\"Acme\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties",
+          "query": {
+            "after": [
+              "property-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "fallback_value": "Acme",
+              "id": "property-1",
+              "key": "company_name",
+              "type": "string"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "property-0",
+        "limit": 10
+      },
+      "name": "listContactProperties-invalid",
+      "operation": "listContactProperties"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "property-0",
+        "limit": 101
+      },
+      "name": "listContactProperties-defect",
+      "operation": "listContactProperties"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties",
+          "query": {
+            "after": [
+              "property-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "property-0",
+        "limit": 10
+      },
+      "name": "listContactProperties-rate",
+      "operation": "listContactProperties"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties",
+          "query": {
+            "after": [
+              "property-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "property-0",
+        "limit": 10
+      },
+      "name": "listContactProperties-server",
+      "operation": "listContactProperties"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties",
+          "query": {
+            "after": [
+              "property-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "property-0",
+        "limit": 10
+      },
+      "name": "listContactProperties-transport",
+      "operation": "listContactProperties"
+    },
+    {
+      "callId": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"property-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contact-properties/property-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "property-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "input": {
+        "id": "property-1"
+      },
+      "name": "deleteContactProperty-success",
+      "operation": "deleteContactProperty"
+    },
+    {
+      "callId": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contact-properties/property-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "input": {
+        "id": "property-1"
+      },
+      "name": "deleteContactProperty-notFound",
+      "operation": "deleteContactProperty"
+    },
+    {
+      "callId": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contact-properties/property-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "input": {
+        "id": "property-1"
+      },
+      "name": "deleteContactProperty-rejected",
+      "operation": "deleteContactProperty"
+    },
+    {
+      "callId": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"property-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contact-properties/property-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "property-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "input": {
+        "id": "property-1"
+      },
+      "name": "deleteContactProperty-invalid",
+      "operation": "deleteContactProperty"
+    },
+    {
+      "callId": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contact-properties/property-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "input": {
+        "id": "property-1"
+      },
+      "name": "deleteContactProperty-429",
+      "operation": "deleteContactProperty"
+    },
+    {
+      "callId": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contact-properties/property-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "input": {
+        "id": "property-1"
+      },
+      "name": "deleteContactProperty-5xx",
+      "operation": "deleteContactProperty"
+    },
+    {
+      "callId": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contact-properties/property-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "input": {
+        "id": "property-1"
+      },
+      "name": "deleteContactProperty-transport",
+      "operation": "deleteContactProperty"
+    },
+    {
+      "callId": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d38e76-5c78-5b75-9f0a-845facffa7e5",
+      "input": {
+        "id": ""
+      },
+      "name": "deleteContactProperty-defect",
+      "operation": "deleteContactProperty"
+    },
+    {
+      "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"property-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact-properties",
+          "requestBody": {
+            "fallback_value": "Acme",
+            "key": "company_name",
+            "type": "string"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "property-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "input": {
+        "fallbackValue": "Acme",
+        "key": "company_name",
+        "type": "string"
+      },
+      "name": "createContactProperty-success",
+      "operation": "createContactProperty"
+    },
+    {
+      "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact-properties",
+          "requestBody": {
+            "fallback_value": "Acme",
+            "key": "company_name",
+            "type": "string"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "input": {
+        "fallbackValue": "Acme",
+        "key": "company_name",
+        "type": "string"
+      },
+      "name": "createContactProperty-rejected",
+      "operation": "createContactProperty"
+    },
+    {
+      "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact-properties",
+          "requestBody": {
+            "fallback_value": "Acme",
+            "key": "company_name",
+            "type": "string"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "input": {
+        "fallbackValue": "Acme",
+        "key": "company_name",
+        "type": "string"
+      },
+      "name": "createContactProperty-429",
+      "operation": "createContactProperty"
+    },
+    {
+      "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact-properties",
+          "requestBody": {
+            "fallback_value": "Acme",
+            "key": "company_name",
+            "type": "string"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "input": {
+        "fallbackValue": "Acme",
+        "key": "company_name",
+        "type": "string"
+      },
+      "name": "createContactProperty-5xx",
+      "operation": "createContactProperty"
+    },
+    {
+      "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact-properties",
+          "requestBody": {
+            "fallback_value": "Acme",
+            "key": "company_name",
+            "type": "string"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "input": {
+        "fallbackValue": "Acme",
+        "key": "company_name",
+        "type": "string"
+      },
+      "name": "createContactProperty-transport",
+      "operation": "createContactProperty"
+    },
+    {
+      "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "input": {
+        "fallbackValue": "Acme",
+        "key": "",
+        "type": "string"
+      },
+      "name": "createContactProperty-defect",
+      "operation": "createContactProperty"
+    },
+    {
+      "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact-properties",
+          "requestBody": {
+            "fallback_value": "Acme",
+            "key": "company_name",
+            "type": "string"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "input": {
+        "fallbackValue": "Acme",
+        "key": "company_name",
+        "type": "string"
+      },
+      "name": "createContactProperty-conflict",
+      "operation": "createContactProperty"
+    },
+    {
+      "attempts": 2,
+      "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact-properties",
+          "requestBody": {
+            "fallback_value": "Acme",
+            "key": "company_name",
+            "type": "string"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"property-1\",\"key\":\"company_name\",\"type\":\"string\",\"fallback_value\":\"Acme\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "property-1"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "input": {
+        "fallbackValue": "Acme",
+        "key": "company_name",
+        "type": "string"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createContactProperty-retry-readback",
+      "operation": "createContactProperty"
+    },
+    {
+      "attempts": 3,
+      "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact-properties",
+          "requestBody": {
+            "fallback_value": "Acme",
+            "key": "company_name",
+            "type": "string"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact-properties",
+          "requestBody": {
+            "fallback_value": "Acme",
+            "key": "company_name",
+            "type": "string"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contact-properties",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact-properties",
+          "requestBody": {
+            "fallback_value": "Acme",
+            "key": "company_name",
+            "type": "string"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+      "input": {
+        "fallbackValue": "Acme",
+        "key": "company_name",
+        "type": "string"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createContactProperty-send-cap",
+      "operation": "createContactProperty"
+    },
+    {
+      "callId": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"property-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contact-properties/property-1",
+          "requestBody": {
+            "fallback_value": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "property-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "input": {
+        "fallbackValue": "Example",
+        "id": "property-1"
+      },
+      "name": "updateContactProperty-success",
+      "operation": "updateContactProperty"
+    },
+    {
+      "callId": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contact-properties/property-1",
+          "requestBody": {
+            "fallback_value": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "input": {
+        "fallbackValue": "Example",
+        "id": "property-1"
+      },
+      "name": "updateContactProperty-notFound",
+      "operation": "updateContactProperty"
+    },
+    {
+      "callId": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contact-properties/property-1",
+          "requestBody": {
+            "fallback_value": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "input": {
+        "fallbackValue": "Example",
+        "id": "property-1"
+      },
+      "name": "updateContactProperty-providerRejected",
+      "operation": "updateContactProperty"
+    },
+    {
+      "callId": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"property-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contact-properties/property-1",
+          "requestBody": {
+            "fallback_value": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "property-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "input": {
+        "fallbackValue": "Example",
+        "id": "property-1"
+      },
+      "name": "updateContactProperty-invalidResponse",
+      "operation": "updateContactProperty"
+    },
+    {
+      "callId": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "input": {
+        "fallbackValue": "Example",
+        "id": ""
+      },
+      "name": "updateContactProperty-defect",
+      "operation": "updateContactProperty"
+    },
+    {
+      "callId": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contact-properties/property-1",
+          "requestBody": {
+            "fallback_value": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "input": {
+        "fallbackValue": "Example",
+        "id": "property-1"
+      },
+      "name": "updateContactProperty-429",
+      "operation": "updateContactProperty"
+    },
+    {
+      "callId": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contact-properties/property-1",
+          "requestBody": {
+            "fallback_value": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "input": {
+        "fallbackValue": "Example",
+        "id": "property-1"
+      },
+      "name": "updateContactProperty-5xx",
+      "operation": "updateContactProperty"
+    },
+    {
+      "callId": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contact-properties/property-1",
+          "requestBody": {
+            "fallback_value": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47022920-0f0b-545f-8e7e-87862f693b3d",
+      "input": {
+        "fallbackValue": "Example",
+        "id": "property-1"
+      },
+      "name": "updateContactProperty-transport",
+      "operation": "updateContactProperty"
     }
   ],
   "schemaVersion": 1

@@ -56,6 +56,11 @@ type Mock struct {
 	updateContactTopics          *connectormock.Mutation[resend.UpdateContactTopicsInput, resend.UpdatedContactTopics]
 	listContactImports           *connectormock.Query[resend.ListContactImportsInput, resend.ContactImportPage]
 	getContactImport             *connectormock.Query[resend.GetContactImportInput, resend.ContactImport]
+	createContactProperty        *connectormock.Mutation[resend.CreateContactPropertyInput, resend.ContactPropertyReference]
+	getContactProperty           *connectormock.Query[resend.GetContactPropertyInput, resend.ContactProperty]
+	listContactProperties        *connectormock.Query[resend.ListContactPropertiesInput, resend.ContactPropertyPage]
+	updateContactProperty        *connectormock.Mutation[resend.UpdateContactPropertyInput, resend.ContactPropertyReference]
+	deleteContactProperty        *connectormock.Mutation[resend.DeleteContactPropertyInput, resend.DeletedContactProperty]
 	getContact                   *connectormock.Query[resend.GetContactInput, resend.Contact]
 	listContacts                 *connectormock.Query[resend.ListContactsInput, resend.ContactPage]
 	getDomain                    *connectormock.Query[resend.GetDomainInput, resend.Domain]
@@ -105,6 +110,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateContactTopics:          connectormock.NewMutation[resend.UpdateContactTopicsInput, resend.UpdatedContactTopics](t, resend.UpdateContactTopicsDefinition),
 		listContactImports:           connectormock.NewQuery[resend.ListContactImportsInput, resend.ContactImportPage](t, resend.ListContactImportsDefinition),
 		getContactImport:             connectormock.NewQuery[resend.GetContactImportInput, resend.ContactImport](t, resend.GetContactImportDefinition),
+		createContactProperty:        connectormock.NewMutation[resend.CreateContactPropertyInput, resend.ContactPropertyReference](t, resend.CreateContactPropertyDefinition),
+		getContactProperty:           connectormock.NewQuery[resend.GetContactPropertyInput, resend.ContactProperty](t, resend.GetContactPropertyDefinition),
+		listContactProperties:        connectormock.NewQuery[resend.ListContactPropertiesInput, resend.ContactPropertyPage](t, resend.ListContactPropertiesDefinition),
+		updateContactProperty:        connectormock.NewMutation[resend.UpdateContactPropertyInput, resend.ContactPropertyReference](t, resend.UpdateContactPropertyDefinition),
+		deleteContactProperty:        connectormock.NewMutation[resend.DeleteContactPropertyInput, resend.DeletedContactProperty](t, resend.DeleteContactPropertyDefinition),
 		getContact:                   connectormock.NewQuery[resend.GetContactInput, resend.Contact](t, resend.GetContactDefinition),
 		listContacts:                 connectormock.NewQuery[resend.ListContactsInput, resend.ContactPage](t, resend.ListContactsDefinition),
 		getDomain:                    connectormock.NewQuery[resend.GetDomainInput, resend.Domain](t, resend.GetDomainDefinition),
@@ -148,6 +158,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.updateContactTopics.Default(UpdateContactTopicsDefault())
 	mock.listContactImports.Default(ListContactImportsDefault())
 	mock.getContactImport.Default(GetContactImportDefault())
+	mock.createContactProperty.Default(CreateContactPropertyDefault())
+	mock.getContactProperty.Default(GetContactPropertyDefault())
+	mock.listContactProperties.Default(ListContactPropertiesDefault())
+	mock.updateContactProperty.Default(UpdateContactPropertyDefault())
+	mock.deleteContactProperty.Default(DeleteContactPropertyDefault())
 	mock.getContact.Default(GetContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
 	mock.getDomain.Default(GetDomainDefault())
@@ -353,6 +368,31 @@ func (mock *Mock) GetContactImport() *connectormock.Query[resend.GetContactImpor
 	return mock.getContactImport
 }
 
+// CreateContactProperty returns the createContactProperty script.
+func (mock *Mock) CreateContactProperty() *connectormock.Mutation[resend.CreateContactPropertyInput, resend.ContactPropertyReference] {
+	return mock.createContactProperty
+}
+
+// GetContactProperty returns the getContactProperty script.
+func (mock *Mock) GetContactProperty() *connectormock.Query[resend.GetContactPropertyInput, resend.ContactProperty] {
+	return mock.getContactProperty
+}
+
+// ListContactProperties returns the listContactProperties script.
+func (mock *Mock) ListContactProperties() *connectormock.Query[resend.ListContactPropertiesInput, resend.ContactPropertyPage] {
+	return mock.listContactProperties
+}
+
+// UpdateContactProperty returns the updateContactProperty script.
+func (mock *Mock) UpdateContactProperty() *connectormock.Mutation[resend.UpdateContactPropertyInput, resend.ContactPropertyReference] {
+	return mock.updateContactProperty
+}
+
+// DeleteContactProperty returns the deleteContactProperty script.
+func (mock *Mock) DeleteContactProperty() *connectormock.Mutation[resend.DeleteContactPropertyInput, resend.DeletedContactProperty] {
+	return mock.deleteContactProperty
+}
+
 // GetContact returns the getContact script.
 func (mock *Mock) GetContact() *connectormock.Query[resend.GetContactInput, resend.Contact] {
 	return mock.getContact
@@ -488,6 +528,21 @@ func (operations mockOperations) ListContactImports() sdkgo.Query[resend.ListCon
 }
 func (operations mockOperations) GetContactImport() sdkgo.Query[resend.GetContactImportInput, resend.ContactImport] {
 	return operations.mock.getContactImport
+}
+func (operations mockOperations) CreateContactProperty() sdkgo.Mutation[resend.CreateContactPropertyInput, resend.ContactPropertyReference] {
+	return operations.mock.createContactProperty
+}
+func (operations mockOperations) GetContactProperty() sdkgo.Query[resend.GetContactPropertyInput, resend.ContactProperty] {
+	return operations.mock.getContactProperty
+}
+func (operations mockOperations) ListContactProperties() sdkgo.Query[resend.ListContactPropertiesInput, resend.ContactPropertyPage] {
+	return operations.mock.listContactProperties
+}
+func (operations mockOperations) UpdateContactProperty() sdkgo.Mutation[resend.UpdateContactPropertyInput, resend.ContactPropertyReference] {
+	return operations.mock.updateContactProperty
+}
+func (operations mockOperations) DeleteContactProperty() sdkgo.Mutation[resend.DeleteContactPropertyInput, resend.DeletedContactProperty] {
+	return operations.mock.deleteContactProperty
 }
 func (operations mockOperations) GetContact() sdkgo.Query[resend.GetContactInput, resend.Contact] {
 	return operations.mock.getContact
@@ -1956,6 +2011,196 @@ func GetContactImportGetContactImportDefault() connectormock.Case[resend.Contact
 // GetContactImportDefault is the manifest default, getContactImportDefault, which New installs.
 func GetContactImportDefault() connectormock.Case[resend.ContactImport] {
 	return GetContactImportGetContactImportDefault()
+}
+
+// CreateContactPropertyCreated selects the created branch: Resend created the contact property.
+func CreateContactPropertyCreated(value resend.ContactPropertyReference, failure *sdkgo.Failure) connectormock.Case[resend.ContactPropertyReference] {
+	return connectormock.Branch(resend.CreateContactPropertyBranchCreated, value, failure)
+}
+
+// CreateContactPropertyProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func CreateContactPropertyProviderRejected(value resend.ContactPropertyReference, failure *sdkgo.Failure) connectormock.Case[resend.ContactPropertyReference] {
+	return connectormock.Branch(resend.CreateContactPropertyBranchProviderRejected, value, failure)
+}
+
+// CreateContactPropertyDefect selects the defect branch: Local input or connection is invalid.
+func CreateContactPropertyDefect(value resend.ContactPropertyReference, failure *sdkgo.Failure) connectormock.Case[resend.ContactPropertyReference] {
+	return connectormock.Branch(resend.CreateContactPropertyBranchDefect, value, failure)
+}
+
+// CreateContactPropertyRetry asks Dex to retry the createContactProperty Step, after the delay when it is positive.
+func CreateContactPropertyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.ContactPropertyReference] {
+	return connectormock.Retry[resend.ContactPropertyReference](failure, after)
+}
+
+// CreateContactPropertyCreateContactPropertyDefault is the manifest mock createContactPropertyDefault: Resend created the contact property.
+func CreateContactPropertyCreateContactPropertyDefault() connectormock.Case[resend.ContactPropertyReference] {
+	value := connectormock.MustDecodeOutput[resend.ContactPropertyReference](`{"id":"property-1"}`)
+	return connectormock.Branch(resend.CreateContactPropertyBranchCreated, value, nil)
+}
+
+// CreateContactPropertyDefault is the manifest default, createContactPropertyDefault, which New installs.
+func CreateContactPropertyDefault() connectormock.Case[resend.ContactPropertyReference] {
+	return CreateContactPropertyCreateContactPropertyDefault()
+}
+
+// GetContactPropertyFound selects the found branch: Resend found the contact property.
+func GetContactPropertyFound(value resend.ContactProperty, failure *sdkgo.Failure) connectormock.Case[resend.ContactProperty] {
+	return connectormock.Branch(resend.GetContactPropertyBranchFound, value, failure)
+}
+
+// GetContactPropertyNotFound selects the notFound branch: The property does not exist.
+func GetContactPropertyNotFound(value resend.ContactProperty, failure *sdkgo.Failure) connectormock.Case[resend.ContactProperty] {
+	return connectormock.Branch(resend.GetContactPropertyBranchNotFound, value, failure)
+}
+
+// GetContactPropertyProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetContactPropertyProviderRejected(value resend.ContactProperty, failure *sdkgo.Failure) connectormock.Case[resend.ContactProperty] {
+	return connectormock.Branch(resend.GetContactPropertyBranchProviderRejected, value, failure)
+}
+
+// GetContactPropertyInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetContactPropertyInvalidResponse(value resend.ContactProperty, failure *sdkgo.Failure) connectormock.Case[resend.ContactProperty] {
+	return connectormock.Branch(resend.GetContactPropertyBranchInvalidResponse, value, failure)
+}
+
+// GetContactPropertyDefect selects the defect branch: Local input or connection is invalid.
+func GetContactPropertyDefect(value resend.ContactProperty, failure *sdkgo.Failure) connectormock.Case[resend.ContactProperty] {
+	return connectormock.Branch(resend.GetContactPropertyBranchDefect, value, failure)
+}
+
+// GetContactPropertyRetry asks Dex to retry the getContactProperty Step, after the delay when it is positive.
+func GetContactPropertyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.ContactProperty] {
+	return connectormock.Retry[resend.ContactProperty](failure, after)
+}
+
+// GetContactPropertyGetContactPropertyDefault is the manifest mock getContactPropertyDefault: Resend found the contact property.
+func GetContactPropertyGetContactPropertyDefault() connectormock.Case[resend.ContactProperty] {
+	value := connectormock.MustDecodeOutput[resend.ContactProperty](`{"id":"property-1","key":"company_name","type":"string","fallback_value":"Acme"}`)
+	return connectormock.Branch(resend.GetContactPropertyBranchFound, value, nil)
+}
+
+// GetContactPropertyDefault is the manifest default, getContactPropertyDefault, which New installs.
+func GetContactPropertyDefault() connectormock.Case[resend.ContactProperty] {
+	return GetContactPropertyGetContactPropertyDefault()
+}
+
+// ListContactPropertiesListed selects the listed branch: Resend listed the contact property.
+func ListContactPropertiesListed(value resend.ContactPropertyPage, failure *sdkgo.Failure) connectormock.Case[resend.ContactPropertyPage] {
+	return connectormock.Branch(resend.ListContactPropertiesBranchListed, value, failure)
+}
+
+// ListContactPropertiesProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListContactPropertiesProviderRejected(value resend.ContactPropertyPage, failure *sdkgo.Failure) connectormock.Case[resend.ContactPropertyPage] {
+	return connectormock.Branch(resend.ListContactPropertiesBranchProviderRejected, value, failure)
+}
+
+// ListContactPropertiesInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListContactPropertiesInvalidResponse(value resend.ContactPropertyPage, failure *sdkgo.Failure) connectormock.Case[resend.ContactPropertyPage] {
+	return connectormock.Branch(resend.ListContactPropertiesBranchInvalidResponse, value, failure)
+}
+
+// ListContactPropertiesDefect selects the defect branch: Local input or connection is invalid.
+func ListContactPropertiesDefect(value resend.ContactPropertyPage, failure *sdkgo.Failure) connectormock.Case[resend.ContactPropertyPage] {
+	return connectormock.Branch(resend.ListContactPropertiesBranchDefect, value, failure)
+}
+
+// ListContactPropertiesRetry asks Dex to retry the listContactProperties Step, after the delay when it is positive.
+func ListContactPropertiesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.ContactPropertyPage] {
+	return connectormock.Retry[resend.ContactPropertyPage](failure, after)
+}
+
+// ListContactPropertiesListContactPropertiesDefault is the manifest mock listContactPropertiesDefault: Resend listed the contact property.
+func ListContactPropertiesListContactPropertiesDefault() connectormock.Case[resend.ContactPropertyPage] {
+	value := connectormock.MustDecodeOutput[resend.ContactPropertyPage](`{"data":[{"id":"property-1","key":"company_name","type":"string","fallback_value":"Acme"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListContactPropertiesBranchListed, value, nil)
+}
+
+// ListContactPropertiesDefault is the manifest default, listContactPropertiesDefault, which New installs.
+func ListContactPropertiesDefault() connectormock.Case[resend.ContactPropertyPage] {
+	return ListContactPropertiesListContactPropertiesDefault()
+}
+
+// UpdateContactPropertyUpdated selects the updated branch: Resend updated the contact property.
+func UpdateContactPropertyUpdated(value resend.ContactPropertyReference, failure *sdkgo.Failure) connectormock.Case[resend.ContactPropertyReference] {
+	return connectormock.Branch(resend.UpdateContactPropertyBranchUpdated, value, failure)
+}
+
+// UpdateContactPropertyNotFound selects the notFound branch: The property does not exist.
+func UpdateContactPropertyNotFound(value resend.ContactPropertyReference, failure *sdkgo.Failure) connectormock.Case[resend.ContactPropertyReference] {
+	return connectormock.Branch(resend.UpdateContactPropertyBranchNotFound, value, failure)
+}
+
+// UpdateContactPropertyProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func UpdateContactPropertyProviderRejected(value resend.ContactPropertyReference, failure *sdkgo.Failure) connectormock.Case[resend.ContactPropertyReference] {
+	return connectormock.Branch(resend.UpdateContactPropertyBranchProviderRejected, value, failure)
+}
+
+// UpdateContactPropertyInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func UpdateContactPropertyInvalidResponse(value resend.ContactPropertyReference, failure *sdkgo.Failure) connectormock.Case[resend.ContactPropertyReference] {
+	return connectormock.Branch(resend.UpdateContactPropertyBranchInvalidResponse, value, failure)
+}
+
+// UpdateContactPropertyDefect selects the defect branch: Local input or connection is invalid.
+func UpdateContactPropertyDefect(value resend.ContactPropertyReference, failure *sdkgo.Failure) connectormock.Case[resend.ContactPropertyReference] {
+	return connectormock.Branch(resend.UpdateContactPropertyBranchDefect, value, failure)
+}
+
+// UpdateContactPropertyRetry asks Dex to retry the updateContactProperty Step, after the delay when it is positive.
+func UpdateContactPropertyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.ContactPropertyReference] {
+	return connectormock.Retry[resend.ContactPropertyReference](failure, after)
+}
+
+// UpdateContactPropertyUpdateContactPropertyDefault is the manifest mock updateContactPropertyDefault: Resend updated the contact property.
+func UpdateContactPropertyUpdateContactPropertyDefault() connectormock.Case[resend.ContactPropertyReference] {
+	value := connectormock.MustDecodeOutput[resend.ContactPropertyReference](`{"id":"property-1"}`)
+	return connectormock.Branch(resend.UpdateContactPropertyBranchUpdated, value, nil)
+}
+
+// UpdateContactPropertyDefault is the manifest default, updateContactPropertyDefault, which New installs.
+func UpdateContactPropertyDefault() connectormock.Case[resend.ContactPropertyReference] {
+	return UpdateContactPropertyUpdateContactPropertyDefault()
+}
+
+// DeleteContactPropertyDeleted selects the deleted branch: Resend deleted the contact property.
+func DeleteContactPropertyDeleted(value resend.DeletedContactProperty, failure *sdkgo.Failure) connectormock.Case[resend.DeletedContactProperty] {
+	return connectormock.Branch(resend.DeleteContactPropertyBranchDeleted, value, failure)
+}
+
+// DeleteContactPropertyNotFound selects the notFound branch: The property does not exist.
+func DeleteContactPropertyNotFound(value resend.DeletedContactProperty, failure *sdkgo.Failure) connectormock.Case[resend.DeletedContactProperty] {
+	return connectormock.Branch(resend.DeleteContactPropertyBranchNotFound, value, failure)
+}
+
+// DeleteContactPropertyProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func DeleteContactPropertyProviderRejected(value resend.DeletedContactProperty, failure *sdkgo.Failure) connectormock.Case[resend.DeletedContactProperty] {
+	return connectormock.Branch(resend.DeleteContactPropertyBranchProviderRejected, value, failure)
+}
+
+// DeleteContactPropertyInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func DeleteContactPropertyInvalidResponse(value resend.DeletedContactProperty, failure *sdkgo.Failure) connectormock.Case[resend.DeletedContactProperty] {
+	return connectormock.Branch(resend.DeleteContactPropertyBranchInvalidResponse, value, failure)
+}
+
+// DeleteContactPropertyDefect selects the defect branch: Local input or connection is invalid.
+func DeleteContactPropertyDefect(value resend.DeletedContactProperty, failure *sdkgo.Failure) connectormock.Case[resend.DeletedContactProperty] {
+	return connectormock.Branch(resend.DeleteContactPropertyBranchDefect, value, failure)
+}
+
+// DeleteContactPropertyRetry asks Dex to retry the deleteContactProperty Step, after the delay when it is positive.
+func DeleteContactPropertyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DeletedContactProperty] {
+	return connectormock.Retry[resend.DeletedContactProperty](failure, after)
+}
+
+// DeleteContactPropertyDeleteContactPropertyDefault is the manifest mock deleteContactPropertyDefault: Resend deleted the contact property.
+func DeleteContactPropertyDeleteContactPropertyDefault() connectormock.Case[resend.DeletedContactProperty] {
+	value := connectormock.MustDecodeOutput[resend.DeletedContactProperty](`{"id":"property-1","deleted":true}`)
+	return connectormock.Branch(resend.DeleteContactPropertyBranchDeleted, value, nil)
+}
+
+// DeleteContactPropertyDefault is the manifest default, deleteContactPropertyDefault, which New installs.
+func DeleteContactPropertyDefault() connectormock.Case[resend.DeletedContactProperty] {
+	return DeleteContactPropertyDeleteContactPropertyDefault()
 }
 
 // GetContactFound selects the found branch: Resend returned the contact.

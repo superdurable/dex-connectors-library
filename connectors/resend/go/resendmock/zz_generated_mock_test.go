@@ -168,6 +168,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.ContactImport](`{"id":"import-1","status":"completed","created_at":"2026-11-01T00:00:00Z"}`)
 			return err
 		}},
+		{name: "createContactProperty/createContactPropertyDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactPropertyReference](`{"id":"property-1"}`)
+			return err
+		}},
+		{name: "getContactProperty/getContactPropertyDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactProperty](`{"id":"property-1","key":"company_name","type":"string","fallback_value":"Acme"}`)
+			return err
+		}},
+		{name: "listContactProperties/listContactPropertiesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactPropertyPage](`{"data":[{"id":"property-1","key":"company_name","type":"string","fallback_value":"Acme"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateContactProperty/updateContactPropertyDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactPropertyReference](`{"id":"property-1"}`)
+			return err
+		}},
+		{name: "deleteContactProperty/deleteContactPropertyDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedContactProperty](`{"id":"property-1","deleted":true}`)
+			return err
+		}},
 		{name: "getContact/getContactDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[resend.Contact](`{"id":"contact-1","email":"reader@example.test","unsubscribed":false}`)
 			return err
@@ -307,6 +327,21 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetContactImport().Definition().Operation.OperationID != "getContactImport" {
 		t.Errorf("getContactImport mock has another definition")
+	}
+	if mock.CreateContactProperty().Definition().Operation.OperationID != "createContactProperty" {
+		t.Errorf("createContactProperty mock has another definition")
+	}
+	if mock.GetContactProperty().Definition().Operation.OperationID != "getContactProperty" {
+		t.Errorf("getContactProperty mock has another definition")
+	}
+	if mock.ListContactProperties().Definition().Operation.OperationID != "listContactProperties" {
+		t.Errorf("listContactProperties mock has another definition")
+	}
+	if mock.UpdateContactProperty().Definition().Operation.OperationID != "updateContactProperty" {
+		t.Errorf("updateContactProperty mock has another definition")
+	}
+	if mock.DeleteContactProperty().Definition().Operation.OperationID != "deleteContactProperty" {
+		t.Errorf("deleteContactProperty mock has another definition")
 	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")

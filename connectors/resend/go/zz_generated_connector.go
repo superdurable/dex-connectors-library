@@ -78,6 +78,11 @@ type Operations interface {
 	UpdateContactTopics() sdkgo.Mutation[UpdateContactTopicsInput, UpdatedContactTopics]
 	ListContactImports() sdkgo.Query[ListContactImportsInput, ContactImportPage]
 	GetContactImport() sdkgo.Query[GetContactImportInput, ContactImport]
+	CreateContactProperty() sdkgo.Mutation[CreateContactPropertyInput, ContactPropertyReference]
+	GetContactProperty() sdkgo.Query[GetContactPropertyInput, ContactProperty]
+	ListContactProperties() sdkgo.Query[ListContactPropertiesInput, ContactPropertyPage]
+	UpdateContactProperty() sdkgo.Mutation[UpdateContactPropertyInput, ContactPropertyReference]
+	DeleteContactProperty() sdkgo.Mutation[DeleteContactPropertyInput, DeletedContactProperty]
 	GetContact() sdkgo.Query[GetContactInput, Contact]
 	ListContacts() sdkgo.Query[ListContactsInput, ContactPage]
 	GetDomain() sdkgo.Query[GetDomainInput, Domain]
@@ -199,6 +204,21 @@ func (operations clientOperations) ListContactImports() sdkgo.Query[ListContactI
 }
 func (operations clientOperations) GetContactImport() sdkgo.Query[GetContactImportInput, ContactImport] {
 	return operations.client.GetContactImport()
+}
+func (operations clientOperations) CreateContactProperty() sdkgo.Mutation[CreateContactPropertyInput, ContactPropertyReference] {
+	return operations.client.CreateContactProperty()
+}
+func (operations clientOperations) GetContactProperty() sdkgo.Query[GetContactPropertyInput, ContactProperty] {
+	return operations.client.GetContactProperty()
+}
+func (operations clientOperations) ListContactProperties() sdkgo.Query[ListContactPropertiesInput, ContactPropertyPage] {
+	return operations.client.ListContactProperties()
+}
+func (operations clientOperations) UpdateContactProperty() sdkgo.Mutation[UpdateContactPropertyInput, ContactPropertyReference] {
+	return operations.client.UpdateContactProperty()
+}
+func (operations clientOperations) DeleteContactProperty() sdkgo.Mutation[DeleteContactPropertyInput, DeletedContactProperty] {
+	return operations.client.DeleteContactProperty()
 }
 func (operations clientOperations) GetContact() sdkgo.Query[GetContactInput, Contact] {
 	return operations.client.GetContact()
@@ -3200,6 +3220,380 @@ func NewGetContactImportStep[IN any](config GetContactImportStepConfig[IN]) sdkg
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetContactImportBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateContactPropertyBranchCreated sdkgo.BranchID = "created"
+const CreateContactPropertyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateContactPropertyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateContactPropertyDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createContactProperty"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateContactPropertyBranchCreated, Description: "Resend created the contact property."},
+		{ID: CreateContactPropertyBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: CreateContactPropertyBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateContactPropertyResult = sdkgo.MutationResult[ContactPropertyReference]
+
+type CreateContactPropertyStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                       `connector:"connectorId=resend"`
+	operationID                       struct{}                                                       `connector:"operationId=createContactProperty"`
+	StepType                          string                                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                          `connector:"annotations"`
+	Connection                        Connection                                                     `connector:"connection"`
+	ConnectionName                    string                                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateContactPropertyInput                            `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateContactPropertyResult]                      `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateContactPropertyResult]                      `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateContactPropertyResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactPropertyReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateContactPropertyStep[IN any](config CreateContactPropertyStepConfig[IN]) sdkgo.MutationStep[IN, CreateContactPropertyInput, ContactPropertyReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateContactPropertyInput, ContactPropertyReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateContactProperty(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateContactPropertyResult] {
+			branches := make([]sdkgo.BranchTarget[CreateContactPropertyResult], 0, 3)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateContactPropertyBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateContactPropertyBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateContactPropertyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetContactPropertyBranchFound sdkgo.BranchID = "found"
+const GetContactPropertyBranchNotFound sdkgo.BranchID = "notFound"
+const GetContactPropertyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetContactPropertyBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetContactPropertyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetContactPropertyDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getContactProperty"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetContactPropertyBranchFound, Description: "Resend found the contact property."},
+		{ID: GetContactPropertyBranchNotFound, Description: "The property does not exist.", Optional: true},
+		{ID: GetContactPropertyBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetContactPropertyBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetContactPropertyBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetContactPropertyResult = sdkgo.QueryResult[ContactProperty]
+
+type GetContactPropertyStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=resend"`
+	operationID                    struct{}                                           `connector:"operationId=getContactProperty"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetContactPropertyInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetContactPropertyResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetContactPropertyResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetContactPropertyResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetContactPropertyResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetContactPropertyResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContactProperty]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetContactPropertyStep[IN any](config GetContactPropertyStepConfig[IN]) sdkgo.QueryStep[IN, GetContactPropertyInput, ContactProperty] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetContactPropertyInput, ContactProperty]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetContactProperty(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetContactPropertyResult] {
+			branches := make([]sdkgo.BranchTarget[GetContactPropertyResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetContactPropertyBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetContactPropertyBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetContactPropertyBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetContactPropertyBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetContactPropertyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListContactPropertiesBranchListed sdkgo.BranchID = "listed"
+const ListContactPropertiesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListContactPropertiesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListContactPropertiesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListContactPropertiesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listContactProperties"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListContactPropertiesBranchListed, Description: "Resend listed the contact property."},
+		{ID: ListContactPropertiesBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListContactPropertiesBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListContactPropertiesBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListContactPropertiesResult = sdkgo.QueryResult[ContactPropertyPage]
+
+type ListContactPropertiesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=resend"`
+	operationID                    struct{}                                               `connector:"operationId=listContactProperties"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListContactPropertiesInput                    `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListContactPropertiesResult]              `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListContactPropertiesResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListContactPropertiesResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListContactPropertiesResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContactPropertyPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewListContactPropertiesStep[IN any](config ListContactPropertiesStepConfig[IN]) sdkgo.QueryStep[IN, ListContactPropertiesInput, ContactPropertyPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListContactPropertiesInput, ContactPropertyPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListContactProperties(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListContactPropertiesResult] {
+			branches := make([]sdkgo.BranchTarget[ListContactPropertiesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListContactPropertiesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListContactPropertiesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListContactPropertiesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListContactPropertiesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateContactPropertyBranchUpdated sdkgo.BranchID = "updated"
+const UpdateContactPropertyBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateContactPropertyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateContactPropertyBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateContactPropertyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateContactPropertyDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateContactProperty"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateContactPropertyBranchUpdated, Description: "Resend updated the contact property."},
+		{ID: UpdateContactPropertyBranchNotFound, Description: "The property does not exist.", Optional: true},
+		{ID: UpdateContactPropertyBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: UpdateContactPropertyBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: UpdateContactPropertyBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateContactPropertyResult = sdkgo.MutationResult[ContactPropertyReference]
+
+type UpdateContactPropertyStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                       `connector:"connectorId=resend"`
+	operationID                       struct{}                                                       `connector:"operationId=updateContactProperty"`
+	StepType                          string                                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                          `connector:"annotations"`
+	Connection                        Connection                                                     `connector:"connection"`
+	ConnectionName                    string                                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateContactPropertyInput                            `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateContactPropertyResult]                      `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateContactPropertyResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateContactPropertyResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateContactPropertyResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateContactPropertyResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactPropertyReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateContactPropertyStep[IN any](config UpdateContactPropertyStepConfig[IN]) sdkgo.MutationStep[IN, UpdateContactPropertyInput, ContactPropertyReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateContactPropertyInput, ContactPropertyReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateContactProperty(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateContactPropertyResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateContactPropertyResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateContactPropertyBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateContactPropertyBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateContactPropertyBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateContactPropertyBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateContactPropertyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteContactPropertyBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteContactPropertyBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteContactPropertyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteContactPropertyBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteContactPropertyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteContactPropertyDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteContactProperty"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteContactPropertyBranchDeleted, Description: "Resend deleted the contact property."},
+		{ID: DeleteContactPropertyBranchNotFound, Description: "The property does not exist.", Optional: true},
+		{ID: DeleteContactPropertyBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: DeleteContactPropertyBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: DeleteContactPropertyBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteContactPropertyResult = sdkgo.MutationResult[DeletedContactProperty]
+
+type DeleteContactPropertyStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                     `connector:"connectorId=resend"`
+	operationID                       struct{}                                                     `connector:"operationId=deleteContactProperty"`
+	StepType                          string                                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                        Connection                                                   `connector:"connection"`
+	ConnectionName                    string                                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteContactPropertyInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteContactPropertyResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteContactPropertyResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteContactPropertyResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteContactPropertyResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteContactPropertyResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedContactProperty]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteContactPropertyStep[IN any](config DeleteContactPropertyStepConfig[IN]) sdkgo.MutationStep[IN, DeleteContactPropertyInput, DeletedContactProperty] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteContactPropertyInput, DeletedContactProperty]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteContactProperty(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteContactPropertyResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteContactPropertyResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteContactPropertyBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteContactPropertyBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteContactPropertyBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteContactPropertyBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteContactPropertyBranchDefect))
 			}
 			return branches
 		}(),

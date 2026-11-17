@@ -68,6 +68,11 @@ unverified.
 | `updateContactTopics` | mutation | UpdatedContactTopics |
 | `listContactImports` | query | ContactImportPage |
 | `getContactImport` | query | ContactImport |
+| `createContactProperty` | mutation | ContactPropertyReference |
+| `getContactProperty` | query | ContactProperty |
+| `listContactProperties` | query | ContactPropertyPage |
+| `updateContactProperty` | mutation | ContactPropertyReference |
+| `deleteContactProperty` | mutation | DeletedContactProperty |
 
 Topic CRUD follows [Resend's Topics API](https://resend.com/docs/api-reference/topics/create-topic).
 `createTopic` is `limited` with three possible sends and read-back by topic
@@ -106,6 +111,16 @@ cursor, and optional `queued`, `in_progress`, `completed`, or `failed`
 status. Find import IDs under [Resend Contacts](https://resend.com/contacts).
 Creating an import requires multipart CSV upload and is outside this JSON
 connector's supported operation shape.
+
+Contact property CRUD follows [Resend's Contact Properties API](https://resend.com/docs/api-reference/contact-properties/create-contact-property).
+`createContactProperty` is `limited` with three possible sends and read-back
+by the unique key, type, and fallback value. Reads, absolute fallback
+replacement, and deletion are `safe`. Property keys allow only ASCII letters,
+digits, and underscores, up to 50 characters; type is `string` or `number`.
+An update supplies a new fallback value of the property's type. Find property
+IDs under [Resend Contacts](https://resend.com/contacts). The
+[create-contact-property Flow](go/examples/create-contact-property/README.md)
+exercises the generated factory through real Dex with a provider mock.
 
 Sent and received attachment queries return metadata but omit Resend's
 short-lived signed `download_url`, because that URL grants access to content.
