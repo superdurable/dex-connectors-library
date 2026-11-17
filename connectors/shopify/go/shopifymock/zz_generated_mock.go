@@ -21,6 +21,9 @@ type Mock struct {
 	getOrder    *connectormock.Query[shopify.GetOrderInput, shopify.Order]
 	listOrders  *connectormock.Query[shopify.ListOrdersInput, shopify.OrderPage]
 	countOrders *connectormock.Query[shopify.CountOrdersInput, shopify.OrderCount]
+	createOrder *connectormock.Mutation[shopify.CreateOrderInput, shopify.Order]
+	updateOrder *connectormock.Mutation[shopify.UpdateOrderInput, shopify.Order]
+	deleteOrder *connectormock.Mutation[shopify.DeleteOrderInput, shopify.DeletedOrder]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -31,10 +34,16 @@ func New(t testing.TB, connectionName string) *Mock {
 		getOrder:    connectormock.NewQuery[shopify.GetOrderInput, shopify.Order](t, shopify.GetOrderDefinition),
 		listOrders:  connectormock.NewQuery[shopify.ListOrdersInput, shopify.OrderPage](t, shopify.ListOrdersDefinition),
 		countOrders: connectormock.NewQuery[shopify.CountOrdersInput, shopify.OrderCount](t, shopify.CountOrdersDefinition),
+		createOrder: connectormock.NewMutation[shopify.CreateOrderInput, shopify.Order](t, shopify.CreateOrderDefinition),
+		updateOrder: connectormock.NewMutation[shopify.UpdateOrderInput, shopify.Order](t, shopify.UpdateOrderDefinition),
+		deleteOrder: connectormock.NewMutation[shopify.DeleteOrderInput, shopify.DeletedOrder](t, shopify.DeleteOrderDefinition),
 	}
 	mock.getOrder.Default(GetOrderDefault())
 	mock.listOrders.Default(ListOrdersDefault())
 	mock.countOrders.Default(CountOrdersDefault())
+	mock.createOrder.Default(CreateOrderDefault())
+	mock.updateOrder.Default(UpdateOrderDefault())
+	mock.deleteOrder.Default(DeleteOrderDefault())
 	connection, err := shopify.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "shopify", Name: connectionName})
 	if err != nil {
 		t.Fatalf("shopify mock connection: %v", err)
@@ -61,6 +70,21 @@ func (mock *Mock) CountOrders() *connectormock.Query[shopify.CountOrdersInput, s
 	return mock.countOrders
 }
 
+// CreateOrder returns the createOrder script.
+func (mock *Mock) CreateOrder() *connectormock.Mutation[shopify.CreateOrderInput, shopify.Order] {
+	return mock.createOrder
+}
+
+// UpdateOrder returns the updateOrder script.
+func (mock *Mock) UpdateOrder() *connectormock.Mutation[shopify.UpdateOrderInput, shopify.Order] {
+	return mock.updateOrder
+}
+
+// DeleteOrder returns the deleteOrder script.
+func (mock *Mock) DeleteOrder() *connectormock.Mutation[shopify.DeleteOrderInput, shopify.DeletedOrder] {
+	return mock.deleteOrder
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetOrder() sdkgo.Query[shopify.GetOrderInput, shopify.Order] {
@@ -71,6 +95,15 @@ func (operations mockOperations) ListOrders() sdkgo.Query[shopify.ListOrdersInpu
 }
 func (operations mockOperations) CountOrders() sdkgo.Query[shopify.CountOrdersInput, shopify.OrderCount] {
 	return operations.mock.countOrders
+}
+func (operations mockOperations) CreateOrder() sdkgo.Mutation[shopify.CreateOrderInput, shopify.Order] {
+	return operations.mock.createOrder
+}
+func (operations mockOperations) UpdateOrder() sdkgo.Mutation[shopify.UpdateOrderInput, shopify.Order] {
+	return operations.mock.updateOrder
+}
+func (operations mockOperations) DeleteOrder() sdkgo.Mutation[shopify.DeleteOrderInput, shopify.DeletedOrder] {
+	return operations.mock.deleteOrder
 }
 
 // GetOrderFound selects the found branch: Read one Shopify order.
@@ -189,3 +222,110 @@ func CountOrdersDefaultAnswer() connectormock.Case[shopify.OrderCount] {
 
 // CountOrdersDefault is the manifest default, defaultAnswer, which New installs.
 func CountOrdersDefault() connectormock.Case[shopify.OrderCount] { return CountOrdersDefaultAnswer() }
+
+// CreateOrderCreated selects the created branch: Shopify created the order.
+func CreateOrderCreated(value shopify.Order, failure *sdkgo.Failure) connectormock.Case[shopify.Order] {
+	return connectormock.Branch(shopify.CreateOrderBranchCreated, value, failure)
+}
+
+// CreateOrderProviderRejected selects the providerRejected branch: Shopify conclusively rejected the order.
+func CreateOrderProviderRejected(value shopify.Order, failure *sdkgo.Failure) connectormock.Case[shopify.Order] {
+	return connectormock.Branch(shopify.CreateOrderBranchProviderRejected, value, failure)
+}
+
+// CreateOrderUncertain returns an uncertain createOrder outcome.
+func CreateOrderUncertain(value shopify.Order, failure sdkgo.Failure) connectormock.Case[shopify.Order] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateOrderDefect selects the defect branch: Local input or credentials are invalid.
+func CreateOrderDefect(value shopify.Order, failure *sdkgo.Failure) connectormock.Case[shopify.Order] {
+	return connectormock.Branch(shopify.CreateOrderBranchDefect, value, failure)
+}
+
+// CreateOrderRetry asks Dex to retry the createOrder Step, after the delay when it is positive.
+func CreateOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[shopify.Order] {
+	return connectormock.Retry[shopify.Order](failure, after)
+}
+
+// CreateOrderCreatedOrder is the manifest mock createdOrder: Shopify created an order.
+func CreateOrderCreatedOrder() connectormock.Case[shopify.Order] {
+	value := connectormock.MustDecodeOutput[shopify.Order](`{"id":102,"name":"#102","financial_status":"pending","total_price":"29.00","currency":"USD"}`)
+	return connectormock.Branch(shopify.CreateOrderBranchCreated, value, nil)
+}
+
+// CreateOrderDefault is the manifest default, createdOrder, which New installs.
+func CreateOrderDefault() connectormock.Case[shopify.Order] { return CreateOrderCreatedOrder() }
+
+// UpdateOrderUpdated selects the updated branch: Shopify updated the order.
+func UpdateOrderUpdated(value shopify.Order, failure *sdkgo.Failure) connectormock.Case[shopify.Order] {
+	return connectormock.Branch(shopify.UpdateOrderBranchUpdated, value, failure)
+}
+
+// UpdateOrderNotFound selects the notFound branch: The order was not found.
+func UpdateOrderNotFound(value shopify.Order, failure *sdkgo.Failure) connectormock.Case[shopify.Order] {
+	return connectormock.Branch(shopify.UpdateOrderBranchNotFound, value, failure)
+}
+
+// UpdateOrderProviderRejected selects the providerRejected branch: Shopify rejected the update.
+func UpdateOrderProviderRejected(value shopify.Order, failure *sdkgo.Failure) connectormock.Case[shopify.Order] {
+	return connectormock.Branch(shopify.UpdateOrderBranchProviderRejected, value, failure)
+}
+
+// UpdateOrderInvalidResponse selects the invalidResponse branch: Shopify returned invalid order JSON.
+func UpdateOrderInvalidResponse(value shopify.Order, failure *sdkgo.Failure) connectormock.Case[shopify.Order] {
+	return connectormock.Branch(shopify.UpdateOrderBranchInvalidResponse, value, failure)
+}
+
+// UpdateOrderDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateOrderDefect(value shopify.Order, failure *sdkgo.Failure) connectormock.Case[shopify.Order] {
+	return connectormock.Branch(shopify.UpdateOrderBranchDefect, value, failure)
+}
+
+// UpdateOrderRetry asks Dex to retry the updateOrder Step, after the delay when it is positive.
+func UpdateOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[shopify.Order] {
+	return connectormock.Retry[shopify.Order](failure, after)
+}
+
+// UpdateOrderUpdatedOrder is the manifest mock updatedOrder: Shopify updated the order.
+func UpdateOrderUpdatedOrder() connectormock.Case[shopify.Order] {
+	value := connectormock.MustDecodeOutput[shopify.Order](`{"id":101,"name":"#101","financial_status":"paid","total_price":"29.00","currency":"USD"}`)
+	return connectormock.Branch(shopify.UpdateOrderBranchUpdated, value, nil)
+}
+
+// UpdateOrderDefault is the manifest default, updatedOrder, which New installs.
+func UpdateOrderDefault() connectormock.Case[shopify.Order] { return UpdateOrderUpdatedOrder() }
+
+// DeleteOrderDeleted selects the deleted branch: Shopify deleted the order.
+func DeleteOrderDeleted(value shopify.DeletedOrder, failure *sdkgo.Failure) connectormock.Case[shopify.DeletedOrder] {
+	return connectormock.Branch(shopify.DeleteOrderBranchDeleted, value, failure)
+}
+
+// DeleteOrderNotFound selects the notFound branch: The order was already absent.
+func DeleteOrderNotFound(value shopify.DeletedOrder, failure *sdkgo.Failure) connectormock.Case[shopify.DeletedOrder] {
+	return connectormock.Branch(shopify.DeleteOrderBranchNotFound, value, failure)
+}
+
+// DeleteOrderProviderRejected selects the providerRejected branch: Shopify rejected deletion.
+func DeleteOrderProviderRejected(value shopify.DeletedOrder, failure *sdkgo.Failure) connectormock.Case[shopify.DeletedOrder] {
+	return connectormock.Branch(shopify.DeleteOrderBranchProviderRejected, value, failure)
+}
+
+// DeleteOrderDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteOrderDefect(value shopify.DeletedOrder, failure *sdkgo.Failure) connectormock.Case[shopify.DeletedOrder] {
+	return connectormock.Branch(shopify.DeleteOrderBranchDefect, value, failure)
+}
+
+// DeleteOrderRetry asks Dex to retry the deleteOrder Step, after the delay when it is positive.
+func DeleteOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[shopify.DeletedOrder] {
+	return connectormock.Retry[shopify.DeletedOrder](failure, after)
+}
+
+// DeleteOrderDeletedOrder is the manifest mock deletedOrder: Shopify deleted the order.
+func DeleteOrderDeletedOrder() connectormock.Case[shopify.DeletedOrder] {
+	value := connectormock.MustDecodeOutput[shopify.DeletedOrder](`{"orderId":101}`)
+	return connectormock.Branch(shopify.DeleteOrderBranchDeleted, value, nil)
+}
+
+// DeleteOrderDefault is the manifest default, deletedOrder, which New installs.
+func DeleteOrderDefault() connectormock.Case[shopify.DeletedOrder] { return DeleteOrderDeletedOrder() }

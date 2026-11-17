@@ -51,7 +51,7 @@ spec:
     guide:
       startURL: https://admin.shopify.com/
       steps:
-        - "This static-token connector is for an existing admin-created custom app; Shopify no longer allows creating new ones. In https://admin.shopify.com open Settings > Apps and sales channels > Develop apps > the existing app > API credentials, verify read_orders access, and copy its secret Admin API access token into access_token. Enter the matching shop subdomain in shopSubdomain; blank credentials prevent calls."
+        - "This static-token connector is for an existing admin-created custom app; Shopify no longer allows creating new ones. In https://admin.shopify.com open Settings > Apps and sales channels > Develop apps > the existing app > Configuration > Admin API access scopes, verify read_orders for reads or write_orders for order writes; in API credentials copy its secret Admin API access token into access_token. Enter the matching shop subdomain in shopSubdomain; blank credentials prevent calls."
         - "Set shopSubdomain, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
   operations:
     - name: getOrder
@@ -125,3 +125,52 @@ spec:
           description: "A realistic countOrders response for a Meridian account."
           default: true
           output: {"count": 1}
+    - name: createOrder
+      goName: CreateOrder
+      inputType: CreateOrderInput
+      outputType: Order
+      kind: mutation
+      description: "Create an order without charging payment or sending a receipt. Requires write_orders."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Shopify created the order.}
+        - {id: providerRejected, goName: ProviderRejected, description: Shopify conclusively rejected the order., optional: true}
+        - {id: uncertain, goName: Uncertain, description: An order may have been created but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      mocks:
+        - {name: createdOrder, branch: created, description: Shopify created an order., default: true, output: {id: 102, name: "#102", financial_status: pending, total_price: "29.00", currency: USD}}
+    - name: updateOrder
+      goName: UpdateOrder
+      inputType: UpdateOrderInput
+      outputType: Order
+      kind: mutation
+      description: "Replace an order note and tags. Requires write_orders."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Shopify updated the order.}
+        - {id: notFound, goName: NotFound, description: The order was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Shopify rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Shopify returned invalid order JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: updatedOrder, branch: updated, description: Shopify updated the order., default: true, output: {id: 101, name: "#101", financial_status: paid, total_price: "29.00", currency: USD}}
+    - name: deleteOrder
+      goName: DeleteOrder
+      inputType: DeleteOrderInput
+      outputType: DeletedOrder
+      kind: mutation
+      description: "Delete one order. Requires write_orders."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: Shopify deleted the order.}
+        - {id: notFound, goName: NotFound, description: The order was already absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Shopify rejected deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: deletedOrder, branch: deleted, description: Shopify deleted the order., default: true, output: {orderId: 101}}

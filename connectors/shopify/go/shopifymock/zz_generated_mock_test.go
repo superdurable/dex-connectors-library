@@ -25,6 +25,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "countOrders/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[shopify.OrderCount](`{"count":1}`); return err }},
+		{name: "createOrder/createdOrder/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[shopify.Order](`{"id":102,"name":"#102","financial_status":"pending","total_price":"29.00","currency":"USD"}`)
+			return err
+		}},
+		{name: "updateOrder/updatedOrder/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[shopify.Order](`{"id":101,"name":"#101","financial_status":"paid","total_price":"29.00","currency":"USD"}`)
+			return err
+		}},
+		{name: "deleteOrder/deletedOrder/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[shopify.DeletedOrder](`{"orderId":101}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -43,5 +55,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.CountOrders().Definition().Operation.OperationID != "countOrders" {
 		t.Errorf("countOrders mock has another definition")
+	}
+	if mock.CreateOrder().Definition().Operation.OperationID != "createOrder" {
+		t.Errorf("createOrder mock has another definition")
+	}
+	if mock.UpdateOrder().Definition().Operation.OperationID != "updateOrder" {
+		t.Errorf("updateOrder mock has another definition")
+	}
+	if mock.DeleteOrder().Definition().Operation.OperationID != "deleteOrder" {
+		t.Errorf("deleteOrder mock has another definition")
 	}
 }

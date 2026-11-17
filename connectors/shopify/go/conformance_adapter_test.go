@@ -25,5 +25,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"getOrder":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetOrder(), testConnection),
 		"listOrders":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOrders(), testConnection),
 		"countOrders": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.CountOrders(), testConnection),
+		"createOrder": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateOrder(), testConnection, scenario.CallID),
+		"updateOrder": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateOrder(), testConnection, scenario.CallID),
+		"deleteOrder": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteOrder(), testConnection, scenario.CallID),
 	}}
 }
