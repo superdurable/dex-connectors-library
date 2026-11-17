@@ -42,7 +42,7 @@ func TestReplyToConversationSendsAnInternalNoteWithTheDispatchKeyAsOriginID(t *t
 	require.True(t, result.Value.Message.IsInternalNote)
 	require.Equal(t, key, result.Value.Message.OriginID)
 	require.False(t, result.Value.WasAlreadyApplied)
-	require.JSONEq(t, `{"callId":"`+string(result.Receipt.CallID)+`","attempt":1,"state":"claimed"}`, string(ctx.recordedHeartbeat))
+	require.JSONEq(t, `{"callId":"`+string(result.Receipt.CallID)+`","attempt":1,"state":"claimed","sendCount":1}`, string(ctx.recordedHeartbeat))
 }
 
 func TestReplyToConversationSendsAPublicReplyByDefault(t *testing.T) {
@@ -92,9 +92,10 @@ func TestReplyToConversationReconcilesByOriginIDWithoutResending(t *testing.T) {
 			client := newReamazeClient(t, provider.URL)
 			input := reamaze.ReplyToConversationInput{ConversationID: "double-charge", Text: "Dex triage note.", IsInternalNote: true}
 			first := newReamazeDexContext("note-reconcile")
-			_, err := sdkgo.RunMutation(first, client.ReplyToConversation(), reamazeConnection, input)
+			// A send cap of one makes the next attempt read back without resending.
+			_, err := sdkgo.RunMutation(first, client.ReplyToConversation(), reamazeConnection, input, sendCapOfOne)
 			require.Error(t, err, "a lost response is retried as a reconciliation")
-			result, err := sdkgo.RunMutation(first.nextAttempt(), client.ReplyToConversation(), reamazeConnection, input)
+			result, err := sdkgo.RunMutation(first.nextAttempt(), client.ReplyToConversation(), reamazeConnection, input, sendCapOfOne)
 			require.NoError(t, err)
 			require.Equal(t, test.wantBranch, result.Branch)
 			require.Equal(t, test.wantAlready, result.Value.WasAlreadyApplied)
@@ -170,9 +171,12 @@ func TestReplyToConversationTerminalOutcomes(t *testing.T) {
 		require.Equal(t, want, result.Branch)
 		require.NotContains(t, result.Failure.Message, "SENTINEL")
 	}
-	result, err := sdkgo.RunMutation(newReamazeDexContext("note-accepted-invalid"), client.ReplyToConversation(), reamazeConnection, input)
+	_, err := sdkgo.RunMutation(newReamazeDexContext("note-accepted-invalid"), client.ReplyToConversation(), reamazeConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unconfirmed accepted write with no origin_id match resends below the cap")
+	result, err := sdkgo.RunMutation(newReamazeDexContext("note-accepted-invalid-at-cap"), client.ReplyToConversation(), reamazeConnection, input, sendCapOfOne)
 	require.NoError(t, err)
-	require.Equal(t, reamaze.ReplyToConversationBranchUncertain, result.Branch, "an unconfirmed accepted write resolves in this attempt")
+	require.Equal(t, reamaze.ReplyToConversationBranchUncertain, result.Branch, "at the cap, an unconfirmed accepted write resolves in this attempt")
 	for _, invalid := range []reamaze.ReplyToConversationInput{
 		{ConversationID: "../x", Text: "Note."},
 		{ConversationID: "double-charge", Text: " "},
@@ -181,5 +185,5 @@ func TestReplyToConversationTerminalOutcomes(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, reamaze.ReplyToConversationBranchDefect, result.Branch)
 	}
-	require.Equal(t, 4, provider.requestCount())
+	require.Equal(t, 6, provider.requestCount(), "each accepted-invalid attempt sends once and reads back once")
 }

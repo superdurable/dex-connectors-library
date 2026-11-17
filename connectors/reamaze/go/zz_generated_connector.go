@@ -417,7 +417,7 @@ var CreateConversationDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateConversationBranchCreated, Description: "The conversation exists; a retried attempt that found the conversation an earlier attempt created reports it instead of sending again."},
 		{ID: CreateConversationBranchProviderRejected, Description: "Re:amaze conclusively rejected the conversation, such as an unknown channel or an invalid status; no conversation was created.", Optional: true},
-		{ID: CreateConversationBranchUncertain, Description: "The request was sent but its outcome cannot be confirmed and no conversation carries the Step's key, so it may still appear; the connector never resends it.", Optional: true},
+		{ID: CreateConversationBranchUncertain, Description: "The send cap is reached, and no conversation carries the Step's key after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent.", Optional: true},
 		{ID: CreateConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -497,7 +497,7 @@ var UpdateConversationDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateConversationBranchUpdated, Description: "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt."},
 		{ID: UpdateConversationBranchNotFound, Description: "The conversation does not exist in the brand or is not visible to the connection's user.", Optional: true},
 		{ID: UpdateConversationBranchProviderRejected, Description: "Re:amaze conclusively rejected the change, such as an assignee email that is not a staff user.", Optional: true},
-		{ID: UpdateConversationBranchInvalidResponse, Description: "Re:amaze returned an invalid or oversized conversation, so the change may have been applied.", Optional: true},
+		{ID: UpdateConversationBranchInvalidResponse, Description: "Re:amaze returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing.", Optional: true},
 		{ID: UpdateConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -505,8 +505,7 @@ var UpdateConversationDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
-	MaxSends:        3,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateConversationResult = sdkgo.MutationResult[UpdateConversationOutput]
@@ -528,8 +527,6 @@ type UpdateConversationStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateConversationResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateConversationOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
-	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
-	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateConversationStep[IN any](config UpdateConversationStepConfig[IN]) sdkgo.MutationStep[IN, UpdateConversationInput, UpdateConversationOutput] {
@@ -565,7 +562,6 @@ func NewUpdateConversationStep[IN any](config UpdateConversationStepConfig[IN]) 
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
-		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -581,7 +577,7 @@ var ReplyToConversationDefinition = sdkgo.MutationDefinition{
 		{ID: ReplyToConversationBranchReplied, Description: "The reply or note is in the conversation; a retried attempt that found its own earlier message reports it instead of sending again."},
 		{ID: ReplyToConversationBranchNotFound, Description: "The conversation does not exist in the brand or is not visible to the connection's user; nothing was added.", Optional: true},
 		{ID: ReplyToConversationBranchProviderRejected, Description: "Re:amaze conclusively rejected the message; nothing was added.", Optional: true},
-		{ID: ReplyToConversationBranchUncertain, Description: "The message was sent but its outcome cannot be confirmed and the conversation shows no message with its origin_id, so it may still appear; the connector never resends it.", Optional: true},
+		{ID: ReplyToConversationBranchUncertain, Description: "The send cap is reached, and the conversation shows no message with the Step's origin_id after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent.", Optional: true},
 		{ID: ReplyToConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

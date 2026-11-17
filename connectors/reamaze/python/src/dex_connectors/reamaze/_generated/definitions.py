@@ -72,7 +72,7 @@ CREATE_CONVERSATION_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "The conversation exists; a retried attempt that found the conversation an earlier attempt created reports it instead of sending again.", False),
         BranchDefinition(PROVIDER_REJECTED, "Re:amaze conclusively rejected the conversation, such as an unknown channel or an invalid status; no conversation was created.", True),
-        BranchDefinition(UNCERTAIN, "The request was sent but its outcome cannot be confirmed and no conversation carries the Step's key, so it may still appear; the connector never resends it.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, and no conversation carries the Step's key after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -90,7 +90,7 @@ UPDATE_CONVERSATION_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt.", False),
         BranchDefinition(NOT_FOUND, "The conversation does not exist in the brand or is not visible to the connection's user.", True),
         BranchDefinition(PROVIDER_REJECTED, "Re:amaze conclusively rejected the change, such as an assignee email that is not a staff user.", True),
-        BranchDefinition(INVALID_RESPONSE, "Re:amaze returned an invalid or oversized conversation, so the change may have been applied.", True),
+        BranchDefinition(INVALID_RESPONSE, "Re:amaze returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -98,8 +98,7 @@ UPDATE_CONVERSATION_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
-    repeat_on_unknown=RepeatOnUnknown.LIMITED,
-    max_sends=3,
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 REPLY_TO_CONVERSATION_DEFINITION = MutationDefinition(
@@ -108,7 +107,7 @@ REPLY_TO_CONVERSATION_DEFINITION = MutationDefinition(
         BranchDefinition(REPLIED, "The reply or note is in the conversation; a retried attempt that found its own earlier message reports it instead of sending again.", False),
         BranchDefinition(NOT_FOUND, "The conversation does not exist in the brand or is not visible to the connection's user; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Re:amaze conclusively rejected the message; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The message was sent but its outcome cannot be confirmed and the conversation shows no message with its origin_id, so it may still appear; the connector never resends it.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, and the conversation shows no message with the Step's origin_id after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

@@ -76,7 +76,7 @@ export interface CreateConversationStepConfig<StepInput, OperationInput = Create
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Re:amaze conclusively rejected the conversation, such as an unknown channel or an invalid status; no conversation was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but its outcome cannot be confirmed and no conversation carries the Step's key, so it may still appear; the connector never resends it. */
+  /** The send cap is reached, and no conversation carries the Step's key after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -106,7 +106,7 @@ export interface UpdateConversationStepConfig<StepInput, OperationInput = Update
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Re:amaze conclusively rejected the change, such as an assignee email that is not a staff user. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Re:amaze returned an invalid or oversized conversation, so the change may have been applied. */
+  /** Re:amaze returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -137,7 +137,7 @@ export interface ReplyToConversationStepConfig<StepInput, OperationInput = Reply
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Re:amaze conclusively rejected the message; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The message was sent but its outcome cannot be confirmed and the conversation shows no message with its origin_id, so it may still appear; the connector never resends it. */
+  /** The send cap is reached, and the conversation shows no message with the Step's origin_id after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

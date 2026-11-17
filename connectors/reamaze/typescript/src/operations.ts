@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
-import { newFence, CheckpointError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { newFence, CheckpointError, DispatchNotAllowedError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
 import { isBareEmail, type CredentialResult, type ReamazeClient, type ReamazeExchange } from './client.js';
 import { CreateConversationDefinition, FindContactByEmailDefinition, GetConversationDefinition, ReplyToConversationDefinition, SearchConversationsDefinition, UpdateConversationDefinition } from './generated/definitions.js';
 import type { Conversation, ConversationDetails, ConversationMessage, ConversationReply, CreateConversationInput, CreateConversationOutput, FindContactByEmailInput, FindContactByEmailOutput, GetConversationInput, ReplyToConversationInput, SearchConversationsInput, SearchConversationsOutput, UpdateConversationInput, UpdateConversationOutput } from './generated/models.js';
@@ -167,26 +167,57 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
     if (JSON.stringify(wanted) !== JSON.stringify(tags)) change.tag_list = wanted;
     if (!Object.keys(change).length) return newMutationBranch('updated', { conversation: current, wasAlreadyApplied: true }, this.client.receipt(call, input.conversationId, first.requestId));
     const second = await this.client.exchange(call, operation, credential, 'PUT', path(input.conversationId), undefined, { conversation: change });
+    // The PUT sets final values, so an unknown outcome repeats it.
+    if (second.kind === 'invalid' || (second.kind === 'rejected' && !definiteRefusalStatuses.has(second.status))) return newMutationRetry(second.failure, second.retryAfterMs);
     const secondTerminal = exchangeMutation(this.client, call, second, { conversation: current }, input.conversationId, true);
     if (secondTerminal) return secondTerminal;
     try { if (second.kind !== 'success') throw new Error('missing response'); return newMutationBranch('updated', { conversation: decodeConversation(parseBody(second.response.body), true, input.conversationId) }, this.client.receipt(call, input.conversationId, second.requestId)); }
-    catch { return newMutationBranch('invalidResponse', { conversation: current }, this.client.receipt(call, input.conversationId, second.requestId), failure(operation, 'PROTOCOL', 'Re:amaze returned an invalid updated conversation')); }
+    catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'Re:amaze accepted the change but returned an invalid updated conversation')); }
   }
 }
 
 function dispatchKey(call: Call): string { return 'dex-' + (call.idempotencyKey || call.id); }
 function uncertainNotFound(operation: string): Failure { return failure(operation, 'TRANSPORT', 'an earlier attempt may have sent the request without a confirmed outcome, and Re:amaze shows no record with its key'); }
-function fencedWrite<Output>(client: ReamazeClient, call: Call, result: ReamazeExchange, value: Output, objectId: string, hasNotFound: boolean, recordCanResend: () => Promise<void>): Promise<MutationAttempt<Output> | undefined> {
-  if (result.kind === 'success') return Promise.resolve(undefined);
+/** Only these statuses prove Re:amaze applied nothing; any other non-2xx answer may have been applied. */
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** Map a sent write; any outcome but a definite refusal retries, and the next attempt reads back first. */
+async function fencedWrite<Output>(client: ReamazeClient, call: Call, result: ReamazeExchange, value: Output, objectId: string, hasNotFound: boolean, isFirstSend: boolean, recordCanResend: () => Promise<void>): Promise<MutationAttempt<Output> | undefined> {
+  if (result.kind === 'success') return undefined;
   const receipt = client.receipt(call, objectId, result.requestId);
   if (result.kind === 'rateLimited' || result.kind === 'notSent' || result.kind === 'unavailable') {
-    if (result.kind === 'rateLimited' || result.kind === 'notSent' || result.status === 503) return recordCanResend().then(() => newMutationRetry(result.failure, result.retryAfterMs), () => newMutationRetry(failure(result.failure.operation, 'AVAILABILITY', 'retry checkpoint could not be recorded'), result.retryAfterMs));
-    return Promise.resolve(newMutationRetry(result.failure, result.retryAfterMs));
+    // A lost checkpoint leaves the claim, so the next attempt counts this send and reads back.
+    if (result.kind === 'rateLimited' || result.kind === 'notSent' || result.status === 503) { try { await recordCanResend(); } catch { /* counted as a possible send */ } }
+    return newMutationRetry(result.failure, result.retryAfterMs);
   }
-  if (result.kind === 'invalid') return Promise.resolve(newMutationUncertain(value, result.failure, receipt));
-  if (result.kind === 'rejected' && result.status === 409) return Promise.resolve(newMutationRetry(result.failure));
-  const branch = result.kind === 'defect' ? 'defect' : result.kind === 'notFound' && hasNotFound ? 'notFound' : 'providerRejected';
-  return Promise.resolve(newMutationBranch(branch, value, receipt, result.failure));
+  let branch: string;
+  if (result.kind === 'notFound') branch = hasNotFound ? 'notFound' : 'providerRejected';
+  else if (result.kind === 'defect') {
+    if (!isFirstSend) return newMutationRetry(result.failure);
+    branch = 'defect';
+  } else if (result.kind === 'rejected' && definiteRefusalStatuses.has(result.status)) branch = 'providerRejected';
+  // A 3xx, 409, unlisted status, or invalid answer may follow an applied write.
+  else return newMutationRetry(result.failure, result.retryAfterMs);
+  if (!isFirstSend) return newMutationUncertain(value, result.failure, receipt);
+  try { await recordCanResend(); } catch { return newMutationRetry(failure(result.failure.operation, 'AVAILABILITY', 'refusal checkpoint could not be recorded')); }
+  return newMutationBranch(branch, value, branch === 'defect' ? {} : receipt, result.failure);
+}
+
+/** Map a Dispatch error: a refused dispatch sent nothing, and a cut-off send stays counted and is read back next. */
+function dispatchErrorAttempt<Output>(operation: string, error: unknown): MutationAttempt<Output> {
+  if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError) return newMutationRetry(failure(operation, 'AVAILABILITY', 'write was not sent before the attempt deadline or checkpoint'));
+  return newMutationRetry(failure(operation, 'TRANSPORT', 'write dispatch outcome could not be confirmed'));
+}
+
+/** Retry an unconfirmed read-back while the send cap allows another send. */
+function resendWhenUnconfirmed<Output>(readBack: MutationAttempt<Output>, canResend: boolean): MutationAttempt<Output> {
+  // The claim stays the last marker, so the next attempt reads back again before it resends.
+  return readBack.kind === 'uncertain' && canResend ? newMutationRetry(readBack.failure) : readBack;
+}
+
+/** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
+function effectiveMaxSends(call: Call, operationMaxSends: number): number {
+  return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
 }
 function readBackTerminal<Output>(client: ReamazeClient, call: Call, operation: string, result: ReamazeExchange, value: Output, objectId: string): MutationAttempt<Output> | undefined {
   if (result.kind === 'success') return undefined;
@@ -206,34 +237,43 @@ export class CreateConversationOperation implements Mutation<CreateConversationI
   async invoke(call: Call, input: CreateConversationInput): Promise<MutationAttempt<CreateConversationOutput>> {
     const operation = 'createConversation';
     if (!validCreate(input)) return newMutationBranch('defect', zeroCreate, {}, failure(operation, 'VALIDATION', 'invalid create input'));
+    const operationMaxSends = definitionMaxSends(CreateConversationDefinition);
     let fence;
-    try { fence = newFence(call, CreateConversationDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000); }
+    try { fence = newFence(call, CreateConversationDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: operationMaxSends }); }
     catch { return newMutationBranch('defect', zeroCreate, {}, failure(operation, 'LOCAL_DEFECT', 'single dispatch fence could not be constructed')); }
     const decision = fence.decide();
-    if (decision.kind === 'failClosed') return newMutationUncertain(zeroCreate, failure(operation, 'TRANSPORT', 'dispatch checkpoint cannot be trusted'), this.client.receipt(call));
-    if (decision.kind === 'readBackRequired') {
-      const credential = await this.client.resolveCredentials(call);
-      if (credential.kind !== 'resolved') return credential.kind === 'transient' ? newMutationRetry(failure(operation, 'AVAILABILITY', 'connection credentials could not be loaded to read back an earlier write')) : newMutationUncertain(zeroCreate, failure(operation, 'AUTHENTICATION', 'the earlier write cannot be read back; reconnect the connection in Dex Web'), this.client.receipt(call, decision.marker?.providerId));
-      return this.reconcile(call, credential, decision.marker?.providerId);
-    }
+    // FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+    if (decision.kind === 'failClosed') return newMutationRetry(failure(operation, 'AVAILABILITY', 'dispatch checkpoint could not be read; nothing was sent in this attempt'));
     const credential = await this.client.resolveCredentials(call);
-    if (credential.kind !== 'resolved') {
+    if (decision.kind === 'readBackRequired' || decision.kind === 'readBackThenResendAllowed') {
+      if (credential.kind !== 'resolved') return credential.kind === 'transient' ? newMutationRetry(failure(operation, 'AVAILABILITY', 'connection credentials could not be loaded to read back an earlier write')) : newMutationUncertain(zeroCreate, failure(operation, 'AUTHENTICATION', 'the earlier write cannot be read back; reconnect the connection in Dex Web'), this.client.receipt(call, decision.marker?.providerId));
+      // A saved conversation ID proves Re:amaze created it, so it is read back and never resent.
+      if (decision.marker?.providerId) return this.reconcile(call, credential, decision.marker.providerId);
+      const readBack = await this.reconcile(call, credential);
+      if (decision.kind === 'readBackRequired' || readBack.kind !== 'uncertain') return readBack;
+      // The read-back found no conversation with the key, so this attempt resends below the cap.
+    } else if (credential.kind !== 'resolved') {
       try { await fence.recordNotSent(); } catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'credential checkpoint could not be recorded')); }
       return credential.kind === 'transient' ? newMutationRetry(failure(operation, 'AVAILABILITY', 'connection credentials could not be loaded yet; nothing was sent')) : newMutationBranch('defect', zeroCreate, {}, failure(operation, 'AUTHENTICATION', 'Re:amaze connection credentials are unusable; reconnect the connection in Dex Web'));
     }
+    if (credential.kind !== 'resolved') throw new TypeError('unresolved credentials');
+    const priorSends = decision.priorSendUpperBound ?? 0;
+    const isFirstSend = priorSends === 0;
+    const canResend = priorSends + 1 < effectiveMaxSends(call, operationMaxSends);
     const payload = { conversation: { subject: input.subject, category: input.channel, ...(input.tags?.length ? { tag_list: input.tags } : {}), ...(input.status !== undefined ? { status: input.status } : {}), ...(input.holdUntil ? { hold_until: input.holdUntil } : {}), ...(input.assigneeEmail ? { assignee: input.assigneeEmail } : {}), data: { dex_dispatch_key: dispatchKey(call) }, message: { body: input.message, ...(input.shouldSuppressNotifications ? { suppress_notifications: true } : {}) }, user: { ...(input.requester.name ? { name: input.requester.name } : {}), email: input.requester.email } } };
     let result: ReamazeExchange;
     try { result = await fence.dispatch(signal => this.client.exchange(call, operation, credential, 'POST', '/conversations', undefined, payload, signal)); }
-    catch (error) { return error instanceof CheckpointError || error instanceof InsufficientTimeError ? newMutationRetry(failure(operation, 'AVAILABILITY', 'write was not sent before the attempt deadline or checkpoint')) : newMutationUncertain(zeroCreate, failure(operation, 'TRANSPORT', 'write dispatch outcome could not be confirmed'), {}); }
-    if (result.kind === 'invalid' && result.status >= 200 && result.status < 300) return this.reconcile(call, credential);
-    const terminal = await fencedWrite(this.client, call, result, zeroCreate, '', false, () => fence.recordCanResend());
+    catch (error) { return dispatchErrorAttempt(operation, error); }
+    if (result.kind === 'invalid' && result.status >= 200 && result.status < 300) return resendWhenUnconfirmed(await this.reconcile(call, credential), canResend);
+    const terminal = await fencedWrite(this.client, call, result, zeroCreate, '', false, isFirstSend, () => fence.recordCanResend());
     if (terminal) return terminal;
+    let conversation: CreateConversationOutput['conversation'];
     try {
       if (result.kind !== 'success') throw new Error('missing response');
-      const conversation = decodeConversation(parseBody(result.response.body), true);
-      try { await fence.recordProviderId(conversation.id); } catch { /* The failed checkpoint cannot authorize another POST. */ }
-      return newMutationBranch('created', { conversation }, this.client.receipt(call, conversation.id, result.requestId));
-    } catch { return this.reconcile(call, credential); }
+      conversation = decodeConversation(parseBody(result.response.body), true);
+    } catch { return resendWhenUnconfirmed(await this.reconcile(call, credential), canResend); }
+    try { await fence.recordProviderId(conversation.id); } catch { /* The failed checkpoint cannot authorize another POST. */ }
+    return newMutationBranch('created', { conversation }, this.client.receipt(call, conversation.id, result.requestId));
   }
 
   private async reconcile(call: Call, credential: Extract<CredentialResult, { kind: 'resolved' }>, candidateId = ''): Promise<MutationAttempt<CreateConversationOutput>> {
@@ -271,27 +311,33 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
   async invoke(call: Call, input: ReplyToConversationInput): Promise<MutationAttempt<ConversationReply>> {
     const operation = 'replyToConversation'; const zero: ConversationReply = { conversationId: input.conversationId, message: zeroMessage };
     if (!conversationIdPattern.test(input.conversationId) || !validText(input.text)) return newMutationBranch('defect', zero, {}, failure(operation, 'VALIDATION', 'invalid reply input'));
+    const operationMaxSends = definitionMaxSends(ReplyToConversationDefinition);
     let fence;
-    try { fence = newFence(call, ReplyToConversationDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000); }
+    try { fence = newFence(call, ReplyToConversationDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: operationMaxSends }); }
     catch { return newMutationBranch('defect', zero, {}, failure(operation, 'LOCAL_DEFECT', 'single dispatch fence could not be constructed')); }
     const decision = fence.decide();
-    if (decision.kind === 'failClosed') return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'dispatch checkpoint cannot be trusted'), this.client.receipt(call));
-    if (decision.kind === 'readBackRequired') {
-      const credential = await this.client.resolveCredentials(call);
-      if (credential.kind !== 'resolved') return credential.kind === 'transient' ? newMutationRetry(failure(operation, 'AVAILABILITY', 'connection credentials could not be loaded to read back an earlier write')) : newMutationUncertain(zero, failure(operation, 'AUTHENTICATION', 'the earlier write cannot be read back; reconnect the connection in Dex Web'), this.client.receipt(call, input.conversationId));
-      return this.reconcile(call, credential, input, zero);
-    }
+    // FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+    if (decision.kind === 'failClosed') return newMutationRetry(failure(operation, 'AVAILABILITY', 'dispatch checkpoint could not be read; nothing was sent in this attempt'));
     const credential = await this.client.resolveCredentials(call);
-    if (credential.kind !== 'resolved') {
+    if (decision.kind === 'readBackRequired' || decision.kind === 'readBackThenResendAllowed') {
+      if (credential.kind !== 'resolved') return credential.kind === 'transient' ? newMutationRetry(failure(operation, 'AVAILABILITY', 'connection credentials could not be loaded to read back an earlier write')) : newMutationUncertain(zero, failure(operation, 'AUTHENTICATION', 'the earlier write cannot be read back; reconnect the connection in Dex Web'), this.client.receipt(call, input.conversationId));
+      const readBack = await this.reconcile(call, credential, input, zero);
+      if (decision.kind === 'readBackRequired' || readBack.kind !== 'uncertain') return readBack;
+      // The read-back found no message with the origin_id, so this attempt resends below the cap.
+    } else if (credential.kind !== 'resolved') {
       try { await fence.recordNotSent(); } catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'credential checkpoint could not be recorded')); }
       return credential.kind === 'transient' ? newMutationRetry(failure(operation, 'AVAILABILITY', 'connection credentials could not be loaded yet; nothing was sent')) : newMutationBranch('defect', zero, {}, failure(operation, 'AUTHENTICATION', 'Re:amaze connection credentials are unusable; reconnect the connection in Dex Web'));
     }
+    if (credential.kind !== 'resolved') throw new TypeError('unresolved credentials');
+    const priorSends = decision.priorSendUpperBound ?? 0;
+    const isFirstSend = priorSends === 0;
+    const canResend = priorSends + 1 < effectiveMaxSends(call, operationMaxSends);
     const payload = { message: { body: input.text, visibility: input.isInternalNote ? 1 : 0, origin_id: dispatchKey(call), ...(input.shouldSuppressNotifications ? { suppress_notifications: true } : {}), ...(input.shouldSuppressAutoResolve ? { suppress_autoresolve: true } : {}) } };
     let result: ReamazeExchange;
     try { result = await fence.dispatch(signal => this.client.exchange(call, operation, credential, 'POST', path(input.conversationId) + '/messages', undefined, payload, signal)); }
-    catch (error) { return error instanceof CheckpointError || error instanceof InsufficientTimeError ? newMutationRetry(failure(operation, 'AVAILABILITY', 'write was not sent before the attempt deadline or checkpoint')) : newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'write dispatch outcome could not be confirmed'), {}); }
-    if (result.kind === 'invalid' && result.status >= 200 && result.status < 300) return this.reconcile(call, credential, input, zero);
-    const terminal = await fencedWrite(this.client, call, result, { conversationId: '', message: zeroMessage }, input.conversationId, true, () => fence.recordCanResend());
+    catch (error) { return dispatchErrorAttempt(operation, error); }
+    if (result.kind === 'invalid' && result.status >= 200 && result.status < 300) return resendWhenUnconfirmed(await this.reconcile(call, credential, input, zero), canResend);
+    const terminal = await fencedWrite(this.client, call, result, { conversationId: '', message: zeroMessage }, input.conversationId, true, isFirstSend, () => fence.recordCanResend());
     if (terminal) return terminal;
     try {
       if (result.kind !== 'success') throw new Error('missing response');
@@ -300,7 +346,7 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
       if (conversation?.slug && conversation.slug !== input.conversationId) throw new Error('wrong conversation');
       const message = decodeMessage(wire);
       return newMutationBranch('replied', { conversationId: input.conversationId, message }, this.client.receipt(call, input.conversationId, result.requestId));
-    } catch { return this.reconcile(call, credential, input, zero); }
+    } catch { return resendWhenUnconfirmed(await this.reconcile(call, credential, input, zero), canResend); }
   }
 
   private async reconcile(call: Call, credential: Extract<CredentialResult, { kind: 'resolved' }>, input: ReplyToConversationInput, zero: ConversationReply): Promise<MutationAttempt<ConversationReply>> {

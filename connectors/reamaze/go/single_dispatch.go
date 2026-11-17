@@ -33,7 +33,57 @@ func (send *fencedReamazeSend) dispatch(requestContext context.Context) error {
 }
 
 func newReamazeFence(call sdkgo.Call, executeTimeout time.Duration) (*singledispatch.Fence, error) {
-	return singledispatch.NewFence(call, executeTimeout)
+	return singledispatch.NewFence(call, executeTimeout, singledispatch.WithMaxSends(call.MaxSends()))
+}
+
+// reamazeWritePermit is a fence that allows this attempt to send, with its send-cap facts.
+type reamazeWritePermit struct {
+	fence *singledispatch.Fence
+	// isFirstSend means no earlier attempt of this call may have sent.
+	isFirstSend bool
+	// canResendUnknownOutcome means this attempt's send leaves room under the cap for one more.
+	canResendUnknownOutcome bool
+}
+
+func newReamazeWritePermit(call sdkgo.Call, fence *singledispatch.Fence, decision singledispatch.Decision) reamazeWritePermit {
+	return reamazeWritePermit{
+		fence:                   fence,
+		isFirstSend:             decision.MaximumPriorSends == 0,
+		canResendUnknownOutcome: decision.MaximumPriorSends+1 < call.MaxSends(),
+	}
+}
+
+// reconciliation is a read-back result: a terminal attempt, or an unconfirmed write with its failure.
+type reconciliation[OUT any] struct {
+	attempt       sdkgo.MutationAttempt[OUT]
+	isUnconfirmed bool
+	failure       sdkgo.Failure
+	receipt       sdkgo.Receipt
+}
+
+func confirmedReconciliation[OUT any](attempt sdkgo.MutationAttempt[OUT]) reconciliation[OUT] {
+	return reconciliation[OUT]{attempt: attempt}
+}
+
+func unconfirmedReconciliation[OUT any](failure sdkgo.Failure, receipt sdkgo.Receipt) reconciliation[OUT] {
+	return reconciliation[OUT]{isUnconfirmed: true, failure: failure, receipt: receipt}
+}
+
+// uncertainWhenUnconfirmed selects uncertain for a read-back that the cap forbids resending after.
+func (result reconciliation[OUT]) uncertainWhenUnconfirmed(value OUT) sdkgo.MutationAttempt[OUT] {
+	if result.isUnconfirmed {
+		return sdkgo.NewMutationUncertain(value, result.failure, result.receipt)
+	}
+	return result.attempt
+}
+
+// resendOrSelectUncertain retries an unconfirmed read-back while the send cap allows another send.
+func (result reconciliation[OUT]) resendOrSelectUncertain(value OUT, permit reamazeWritePermit) sdkgo.MutationAttempt[OUT] {
+	if result.isUnconfirmed && permit.canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt reads back again before it resends.
+		return sdkgo.NewMutationRetry[OUT](result.failure, 0)
+	}
+	return result.uncertainWhenUnconfirmed(value)
 }
 
 func fencedCredentialAttempt[OUT any](fence *singledispatch.Fence, operation string, defect sdkgo.BranchID, err error) sdkgo.MutationAttempt[OUT] {
@@ -59,12 +109,9 @@ func uncertainOrRetryCredentials[OUT any](client *Client, call sdkgo.Call, opera
 		"the earlier write cannot be read back; reconnect the connection in Dex Web"), client.receipt(call, reamazeResponse{}, providerID))
 }
 
-func fencedDispatchError[OUT any](operation string, err error) sdkgo.MutationAttempt[OUT] {
-	if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
-		return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, operation, "write was not sent before the attempt deadline or checkpoint"), 0)
-	}
-	var zero OUT
-	return sdkgo.NewMutationUncertain(zero, reamazeFailure(sdkgo.FailureTransport, operation, "write dispatch outcome could not be confirmed"), sdkgo.Receipt{})
+func fencedDispatchError[OUT any](operation string, _ error) sdkgo.MutationAttempt[OUT] {
+	// Dispatch refused before sending, so nothing reached Re:amaze in this attempt.
+	return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, operation, "write was not sent before the attempt deadline or checkpoint"), 0)
 }
 
 type fencedWriteBranches struct {
@@ -73,51 +120,76 @@ type fencedWriteBranches struct {
 	defect           sdkgo.BranchID
 }
 
-func fencedWriteResult[OUT any](fence *singledispatch.Fence, result reamazeExchange, receipt sdkgo.Receipt, branches fencedWriteBranches) (sdkgo.MutationAttempt[OUT], bool) {
-	var zero OUT
+// fencedWriteResult maps a sent write. Only a definite refusal selects a refusal branch; any other
+// outcome returns Retry, and the next attempt reads back before it resends or selects uncertain at the cap.
+func fencedWriteResult[OUT any](permit reamazeWritePermit, result reamazeExchange, receipt sdkgo.Receipt, branches fencedWriteBranches) (sdkgo.MutationAttempt[OUT], bool) {
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.MutationAttempt[OUT]{}, false
 	case exchangeRateLimited, exchangeNotSent:
-		if err := fence.RecordCanResend(); err != nil {
-			return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, result.failure.Operation, "retry checkpoint could not be recorded"), result.retryAfter), true
-		}
+		// A lost checkpoint leaves the claim, so the next attempt counts this send and reads back.
+		_ = permit.fence.RecordCanResend()
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
 	case exchangeUnavailable:
 		if result.response.statusCode == http.StatusServiceUnavailable {
-			if err := fence.RecordCanResend(); err != nil {
-				return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, result.failure.Operation, "retry checkpoint could not be recorded"), result.retryAfter), true
-			}
+			_ = permit.fence.RecordCanResend()
 		}
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
-	case exchangeRejected:
-		if result.response.statusCode == http.StatusConflict {
+	case exchangeNotFound:
+		branch := branches.notFound
+		if branch == "" {
+			branch = branches.providerRejected
+		}
+		return rejectFencedWrite[OUT](permit, result, receipt, branch), true
+	case exchangeDefect:
+		if !permit.isFirstSend {
 			return sdkgo.NewMutationRetry[OUT](result.failure, 0), true
 		}
-		return sdkgo.NewMutationBranch(branches.providerRejected, zero, &result.failure, receipt), true
-	case exchangeInvalid:
-		return sdkgo.NewMutationUncertain(zero, result.failure, receipt), true
-	case exchangeNotFound:
-		if branches.notFound != "" {
-			return sdkgo.NewMutationBranch(branches.notFound, zero, &result.failure, receipt), true
+		return rejectFencedWrite[OUT](permit, result, receipt, branches.defect), true
+	case exchangeRejected:
+		if isDefiniteRefusalStatus(result.response.statusCode) {
+			return rejectFencedWrite[OUT](permit, result, receipt, branches.providerRejected), true
 		}
-		return sdkgo.NewMutationBranch(branches.providerRejected, zero, &result.failure, receipt), true
-	case exchangeDefect:
-		return sdkgo.NewMutationBranch(branches.defect, zero, &result.failure, receipt), true
+	}
+	// A 3xx, 409, unlisted status, or invalid answer may follow an applied write.
+	return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
+}
+
+// rejectFencedWrite selects a refusal branch only when no earlier send of this call may have applied.
+func rejectFencedWrite[OUT any](permit reamazeWritePermit, result reamazeExchange, receipt sdkgo.Receipt, branch sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
+	var zero OUT
+	if !permit.isFirstSend {
+		return sdkgo.NewMutationUncertain(zero, result.failure, receipt)
+	}
+	if err := permit.fence.RecordCanResend(); err != nil {
+		return sdkgo.NewMutationRetry[OUT](reamazeFailure(sdkgo.FailureAvailability, result.failure.Operation, "refusal checkpoint could not be recorded"), 0)
+	}
+	if branch == sdkgo.DefectBranchID {
+		receipt = sdkgo.Receipt{}
+	}
+	return sdkgo.NewMutationBranch(branch, zero, &result.failure, receipt)
+}
+
+// isDefiniteRefusalStatus reports a status that proves Re:amaze applied nothing.
+func isDefiniteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
 	default:
-		return sdkgo.NewMutationBranch(branches.providerRejected, zero, &result.failure, receipt), true
+		return false
 	}
 }
 
-func fencedReconciliationRead[OUT any](result reamazeExchange, receipt sdkgo.Receipt, operation string) (sdkgo.MutationAttempt[OUT], bool) {
-	var zero OUT
+func fencedReconciliationRead[OUT any](result reamazeExchange, receipt sdkgo.Receipt, operation string) (reconciliation[OUT], bool) {
 	switch {
 	case result.outcome == exchangeSucceeded:
-		return sdkgo.MutationAttempt[OUT]{}, false
+		return reconciliation[OUT]{}, false
 	case result.isRetryableRead():
-		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
+		return confirmedReconciliation(sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter)), true
 	default:
-		return sdkgo.NewMutationUncertain(zero, reamazeFailure(result.failure.Kind, operation,
+		return unconfirmedReconciliation[OUT](reamazeFailure(result.failure.Kind, operation,
 			"an earlier attempt may have sent the request, and it could not be read back: "+result.failure.Message), receipt), true
 	}
 }
