@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/twilio/messaging/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/twilio/messaging/scenarios.json")
+    if scenario["operation"] in {"sendMessage", "getMessage"}
+]
 CONNECTION = sdk.ConnectionRef("twilio-messaging", "twilio-messaging")
 ACCOUNT = "AC" + "0" * 32
 ADAPTER = PythonOperationAdapter(

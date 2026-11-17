@@ -411,7 +411,7 @@ func newTwilioIntegrationHarnessForConnection(t *testing.T, connection messaging
 	t.Helper()
 	policy := DeliveryStatusPolicy{CheckInterval: time.Second, MaximumChecks: integrationMaximumChecks}
 	flow := NewFlow(connection, &policy)
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewMessageListFlow(connection)})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)

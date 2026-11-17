@@ -24,6 +24,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[tmdb.Movie](`{"id":343611,"title":"Jack Reacher: Never Go Back","overview":"A thriller.","release_date":"2016-10-19"}`)
 			return err
 		}},
+		{name: "searchTV/searchTVDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tmdb.TVPage](`{"page":1,"total_pages":1,"total_results":1,"results":[{"id":1396,"name":"Breaking Bad","overview":"A chemistry teacher enters the drug trade.","first_air_date":"2008-01-20"}]}`)
+			return err
+		}},
+		{name: "getTV/getTVDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tmdb.TVSeries](`{"id":1396,"name":"Breaking Bad","overview":"A chemistry teacher enters the drug trade.","first_air_date":"2008-01-20"}`)
+			return err
+		}},
+		{name: "searchPeople/searchPeopleDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tmdb.PeoplePage](`{"page":1,"total_pages":1,"total_results":1,"results":[{"id":287,"name":"Brad Pitt","known_for_department":"Acting"}]}`)
+			return err
+		}},
+		{name: "getPerson/getPersonDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tmdb.Person](`{"id":287,"name":"Brad Pitt","known_for_department":"Acting","biography":"A film actor."}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +55,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetMovie().Definition().Operation.OperationID != "getMovie" {
 		t.Errorf("getMovie mock has another definition")
+	}
+	if mock.SearchTV().Definition().Operation.OperationID != "searchTV" {
+		t.Errorf("searchTV mock has another definition")
+	}
+	if mock.GetTV().Definition().Operation.OperationID != "getTV" {
+		t.Errorf("getTV mock has another definition")
+	}
+	if mock.SearchPeople().Definition().Operation.OperationID != "searchPeople" {
+		t.Errorf("searchPeople mock has another definition")
+	}
+	if mock.GetPerson().Definition().Operation.OperationID != "getPerson" {
+		t.Errorf("getPerson mock has another definition")
 	}
 }

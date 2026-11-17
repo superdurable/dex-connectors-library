@@ -41,12 +41,28 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	GetSource() sdkgo.Query[GetSourceInput, SourceProfile]
+	ListSources() sdkgo.Query[ListSourcesInput, SourcePage]
+	CreateSource() sdkgo.Mutation[CreateSourceInput, SourceProfile]
+	UpdateSource() sdkgo.Mutation[UpdateSourceInput, SourceProfile]
+	DeleteSource() sdkgo.Mutation[DeleteSourceInput, DeletedSource]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) GetSource() sdkgo.Query[GetSourceInput, SourceProfile] {
 	return operations.client.GetSource()
+}
+func (operations clientOperations) ListSources() sdkgo.Query[ListSourcesInput, SourcePage] {
+	return operations.client.ListSources()
+}
+func (operations clientOperations) CreateSource() sdkgo.Mutation[CreateSourceInput, SourceProfile] {
+	return operations.client.CreateSource()
+}
+func (operations clientOperations) UpdateSource() sdkgo.Mutation[UpdateSourceInput, SourceProfile] {
+	return operations.client.UpdateSource()
+}
+func (operations clientOperations) DeleteSource() sdkgo.Mutation[DeleteSourceInput, DeletedSource] {
+	return operations.client.DeleteSource()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -255,6 +271,291 @@ func NewGetSourceStep[IN any](config GetSourceStepConfig[IN]) sdkgo.QueryStep[IN
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetSourceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSourcesBranchListed sdkgo.BranchID = "listed"
+const ListSourcesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSourcesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSourcesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSourcesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSources"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSourcesBranchListed, Description: "Segment returned a page of Sources."},
+		{ID: ListSourcesBranchProviderRejected, Description: "Segment definitively rejected the list request.", Optional: true},
+		{ID: ListSourcesBranchInvalidResponse, Description: "Segment returned malformed or oversized list JSON.", Optional: true},
+		{ID: ListSourcesBranchDefect, Description: "Pagination or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSourcesResult = sdkgo.QueryResult[SourcePage]
+
+type ListSourcesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=segment"`
+	operationID                    struct{}                                      `connector:"operationId=listSources"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSourcesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSourcesResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSourcesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSourcesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSourcesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SourcePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListSourcesStep[IN any](config ListSourcesStepConfig[IN]) sdkgo.QueryStep[IN, ListSourcesInput, SourcePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("segment connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSourcesInput, SourcePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSources(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSourcesResult] {
+			branches := make([]sdkgo.BranchTarget[ListSourcesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSourcesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSourcesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSourcesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSourcesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateSourceBranchCreated sdkgo.BranchID = "created"
+const CreateSourceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateSourceBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateSourceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateSourceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createSource"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateSourceBranchCreated, Description: "Segment created the Source and returned its identity."},
+		{ID: CreateSourceBranchProviderRejected, Description: "Segment definitively rejected the first create request.", Optional: true},
+		{ID: CreateSourceBranchUncertain, Description: "The create may have succeeded but no Source ID was confirmed.", Optional: true},
+		{ID: CreateSourceBranchDefect, Description: "Source input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateSourceResult = sdkgo.MutationResult[SourceProfile]
+
+type CreateSourceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=segment"`
+	operationID                       struct{}                                            `connector:"operationId=createSource"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateSourceInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateSourceResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateSourceResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateSourceResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateSourceResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SourceProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateSourceStep[IN any](config CreateSourceStepConfig[IN]) sdkgo.MutationStep[IN, CreateSourceInput, SourceProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("segment connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateSourceInput, SourceProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateSource(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateSourceResult] {
+			branches := make([]sdkgo.BranchTarget[CreateSourceResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateSourceBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateSourceBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateSourceBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateSourceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateSourceBranchUpdated sdkgo.BranchID = "updated"
+const UpdateSourceBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateSourceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateSourceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateSourceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateSource"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateSourceBranchUpdated, Description: "Segment updated the Source."},
+		{ID: UpdateSourceBranchNotFound, Description: "Segment did not expose the Source.", Optional: true},
+		{ID: UpdateSourceBranchProviderRejected, Description: "Segment definitively rejected the update.", Optional: true},
+		{ID: UpdateSourceBranchDefect, Description: "Source input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateSourceResult = sdkgo.MutationResult[SourceProfile]
+
+type UpdateSourceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=segment"`
+	operationID                       struct{}                                            `connector:"operationId=updateSource"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateSourceInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateSourceResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateSourceResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateSourceResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateSourceResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SourceProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateSourceStep[IN any](config UpdateSourceStepConfig[IN]) sdkgo.MutationStep[IN, UpdateSourceInput, SourceProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("segment connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateSourceInput, SourceProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateSource(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateSourceResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateSourceResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateSourceBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateSourceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateSourceBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateSourceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteSourceBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteSourceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteSourceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteSourceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteSource"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteSourceBranchDeleted, Description: "Segment deleted the Source or it was already absent."},
+		{ID: DeleteSourceBranchProviderRejected, Description: "Segment definitively rejected the deletion.", Optional: true},
+		{ID: DeleteSourceBranchDefect, Description: "Source ID or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteSourceResult = sdkgo.MutationResult[DeletedSource]
+
+type DeleteSourceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=segment"`
+	operationID                       struct{}                                            `connector:"operationId=deleteSource"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteSourceInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteSourceResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteSourceResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteSourceResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedSource]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteSourceStep[IN any](config DeleteSourceStepConfig[IN]) sdkgo.MutationStep[IN, DeleteSourceInput, DeletedSource] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("segment connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteSourceInput, DeletedSource]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteSource(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteSourceResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteSourceResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteSourceBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteSourceBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteSourceBranchDefect))
 			}
 			return branches
 		}(),

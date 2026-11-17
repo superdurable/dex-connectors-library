@@ -22,6 +22,9 @@ type Mock struct {
 	getForm       *connectormock.Query[typeform.GetFormInput, typeform.Form]
 	listResponses *connectormock.Query[typeform.ListResponsesInput, typeform.ResponsePage]
 	upsertWebhook *connectormock.Mutation[typeform.UpsertWebhookInput, typeform.Webhook]
+	listWebhooks  *connectormock.Query[typeform.ListWebhooksInput, typeform.WebhookList]
+	getWebhook    *connectormock.Query[typeform.GetWebhookInput, typeform.Webhook]
+	deleteWebhook *connectormock.Mutation[typeform.DeleteWebhookInput, typeform.DeletedWebhook]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -33,11 +36,17 @@ func New(t testing.TB, connectionName string) *Mock {
 		getForm:       connectormock.NewQuery[typeform.GetFormInput, typeform.Form](t, typeform.GetFormDefinition),
 		listResponses: connectormock.NewQuery[typeform.ListResponsesInput, typeform.ResponsePage](t, typeform.ListResponsesDefinition),
 		upsertWebhook: connectormock.NewMutation[typeform.UpsertWebhookInput, typeform.Webhook](t, typeform.UpsertWebhookDefinition),
+		listWebhooks:  connectormock.NewQuery[typeform.ListWebhooksInput, typeform.WebhookList](t, typeform.ListWebhooksDefinition),
+		getWebhook:    connectormock.NewQuery[typeform.GetWebhookInput, typeform.Webhook](t, typeform.GetWebhookDefinition),
+		deleteWebhook: connectormock.NewMutation[typeform.DeleteWebhookInput, typeform.DeletedWebhook](t, typeform.DeleteWebhookDefinition),
 	}
 	mock.listForms.Default(ListFormsDefault())
 	mock.getForm.Default(GetFormDefault())
 	mock.listResponses.Default(ListResponsesDefault())
 	mock.upsertWebhook.Default(UpsertWebhookDefault())
+	mock.listWebhooks.Default(ListWebhooksDefault())
+	mock.getWebhook.Default(GetWebhookDefault())
+	mock.deleteWebhook.Default(DeleteWebhookDefault())
 	connection, err := typeform.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "typeform", Name: connectionName})
 	if err != nil {
 		t.Fatalf("typeform mock connection: %v", err)
@@ -69,6 +78,21 @@ func (mock *Mock) UpsertWebhook() *connectormock.Mutation[typeform.UpsertWebhook
 	return mock.upsertWebhook
 }
 
+// ListWebhooks returns the listWebhooks script.
+func (mock *Mock) ListWebhooks() *connectormock.Query[typeform.ListWebhooksInput, typeform.WebhookList] {
+	return mock.listWebhooks
+}
+
+// GetWebhook returns the getWebhook script.
+func (mock *Mock) GetWebhook() *connectormock.Query[typeform.GetWebhookInput, typeform.Webhook] {
+	return mock.getWebhook
+}
+
+// DeleteWebhook returns the deleteWebhook script.
+func (mock *Mock) DeleteWebhook() *connectormock.Mutation[typeform.DeleteWebhookInput, typeform.DeletedWebhook] {
+	return mock.deleteWebhook
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListForms() sdkgo.Query[typeform.ListFormsInput, typeform.FormPage] {
@@ -82,6 +106,15 @@ func (operations mockOperations) ListResponses() sdkgo.Query[typeform.ListRespon
 }
 func (operations mockOperations) UpsertWebhook() sdkgo.Mutation[typeform.UpsertWebhookInput, typeform.Webhook] {
 	return operations.mock.upsertWebhook
+}
+func (operations mockOperations) ListWebhooks() sdkgo.Query[typeform.ListWebhooksInput, typeform.WebhookList] {
+	return operations.mock.listWebhooks
+}
+func (operations mockOperations) GetWebhook() sdkgo.Query[typeform.GetWebhookInput, typeform.Webhook] {
+	return operations.mock.getWebhook
+}
+func (operations mockOperations) DeleteWebhook() sdkgo.Mutation[typeform.DeleteWebhookInput, typeform.DeletedWebhook] {
+	return operations.mock.deleteWebhook
 }
 
 // ListFormsListed selects the listed branch: Typeform returned one page of forms and the page count.
@@ -278,3 +311,114 @@ func UpsertWebhookWebhookWriteDenied() connectormock.Case[typeform.Webhook] {
 
 // UpsertWebhookDefault is the manifest default, signupWebhook, which New installs.
 func UpsertWebhookDefault() connectormock.Case[typeform.Webhook] { return UpsertWebhookSignupWebhook() }
+
+// ListWebhooksListed selects the listed branch: Typeform returned the form's webhooks.
+func ListWebhooksListed(value typeform.WebhookList, failure *sdkgo.Failure) connectormock.Case[typeform.WebhookList] {
+	return connectormock.Branch(typeform.ListWebhooksBranchListed, value, failure)
+}
+
+// ListWebhooksNotFound selects the notFound branch: The form does not exist or is inaccessible.
+func ListWebhooksNotFound(value typeform.WebhookList, failure *sdkgo.Failure) connectormock.Case[typeform.WebhookList] {
+	return connectormock.Branch(typeform.ListWebhooksBranchNotFound, value, failure)
+}
+
+// ListWebhooksProviderRejected selects the providerRejected branch: Typeform rejected the request, such as a missing webhooks:read scope.
+func ListWebhooksProviderRejected(value typeform.WebhookList, failure *sdkgo.Failure) connectormock.Case[typeform.WebhookList] {
+	return connectormock.Branch(typeform.ListWebhooksBranchProviderRejected, value, failure)
+}
+
+// ListWebhooksInvalidResponse selects the invalidResponse branch: Typeform returned a malformed or oversized response.
+func ListWebhooksInvalidResponse(value typeform.WebhookList, failure *sdkgo.Failure) connectormock.Case[typeform.WebhookList] {
+	return connectormock.Branch(typeform.ListWebhooksBranchInvalidResponse, value, failure)
+}
+
+// ListWebhooksDefect selects the defect branch: Local input or connection configuration is invalid.
+func ListWebhooksDefect(value typeform.WebhookList, failure *sdkgo.Failure) connectormock.Case[typeform.WebhookList] {
+	return connectormock.Branch(typeform.ListWebhooksBranchDefect, value, failure)
+}
+
+// ListWebhooksRetry asks Dex to retry the listWebhooks Step, after the delay when it is positive.
+func ListWebhooksRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[typeform.WebhookList] {
+	return connectormock.Retry[typeform.WebhookList](failure, after)
+}
+
+// ListWebhooksSignupWebhooks is the manifest mock signupWebhooks: Listing form f_signup_1 returns its response recorder webhook.
+func ListWebhooksSignupWebhooks() connectormock.Case[typeform.WebhookList] {
+	value := connectormock.MustDecodeOutput[typeform.WebhookList](`{"webhooks":[{"id":"webhook_signup_1","formId":"f_signup_1","tag":"dex-response-recorder","url":"https://example.test/webhooks/typeform","isEnabled":true,"eventTypes":["form_response"],"createdAt":"2026-10-26T12:00:00Z","updatedAt":"2026-10-26T12:00:00Z"}]}`)
+	return connectormock.Branch(typeform.ListWebhooksBranchListed, value, nil)
+}
+
+// ListWebhooksDefault is the manifest default, signupWebhooks, which New installs.
+func ListWebhooksDefault() connectormock.Case[typeform.WebhookList] {
+	return ListWebhooksSignupWebhooks()
+}
+
+// GetWebhookFound selects the found branch: Typeform returned the webhook.
+func GetWebhookFound(value typeform.Webhook, failure *sdkgo.Failure) connectormock.Case[typeform.Webhook] {
+	return connectormock.Branch(typeform.GetWebhookBranchFound, value, failure)
+}
+
+// GetWebhookNotFound selects the notFound branch: The webhook or form does not exist or is inaccessible.
+func GetWebhookNotFound(value typeform.Webhook, failure *sdkgo.Failure) connectormock.Case[typeform.Webhook] {
+	return connectormock.Branch(typeform.GetWebhookBranchNotFound, value, failure)
+}
+
+// GetWebhookProviderRejected selects the providerRejected branch: Typeform rejected the request, such as a missing webhooks:read scope.
+func GetWebhookProviderRejected(value typeform.Webhook, failure *sdkgo.Failure) connectormock.Case[typeform.Webhook] {
+	return connectormock.Branch(typeform.GetWebhookBranchProviderRejected, value, failure)
+}
+
+// GetWebhookInvalidResponse selects the invalidResponse branch: Typeform returned a malformed or oversized response.
+func GetWebhookInvalidResponse(value typeform.Webhook, failure *sdkgo.Failure) connectormock.Case[typeform.Webhook] {
+	return connectormock.Branch(typeform.GetWebhookBranchInvalidResponse, value, failure)
+}
+
+// GetWebhookDefect selects the defect branch: Local input or connection configuration is invalid.
+func GetWebhookDefect(value typeform.Webhook, failure *sdkgo.Failure) connectormock.Case[typeform.Webhook] {
+	return connectormock.Branch(typeform.GetWebhookBranchDefect, value, failure)
+}
+
+// GetWebhookRetry asks Dex to retry the getWebhook Step, after the delay when it is positive.
+func GetWebhookRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[typeform.Webhook] {
+	return connectormock.Retry[typeform.Webhook](failure, after)
+}
+
+// GetWebhookSignupWebhook is the manifest mock signupWebhook: Reading the response recorder webhook returns its public metadata.
+func GetWebhookSignupWebhook() connectormock.Case[typeform.Webhook] {
+	value := connectormock.MustDecodeOutput[typeform.Webhook](`{"id":"webhook_signup_1","formId":"f_signup_1","tag":"dex-response-recorder","url":"https://example.test/webhooks/typeform","isEnabled":true,"eventTypes":["form_response"],"createdAt":"2026-10-26T12:00:00Z","updatedAt":"2026-10-26T12:00:00Z"}`)
+	return connectormock.Branch(typeform.GetWebhookBranchFound, value, nil)
+}
+
+// GetWebhookDefault is the manifest default, signupWebhook, which New installs.
+func GetWebhookDefault() connectormock.Case[typeform.Webhook] { return GetWebhookSignupWebhook() }
+
+// DeleteWebhookDeleted selects the deleted branch: The webhook is absent after the request.
+func DeleteWebhookDeleted(value typeform.DeletedWebhook, failure *sdkgo.Failure) connectormock.Case[typeform.DeletedWebhook] {
+	return connectormock.Branch(typeform.DeleteWebhookBranchDeleted, value, failure)
+}
+
+// DeleteWebhookProviderRejected selects the providerRejected branch: Typeform rejected the request, such as a missing webhooks:write scope.
+func DeleteWebhookProviderRejected(value typeform.DeletedWebhook, failure *sdkgo.Failure) connectormock.Case[typeform.DeletedWebhook] {
+	return connectormock.Branch(typeform.DeleteWebhookBranchProviderRejected, value, failure)
+}
+
+// DeleteWebhookDefect selects the defect branch: Local input or connection configuration is invalid.
+func DeleteWebhookDefect(value typeform.DeletedWebhook, failure *sdkgo.Failure) connectormock.Case[typeform.DeletedWebhook] {
+	return connectormock.Branch(typeform.DeleteWebhookBranchDefect, value, failure)
+}
+
+// DeleteWebhookRetry asks Dex to retry the deleteWebhook Step, after the delay when it is positive.
+func DeleteWebhookRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[typeform.DeletedWebhook] {
+	return connectormock.Retry[typeform.DeletedWebhook](failure, after)
+}
+
+// DeleteWebhookSignupWebhookDeleted is the manifest mock signupWebhookDeleted: Deleting the response recorder webhook leaves it absent.
+func DeleteWebhookSignupWebhookDeleted() connectormock.Case[typeform.DeletedWebhook] {
+	value := connectormock.MustDecodeOutput[typeform.DeletedWebhook](`{"formId":"f_signup_1","tag":"dex-response-recorder"}`)
+	return connectormock.Branch(typeform.DeleteWebhookBranchDeleted, value, nil)
+}
+
+// DeleteWebhookDefault is the manifest default, signupWebhookDeleted, which New installs.
+func DeleteWebhookDefault() connectormock.Case[typeform.DeletedWebhook] {
+	return DeleteWebhookSignupWebhookDeleted()
+}

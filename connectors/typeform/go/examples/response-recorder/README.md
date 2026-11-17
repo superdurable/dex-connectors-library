@@ -26,6 +26,11 @@ Each submission costs one `getForm` call, and Typeform allows two API requests
 per second per account; a form with more submissions than that should record
 the webhook's answers without reading the form.
 
+The same Worker also registers `TypeformWebhookAudit`. Start it with
+`{"formId":"<form ID>"}` to call `listWebhooks` and complete with webhook
+metadata that excludes signing secrets. The mock-backed integration test runs
+both Flows through a real Dex Worker and Client.
+
 ## 1. Generate the Flow Definition
 
 From `connectors/typeform`, generate strict FDG 2.0 with the latest stable
@@ -66,7 +71,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/typeform/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/typeform/go \
-  --version v0.23.0 --tag connectors/typeform/go/v0.23.0 \
+  --version v0.24.0 --tag connectors/typeform/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/typeform-release/connector-ui.tgz \
   --ui-digest /tmp/typeform-release/connector-ui.tgz.sha256 \
@@ -85,7 +90,7 @@ form:
 
 - `access_token`: a token from Typeform **Account > Personal tokens**
   (<https://admin.typeform.com/user/tokens>) with the scopes `forms:read`,
-  `responses:read`, and `webhooks:write`;
+  `responses:read`, `webhooks:read`, and `webhooks:write`;
 - `webhook_secret`: the output of `openssl rand -hex 32`. Export the same value
   as `TYPEFORM_WEBHOOK_SECRET` in the terminal that registers the webhook and
   sends test deliveries;

@@ -24,7 +24,7 @@ import (
 
 func TestMockBackedFlowWithRealDex(t *testing.T) {
 	mock := tmdbmock.New(t, ConnectionName)
-	flow := NewFlow(mock.Connection())
+	flow := NewTVFlow(mock.Connection())
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
@@ -49,7 +49,7 @@ func TestMockBackedFlowWithRealDex(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	flowID := "tmdb-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	input := Request(tmdb.SearchMoviesInput{Query: "Jack Reacher", Page: 1})
+	input := TVRequest(tmdb.SearchTVInput{Query: "Breaking Bad", Page: 1})
 	_, err = client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
 	require.NoError(t, err)
 	var result dex.FlowResult
@@ -63,18 +63,18 @@ func TestMockBackedFlowWithRealDex(t *testing.T) {
 		break
 	}
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-	var output tmdb.MoviePage
+	var output tmdb.TVPage
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	var display map[string]any
 	require.NoError(t, client.InvokeRPC(ctx, flowID, flow.GetDexDisplay, nil, &display))
-	encodedOutcome, err := json.Marshal(display["tmdb-movie-search-outcome"])
+	encodedOutcome, err := json.Marshal(display["tmdb-tv-search-outcome"])
 	require.NoError(t, err)
-	var displayedOutcome tmdb.MoviePage
+	var displayedOutcome tmdb.TVPage
 	require.NoError(t, json.Unmarshal(encodedOutcome, &displayedOutcome))
 	require.Equal(t, output, displayedOutcome)
-	calls := mock.SearchMovies().Calls()
+	calls := mock.SearchTV().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, flowID, calls[0].FlowID)
-	require.Equal(t, tmdb.SearchMoviesInput(input), calls[0].Input)
-	require.Equal(t, tmdb.SearchMoviesBranchSearched, calls[0].Branch)
+	require.Equal(t, tmdb.SearchTVInput(input), calls[0].Input)
+	require.Equal(t, tmdb.SearchTVBranchSearched, calls[0].Branch)
 }

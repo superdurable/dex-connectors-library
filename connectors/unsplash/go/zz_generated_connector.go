@@ -42,6 +42,19 @@ type Connection struct {
 type Operations interface {
 	SearchPhotos() sdkgo.Query[SearchPhotosInput, PhotoPage]
 	GetPhoto() sdkgo.Query[GetPhotoInput, Photo]
+	ListPhotos() sdkgo.Query[ListPhotosInput, PhotoList]
+	GetRandomPhoto() sdkgo.Query[GetRandomPhotoInput, Photo]
+	SearchCollections() sdkgo.Query[SearchCollectionsInput, CollectionPage]
+	ListCollections() sdkgo.Query[ListCollectionsInput, CollectionList]
+	GetCollection() sdkgo.Query[GetCollectionInput, Collection]
+	ListCollectionPhotos() sdkgo.Query[ListCollectionPhotosInput, PhotoList]
+	GetUser() sdkgo.Query[GetUserInput, User]
+	ListUserPhotos() sdkgo.Query[ListUserPhotosInput, PhotoList]
+	SearchUsers() sdkgo.Query[SearchUsersInput, UserPage]
+	ListTopics() sdkgo.Query[ListTopicsInput, TopicList]
+	GetTopic() sdkgo.Query[GetTopicInput, Topic]
+	ListTopicPhotos() sdkgo.Query[ListTopicPhotosInput, PhotoList]
+	TrackPhotoDownload() sdkgo.Mutation[TrackPhotoDownloadInput, TrackedPhotoDownload]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +64,45 @@ func (operations clientOperations) SearchPhotos() sdkgo.Query[SearchPhotosInput,
 }
 func (operations clientOperations) GetPhoto() sdkgo.Query[GetPhotoInput, Photo] {
 	return operations.client.GetPhoto()
+}
+func (operations clientOperations) ListPhotos() sdkgo.Query[ListPhotosInput, PhotoList] {
+	return operations.client.ListPhotos()
+}
+func (operations clientOperations) GetRandomPhoto() sdkgo.Query[GetRandomPhotoInput, Photo] {
+	return operations.client.GetRandomPhoto()
+}
+func (operations clientOperations) SearchCollections() sdkgo.Query[SearchCollectionsInput, CollectionPage] {
+	return operations.client.SearchCollections()
+}
+func (operations clientOperations) ListCollections() sdkgo.Query[ListCollectionsInput, CollectionList] {
+	return operations.client.ListCollections()
+}
+func (operations clientOperations) GetCollection() sdkgo.Query[GetCollectionInput, Collection] {
+	return operations.client.GetCollection()
+}
+func (operations clientOperations) ListCollectionPhotos() sdkgo.Query[ListCollectionPhotosInput, PhotoList] {
+	return operations.client.ListCollectionPhotos()
+}
+func (operations clientOperations) GetUser() sdkgo.Query[GetUserInput, User] {
+	return operations.client.GetUser()
+}
+func (operations clientOperations) ListUserPhotos() sdkgo.Query[ListUserPhotosInput, PhotoList] {
+	return operations.client.ListUserPhotos()
+}
+func (operations clientOperations) SearchUsers() sdkgo.Query[SearchUsersInput, UserPage] {
+	return operations.client.SearchUsers()
+}
+func (operations clientOperations) ListTopics() sdkgo.Query[ListTopicsInput, TopicList] {
+	return operations.client.ListTopics()
+}
+func (operations clientOperations) GetTopic() sdkgo.Query[GetTopicInput, Topic] {
+	return operations.client.GetTopic()
+}
+func (operations clientOperations) ListTopicPhotos() sdkgo.Query[ListTopicPhotosInput, PhotoList] {
+	return operations.client.ListTopicPhotos()
+}
+func (operations clientOperations) TrackPhotoDownload() sdkgo.Mutation[TrackPhotoDownloadInput, TrackedPhotoDownload] {
+	return operations.client.TrackPhotoDownload()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -335,5 +387,1011 @@ func NewGetPhotoStep[IN any](config GetPhotoStepConfig[IN]) sdkgo.QueryStep[IN, 
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListPhotosBranchListed sdkgo.BranchID = "listed"
+const ListPhotosBranchNotFound sdkgo.BranchID = "notFound"
+const ListPhotosBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPhotosBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPhotosBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPhotosDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPhotos"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPhotosBranchListed, Description: "Unsplash returned the public listPhotos data."},
+		{ID: ListPhotosBranchNotFound, Description: "The requested public resource does not exist.", Optional: true},
+		{ID: ListPhotosBranchProviderRejected, Description: "Unsplash rejected the request or application key.", Optional: true},
+		{ID: ListPhotosBranchInvalidResponse, Description: "Unsplash returned malformed or oversized data.", Optional: true},
+		{ID: ListPhotosBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPhotosResult = sdkgo.QueryResult[PhotoList]
+
+type ListPhotosStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=unsplash"`
+	operationID                    struct{}                                     `connector:"operationId=listPhotos"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPhotosInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPhotosResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListPhotosResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListPhotosResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPhotosResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPhotosResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PhotoList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListPhotosStep[IN any](config ListPhotosStepConfig[IN]) sdkgo.QueryStep[IN, ListPhotosInput, PhotoList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("unsplash connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPhotosInput, PhotoList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListPhotos(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPhotosResult] {
+			branches := make([]sdkgo.BranchTarget[ListPhotosResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPhotosBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListPhotosBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPhotosBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPhotosBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPhotosBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetRandomPhotoBranchFound sdkgo.BranchID = "found"
+const GetRandomPhotoBranchNotFound sdkgo.BranchID = "notFound"
+const GetRandomPhotoBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetRandomPhotoBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetRandomPhotoBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetRandomPhotoDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getRandomPhoto"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetRandomPhotoBranchFound, Description: "Unsplash returned the public getRandomPhoto data."},
+		{ID: GetRandomPhotoBranchNotFound, Description: "The requested public resource does not exist.", Optional: true},
+		{ID: GetRandomPhotoBranchProviderRejected, Description: "Unsplash rejected the request or application key.", Optional: true},
+		{ID: GetRandomPhotoBranchInvalidResponse, Description: "Unsplash returned malformed or oversized data.", Optional: true},
+		{ID: GetRandomPhotoBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetRandomPhotoResult = sdkgo.QueryResult[Photo]
+
+type GetRandomPhotoStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                 `connector:"connectorId=unsplash"`
+	operationID                    struct{}                                 `connector:"operationId=getRandomPhoto"`
+	StepType                       string                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                    `connector:"annotations"`
+	Connection                     Connection                               `connector:"connection"`
+	ConnectionName                 string                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetRandomPhotoInput             `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetRandomPhotoResult]       `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetRandomPhotoResult]       `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetRandomPhotoResult]       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetRandomPhotoResult]       `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetRandomPhotoResult]       `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Photo]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                         `connector:"stepOptionsOverride"`
+}
+
+func NewGetRandomPhotoStep[IN any](config GetRandomPhotoStepConfig[IN]) sdkgo.QueryStep[IN, GetRandomPhotoInput, Photo] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("unsplash connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetRandomPhotoInput, Photo]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetRandomPhoto(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetRandomPhotoResult] {
+			branches := make([]sdkgo.BranchTarget[GetRandomPhotoResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetRandomPhotoBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetRandomPhotoBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetRandomPhotoBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetRandomPhotoBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetRandomPhotoBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SearchCollectionsBranchSearched sdkgo.BranchID = "searched"
+const SearchCollectionsBranchNotFound sdkgo.BranchID = "notFound"
+const SearchCollectionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchCollectionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchCollectionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchCollectionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchCollections"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchCollectionsBranchSearched, Description: "Unsplash returned the public searchCollections data."},
+		{ID: SearchCollectionsBranchNotFound, Description: "The requested public resource does not exist.", Optional: true},
+		{ID: SearchCollectionsBranchProviderRejected, Description: "Unsplash rejected the request or application key.", Optional: true},
+		{ID: SearchCollectionsBranchInvalidResponse, Description: "Unsplash returned malformed or oversized data.", Optional: true},
+		{ID: SearchCollectionsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchCollectionsResult = sdkgo.QueryResult[CollectionPage]
+
+type SearchCollectionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=unsplash"`
+	operationID                    struct{}                                          `connector:"operationId=searchCollections"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchCollectionsInput                   `connector:"mapToOperationInput"`
+	Searched                       sdkgo.Target[SearchCollectionsResult]             `connector:"branch=searched"`
+	NotFound                       sdkgo.Target[SearchCollectionsResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[SearchCollectionsResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchCollectionsResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchCollectionsResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CollectionPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewSearchCollectionsStep[IN any](config SearchCollectionsStepConfig[IN]) sdkgo.QueryStep[IN, SearchCollectionsInput, CollectionPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("unsplash connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchCollectionsInput, CollectionPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchCollections(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchCollectionsResult] {
+			branches := make([]sdkgo.BranchTarget[SearchCollectionsResult], 0, 5)
+			if config.Searched.HasStep() {
+				branches = append(branches, config.Searched.BranchTarget(SearchCollectionsBranchSearched))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(SearchCollectionsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchCollectionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchCollectionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchCollectionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCollectionsBranchListed sdkgo.BranchID = "listed"
+const ListCollectionsBranchNotFound sdkgo.BranchID = "notFound"
+const ListCollectionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCollectionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCollectionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCollectionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCollections"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCollectionsBranchListed, Description: "Unsplash returned the public listCollections data."},
+		{ID: ListCollectionsBranchNotFound, Description: "The requested public resource does not exist.", Optional: true},
+		{ID: ListCollectionsBranchProviderRejected, Description: "Unsplash rejected the request or application key.", Optional: true},
+		{ID: ListCollectionsBranchInvalidResponse, Description: "Unsplash returned malformed or oversized data.", Optional: true},
+		{ID: ListCollectionsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCollectionsResult = sdkgo.QueryResult[CollectionList]
+
+type ListCollectionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=unsplash"`
+	operationID                    struct{}                                          `connector:"operationId=listCollections"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCollectionsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCollectionsResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListCollectionsResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListCollectionsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCollectionsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCollectionsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CollectionList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewListCollectionsStep[IN any](config ListCollectionsStepConfig[IN]) sdkgo.QueryStep[IN, ListCollectionsInput, CollectionList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("unsplash connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCollectionsInput, CollectionList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCollections(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCollectionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListCollectionsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCollectionsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListCollectionsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCollectionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCollectionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCollectionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCollectionBranchFound sdkgo.BranchID = "found"
+const GetCollectionBranchNotFound sdkgo.BranchID = "notFound"
+const GetCollectionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCollectionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCollectionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCollectionDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCollection"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCollectionBranchFound, Description: "Unsplash returned the public getCollection data."},
+		{ID: GetCollectionBranchNotFound, Description: "The requested public resource does not exist.", Optional: true},
+		{ID: GetCollectionBranchProviderRejected, Description: "Unsplash rejected the request or application key.", Optional: true},
+		{ID: GetCollectionBranchInvalidResponse, Description: "Unsplash returned malformed or oversized data.", Optional: true},
+		{ID: GetCollectionBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCollectionResult = sdkgo.QueryResult[Collection]
+
+type GetCollectionStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=unsplash"`
+	operationID                    struct{}                                      `connector:"operationId=getCollection"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCollectionInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCollectionResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCollectionResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCollectionResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCollectionResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCollectionResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Collection]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewGetCollectionStep[IN any](config GetCollectionStepConfig[IN]) sdkgo.QueryStep[IN, GetCollectionInput, Collection] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("unsplash connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCollectionInput, Collection]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCollection(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCollectionResult] {
+			branches := make([]sdkgo.BranchTarget[GetCollectionResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCollectionBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCollectionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCollectionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCollectionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCollectionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCollectionPhotosBranchListed sdkgo.BranchID = "listed"
+const ListCollectionPhotosBranchNotFound sdkgo.BranchID = "notFound"
+const ListCollectionPhotosBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCollectionPhotosBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCollectionPhotosBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCollectionPhotosDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCollectionPhotos"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCollectionPhotosBranchListed, Description: "Unsplash returned the public listCollectionPhotos data."},
+		{ID: ListCollectionPhotosBranchNotFound, Description: "The requested public resource does not exist.", Optional: true},
+		{ID: ListCollectionPhotosBranchProviderRejected, Description: "Unsplash rejected the request or application key.", Optional: true},
+		{ID: ListCollectionPhotosBranchInvalidResponse, Description: "Unsplash returned malformed or oversized data.", Optional: true},
+		{ID: ListCollectionPhotosBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCollectionPhotosResult = sdkgo.QueryResult[PhotoList]
+
+type ListCollectionPhotosStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=unsplash"`
+	operationID                    struct{}                                     `connector:"operationId=listCollectionPhotos"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCollectionPhotosInput           `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCollectionPhotosResult]     `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListCollectionPhotosResult]     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListCollectionPhotosResult]     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCollectionPhotosResult]     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCollectionPhotosResult]     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PhotoList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListCollectionPhotosStep[IN any](config ListCollectionPhotosStepConfig[IN]) sdkgo.QueryStep[IN, ListCollectionPhotosInput, PhotoList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("unsplash connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCollectionPhotosInput, PhotoList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCollectionPhotos(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCollectionPhotosResult] {
+			branches := make([]sdkgo.BranchTarget[ListCollectionPhotosResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCollectionPhotosBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListCollectionPhotosBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCollectionPhotosBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCollectionPhotosBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCollectionPhotosBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetUserBranchFound sdkgo.BranchID = "found"
+const GetUserBranchNotFound sdkgo.BranchID = "notFound"
+const GetUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetUserBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetUserDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetUserBranchFound, Description: "Unsplash returned the public getUser data."},
+		{ID: GetUserBranchNotFound, Description: "The requested public resource does not exist.", Optional: true},
+		{ID: GetUserBranchProviderRejected, Description: "Unsplash rejected the request or application key.", Optional: true},
+		{ID: GetUserBranchInvalidResponse, Description: "Unsplash returned malformed or oversized data.", Optional: true},
+		{ID: GetUserBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetUserResult = sdkgo.QueryResult[User]
+
+type GetUserStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                `connector:"connectorId=unsplash"`
+	operationID                    struct{}                                `connector:"operationId=getUser"`
+	StepType                       string                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                   `connector:"annotations"`
+	Connection                     Connection                              `connector:"connection"`
+	ConnectionName                 string                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetUserInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetUserResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetUserResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetUserResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetUserResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetUserResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[User]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetUserStep[IN any](config GetUserStepConfig[IN]) sdkgo.QueryStep[IN, GetUserInput, User] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("unsplash connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetUserInput, User]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetUserResult] {
+			branches := make([]sdkgo.BranchTarget[GetUserResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetUserBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetUserBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetUserBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetUserBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListUserPhotosBranchListed sdkgo.BranchID = "listed"
+const ListUserPhotosBranchNotFound sdkgo.BranchID = "notFound"
+const ListUserPhotosBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListUserPhotosBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListUserPhotosBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListUserPhotosDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listUserPhotos"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListUserPhotosBranchListed, Description: "Unsplash returned the public listUserPhotos data."},
+		{ID: ListUserPhotosBranchNotFound, Description: "The requested public resource does not exist.", Optional: true},
+		{ID: ListUserPhotosBranchProviderRejected, Description: "Unsplash rejected the request or application key.", Optional: true},
+		{ID: ListUserPhotosBranchInvalidResponse, Description: "Unsplash returned malformed or oversized data.", Optional: true},
+		{ID: ListUserPhotosBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListUserPhotosResult = sdkgo.QueryResult[PhotoList]
+
+type ListUserPhotosStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=unsplash"`
+	operationID                    struct{}                                     `connector:"operationId=listUserPhotos"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListUserPhotosInput                 `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListUserPhotosResult]           `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListUserPhotosResult]           `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListUserPhotosResult]           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListUserPhotosResult]           `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListUserPhotosResult]           `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PhotoList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListUserPhotosStep[IN any](config ListUserPhotosStepConfig[IN]) sdkgo.QueryStep[IN, ListUserPhotosInput, PhotoList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("unsplash connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListUserPhotosInput, PhotoList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListUserPhotos(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListUserPhotosResult] {
+			branches := make([]sdkgo.BranchTarget[ListUserPhotosResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListUserPhotosBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListUserPhotosBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListUserPhotosBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListUserPhotosBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListUserPhotosBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SearchUsersBranchSearched sdkgo.BranchID = "searched"
+const SearchUsersBranchNotFound sdkgo.BranchID = "notFound"
+const SearchUsersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchUsersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchUsersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchUsersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchUsers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchUsersBranchSearched, Description: "Unsplash returned the public searchUsers data."},
+		{ID: SearchUsersBranchNotFound, Description: "The requested public resource does not exist.", Optional: true},
+		{ID: SearchUsersBranchProviderRejected, Description: "Unsplash rejected the request or application key.", Optional: true},
+		{ID: SearchUsersBranchInvalidResponse, Description: "Unsplash returned malformed or oversized data.", Optional: true},
+		{ID: SearchUsersBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchUsersResult = sdkgo.QueryResult[UserPage]
+
+type SearchUsersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=unsplash"`
+	operationID                    struct{}                                    `connector:"operationId=searchUsers"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchUsersInput                   `connector:"mapToOperationInput"`
+	Searched                       sdkgo.Target[SearchUsersResult]             `connector:"branch=searched"`
+	NotFound                       sdkgo.Target[SearchUsersResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[SearchUsersResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchUsersResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchUsersResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[UserPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewSearchUsersStep[IN any](config SearchUsersStepConfig[IN]) sdkgo.QueryStep[IN, SearchUsersInput, UserPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("unsplash connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchUsersInput, UserPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchUsers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchUsersResult] {
+			branches := make([]sdkgo.BranchTarget[SearchUsersResult], 0, 5)
+			if config.Searched.HasStep() {
+				branches = append(branches, config.Searched.BranchTarget(SearchUsersBranchSearched))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(SearchUsersBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchUsersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchUsersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchUsersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTopicsBranchListed sdkgo.BranchID = "listed"
+const ListTopicsBranchNotFound sdkgo.BranchID = "notFound"
+const ListTopicsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTopicsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTopicsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTopicsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTopics"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTopicsBranchListed, Description: "Unsplash returned the public listTopics data."},
+		{ID: ListTopicsBranchNotFound, Description: "The requested public resource does not exist.", Optional: true},
+		{ID: ListTopicsBranchProviderRejected, Description: "Unsplash rejected the request or application key.", Optional: true},
+		{ID: ListTopicsBranchInvalidResponse, Description: "Unsplash returned malformed or oversized data.", Optional: true},
+		{ID: ListTopicsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTopicsResult = sdkgo.QueryResult[TopicList]
+
+type ListTopicsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=unsplash"`
+	operationID                    struct{}                                     `connector:"operationId=listTopics"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTopicsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTopicsResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListTopicsResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListTopicsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTopicsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTopicsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TopicList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListTopicsStep[IN any](config ListTopicsStepConfig[IN]) sdkgo.QueryStep[IN, ListTopicsInput, TopicList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("unsplash connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTopicsInput, TopicList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTopics(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTopicsResult] {
+			branches := make([]sdkgo.BranchTarget[ListTopicsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTopicsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListTopicsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTopicsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTopicsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTopicsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTopicBranchFound sdkgo.BranchID = "found"
+const GetTopicBranchNotFound sdkgo.BranchID = "notFound"
+const GetTopicBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTopicBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTopicBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTopicDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTopic"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTopicBranchFound, Description: "Unsplash returned the public getTopic data."},
+		{ID: GetTopicBranchNotFound, Description: "The requested public resource does not exist.", Optional: true},
+		{ID: GetTopicBranchProviderRejected, Description: "Unsplash rejected the request or application key.", Optional: true},
+		{ID: GetTopicBranchInvalidResponse, Description: "Unsplash returned malformed or oversized data.", Optional: true},
+		{ID: GetTopicBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTopicResult = sdkgo.QueryResult[Topic]
+
+type GetTopicStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                 `connector:"connectorId=unsplash"`
+	operationID                    struct{}                                 `connector:"operationId=getTopic"`
+	StepType                       string                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                    `connector:"annotations"`
+	Connection                     Connection                               `connector:"connection"`
+	ConnectionName                 string                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTopicInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTopicResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTopicResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTopicResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTopicResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTopicResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Topic]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                         `connector:"stepOptionsOverride"`
+}
+
+func NewGetTopicStep[IN any](config GetTopicStepConfig[IN]) sdkgo.QueryStep[IN, GetTopicInput, Topic] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("unsplash connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTopicInput, Topic]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTopic(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTopicResult] {
+			branches := make([]sdkgo.BranchTarget[GetTopicResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTopicBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTopicBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTopicBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTopicBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTopicBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTopicPhotosBranchListed sdkgo.BranchID = "listed"
+const ListTopicPhotosBranchNotFound sdkgo.BranchID = "notFound"
+const ListTopicPhotosBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTopicPhotosBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTopicPhotosBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTopicPhotosDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTopicPhotos"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTopicPhotosBranchListed, Description: "Unsplash returned the public listTopicPhotos data."},
+		{ID: ListTopicPhotosBranchNotFound, Description: "The requested public resource does not exist.", Optional: true},
+		{ID: ListTopicPhotosBranchProviderRejected, Description: "Unsplash rejected the request or application key.", Optional: true},
+		{ID: ListTopicPhotosBranchInvalidResponse, Description: "Unsplash returned malformed or oversized data.", Optional: true},
+		{ID: ListTopicPhotosBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTopicPhotosResult = sdkgo.QueryResult[PhotoList]
+
+type ListTopicPhotosStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=unsplash"`
+	operationID                    struct{}                                     `connector:"operationId=listTopicPhotos"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTopicPhotosInput                `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTopicPhotosResult]          `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListTopicPhotosResult]          `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListTopicPhotosResult]          `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTopicPhotosResult]          `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTopicPhotosResult]          `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PhotoList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListTopicPhotosStep[IN any](config ListTopicPhotosStepConfig[IN]) sdkgo.QueryStep[IN, ListTopicPhotosInput, PhotoList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("unsplash connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTopicPhotosInput, PhotoList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTopicPhotos(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTopicPhotosResult] {
+			branches := make([]sdkgo.BranchTarget[ListTopicPhotosResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTopicPhotosBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListTopicPhotosBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTopicPhotosBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTopicPhotosBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTopicPhotosBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const TrackPhotoDownloadBranchTracked sdkgo.BranchID = "tracked"
+const TrackPhotoDownloadBranchNotFound sdkgo.BranchID = "notFound"
+const TrackPhotoDownloadBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const TrackPhotoDownloadBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const TrackPhotoDownloadBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var TrackPhotoDownloadDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "trackPhotoDownload"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: TrackPhotoDownloadBranchTracked, Description: "Unsplash recorded the download event and returned an image URL."},
+		{ID: TrackPhotoDownloadBranchNotFound, Description: "The photo does not exist.", Optional: true},
+		{ID: TrackPhotoDownloadBranchProviderRejected, Description: "Unsplash conclusively rejected the event or application key.", Optional: true},
+		{ID: TrackPhotoDownloadBranchUncertain, Description: "The event may have been recorded but its outcome cannot be confirmed after bounded sends.", Optional: true},
+		{ID: TrackPhotoDownloadBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type TrackPhotoDownloadResult = sdkgo.MutationResult[TrackedPhotoDownload]
+
+type TrackPhotoDownloadStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=unsplash"`
+	operationID                       struct{}                                                   `connector:"operationId=trackPhotoDownload"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) TrackPhotoDownloadInput                           `connector:"mapToOperationInput"`
+	Tracked                           sdkgo.Target[TrackPhotoDownloadResult]                     `connector:"branch=tracked"`
+	NotFound                          sdkgo.Target[TrackPhotoDownloadResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[TrackPhotoDownloadResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[TrackPhotoDownloadResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[TrackPhotoDownloadResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TrackedPhotoDownload]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewTrackPhotoDownloadStep[IN any](config TrackPhotoDownloadStepConfig[IN]) sdkgo.MutationStep[IN, TrackPhotoDownloadInput, TrackedPhotoDownload] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("unsplash connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TrackPhotoDownloadInput, TrackedPhotoDownload]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.TrackPhotoDownload(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[TrackPhotoDownloadResult] {
+			branches := make([]sdkgo.BranchTarget[TrackPhotoDownloadResult], 0, 5)
+			if config.Tracked.HasStep() {
+				branches = append(branches, config.Tracked.BranchTarget(TrackPhotoDownloadBranchTracked))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(TrackPhotoDownloadBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(TrackPhotoDownloadBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(TrackPhotoDownloadBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(TrackPhotoDownloadBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

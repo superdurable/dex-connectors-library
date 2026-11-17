@@ -52,6 +52,9 @@ type Connection struct {
 type Operations interface {
 	SendMessage() sdkgo.Mutation[SendMessageInput, Message]
 	GetMessage() sdkgo.Query[GetMessageInput, Message]
+	ListMessages() sdkgo.Query[ListMessagesInput, MessagePage]
+	DeleteMessage() sdkgo.Mutation[DeleteMessageInput, DeletedMessage]
+	RedactMessage() sdkgo.Mutation[RedactMessageInput, Message]
 }
 
 type clientOperations struct{ client *Client }
@@ -61,6 +64,15 @@ func (operations clientOperations) SendMessage() sdkgo.Mutation[SendMessageInput
 }
 func (operations clientOperations) GetMessage() sdkgo.Query[GetMessageInput, Message] {
 	return operations.client.GetMessage()
+}
+func (operations clientOperations) ListMessages() sdkgo.Query[ListMessagesInput, MessagePage] {
+	return operations.client.ListMessages()
+}
+func (operations clientOperations) DeleteMessage() sdkgo.Mutation[DeleteMessageInput, DeletedMessage] {
+	return operations.client.DeleteMessage()
+}
+func (operations clientOperations) RedactMessage() sdkgo.Mutation[RedactMessageInput, Message] {
+	return operations.client.RedactMessage()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -420,6 +432,221 @@ func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListMessagesBranchListed sdkgo.BranchID = "listed"
+const ListMessagesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListMessagesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListMessagesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListMessagesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listMessages"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListMessagesBranchListed, Description: "Twilio returned the requested message page."},
+		{ID: ListMessagesBranchProviderRejected, Description: "Twilio definitively rejected the list request.", Optional: true},
+		{ID: ListMessagesBranchInvalidResponse, Description: "Twilio returned an invalid or oversized message page.", Optional: true},
+		{ID: ListMessagesBranchDefect, Description: "The list filters or connection are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListMessagesResult = sdkgo.QueryResult[MessagePage]
+
+type ListMessagesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=twilio-messaging"`
+	operationID                    struct{}                                       `connector:"operationId=listMessages"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                 `connector:"configurationUI"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListMessagesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListMessagesResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListMessagesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListMessagesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListMessagesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[MessagePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListMessagesStep[IN any](config ListMessagesStepConfig[IN]) sdkgo.QueryStep[IN, ListMessagesInput, MessagePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("twilio-messaging connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListMessagesInput, MessagePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListMessages(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListMessagesResult] {
+			branches := make([]sdkgo.BranchTarget[ListMessagesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListMessagesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListMessagesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListMessagesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListMessagesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteMessageBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteMessageBranchDeleted, Description: "Twilio deleted the record or it was already absent."},
+		{ID: DeleteMessageBranchProviderRejected, Description: "Twilio definitively rejected the deletion.", Optional: true},
+		{ID: DeleteMessageBranchDefect, Description: "The message SID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteMessageResult = sdkgo.MutationResult[DeletedMessage]
+
+type DeleteMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=twilio-messaging"`
+	operationID                       struct{}                                             `connector:"operationId=deleteMessage"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                       `connector:"configurationUI"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteMessageInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteMessageResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteMessageResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteMessageResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteMessageStep[IN any](config DeleteMessageStepConfig[IN]) sdkgo.MutationStep[IN, DeleteMessageInput, DeletedMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("twilio-messaging connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteMessageInput, DeletedMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteMessageResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteMessageResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteMessageBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteMessageBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RedactMessageBranchRedacted sdkgo.BranchID = "redacted"
+const RedactMessageBranchNotFound sdkgo.BranchID = "notFound"
+const RedactMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RedactMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RedactMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "redactMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RedactMessageBranchRedacted, Description: "Twilio erased the stored message body."},
+		{ID: RedactMessageBranchNotFound, Description: "The message does not exist.", Optional: true},
+		{ID: RedactMessageBranchProviderRejected, Description: "Twilio definitively rejected the redaction.", Optional: true},
+		{ID: RedactMessageBranchDefect, Description: "The message SID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RedactMessageResult = sdkgo.MutationResult[Message]
+
+type RedactMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=twilio-messaging"`
+	operationID                       struct{}                                      `connector:"operationId=redactMessage"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                `connector:"configurationUI"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) RedactMessageInput                   `connector:"mapToOperationInput"`
+	Redacted                          sdkgo.Target[RedactMessageResult]             `connector:"branch=redacted"`
+	NotFound                          sdkgo.Target[RedactMessageResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[RedactMessageResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[RedactMessageResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Message]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewRedactMessageStep[IN any](config RedactMessageStepConfig[IN]) sdkgo.MutationStep[IN, RedactMessageInput, Message] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("twilio-messaging connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RedactMessageInput, Message]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.RedactMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RedactMessageResult] {
+			branches := make([]sdkgo.BranchTarget[RedactMessageResult], 0, 4)
+			if config.Redacted.HasStep() {
+				branches = append(branches, config.Redacted.BranchTarget(RedactMessageBranchRedacted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(RedactMessageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RedactMessageBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RedactMessageBranchDefect))
 			}
 			return branches
 		}(),

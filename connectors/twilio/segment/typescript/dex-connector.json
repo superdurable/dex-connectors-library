@@ -1,6 +1,6 @@
 {
   "connectorId": "segment",
-  "releaseTag": "connectors/twilio/segment/go/v0.1.0",
+  "releaseTag": "connectors/twilio/segment/go/v0.2.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-twilio-segment",

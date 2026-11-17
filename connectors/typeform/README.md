@@ -1,6 +1,6 @@
 # Typeform Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/typeform/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/typeform/go@v0.24.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/typeform`.
 
@@ -17,6 +17,9 @@ The Typeform connector connects a Dex application to the Typeform
 | `getForm` | Query | One form's fields with their refs, types, titles, and choices, and its hidden field names | `found` |
 | `listResponses` | Query | One page, 1 to 1000, of a form's completed responses, bounded by `since`/`until` and paged by `before`/`after` token | `listed` |
 | `upsertWebhook` | Mutation | Creates or replaces the form's webhook under one tag, with the URL, enabled state, and `webhook_secret` | `upserted` |
+| `listWebhooks` | Query | Lists a form's webhooks without their signing secrets | `listed` |
+| `getWebhook` | Query | Reads one form webhook by tag without its signing secret | `found` |
+| `deleteWebhook` | Mutation | Removes a form webhook by tag; an absent tag is already deleted | `deleted` |
 | `responseSubmitted` | Trigger | A signed `form_response` webhook, decoded into typed answers keyed by field | |
 
 Every other branch is optional: `notFound` (except `listForms`),
@@ -25,8 +28,8 @@ UTC.
 
 ## Python package
 
-The `dex-connector-typeform` Python package implements the four operations in
-the table above. Its generated connection bindings, models, Step factories, and
+The `dex-connector-typeform` Python package implements `listForms`, `getForm`,
+`listResponses`, and `upsertWebhook`. Its generated connection bindings, models, Step factories, and
 mocks follow this manifest; the hand-written client performs the Typeform API
 calls. The Python package does not yet implement `responseSubmitted`.
 
@@ -56,7 +59,7 @@ This snippet comes from
 
 A connection uses a Typeform **personal access token**, created at
 [Account > Personal tokens](https://admin.typeform.com/user/tokens) with the
-scopes `forms:read`, `responses:read`, and `webhooks:write`. Typeform shows the
+scopes `forms:read`, `responses:read`, `webhooks:read`, and `webhooks:write`. Typeform shows the
 `tfp_` token once and does not expire it; a `401` or `403` selects
 `providerRejected` with `AUTHENTICATION` or `AUTHORIZATION`.
 
@@ -64,6 +67,10 @@ scopes `forms:read`, `responses:read`, and `webhooks:write`. Typeform shows the
 `upsertWebhook`: it is a secret you generate, such as `openssl rand -hex 32`,
 that `upsertWebhook` registers with Typeform and the endpoint verifies every
 delivery with.
+
+`listWebhooks` and `getWebhook` require `webhooks:read`; `deleteWebhook` requires
+`webhooks:write`. A token created before these operations may need replacement
+to gain the read scope. The read Results omit Typeform's echoed webhook secret.
 
 The manifest declares the token as the single method of `auth.methods`, so a
 Typeform OAuth method can be added later without changing saved connections.

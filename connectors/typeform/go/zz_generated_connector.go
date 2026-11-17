@@ -58,6 +58,9 @@ type Operations interface {
 	GetForm() sdkgo.Query[GetFormInput, Form]
 	ListResponses() sdkgo.Query[ListResponsesInput, ResponsePage]
 	UpsertWebhook() sdkgo.Mutation[UpsertWebhookInput, Webhook]
+	ListWebhooks() sdkgo.Query[ListWebhooksInput, WebhookList]
+	GetWebhook() sdkgo.Query[GetWebhookInput, Webhook]
+	DeleteWebhook() sdkgo.Mutation[DeleteWebhookInput, DeletedWebhook]
 }
 
 type clientOperations struct{ client *Client }
@@ -73,6 +76,15 @@ func (operations clientOperations) ListResponses() sdkgo.Query[ListResponsesInpu
 }
 func (operations clientOperations) UpsertWebhook() sdkgo.Mutation[UpsertWebhookInput, Webhook] {
 	return operations.client.UpsertWebhook()
+}
+func (operations clientOperations) ListWebhooks() sdkgo.Query[ListWebhooksInput, WebhookList] {
+	return operations.client.ListWebhooks()
+}
+func (operations clientOperations) GetWebhook() sdkgo.Query[GetWebhookInput, Webhook] {
+	return operations.client.GetWebhook()
+}
+func (operations clientOperations) DeleteWebhook() sdkgo.Mutation[DeleteWebhookInput, DeletedWebhook] {
+	return operations.client.DeleteWebhook()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -572,6 +584,231 @@ func NewUpsertWebhookStep[IN any](config UpsertWebhookStepConfig[IN]) sdkgo.Muta
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(UpsertWebhookBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListWebhooksBranchListed sdkgo.BranchID = "listed"
+const ListWebhooksBranchNotFound sdkgo.BranchID = "notFound"
+const ListWebhooksBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListWebhooksBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListWebhooksBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListWebhooksDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listWebhooks"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListWebhooksBranchListed, Description: "Typeform returned the form's webhooks."},
+		{ID: ListWebhooksBranchNotFound, Description: "The form does not exist or is inaccessible.", Optional: true},
+		{ID: ListWebhooksBranchProviderRejected, Description: "Typeform rejected the request, such as a missing webhooks:read scope.", Optional: true},
+		{ID: ListWebhooksBranchInvalidResponse, Description: "Typeform returned a malformed or oversized response.", Optional: true},
+		{ID: ListWebhooksBranchDefect, Description: "Local input or connection configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListWebhooksResult = sdkgo.QueryResult[WebhookList]
+
+type ListWebhooksStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=typeform"`
+	operationID                    struct{}                                       `connector:"operationId=listWebhooks"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                 `connector:"configurationUI"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListWebhooksInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListWebhooksResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListWebhooksResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListWebhooksResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListWebhooksResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListWebhooksResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[WebhookList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListWebhooksStep[IN any](config ListWebhooksStepConfig[IN]) sdkgo.QueryStep[IN, ListWebhooksInput, WebhookList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("typeform connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListWebhooksInput, WebhookList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListWebhooks(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListWebhooksResult] {
+			branches := make([]sdkgo.BranchTarget[ListWebhooksResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListWebhooksBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListWebhooksBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListWebhooksBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListWebhooksBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListWebhooksBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetWebhookBranchFound sdkgo.BranchID = "found"
+const GetWebhookBranchNotFound sdkgo.BranchID = "notFound"
+const GetWebhookBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetWebhookBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetWebhookBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetWebhookDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getWebhook"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetWebhookBranchFound, Description: "Typeform returned the webhook."},
+		{ID: GetWebhookBranchNotFound, Description: "The webhook or form does not exist or is inaccessible.", Optional: true},
+		{ID: GetWebhookBranchProviderRejected, Description: "Typeform rejected the request, such as a missing webhooks:read scope.", Optional: true},
+		{ID: GetWebhookBranchInvalidResponse, Description: "Typeform returned a malformed or oversized response.", Optional: true},
+		{ID: GetWebhookBranchDefect, Description: "Local input or connection configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetWebhookResult = sdkgo.QueryResult[Webhook]
+
+type GetWebhookStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=typeform"`
+	operationID                    struct{}                                   `connector:"operationId=getWebhook"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI             `connector:"configurationUI"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetWebhookInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetWebhookResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetWebhookResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetWebhookResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetWebhookResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetWebhookResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Webhook]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetWebhookStep[IN any](config GetWebhookStepConfig[IN]) sdkgo.QueryStep[IN, GetWebhookInput, Webhook] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("typeform connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetWebhookInput, Webhook]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetWebhook(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetWebhookResult] {
+			branches := make([]sdkgo.BranchTarget[GetWebhookResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetWebhookBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetWebhookBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetWebhookBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetWebhookBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetWebhookBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteWebhookBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteWebhookBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteWebhookBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteWebhookDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteWebhook"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteWebhookBranchDeleted, Description: "The webhook is absent after the request."},
+		{ID: DeleteWebhookBranchProviderRejected, Description: "Typeform rejected the request, such as a missing webhooks:write scope.", Optional: true},
+		{ID: DeleteWebhookBranchDefect, Description: "Local input or connection configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteWebhookResult = sdkgo.MutationResult[DeletedWebhook]
+
+type DeleteWebhookStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=typeform"`
+	operationID                       struct{}                                             `connector:"operationId=deleteWebhook"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                       `connector:"configurationUI"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteWebhookInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteWebhookResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteWebhookResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteWebhookResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedWebhook]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteWebhookStep[IN any](config DeleteWebhookStepConfig[IN]) sdkgo.MutationStep[IN, DeleteWebhookInput, DeletedWebhook] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("typeform connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteWebhookInput, DeletedWebhook]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteWebhook(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteWebhookResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteWebhookResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteWebhookBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteWebhookBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteWebhookBranchDefect))
 			}
 			return branches
 		}(),
