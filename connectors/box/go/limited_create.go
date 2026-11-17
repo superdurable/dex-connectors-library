@@ -165,10 +165,10 @@ func (request boxLimitedCreate) invoke() sdkgo.MutationAttempt[CreatedBoxItem] {
 		return request.uncertain("create checkpoint cannot be trusted")
 	}
 	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
-		value, state := request.readBack()
+		_, state := request.readBack()
 		switch state {
 		case boxReadBackMatched:
-			return sdkgo.NewMutationBranch(request.created, value, nil, sdkgo.Receipt{})
+			return request.uncertain("destination name does not identify this create")
 		case boxReadBackRetry:
 			return request.retry(sdkgo.FailureAvailability, "destination read-back is unavailable", 0)
 		case boxReadBackConflicted:
@@ -242,9 +242,9 @@ func (request boxLimitedCreate) invoke() sdkgo.MutationAttempt[CreatedBoxItem] {
 		if !hasPossibleEarlierSend {
 			return boxCreateFailure(request.operation, request.rejected, sdkgo.FailureProviderRejection, "Box destination name already exists")
 		}
-		value, state := request.readBack()
+		_, state := request.readBack()
 		if state == boxReadBackMatched {
-			return sdkgo.NewMutationBranch(request.created, value, nil, sdkgo.Receipt{})
+			return request.uncertain("destination name does not identify this create")
 		}
 		if state == boxReadBackRetry {
 			return request.retry(sdkgo.FailureAvailability, "destination read-back is unavailable", 0)
@@ -262,9 +262,9 @@ func (request boxLimitedCreate) invoke() sdkgo.MutationAttempt[CreatedBoxItem] {
 	}
 	value, err := request.decodeResponse(response.body)
 	if err != nil {
-		confirmed, state := request.readBack()
+		_, state := request.readBack()
 		if state == boxReadBackMatched {
-			return sdkgo.NewMutationBranch(request.created, confirmed, nil, sdkgo.Receipt{})
+			return request.uncertain("destination name does not identify this create")
 		}
 		if state == boxReadBackRetry || (state == boxReadBackAbsent && canResendUnknown) {
 			return request.retry(sdkgo.FailureAvailability, "accepted Box create could not be confirmed", 0)

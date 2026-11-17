@@ -3999,7 +3999,6 @@
           "id": "12345",
           "name": "renamed.txt",
           "parentId": "0",
-          "sharedLinkUrl": "https://app.box.com/s/example",
           "type": "file"
         },
         "requestCount": 1,
@@ -4451,7 +4450,6 @@
           "id": "54321",
           "name": "Renamed",
           "parentId": "0",
-          "sharedLinkUrl": "https://app.box.com/s/folder-example",
           "type": "folder"
         },
         "requestCount": 1,
@@ -6428,7 +6426,6 @@
           "id": "12345",
           "name": "report.txt",
           "parentId": "0",
-          "sharedLinkUrl": "https://app.box.com/s/example",
           "type": "file"
         },
         "requestCount": 1,
@@ -6836,7 +6833,6 @@
           "id": "54321",
           "name": "Reports",
           "parentId": "0",
-          "sharedLinkUrl": "https://app.box.com/s/folder-example",
           "type": "folder"
         },
         "requestCount": 1,
@@ -7748,18 +7744,18 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "fileId": "12345",
-          "name": "report.txt",
-          "parentId": "0",
-          "sha1": "F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0"
+          "fileId": "",
+          "name": "",
+          "parentId": "",
+          "sha1": ""
         },
         "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
       "input": {
@@ -7780,7 +7776,7 @@
           "retryAfterMs": 0
         }
       ],
-      "name": "createFile-readBack",
+      "name": "createFile-preexisting-name-and-digest-after-5xx",
       "operation": "createFile"
     },
     {
@@ -8035,6 +8031,104 @@
       ],
       "name": "createFile-uncertain",
       "operation": "createFile"
+    },
+    {
+      "attempts": 2,
+      "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders",
+          "requestBody": {
+            "name": "Reports",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"entries\":[{\"id\":\"4321\",\"type\":\"folder\",\"name\":\"Reports\"}],\"limit\":1000,\"offset\":0,\"total_count\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/0/items",
+          "query": {
+            "fields": [
+              "id,type,name"
+            ],
+            "limit": [
+              "1000"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "name": "",
+          "parentId": "",
+          "type": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "input": {
+        "name": "Reports",
+        "parentId": "0"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createFolder-preexisting-name-after-5xx",
+      "operation": "createFolder"
     }
   ],
   "schemaVersion": 1

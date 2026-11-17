@@ -50,8 +50,6 @@ type UpdatedBoxItem struct {
 	Name string `json:"name"`
 	// ParentID is the current parent folder ID, when returned by Box.
 	ParentID string `json:"parentId,omitempty"`
-	// SharedLinkURL is the shareable URL, when one exists.
-	SharedLinkURL string `json:"sharedLinkUrl,omitempty"`
 }
 
 // UpdateFileOperation changes a file's name, parent, or shared link.
@@ -188,7 +186,7 @@ func runBoxUpdate(client *Client, call sdkgo.Call, operation, itemType, itemID, 
 	if json.Unmarshal(response.body, &wire) != nil || wire.ID != itemID || wire.Type != itemType || wire.Name == "" || (name != "" && wire.Name != name) || (parentID != "" && wire.Parent.ID != parentID) || (sharedLinkAccess != "" && (wire.SharedLink.URL == "" || wire.SharedLink.Access != sharedLinkAccess)) {
 		return boxUpdateFailure(operation, invalid, sdkgo.FailureProtocol, "Box update response is incomplete or malformed")
 	}
-	return sdkgo.NewMutationBranch(success, UpdatedBoxItem{ID: wire.ID, Type: wire.Type, Name: wire.Name, ParentID: wire.Parent.ID, SharedLinkURL: wire.SharedLink.URL}, nil, sdkgo.Receipt{})
+	return sdkgo.NewMutationBranch(success, UpdatedBoxItem{ID: wire.ID, Type: wire.Type, Name: wire.Name, ParentID: wire.Parent.ID}, nil, sdkgo.Receipt{})
 }
 
 func boxUpdateFailure(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[UpdatedBoxItem] {

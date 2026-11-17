@@ -17,12 +17,12 @@ URL. Leave `name`, `parentId`, or `sharedLinkAccess` blank to preserve that
 field; at least one must be set. `parentId` is a decimal folder ID, with `0`
 for root. Shared link access is `open`, `company`, or `collaborators`; Box
 enterprise policy may restrict these choices. The result includes the current
-name, parent ID, and shared link URL when Box returns them.
+name and parent ID. Shared link URLs are omitted because they grant access.
 
 Go `shareFile` and `shareFolder` expose sharing as dedicated safe mutations.
 Open the selected item in Box Web, copy its decimal ID from `/files/<ID>` or
 `/folders/<ID>`, then choose `open`, `company`, or `collaborators` access.
-Both operations set an absolute shared link access and return the Box URL;
+Both operations set an absolute shared link access and return item metadata;
 company policies can reject a chosen audience. The
 [`file-share` Flow](go/examples/file-share/README.md) exercises the factory
 through a real Dex Worker with a provider mock.
@@ -30,12 +30,15 @@ through a real Dex Worker with a provider mock.
 Go `createFolder`, `copyFile`, and `copyFolder` use the `limited` repeat tier
 with a cap of three possible sends. They require a destination parent ID and
 an explicit name. After an unknown result, they list the destination folder
-by name before resending; an unconfirmed result at the cap selects `uncertain`.
+by name before resending. A matching name cannot prove this call created the
+item, so the result remains `uncertain`. An unconfirmed result at the cap also
+selects `uncertain`.
 Box does not expose a provider idempotency key for these POST requests.
 Go `createFile` uploads a new file through Box's direct multipart API. Provide
 a destination parent ID, unique name, and bounded Base64 content. It uses the
 `limited` tier with at most three possible sends; after an unknown result it
-lists the destination and compares name, SHA-1, and size before resending. A
+lists the destination and compares name, SHA-1, and size before resending. Those
+values cannot prove this call uploaded the file; a match selects `uncertain`. A
 conflicting name is a definite rejection on the first send and an uncertain
 outcome after a possible earlier send. The
 [`file-create` Flow](go/examples/file-create/README.md) exercises it through

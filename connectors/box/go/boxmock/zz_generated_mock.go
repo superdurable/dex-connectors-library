@@ -361,7 +361,7 @@ func UpdateFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.C
 
 // UpdateFileUpdateFileDefault is the manifest mock updateFileDefault: One file was renamed and shared.
 func UpdateFileUpdateFileDefault() connectormock.Case[box.UpdatedBoxItem] {
-	value := connectormock.MustDecodeOutput[box.UpdatedBoxItem](`{"id":"12345","type":"file","name":"renamed.txt","parentId":"0","sharedLinkUrl":"https://app.box.com/s/example"}`)
+	value := connectormock.MustDecodeOutput[box.UpdatedBoxItem](`{"id":"12345","type":"file","name":"renamed.txt","parentId":"0"}`)
 	return connectormock.Branch(box.UpdateFileBranchUpdated, value, nil)
 }
 
@@ -400,7 +400,7 @@ func UpdateFolderRetry(failure sdkgo.Failure, after time.Duration) connectormock
 
 // UpdateFolderUpdateFolderDefault is the manifest mock updateFolderDefault: One folder was renamed and shared.
 func UpdateFolderUpdateFolderDefault() connectormock.Case[box.UpdatedBoxItem] {
-	value := connectormock.MustDecodeOutput[box.UpdatedBoxItem](`{"id":"54321","type":"folder","name":"Renamed","parentId":"0","sharedLinkUrl":"https://app.box.com/s/folder-example"}`)
+	value := connectormock.MustDecodeOutput[box.UpdatedBoxItem](`{"id":"54321","type":"folder","name":"Renamed","parentId":"0"}`)
 	return connectormock.Branch(box.UpdateFolderBranchUpdated, value, nil)
 }
 
@@ -441,7 +441,7 @@ func ShareFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Ca
 
 // ShareFileShareFileDefault is the manifest mock shareFileDefault: One file has a shared link.
 func ShareFileShareFileDefault() connectormock.Case[box.UpdatedBoxItem] {
-	value := connectormock.MustDecodeOutput[box.UpdatedBoxItem](`{"id":"12345","type":"file","name":"report.txt","parentId":"0","sharedLinkUrl":"https://app.box.com/s/example"}`)
+	value := connectormock.MustDecodeOutput[box.UpdatedBoxItem](`{"id":"12345","type":"file","name":"report.txt","parentId":"0"}`)
 	return connectormock.Branch(box.ShareFileBranchShared, value, nil)
 }
 
@@ -480,7 +480,7 @@ func ShareFolderRetry(failure sdkgo.Failure, after time.Duration) connectormock.
 
 // ShareFolderShareFolderDefault is the manifest mock shareFolderDefault: One folder has a shared link.
 func ShareFolderShareFolderDefault() connectormock.Case[box.UpdatedBoxItem] {
-	value := connectormock.MustDecodeOutput[box.UpdatedBoxItem](`{"id":"54321","type":"folder","name":"Reports","parentId":"0","sharedLinkUrl":"https://app.box.com/s/folder-example"}`)
+	value := connectormock.MustDecodeOutput[box.UpdatedBoxItem](`{"id":"54321","type":"folder","name":"Reports","parentId":"0"}`)
 	return connectormock.Branch(box.ShareFolderBranchShared, value, nil)
 }
 

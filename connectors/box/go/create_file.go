@@ -58,7 +58,7 @@ func (CreateFileOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateBoxFileIn
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke uploads one new file and reads its destination back after an unknown outcome.
+// Invoke uploads one new file and checks its destination after an unknown outcome.
 func (operation CreateFileOperation) Invoke(call sdkgo.Call, input CreateBoxFileInput) sdkgo.MutationAttempt[CreatedBoxFile] {
 	if !validBoxItemID(input.ParentID, true) || !validBoxNewName(input.Name) {
 		return createFileFailure(CreateFileBranchDefect, sdkgo.FailureValidation, "parent ID or file name is invalid")
@@ -94,10 +94,10 @@ func (request boxLimitedUpload) invoke() sdkgo.MutationAttempt[CreatedBoxFile] {
 		return request.uncertain("upload checkpoint cannot be trusted")
 	}
 	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
-		value, state := request.readBack()
+		_, state := request.readBack()
 		switch state {
 		case boxReadBackMatched:
-			return sdkgo.NewMutationBranch(CreateFileBranchCreated, value, nil, sdkgo.Receipt{})
+			return request.uncertain("file name and digest do not identify this upload")
 		case boxReadBackRetry:
 			return request.retry(sdkgo.FailureAvailability, "file read-back is unavailable", 0)
 		case boxReadBackConflicted:
@@ -162,9 +162,9 @@ func (request boxLimitedUpload) invoke() sdkgo.MutationAttempt[CreatedBoxFile] {
 		if !hasPossibleEarlierSend {
 			return createFileFailure(CreateFileBranchProviderRejected, sdkgo.FailureProviderRejection, "Box destination name already exists")
 		}
-		value, state := request.readBack()
+		_, state := request.readBack()
 		if state == boxReadBackMatched {
-			return sdkgo.NewMutationBranch(CreateFileBranchCreated, value, nil, sdkgo.Receipt{})
+			return request.uncertain("file name and digest do not identify this upload")
 		}
 		if state == boxReadBackRetry {
 			return request.retry(sdkgo.FailureAvailability, "file read-back is unavailable", 0)
@@ -179,9 +179,9 @@ func (request boxLimitedUpload) invoke() sdkgo.MutationAttempt[CreatedBoxFile] {
 	}
 	value, err := request.decodeUploadResponse(response.body)
 	if err != nil {
-		confirmed, state := request.readBack()
+		_, state := request.readBack()
 		if state == boxReadBackMatched {
-			return sdkgo.NewMutationBranch(CreateFileBranchCreated, confirmed, nil, sdkgo.Receipt{})
+			return request.uncertain("file name and digest do not identify this upload")
 		}
 		if state == boxReadBackRetry || (state == boxReadBackAbsent && canResendUnknown) {
 			return request.retry(sdkgo.FailureAvailability, "accepted upload could not be confirmed", 0)

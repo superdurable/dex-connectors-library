@@ -112,7 +112,7 @@ spec:
       description: Create one named Box folder under a parent folder.
       idempotency: required
       authorization: required
-      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
       branches:
         - {id: created, goName: Created, description: Box created or confirmed the folder.}
         - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected creation., optional: true}
@@ -128,7 +128,7 @@ spec:
       description: Copy a Box file to a parent folder under an explicit name.
       idempotency: required
       authorization: required
-      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
       branches:
         - {id: copied, goName: Copied, description: Box copied or confirmed the file.}
         - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected copying., optional: true}
@@ -144,7 +144,7 @@ spec:
       description: Copy a Box folder to a parent folder under an explicit name.
       idempotency: required
       authorization: required
-      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
       branches:
         - {id: copied, goName: Copied, description: Box copied or confirmed the folder.}
         - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected copying., optional: true}
@@ -168,7 +168,7 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
-        - {name: updateFileDefault, branch: updated, default: true, description: One file was renamed and shared., output: {id: '12345', type: file, name: renamed.txt, parentId: '0', sharedLinkUrl: 'https://app.box.com/s/example'}}
+        - {name: updateFileDefault, branch: updated, default: true, description: One file was renamed and shared., output: {id: '12345', type: file, name: renamed.txt, parentId: '0'}}
     - name: updateFolder
       goName: UpdateFolder
       inputType: UpdateBoxFolderInput
@@ -185,7 +185,7 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
-        - {name: updateFolderDefault, branch: updated, default: true, description: One folder was renamed and shared., output: {id: '54321', type: folder, name: Renamed, parentId: '0', sharedLinkUrl: 'https://app.box.com/s/folder-example'}}
+        - {name: updateFolderDefault, branch: updated, default: true, description: One folder was renamed and shared., output: {id: '54321', type: folder, name: Renamed, parentId: '0'}}
     - name: shareFile
       goName: ShareFile
       inputType: ShareBoxFileInput
@@ -202,7 +202,7 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
-        - {name: shareFileDefault, branch: shared, default: true, description: One file has a shared link., output: {id: '12345', type: file, name: report.txt, parentId: '0', sharedLinkUrl: 'https://app.box.com/s/example'}}
+        - {name: shareFileDefault, branch: shared, default: true, description: One file has a shared link., output: {id: '12345', type: file, name: report.txt, parentId: '0'}}
     - name: shareFolder
       goName: ShareFolder
       inputType: ShareBoxFolderInput
@@ -219,7 +219,7 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
-        - {name: shareFolderDefault, branch: shared, default: true, description: One folder has a shared link., output: {id: '54321', type: folder, name: Reports, parentId: '0', sharedLinkUrl: 'https://app.box.com/s/folder-example'}}
+        - {name: shareFolderDefault, branch: shared, default: true, description: One folder has a shared link., output: {id: '54321', type: folder, name: Reports, parentId: '0'}}
     - name: createFile
       goName: CreateFile
       inputType: CreateBoxFileInput
@@ -228,7 +228,7 @@ spec:
       description: Upload one new bounded file under a Box folder.
       idempotency: required
       authorization: required
-      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
       branches:
         - {id: created, goName: Created, description: Box created or confirmed the file.}
         - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected creation., optional: true}

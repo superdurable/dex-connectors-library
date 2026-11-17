@@ -29,19 +29,19 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "updateFile/updateFileDefault/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"12345","type":"file","name":"renamed.txt","parentId":"0","sharedLinkUrl":"https://app.box.com/s/example"}`)
+			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"12345","type":"file","name":"renamed.txt","parentId":"0"}`)
 			return err
 		}},
 		{name: "updateFolder/updateFolderDefault/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"54321","type":"folder","name":"Renamed","parentId":"0","sharedLinkUrl":"https://app.box.com/s/folder-example"}`)
+			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"54321","type":"folder","name":"Renamed","parentId":"0"}`)
 			return err
 		}},
 		{name: "shareFile/shareFileDefault/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"12345","type":"file","name":"report.txt","parentId":"0","sharedLinkUrl":"https://app.box.com/s/example"}`)
+			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"12345","type":"file","name":"report.txt","parentId":"0"}`)
 			return err
 		}},
 		{name: "shareFolder/shareFolderDefault/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"54321","type":"folder","name":"Reports","parentId":"0","sharedLinkUrl":"https://app.box.com/s/folder-example"}`)
+			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"54321","type":"folder","name":"Reports","parentId":"0"}`)
 			return err
 		}},
 		{name: "createFile/createFileDefault/1", decode: func() error {
