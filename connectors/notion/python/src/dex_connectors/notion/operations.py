@@ -572,6 +572,19 @@ class UpdatePagePropertiesOperation:
         return MutationAttempt.branch_result("updated", UpdatePagePropertiesOutput(page), receipt)
 
 
+def _resend_or_select_uncertain_page(
+    can_resend_unknown_outcome: bool,
+    output: CreatePageOutput,
+    problem: Failure,
+    receipt: Receipt,
+    retry_after: float = 0,
+) -> MutationAttempt[CreatePageOutput]:
+    if can_resend_unknown_outcome:
+        # The claim stays the last marker, so the next attempt counts this send.
+        return MutationAttempt.retry(problem, retry_after)
+    return MutationAttempt.uncertain(output, problem, receipt)
+
+
 class CreatePageOperation:
     """Fence one nonrepeatable Notion page create and read back known IDs."""
 
@@ -590,7 +603,7 @@ class CreatePageOperation:
         """Create one page or report an unconfirmable outcome."""
         empty = CreatePageOutput()
         try:
-            fence = Fence(call, timedelta(seconds=120))
+            fence = Fence(call, timedelta(seconds=120), max_sends=call.max_sends)
         except ValueError:
             return MutationAttempt.branch_result(
                 "defect",
@@ -600,23 +613,38 @@ class CreatePageOperation:
             )
         decision = await fence.decide()
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return MutationAttempt.uncertain(
-                empty,
-                failure("createPage", FailureKind.PROTOCOL, "Notion dispatch checkpoint cannot be trusted"),
-                Receipt(),
-            )
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
-            marker = decision.marker
-            if marker is None or marker.call_id != call.id or not marker.provider_id:
-                return MutationAttempt.uncertain(
-                    empty,
-                    failure("createPage", FailureKind.PROTOCOL, "Notion page may already exist"),
-                    Receipt(),
+            return MutationAttempt.retry(
+                failure(
+                    "createPage",
+                    FailureKind.AVAILABILITY,
+                    "Notion dispatch checkpoint could not be read; nothing was sent",
                 )
+            )
+        marker = decision.marker
+        if (
+            decision.kind != DecisionKind.SEND_ALLOWED
+            and marker is not None
+            and marker.call_id == call.id
+            and marker.provider_id
+        ):
+            # Notion returned this page ID for an accepted earlier send, so it is read back, never resent.
             token, credential_failure, _ = await self.client.resolve_credentials(call, "createPage")
             if credential_failure is not None or token is None:
                 return MutationAttempt.retry(cast(Failure, credential_failure))
             return await self._confirm_page(call, token, empty, marker.provider_id, Receipt())
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+            return MutationAttempt.uncertain(
+                empty,
+                failure(
+                    "createPage",
+                    FailureKind.PROTOCOL,
+                    "Notion page creations up to the send cap may already exist",
+                ),
+                Receipt(),
+            )
+        can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        # An earlier send may have created the page, so a refusal of this attempt proves nothing.
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
         try:
             source_id, database_id = select_data_source(input.data_source_id, input.database_id)
             properties = encode_properties(input.properties)
@@ -626,6 +654,20 @@ class CreatePageOperation:
                 "defect", empty, Receipt(), failure("createPage", FailureKind.VALIDATION, str(error))
             )
         token, credential_failure, transient = await self.client.resolve_credentials(call, "createPage")
+        if (credential_failure is not None or token is None) and has_possible_earlier_send:
+            # notSent would hide the earlier possible send, so nothing is recorded.
+            if transient:
+                return MutationAttempt.retry(cast(Failure, credential_failure))
+            return MutationAttempt.uncertain(
+                empty,
+                failure(
+                    "createPage",
+                    FailureKind.AUTHENTICATION,
+                    "an earlier attempt may have created the Notion page, and the connection credentials "
+                    "are unavailable to resend it; reconnect the connection",
+                ),
+                Receipt(),
+            )
         if credential_failure is not None or token is None:
             try:
                 await fence.record_not_sent()
@@ -643,7 +685,7 @@ class CreatePageOperation:
         )
         lookup_receipt = self.client.receipt(call, resolution, database_id)
         if classified.outcome != "success":
-            if classified.outcome == "retry":
+            if classified.outcome == "retry" and not has_possible_earlier_send:
                 try:
                     await fence.record_not_sent()
                 except (CheckpointError, DispatchNotAllowedError):
@@ -652,6 +694,8 @@ class CreatePageOperation:
                             "createPage", FailureKind.AVAILABILITY, "Notion lookup checkpoint is unavailable"
                         )
                     )
+            elif classified.outcome != "retry" and has_possible_earlier_send:
+                return MutationAttempt.uncertain(empty, cast(Failure, classified.failure), lookup_receipt)
             attempt = _mutation_read_attempt(classified, empty, lookup_receipt)
             assert attempt is not None
             return attempt
@@ -673,7 +717,8 @@ class CreatePageOperation:
                 failure("createPage", FailureKind.TRANSPORT, "Notion dispatch checkpoint is unavailable")
             )
         except DispatchNotAllowedError:
-            return MutationAttempt.uncertain(
+            return _resend_or_select_uncertain_page(
+                can_resend_unknown_outcome,
                 output,
                 failure("createPage", FailureKind.PROTOCOL, "Notion dispatch could not be classified"),
                 Receipt(),
@@ -721,12 +766,32 @@ class CreatePageOperation:
                 replace(output, page_id=page.id, page=page),
                 replace(receipt, provider_object_id=page.id),
             )
+        problem = cast(Failure, classified.failure)
+        if classified.outcome == "acceptedUnreadable":
+            # Notion accepted this POST, so a resend would duplicate the page.
+            return MutationAttempt.uncertain(output, problem, receipt)
         if classified.outcome == "uncertain":
-            return MutationAttempt.uncertain(output, cast(Failure, classified.failure), receipt)
-        branch = {"notFound": "notFound", "rejected": "providerRejected", "defect": "defect"}[
-            classified.outcome
-        ]
-        return MutationAttempt.branch_result(branch, output, receipt, classified.failure)
+            return _resend_or_select_uncertain_page(
+                can_resend_unknown_outcome, output, problem, receipt, classified.retry_after
+            )
+        if classified.outcome == "defect":
+            if has_possible_earlier_send:
+                return _resend_or_select_uncertain_page(can_resend_unknown_outcome, output, problem, receipt)
+            return MutationAttempt.branch_result("defect", output, receipt, problem)
+        if has_possible_earlier_send:
+            return MutationAttempt.uncertain(output, problem, receipt)
+        try:
+            await fence.record_can_resend()
+        except (CheckpointError, DispatchNotAllowedError):
+            return MutationAttempt.retry(
+                failure(
+                    "createPage",
+                    FailureKind.AVAILABILITY,
+                    "Notion refused the page, but the refusal checkpoint is unavailable",
+                )
+            )
+        branch = "notFound" if classified.outcome == "notFound" else "providerRejected"
+        return MutationAttempt.branch_result(branch, output, receipt, problem)
 
     async def _record_provider_id(self, fence: Fence, identifier: str) -> None:
         try:

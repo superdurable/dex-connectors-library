@@ -235,20 +235,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "275ccb9c-00ee-5081-9574-60cb0d55279c",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "275ccb9c-00ee-5081-9574-60cb0d55279c",
       "input": {
@@ -354,6 +352,7 @@
           "attempt": 1,
           "callId": "4dece8a8-3964-511b-b91d-4d979749be5e",
           "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -503,6 +502,7 @@
           "attempt": 1,
           "callId": "dc19c287-f1af-53e4-b519-a6304bd0dd43",
           "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -674,6 +674,7 @@
           "attempt": 1,
           "callId": "a92d0a36-7521-5014-8618-4921afe78922",
           "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -813,6 +814,7 @@
           "attempt": 1,
           "callId": "401979ce-bda9-5689-a2c9-4ef7180d0a85",
           "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -952,6 +954,7 @@
           "attempt": 1,
           "callId": "dfe70c67-6334-508c-b84f-ad6716c17282",
           "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -1091,6 +1094,7 @@
           "attempt": 1,
           "callId": "fde5844f-9704-5da6-ac09-6be7632c961a",
           "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -1279,6 +1283,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6a2deb0a-0526-53c2-b788-29a1789b5ab0",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -1427,7 +1432,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "1a5cfbd2-5224-58dc-b7f5-65c7af8fdce8",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
@@ -1556,8 +1561,9 @@
       "name": "createPage-prior-unknown-uncertain",
       "operation": "createPage",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "e3ebd6fe-be11-5bcb-ab17-19beb55fa401",
+        "sendCount": 3,
         "state": "claimed"
       }
     },
@@ -1867,7 +1873,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "a6a34d0c-b57e-5fcc-90e3-d50908478223",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
@@ -2189,6 +2195,7 @@
           "attempt": 1,
           "callId": "416ac2ff-2d93-501e-9f00-91a4401be191",
           "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -2513,20 +2520,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "bd0d87be-cae8-5cd7-a624-fbdf90ab370f",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "bd0d87be-cae8-5cd7-a624-fbdf90ab370f",
       "input": {
@@ -2548,15 +2553,125 @@
     },
     {
       "callId": "6eea9f59-2558-5319-bc0f-28be0a0e2fd3",
-      "exchanges": [],
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "PROTOCOL",
-        "output": {},
-        "requestCount": 0,
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "6eea9f59-2558-5319-bc0f-28be0a0e2fd3",
+          "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "page": {
+            "archived": false,
+            "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+            "inTrash": false,
+            "parent": {
+              "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com",
+                "id": "em1",
+                "plainText": "ada@example.com",
+                "type": "email"
+              },
+              "Name": {
+                "id": "title",
+                "plainText": "Ada Lovelace",
+                "text": "Ada Lovelace",
+                "type": "title"
+              }
+            },
+            "title": "Ada Lovelace",
+            "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+          },
+          "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd"
+        },
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "6eea9f59-2558-5319-bc0f-28be0a0e2fd3",
       "input": {
@@ -2671,6 +2786,7 @@
           "attempt": 1,
           "callId": "41a799f9-5649-5adb-95d5-189f4d07ad5a",
           "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -2801,6 +2917,7 @@
           "attempt": 1,
           "callId": "ad0e2f6d-9e39-5278-8995-6ca0b37f578f",
           "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {

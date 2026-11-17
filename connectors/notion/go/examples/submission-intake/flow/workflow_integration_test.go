@@ -171,18 +171,19 @@ func TestUncommittedConflictIsRetriedOnceWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.rowCount(submissionID))
 }
 
-func TestUncertainCreateIsReconciledByQueryWithoutCreatingAgainWithRealDex(t *testing.T) {
+// TestSavedCreatesWithLostAnswersAreResentUpToTheSendCapWithRealDex shows the limited tier's duplicate
+// risk: each timed-out create was saved, so three sends leave three rows the reconciliation finds.
+func TestSavedCreatesWithLostAnswersAreResentUpToTheSendCapWithRealDex(t *testing.T) {
 	provider, flow, harness := newNotionIntegrationHarness(t, shortRequestTimeout)
 	ctx := integrationContext(t)
 
 	submissionID := markerTimeoutSaved + " sub-1"
 	record := runSubmissionFlow(t, ctx, harness, flow, "uncertain-saved", submissionInput(submissionID))
-	require.Equal(t, PhaseCreated, record.Phase, "the reconciliation query adopted the saved row")
+	require.Equal(t, PhaseDuplicateRows, record.Phase, "the reconciliation query found every saved row")
 	require.NotNil(t, record.UncertainCreate)
 	require.Equal(t, sdkgo.FailureTransport, record.UncertainCreate.Kind)
-	require.Equal(t, 1, provider.createCount(submissionID), "a timeout after dispatch is never retried")
-	require.Equal(t, 1, provider.rowCount(submissionID))
-	require.Equal(t, submissionID, record.StoredProperties[SubmissionIDProperty])
+	require.Equal(t, 3, provider.createCount(submissionID), "a timeout after dispatch is resent up to the send cap of 3")
+	require.Equal(t, 3, provider.rowCount(submissionID))
 }
 
 func TestUncertainCreateWithNoVisibleRowCompletesAsUncertainWithRealDex(t *testing.T) {
@@ -194,7 +195,7 @@ func TestUncertainCreateWithNoVisibleRowCompletesAsUncertainWithRealDex(t *testi
 	require.Equal(t, PhaseCreateUncertain, record.Phase)
 	require.NotNil(t, record.UncertainCreate)
 	require.Empty(t, record.PageID)
-	require.Equal(t, 1, provider.createCount(submissionID))
+	require.Equal(t, 3, provider.createCount(submissionID), "each unknown outcome is resent until the send cap of 3")
 	require.Zero(t, provider.rowCount(submissionID))
 }
 

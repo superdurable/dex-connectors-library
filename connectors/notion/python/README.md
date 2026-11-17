@@ -5,7 +5,7 @@
 `databaseRowChanged` poll Trigger. It requires a Notion internal connection API
 token and sends the `Notion-Version: 2026-03-11` header.
 
-Install with `pip install dex-connector-notion==0.2.0`. Use the generated,
+Install with `pip install dex-connector-notion==0.2.1`. Use the generated,
 operation-specific Step factories exported from `dex_connectors.notion`.
 The checked-in [submission intake Flow](examples/submission_intake/flow.py)
 shows all five factories, typed inputs, a static connection name, and required
@@ -13,8 +13,10 @@ happy-path wiring.
 
 The [connector README](../README.md) explains Notion authorization, data
 source IDs, typed filters, branches, and duplicate-write semantics. In
-particular, `createPage` uses a Dex heartbeat fence before its one POST;
-Notion does not accept an idempotency key. `updatePageProperties` sends
+particular, `createPage` uses a Dex heartbeat fence before each POST, and from
+0.2.1 resends an unknown outcome only while possible sends stay below the
+Step's send cap, selecting `uncertain` at the cap; Notion does not accept an
+idempotency key. `updatePageProperties` sends
 absolute values and can retry safely. Every non-happy-path branch is optional
 and fails the Flow if an application leaves it unwired.
 

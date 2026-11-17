@@ -316,8 +316,16 @@ def classify_read(operation: str, response: ProviderResponse) -> Classification:
     return Classification("success")
 
 
+CONCLUSIVE_REJECTION_STATUSES = frozenset({400, 401, 403, 411, 413, 414, 415, 422})
+"""Statuses other than 404 that prove Notion refused a write; any other failure leaves it unknown."""
+
+
 def classify_write(operation: str, response: ProviderResponse, repeatable: bool) -> Classification:
-    """Classify a nonrepeatable create or an absolute repeatable update."""
+    """Classify a nonrepeatable create or an absolute repeatable update.
+
+    For a create, `uncertain` means the outcome is unknown and a capped resend may follow, while
+    `acceptedUnreadable` means a 2xx accepted it, so a resend would duplicate the page.
+    """
     if response.not_built:
         return Classification(
             "defect", failure(operation, FailureKind.LOCAL_DEFECT, "Notion request could not be built")
@@ -334,12 +342,12 @@ def classify_write(operation: str, response: ProviderResponse, repeatable: bool)
     if 200 <= status < 300:
         if response.interrupted:
             return Classification(
-                "retry" if repeatable else "uncertain",
+                "retry" if repeatable else "acceptedUnreadable",
                 failure(operation, FailureKind.TRANSPORT, "Notion response was interrupted"),
             )
         if response.too_large:
             return Classification(
-                "invalid" if repeatable else "uncertain",
+                "invalid" if repeatable else "acceptedUnreadable",
                 failure(
                     operation,
                     FailureKind.RESPONSE_TOO_LARGE,
@@ -348,7 +356,7 @@ def classify_write(operation: str, response: ProviderResponse, repeatable: bool)
             )
         if response.reflects_secret:
             return Classification(
-                "invalid" if repeatable else "uncertain",
+                "invalid" if repeatable else "acceptedUnreadable",
                 failure(operation, FailureKind.PROTOCOL, "Notion response contains credential material"),
             )
         return Classification("accepted")
@@ -359,11 +367,10 @@ def classify_write(operation: str, response: ProviderResponse, repeatable: bool)
         return Classification(
             "rejected", failure(operation, FailureKind.PROVIDER_REJECTION, "Notion blocked this connection")
         )
-    if status in (429, 529) or status == 409:
-        kind = FailureKind.RATE_LIMIT if status != 409 else FailureKind.CONFLICT
+    if status == 429 or (repeatable and status == 529):
         return Classification(
             "retry",
-            failure(operation, kind, "Notion write is temporarily unavailable"),
+            failure(operation, FailureKind.RATE_LIMIT, "Notion write is temporarily unavailable"),
             _retry_after(response),
         )
     if status == 503 and not repeatable:
@@ -374,22 +381,28 @@ def classify_write(operation: str, response: ProviderResponse, repeatable: bool)
             return Classification("committed", committed_id=parse_id(committed))
         except ValueError:
             pass
-    if repeatable and (status == 408 or status >= 500):
+    if repeatable and (status in (408, 409) or status >= 500):
+        kind = FailureKind.CONFLICT if status == 409 else FailureKind.AVAILABILITY
         return Classification(
             "retry",
-            failure(operation, FailureKind.AVAILABILITY, "Notion write is temporarily unavailable"),
+            failure(operation, kind, "Notion write is temporarily unavailable"),
             _retry_after(response),
         )
     if status == 404:
         return Classification("notFound", _rejection(operation, response))
-    if 400 <= status < 500 and status != 408:
+    if status in CONCLUSIVE_REJECTION_STATUSES:
         return Classification("rejected", _rejection(operation, response))
     if repeatable:
+        # Any other status leaves the write unknown; repeating it leaves the same state.
         return Classification(
-            "invalid", failure(operation, FailureKind.PROTOCOL, "Notion returned unexpected status")
+            "retry",
+            failure(operation, FailureKind.AVAILABILITY, "Notion write outcome is unknown"),
+            _retry_after(response),
         )
+    # The owner rules treat 409, 529, every 5xx without a saved ID, and other statuses as unknown.
+    kind = FailureKind.CONFLICT if status == 409 else FailureKind.AVAILABILITY
     return Classification(
-        "uncertain", failure(operation, FailureKind.AVAILABILITY, "Notion write outcome is unknown")
+        "uncertain", failure(operation, kind, "Notion write outcome is unknown"), _retry_after(response)
     )
 
 

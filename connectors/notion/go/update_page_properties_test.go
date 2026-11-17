@@ -50,6 +50,8 @@ func TestUpdatePagePropertiesRetriesEveryAmbiguousOutcome(t *testing.T) {
 		{"gateway timeout", http.StatusGatewayTimeout, notionError(504, "gateway_timeout"), sdkgo.FailureAvailability},
 		{"conflict", http.StatusConflict, notionError(409, "conflict_error"), sdkgo.FailureConflict},
 		{"rate limited", http.StatusTooManyRequests, notionError(429, "rate_limited"), sdkgo.FailureRateLimit},
+		{"unlisted 4xx", http.StatusNotAcceptable, notionError(406, "not_acceptable"), sdkgo.FailureAvailability},
+		{"redirect", http.StatusMultipleChoices, notionError(300, "redirect"), sdkgo.FailureAvailability},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {

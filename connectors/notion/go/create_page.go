@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -99,28 +100,40 @@ func (CreatePageOperation) IdempotencyKey(callID sdkgo.CallID, _ CreatePageInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates one row and never resends a request Notion may have received.
+// Invoke creates one row. It resends a request whose outcome is unknown only while possible sends
+// stay below the Step's send cap, and reads a saved page ID back instead of posting again.
 func (operation CreatePageOperation) Invoke(call sdkgo.Call, input CreatePageInput) sdkgo.MutationAttempt[CreatePageOutput] {
 	client := operation.client
-	fence, err := singledispatch.NewFence(call, CreatePageDefinition.StepDefaults.ExecuteMethodTimeout)
+	fence, err := singledispatch.NewFence(call, CreatePageDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreatePageBranchDefect, CreatePageOutput{}, failurePointer(createPageOperationID, sdkgo.FailureLocalDefect, "Notion page dispatch could not be initialized"), sdkgo.Receipt{})
 	}
 	decision := fence.Decide()
 	if decision.Kind == singledispatch.FailClosed {
-		return sdkgo.NewMutationUncertain(CreatePageOutput{}, newFailure(createPageOperationID, sdkgo.FailureProtocol, "Notion page dispatch checkpoint cannot be trusted"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[CreatePageOutput](newFailure(createPageOperationID, sdkgo.FailureAvailability, "Notion page dispatch checkpoint could not be read; nothing was sent"), 0)
 	}
-	if decision.Kind == singledispatch.ReadBackRequired {
-		if decision.Marker.CallID != call.ID || decision.Marker.ProviderID == "" {
-			return sdkgo.NewMutationUncertain(CreatePageOutput{}, newFailure(createPageOperationID, sdkgo.FailureProtocol, "Notion page creation may already have been sent without a confirmable page ID"), sdkgo.Receipt{})
-		}
+	if decision.Kind != singledispatch.SendAllowed && decision.Marker.CallID == call.ID && decision.Marker.ProviderID != "" {
+		// Notion returned this page ID for an accepted earlier send, so it is read back, never resent.
 		return client.readBackCreatedPage(call, decision.Marker.ProviderID)
 	}
+	if decision.Kind == singledispatch.ReadBackRequired {
+		return sdkgo.NewMutationUncertain(CreatePageOutput{}, newFailure(createPageOperationID, sdkgo.FailureProtocol, "Notion page creations up to the send cap may already have been sent without a confirmable page ID"), sdkgo.Receipt{})
+	}
+	canResendUnknownOutcome := decision.MaximumPriorSends+1 < call.MaxSends()
+	// An earlier send may have created the page, so a refusal of this attempt proves nothing.
+	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	request, err := buildCreatePageRequest(input)
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreatePageBranchDefect, CreatePageOutput{}, validationFailure(createPageOperationID, err), sdkgo.Receipt{})
 	}
 	session, cancel, sessionFailure, isCredentialFailureTransient := client.startSessionWithCredentialStatus(call, createPageOperationID, createPageOperationDeadline)
+	if sessionFailure != nil && hasPossibleEarlierSend {
+		// notSent would hide the earlier possible send, so nothing is recorded.
+		if isCredentialFailureTransient {
+			return sdkgo.NewMutationRetry[CreatePageOutput](*sessionFailure, 0)
+		}
+		return sdkgo.NewMutationUncertain(CreatePageOutput{}, newFailure(createPageOperationID, sdkgo.FailureAuthentication, "an earlier attempt may have created the Notion page, and the connection credentials are unavailable to resend it; reconnect the connection"), sdkgo.Receipt{})
+	}
 	if sessionFailure != nil {
 		if err := fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[CreatePageOutput](newFailure(createPageOperationID, sdkgo.FailureAvailability, "Notion credential resolution and dispatch checkpoint are unavailable"), 0)
@@ -134,9 +147,14 @@ func (operation CreatePageOperation) Invoke(call sdkgo.Call, input CreatePageInp
 	dataSourceID, resolution, resolutionResponse := client.resolveDataSourceID(session, createPageOperationID, request.selection)
 	if resolution.outcome != readSucceeded {
 		if resolution.outcome == readRetry {
-			if err := fence.RecordNotSent(); err != nil {
-				return sdkgo.NewMutationRetry[CreatePageOutput](newFailure(createPageOperationID, sdkgo.FailureAvailability, "Notion data source lookup and dispatch checkpoint are unavailable"), 0)
+			// After a possible earlier send, notSent would hide it, so nothing is recorded.
+			if !hasPossibleEarlierSend {
+				if err := fence.RecordNotSent(); err != nil {
+					return sdkgo.NewMutationRetry[CreatePageOutput](newFailure(createPageOperationID, sdkgo.FailureAvailability, "Notion data source lookup and dispatch checkpoint are unavailable"), 0)
+				}
 			}
+		} else if hasPossibleEarlierSend {
+			return sdkgo.NewMutationUncertain(CreatePageOutput{}, resolution.failure, client.receipt(session, resolutionResponse, request.selection.databaseID))
 		}
 		return createPageAttemptForLookup(resolution, client.receipt(session, resolutionResponse, request.selection.databaseID))
 	}
@@ -150,7 +168,7 @@ func (operation CreatePageOperation) Invoke(call sdkgo.Call, input CreatePageInp
 		if errors.Is(err, singledispatch.ErrInsufficientTime) || errors.Is(err, singledispatch.ErrCheckpoint) {
 			return sdkgo.NewMutationRetry[CreatePageOutput](newFailure(createPageOperationID, sdkgo.FailureTransport, "Notion page dispatch checkpoint or attempt budget is temporarily unavailable"), 0)
 		}
-		return sdkgo.NewMutationUncertain(output, newFailure(createPageOperationID, sdkgo.FailureProtocol, "Notion page dispatch could not be classified"), sdkgo.Receipt{})
+		return resendOrSelectUncertainPage(canResendUnknownOutcome, output, newFailure(createPageOperationID, sdkgo.FailureProtocol, "Notion page dispatch could not be classified"), 0, sdkgo.Receipt{})
 	}
 	result := send.result
 	classification := client.classifyUnkeyedWrite(createPageOperationID, createPageFailureSubject, result)
@@ -166,14 +184,28 @@ func (operation CreatePageOperation) Invoke(call sdkgo.Call, input CreatePageInp
 			return sdkgo.NewMutationRetry[CreatePageOutput](newFailure(createPageOperationID, sdkgo.FailureAvailability, "Notion retry checkpoint could not be recorded"), classification.retryAfter)
 		}
 		return sdkgo.NewMutationRetry[CreatePageOutput](classification.failure, classification.retryAfter)
-	case writeNotFound:
-		return sdkgo.NewMutationBranch(CreatePageBranchNotFound, output, &classification.failure, receipt)
-	case writeRejected:
-		return sdkgo.NewMutationBranch(CreatePageBranchProviderRejected, output, &classification.failure, receipt)
+	case writeNotFound, writeRejected:
+		if hasPossibleEarlierSend {
+			return sdkgo.NewMutationUncertain(output, classification.failure, receipt)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[CreatePageOutput](newFailure(createPageOperationID, sdkgo.FailureAvailability, "Notion refused the page, but the refusal checkpoint could not be recorded"), 0)
+		}
+		branch := CreatePageBranchProviderRejected
+		if classification.outcome == writeNotFound {
+			branch = CreatePageBranchNotFound
+		}
+		return sdkgo.NewMutationBranch(branch, output, &classification.failure, receipt)
 	case writeDefect:
+		if hasPossibleEarlierSend {
+			return resendOrSelectUncertainPage(canResendUnknownOutcome, output, classification.failure, 0, receipt)
+		}
 		return sdkgo.NewMutationBranch(CreatePageBranchDefect, output, &classification.failure, receipt)
-	default:
+	case writeAcceptedUnreadable:
+		// Notion accepted this POST, so a resend would duplicate the page.
 		return sdkgo.NewMutationUncertain(output, classification.failure, receipt)
+	default:
+		return resendOrSelectUncertainPage(canResendUnknownOutcome, output, classification.failure, classification.retryAfter, receipt)
 	}
 	page, err := decodePageBody(result.response.body)
 	if err != nil {
@@ -190,6 +222,15 @@ func (operation CreatePageOperation) Invoke(call sdkgo.Call, input CreatePageInp
 	output.PageID, output.Page = page.ID, &page
 	receipt.ProviderObjectID = page.ID
 	return sdkgo.NewMutationBranch(CreatePageBranchCreated, output, nil, receipt)
+}
+
+// resendOrSelectUncertainPage retries a possibly sent create while the send cap allows another send.
+func resendOrSelectUncertainPage(canResendUnknownOutcome bool, output CreatePageOutput, failure sdkgo.Failure, retryAfter time.Duration, receipt sdkgo.Receipt) sdkgo.MutationAttempt[CreatePageOutput] {
+	if canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt counts this send.
+		return sdkgo.NewMutationRetry[CreatePageOutput](failure, retryAfter)
+	}
+	return sdkgo.NewMutationUncertain(output, failure, receipt)
 }
 
 // confirmCommittedPage reads a known accepted page without sending another write.

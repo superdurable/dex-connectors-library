@@ -28,6 +28,6 @@ The fetcher sends the same queries, commits the same cursor documents byte for b
 
 ## Failure behavior and verification
 
-Reads retry transient transport, 408, 409, 429, 529, and server errors. `updatePageProperties` repeats absolute values safely and retries transient failures. `createPage` uses the Connector SDK single-dispatch fence; an ambiguous write without a confirmable page ID selects `uncertain`, while a known accepted ID can be read back. Conclusive provider rejections select operation branches. Notion error message text is not exposed.
+Reads retry transient transport, 408, 409, 429, 529, and server errors. `updatePageProperties` repeats absolute values safely and retries transient failures. `createPage` uses the Connector SDK single-dispatch fence with the Step's send cap: from 0.2.1 an unknown outcome, such as a timeout, 409, 529, or 5xx without a committed ID, is resent while possible sends stay below the cap and selects `uncertain` at the cap, an unreadable checkpoint returns Retry, and a known accepted ID is read back instead of posting again. Conclusive provider rejections select operation branches. Notion error message text is not exposed.
 
 Run `npm ci && npm run check`. With a local `dexcli dev` service, set `DEX_FLOW_SERVICE_ADDRESS` and run `npm run test:integration`. The conformance suite replays Go-recorded provider requests and results. Live Notion authorization, response behavior, and data source query polling remain unverified.

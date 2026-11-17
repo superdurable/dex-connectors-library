@@ -6,7 +6,7 @@ metadata:
   description: Search Notion pages and data sources by title, query database rows with typed filters, read a page's properties and plain-text content, create or update database rows without silent duplicates, and start Flows when database rows are created or edited.
   company: Notion
   categories: [productivity]
-  version: v0.25.0
+  version: v0.25.1
 spec:
   provider: notion
   codegen:
@@ -14,12 +14,12 @@ spec:
       package: notion
   languages:
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: '@superdurable/connector-notion'
       operations: [search, queryDatabase, getPage, createPage, updatePageProperties]
       triggers: [databaseRowChanged]
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-notion
       operations: [search, queryDatabase, getPage, createPage, updatePageProperties]
       triggers: [databaseRowChanged]
@@ -271,14 +271,14 @@ spec:
       inputType: CreatePageInput
       outputType: CreatePageOutput
       kind: mutation
-      description: Create one database row with typed property values and optional plain-text body paragraphs. Sync durability persists the single-dispatch fence before sending so retries cannot duplicate an unconfirmed page.
+      description: Create one database row with typed property values and optional plain-text body paragraphs. Sync durability persists the single-dispatch fence before sending, so an unknown outcome is resent only while possible sends stay below the send cap.
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: Notion created the page and returned or confirmed its ID.}
         - {id: notFound, goName: NotFound, description: "The database or data source does not exist or is not shared with the connection; nothing was created.", optional: true}
-        - {id: providerRejected, goName: ProviderRejected, description: "Notion conclusively rejected the page, such as a missing property, a value of the wrong type, missing Insert content capability, or a workspace limit; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Notion has no idempotency key, so the page may exist and must not be created again automatically.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Notion conclusively rejected the first send with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as a missing property, a value of the wrong type, or missing Insert content capability; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Sends up to the send cap had unknown outcomes, or Notion accepted the page without a confirmable ID; Notion has no idempotency key, so the page may exist and must not be created again automatically.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Notion returned an invalid or oversized database while the connector resolved its data source; nothing was created.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, credential authorization, or connector definition is invalid, including a database ID whose database holds several data sources.", optional: true}
       # Sync checkpoints fence each create; the 120-second attempt permits Notion's 60-second write and read-back.

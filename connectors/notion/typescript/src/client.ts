@@ -17,7 +17,14 @@ const maximumPollPageSize = 100;
 export type NotionRequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
 
 /** One provider exchange, including positive evidence about request dispatch. */
-export type NotionExchange = { response: ProviderResponse; receipt: ReceiptDraft } | { failure: Failure; disposition: 'retry' | 'notFound' | 'providerRejected' | 'invalidResponse' | 'defect' | 'uncertain' | 'committed'; retryAfterMs?: number; receipt: ReceiptDraft; providerId?: string; isProvablyNotSent?: boolean; providerErrorCode?: string };
+/**
+ * One classified Notion exchange. For a create, `uncertain` means the outcome is unknown and a capped
+ * resend may follow, and `acceptedUnreadable` means a 2xx accepted it, so a resend would duplicate it.
+ */
+export type NotionExchange = { response: ProviderResponse; receipt: ReceiptDraft } | { failure: Failure; disposition: 'retry' | 'notFound' | 'providerRejected' | 'invalidResponse' | 'defect' | 'uncertain' | 'acceptedUnreadable' | 'committed'; retryAfterMs?: number; receipt: ReceiptDraft; providerId?: string; isProvablyNotSent?: boolean; providerErrorCode?: string };
+
+/** Statuses other than 404 that prove Notion refused a write; any other failure leaves it unknown. */
+const ConclusiveRejectionStatuses: ReadonlySet<number> = new Set([400, 401, 403, 411, 413, 414, 415, 422]);
 /** A classified exchange before any successful response. */
 export type NotionExchangeFailure = Extract<NotionExchange, { failure: Failure }>;
 
@@ -125,9 +132,13 @@ export class NotionClient {
     const status = response.status;
     const isBlocked = status === 429 && readToken(response.body, 'additional_data', 'rate_limit_reason') === 'public_api_request_blocked';
     if (isBlocked) return { disposition: 'providerRejected', failure: failure(operation, 'PROVIDER_REJECTION', 'Notion blocked API access'), receipt };
+    const retryAfterHeader = response.headers['retry-after'];
+    const retryAfterMs = parseRetryAfter(Array.isArray(retryAfterHeader) ? retryAfterHeader[0] ?? '' : retryAfterHeader ?? '', this.now());
+    if (mode === 'unkeyedWrite' && (status === 409 || status === 529)) {
+      // The owner rules treat 409 and every 5xx without a saved ID as an unknown outcome.
+      return { disposition: 'uncertain', failure: failure(operation, status === 409 ? 'CONFLICT' : 'AVAILABILITY', `Notion could not complete the ${subject} transaction`), retryAfterMs, receipt };
+    }
     if (status === 429 || status === 529 || status === 409 || (mode !== 'unkeyedWrite' && (status === 408 || status >= 500))) {
-      const retryAfter = response.headers['retry-after'];
-      const retryAfterMs = parseRetryAfter(Array.isArray(retryAfter) ? retryAfter[0] ?? '' : retryAfter ?? '', this.now());
       return { disposition: 'retry', failure: failure(operation, status === 429 || status === 529 ? 'RATE_LIMIT' : status === 409 ? 'CONFLICT' : 'AVAILABILITY', `Notion ${subject} is temporarily unavailable`), retryAfterMs, receipt, isProvablyNotSent: mode === 'unkeyedWrite' };
     }
     if (status === 503 && mode === 'unkeyedWrite') {
@@ -140,13 +151,16 @@ export class NotionClient {
       if (providerId) return { disposition: 'committed', failure: failure(operation, 'AVAILABILITY', 'Notion saved the page'), providerId, receipt };
     }
     if (status === 404) return { disposition: 'notFound', failure: failure(operation, 'NOT_FOUND', `Notion ${subject} was not found`), receipt };
-    if (status >= 400 && status < 500 && status !== 408) {
+    const isWrite = mode !== 'read';
+    if (status >= 400 && status < 500 && status !== 408 && (!isWrite || ConclusiveRejectionStatuses.has(status))) {
       const providerErrorCode = readTopLevelToken(response.body, 'code');
       return { disposition: 'providerRejected', failure: failure(operation, status === 400 ? 'VALIDATION' : status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION', `Notion rejected ${subject} with HTTP ${status}`), receipt, ...(providerErrorCode ? { providerErrorCode } : {}) };
     }
-    if (status < 200 || status >= 300) return { disposition: mode === 'unkeyedWrite' ? 'uncertain' : 'invalidResponse', failure: failure(operation, status >= 500 ? 'AVAILABILITY' : 'PROTOCOL', `Notion returned HTTP ${status}`), receipt };
-    if (response.body.length > this.maxResponseBytes) return { disposition: mode === 'unkeyedWrite' ? 'uncertain' : 'invalidResponse', failure: failure(operation, 'RESPONSE_TOO_LARGE', 'Notion response exceeds the configured limit'), receipt };
-    if (Buffer.from(response.body).includes(Buffer.from(token))) return { disposition: mode === 'unkeyedWrite' ? 'uncertain' : 'invalidResponse', failure: failure(operation, 'PROTOCOL', 'Notion response contains credential material'), receipt };
+    // Any other write status leaves the write unknown: a repeatable write retries and a create may resend.
+    if (isWrite && (status < 200 || status >= 300)) return { disposition: mode === 'unkeyedWrite' ? 'uncertain' : 'retry', failure: failure(operation, 'AVAILABILITY', `Notion ${subject} outcome is unknown after HTTP ${status}`), retryAfterMs, receipt };
+    if (status < 200 || status >= 300) return { disposition: 'invalidResponse', failure: failure(operation, status >= 500 ? 'AVAILABILITY' : 'PROTOCOL', `Notion returned HTTP ${status}`), receipt };
+    if (response.body.length > this.maxResponseBytes) return { disposition: mode === 'unkeyedWrite' ? 'acceptedUnreadable' : 'invalidResponse', failure: failure(operation, 'RESPONSE_TOO_LARGE', 'Notion response exceeds the configured limit'), receipt };
+    if (Buffer.from(response.body).includes(Buffer.from(token))) return { disposition: mode === 'unkeyedWrite' ? 'acceptedUnreadable' : 'invalidResponse', failure: failure(operation, 'PROTOCOL', 'Notion response contains credential material'), receipt };
     return { response, receipt };
   }
 }

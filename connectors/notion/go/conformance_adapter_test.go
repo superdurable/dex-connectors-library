@@ -20,13 +20,22 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	context := singledispatchtest.NewContext("notion-conformance", scenario.Name)
 	if len(scenario.PriorHeartbeat) > 0 {
 		var marker any
+		var prior struct {
+			Attempt int `json:"attempt"`
+		}
 		if err := json.Unmarshal(scenario.PriorHeartbeat, &marker); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(scenario.PriorHeartbeat, &prior); err != nil {
 			t.Fatal(err)
 		}
 		if err := context.SetPersistedCheckpoint(marker); err != nil {
 			t.Fatal(err)
 		}
-		context.AdvanceAttempt()
+		// The current attempt follows the prior heartbeat's attempt.
+		for range max(prior.Attempt, 1) {
+			context.AdvanceAttempt()
+		}
 	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		if attempt > 1 {

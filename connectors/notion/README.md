@@ -1,8 +1,8 @@
 # Notion Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/notion/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/notion/go@v0.25.1`.
 
-Install the Python package with `pip install dex-connector-notion==0.2.0`.
+Install the Python package with `pip install dex-connector-notion==0.2.1`.
 The Python package implements all five operations in the table below and,
 from 0.2.0, the `databaseRowChanged` Trigger; its
 [submission intake example](python/examples/submission_intake/README.md)
@@ -16,7 +16,7 @@ per row version through the Python `databaseRowChanged` Trigger.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/notion`.
 
-The TypeScript package `@superdurable/connector-notion@0.2.0` implements all five operations and, from 0.2.0, the `databaseRowChanged` Trigger. See the [TypeScript README](typescript/README.md), the [runnable search example](typescript/examples/search-pages/README.md), and the [row-changed example](typescript/examples/row-changed/README.md). Its provider replay is Go-recorded; live Notion behavior remains unverified.
+The TypeScript package `@superdurable/connector-notion@0.2.1` implements all five operations and, from 0.2.0, the `databaseRowChanged` Trigger. See the [TypeScript README](typescript/README.md), the [runnable search example](typescript/examples/search-pages/README.md), and the [row-changed example](typescript/examples/row-changed/README.md). Its provider replay is Go-recorded; live Notion behavior remains unverified.
 
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Notion; no live Notion workspace was used. See
 > [verification status](../../docs/verification-status.md) for what is and
@@ -286,28 +286,37 @@ retries only 429 and 529 for writes, and warns that a write can be saved and
 still answer 503. A response without `committed_resource_id` does not prove
 that the page was not saved.
 
-`createPage` uses the shared single-dispatch fence with sync durability. It
-records a claim before POST, then permits a second POST only after a 409, a
-429, a 529, or positive transport evidence that no connection was obtained.
-[Notion's status-code guidance](https://developers.notion.com/reference/status-codes)
-says a 409 `conflict_error` transaction could not be completed and advises
-retrying, so the connector records `canResend` before that Retry. A lost or
-stale checkpoint fails closed. Credential or data source lookup failures
-before POST record `notSent`, so a later attempt may send. Temporary credential
-failures Retry; reauthorization, connection selection, and invalid API token
-failures select `defect` after recording `notSent`.
+`createPage` is `limited` with `maxSends: 3` and uses the shared
+single-dispatch fence with sync durability, passing the Step's send cap. It
+records a claim before POST and counts every send that may have taken effect.
+A 429 or positive transport evidence that no connection was obtained records
+`canResend` and retries. A checkpoint that cannot be read returns Retry without
+sending. Credential or data source lookup failures before the first POST record
+`notSent`, so a later attempt may send. Temporary credential failures Retry;
+reauthorization, connection selection, and invalid API token failures select
+`defect` after recording `notSent`, or `uncertain` once an earlier send may
+have created the page.
 
-- A conclusive 4xx other than 409 selects `providerRejected` or `notFound`.
+- A definite refusal of the first send (400, 401, 403, 404, 411, 413, 414,
+  415, or 422) records `canResend` and selects `providerRejected` or
+  `notFound`. After an earlier possible send, a refusal cannot prove that no
+  page exists, so it selects `uncertain`.
+- An unknown outcome returns Retry, and the next attempt posts again while the
+  possible sends stay below the cap; at the cap it selects `uncertain`. That
+  covers a timeout after dispatch, a 409 `conflict_error`, a 529, a 503
+  without a committed ID, every other 5xx, and any status not listed above,
+  such as 406 `row_limit_exceeded`. A resend can create a second page.
 - A 503 whose `additional_data.committed_resource_id` names the saved page
   reads that page back. A transient read failure retries the read without
-  resending POST; a confirmed page selects `created`.
+  resending POST; a confirmed page selects `created`. A later attempt with a
+  saved page ID reads it back instead of posting again.
 - An accepted 2xx with a valid page ID but unusable remaining fields also
-  reads the page back; an accepted 2xx without an ID remains `uncertain`.
+  reads the page back; an accepted 2xx without an ID, or an interrupted,
+  oversized, or credential-reflecting 2xx, selects `uncertain` without a
+  resend.
 - A 503 with a committed ID whose read-back conclusively fails, including 403
   or 404, selects `uncertain`; a transient read-back failure retries only GET
   until the retry budget ends and the Flow fails.
-- Every other ambiguity selects `uncertain`. That covers a timeout after
-  dispatch, a 503 without a committed ID, or an interrupted 2xx.
 - The 120-second Execute and heartbeat timeout leave a 70-second fence window
   for the 60-second HTTP request and time for read-back. Every request remains
   bounded by the Step deadline.
@@ -320,7 +329,8 @@ uncertain create.
 
 `updatePageProperties` sends absolute values, so a repeated `PATCH` leaves the
 page in the same state. It keeps async durability and retries every
-ambiguous outcome, including a 503 after Notion saved. A retry can overwrite
+ambiguous outcome, including a 503 after Notion saved, a redirect, and any 4xx
+other than 400, 401, 403, 404, 411, 413, 414, 415, or 422. A retry can overwrite
 an edit someone else made to the same properties in between.
 
 The connector's protection covers one Step execution. Across Flow runs, give
@@ -471,7 +481,9 @@ through a real Dex Server against a stateful fake Notion. The scenarios are:
 - a missing or ambiguous database title;
 - a rejected create;
 - a rate-limited create retried after `Retry-After`;
-- an uncertain create reconciled by query, and one that stays uncertain;
+- a saved create whose answers are lost, resent up to the send cap and
+  reconciled by query as duplicate rows, and an unsaved one that stays
+  uncertain after three sends;
 - a create Notion saved before a 503;
 - a delayed create, which Notion receives once;
 - a delayed update that currently completes with one dispatch and leaves the row in the intended state;

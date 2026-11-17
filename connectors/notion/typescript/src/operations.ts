@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { isIP } from 'node:net';
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { newFence } from '@superdurable/connectors-sdk/singledispatch';
 import type { NotionClient, NotionExchange } from './client.js';
 import { failure } from './client.js';
@@ -144,22 +144,33 @@ export class CreatePageOperation implements Mutation<CreatePageInput, CreatePage
   /** Bind one Notion client. */ constructor(private readonly client: NotionClient) {}
   /** Return the manifest definition. */ definition() { return CreatePageDefinition; }
   /** Record the stable call identity without sending it to Notion. */ idempotencyKey(callId: string): string { return callId; }
-  /** Never repeat a write that may have reached Notion. */
+  /** Resend a write whose outcome is unknown only while possible sends stay below the send cap. */
   async invoke(call: Call, input: CreatePageInput): Promise<MutationAttempt<CreatePageOutput>> {
+    const operationMaxSends = definitionMaxSends(CreatePageDefinition);
     let fence: ReturnType<typeof newFence>;
-    try { fence = newFence(call, 120_000); }
+    try { fence = newFence(call, 120_000, { maxSends: operationMaxSends }); }
     catch { return mutationBranch('createPage', 'defect', emptyCreate, failure('createPage', 'LOCAL_DEFECT', 'page dispatch could not be initialized')); }
     const decision = fence.decide();
-    if (decision.kind === 'failClosed') return newMutationUncertain(emptyCreate, failure('createPage', 'PROTOCOL', 'page dispatch checkpoint cannot be trusted'), {});
-    if (decision.kind === 'readBackRequired') {
-      const pageId = decision.marker?.providerId;
-      if (!pageId) return newMutationUncertain(emptyCreate, failure('createPage', 'PROTOCOL', 'page may have been sent without a confirmable ID'), {});
-      return this.confirmPage(call, pageId, {}, false);
-    }
+    if (decision.kind === 'failClosed') return newMutationRetry(failure('createPage', 'AVAILABILITY', 'page dispatch checkpoint could not be read; nothing was sent'));
+    const savedPageId = decision.marker?.callId === call.id ? decision.marker.providerId : undefined;
+    // Notion returned this page ID for an accepted earlier send, so it is read back, never resent.
+    if (decision.kind !== 'sendAllowed' && savedPageId) return this.confirmPage(call, savedPageId, {}, false);
+    if (decision.kind === 'readBackRequired') return newMutationUncertain(emptyCreate, failure('createPage', 'PROTOCOL', 'page creations up to the send cap may have been sent without a confirmable ID'), {});
+    const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
+    const canResendUnknownOutcome = priorSendUpperBound + 1 < (operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1);
+    // An earlier send may have created the page, so a refusal of this attempt proves nothing.
+    const hasPossibleEarlierSend = priorSendUpperBound > 0;
+    const resendOrSelectUncertain = (output: CreatePageOutput, unknownFailure: Failure, receipt: ReceiptDraft, retryAfterMs?: number): MutationAttempt<CreatePageOutput> =>
+      canResendUnknownOutcome ? newMutationRetry(unknownFailure, retryAfterMs) : newMutationUncertain(output, unknownFailure, receipt);
     let selection: { dataSourceId?: string; databaseId?: string }; let properties: Record<string, unknown>; let children: unknown[];
     try { selection = selectDataSource(input.dataSourceId, input.databaseId); properties = encodeProperties(input.properties ?? {}); children = encodeParagraphs(input.bodyText ?? ''); }
     catch { return mutationBranch('createPage', 'defect', emptyCreate, failure('createPage', 'VALIDATION', 'invalid page input')); }
     const credentials = await this.client.resolveToken(call, 'createPage');
+    if ('outcome' in credentials && hasPossibleEarlierSend) {
+      // notSent would hide the earlier possible send, so nothing is recorded.
+      if ('failure' in credentials.outcome && credentials.outcome.disposition === 'retry') return newMutationRetry(credentials.outcome.failure, credentials.outcome.retryAfterMs);
+      return newMutationUncertain(emptyCreate, failure('createPage', 'AUTHENTICATION', 'an earlier attempt may have created the Notion page, and the connection credentials are unavailable to resend it; reconnect the connection'), {});
+    }
     if ('outcome' in credentials) {
       try { await fence.recordNotSent(); }
       catch { return newMutationRetry(failure('createPage', 'AVAILABILITY', 'credential checkpoint unavailable')); }
@@ -167,9 +178,11 @@ export class CreatePageOperation implements Mutation<CreatePageInput, CreatePage
     }
     const resolved = await resolveDataSource(this.client, call, 'createPage', selection, credentials.token);
     if (typeof resolved !== 'string') {
-      if (resolved.disposition === 'retry') {
+      if (resolved.disposition === 'retry' && !hasPossibleEarlierSend) {
         try { await fence.recordNotSent(); }
         catch { return newMutationRetry(failure('createPage', 'AVAILABILITY', 'lookup checkpoint unavailable')); }
+      } else if (resolved.disposition !== 'retry' && hasPossibleEarlierSend) {
+        return newMutationUncertain(emptyCreate, resolved.failure, resolved.receipt);
       }
       return writeFromLookup(resolved);
     }
@@ -188,10 +201,16 @@ export class CreatePageOperation implements Mutation<CreatePageInput, CreatePage
         try { await fence.recordProviderId(result.providerId); } catch { /* Read-back remains safe with the accepted ID. */ }
         return this.confirmPage(call, result.providerId, result.receipt, true, resolved);
       }
-      if (result.disposition === 'notFound') return mutationBranch('createPage', 'notFound', output, result.failure, result.receipt);
-      if (result.disposition === 'providerRejected') return mutationBranch('createPage', 'providerRejected', output, result.failure, result.receipt);
-      if (result.disposition === 'defect') return mutationBranch('createPage', 'defect', output, result.failure, result.receipt);
-      return newMutationUncertain(output, result.failure, result.receipt);
+      if (result.disposition === 'notFound' || result.disposition === 'providerRejected') {
+        if (hasPossibleEarlierSend) return newMutationUncertain(output, result.failure, result.receipt);
+        try { await fence.recordCanResend(); }
+        catch { return newMutationRetry(failure('createPage', 'AVAILABILITY', 'refusal checkpoint unavailable')); }
+        return mutationBranch('createPage', result.disposition, output, result.failure, result.receipt);
+      }
+      if (result.disposition === 'defect') return hasPossibleEarlierSend ? resendOrSelectUncertain(output, result.failure, result.receipt) : mutationBranch('createPage', 'defect', output, result.failure, result.receipt);
+      // Notion accepted this POST, so a resend would duplicate the page.
+      if (result.disposition === 'acceptedUnreadable') return newMutationUncertain(output, result.failure, result.receipt);
+      return resendOrSelectUncertain(output, result.failure, result.receipt, result.retryAfterMs);
     }
     let page: Page;
     try { page = decodePage(objectJSON(result.response.body)); }
