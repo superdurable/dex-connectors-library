@@ -40,6 +40,9 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListCandidateProjects() sdkgo.Query[ListCandidateProjectsInput, CandidateProjectPage]
+	AddCandidateProject() sdkgo.Mutation[CandidateProjectInput, CandidateProfile]
+	RemoveCandidateProject() sdkgo.Mutation[CandidateProjectInput, CandidateProfile]
 	SearchCandidates() sdkgo.Query[SearchCandidatesInput, CandidateSearchResults]
 	CreateCandidate() sdkgo.Mutation[CreateCandidateInput, CandidateProfile]
 	AddCandidateTag() sdkgo.Mutation[CandidateTagInput, CandidateProfile]
@@ -51,6 +54,15 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListCandidateProjects() sdkgo.Query[ListCandidateProjectsInput, CandidateProjectPage] {
+	return operations.client.ListCandidateProjects()
+}
+func (operations clientOperations) AddCandidateProject() sdkgo.Mutation[CandidateProjectInput, CandidateProfile] {
+	return operations.client.AddCandidateProject()
+}
+func (operations clientOperations) RemoveCandidateProject() sdkgo.Mutation[CandidateProjectInput, CandidateProfile] {
+	return operations.client.RemoveCandidateProject()
+}
 func (operations clientOperations) SearchCandidates() sdkgo.Query[SearchCandidatesInput, CandidateSearchResults] {
 	return operations.client.SearchCandidates()
 }
@@ -208,6 +220,221 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListCandidateProjectsBranchListed sdkgo.BranchID = "listed"
+const ListCandidateProjectsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCandidateProjectsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCandidateProjectsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCandidateProjectsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCandidateProjects"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCandidateProjectsBranchListed, Description: "Ashby returned the candidate's projects."},
+		{ID: ListCandidateProjectsBranchProviderRejected, Description: "Ashby conclusively rejected the project list.", Optional: true},
+		{ID: ListCandidateProjectsBranchInvalidResponse, Description: "Ashby returned malformed or oversized JSON.", Optional: true},
+		{ID: ListCandidateProjectsBranchDefect, Description: "Candidate ID or page fields or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCandidateProjectsResult = sdkgo.QueryResult[CandidateProjectPage]
+
+type ListCandidateProjectsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=ashby"`
+	operationID                    struct{}                                                `connector:"operationId=listCandidateProjects"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCandidateProjectsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCandidateProjectsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCandidateProjectsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCandidateProjectsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCandidateProjectsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CandidateProjectPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewListCandidateProjectsStep[IN any](config ListCandidateProjectsStepConfig[IN]) sdkgo.QueryStep[IN, ListCandidateProjectsInput, CandidateProjectPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCandidateProjectsInput, CandidateProjectPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCandidateProjects(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCandidateProjectsResult] {
+			branches := make([]sdkgo.BranchTarget[ListCandidateProjectsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCandidateProjectsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCandidateProjectsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCandidateProjectsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCandidateProjectsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const AddCandidateProjectBranchAdded sdkgo.BranchID = "added"
+const AddCandidateProjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const AddCandidateProjectBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const AddCandidateProjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var AddCandidateProjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "addCandidateProject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: AddCandidateProjectBranchAdded, Description: "Ashby returned the candidate after project association."},
+		{ID: AddCandidateProjectBranchProviderRejected, Description: "Ashby definitively rejected the project association.", Optional: true},
+		{ID: AddCandidateProjectBranchInvalidResponse, Description: "Ashby returned malformed or oversized JSON.", Optional: true},
+		{ID: AddCandidateProjectBranchDefect, Description: "Candidate or project ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type AddCandidateProjectResult = sdkgo.MutationResult[CandidateProfile]
+
+type AddCandidateProjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=ashby"`
+	operationID                       struct{}                                               `connector:"operationId=addCandidateProject"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) CandidateProjectInput                         `connector:"mapToOperationInput"`
+	Added                             sdkgo.Target[AddCandidateProjectResult]                `connector:"branch=added"`
+	ProviderRejected                  sdkgo.Target[AddCandidateProjectResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[AddCandidateProjectResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[AddCandidateProjectResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CandidateProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewAddCandidateProjectStep[IN any](config AddCandidateProjectStepConfig[IN]) sdkgo.MutationStep[IN, CandidateProjectInput, CandidateProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CandidateProjectInput, CandidateProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.AddCandidateProject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[AddCandidateProjectResult] {
+			branches := make([]sdkgo.BranchTarget[AddCandidateProjectResult], 0, 4)
+			if config.Added.HasStep() {
+				branches = append(branches, config.Added.BranchTarget(AddCandidateProjectBranchAdded))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(AddCandidateProjectBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(AddCandidateProjectBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(AddCandidateProjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RemoveCandidateProjectBranchRemoved sdkgo.BranchID = "removed"
+const RemoveCandidateProjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RemoveCandidateProjectBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const RemoveCandidateProjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RemoveCandidateProjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "removeCandidateProject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RemoveCandidateProjectBranchRemoved, Description: "Ashby returned the candidate after removal."},
+		{ID: RemoveCandidateProjectBranchProviderRejected, Description: "Ashby definitively rejected the project removal.", Optional: true},
+		{ID: RemoveCandidateProjectBranchInvalidResponse, Description: "Ashby returned malformed or oversized JSON.", Optional: true},
+		{ID: RemoveCandidateProjectBranchDefect, Description: "Candidate or project ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RemoveCandidateProjectResult = sdkgo.MutationResult[CandidateProfile]
+
+type RemoveCandidateProjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=ashby"`
+	operationID                       struct{}                                               `connector:"operationId=removeCandidateProject"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) CandidateProjectInput                         `connector:"mapToOperationInput"`
+	Removed                           sdkgo.Target[RemoveCandidateProjectResult]             `connector:"branch=removed"`
+	ProviderRejected                  sdkgo.Target[RemoveCandidateProjectResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[RemoveCandidateProjectResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[RemoveCandidateProjectResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CandidateProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewRemoveCandidateProjectStep[IN any](config RemoveCandidateProjectStepConfig[IN]) sdkgo.MutationStep[IN, CandidateProjectInput, CandidateProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CandidateProjectInput, CandidateProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RemoveCandidateProject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RemoveCandidateProjectResult] {
+			branches := make([]sdkgo.BranchTarget[RemoveCandidateProjectResult], 0, 4)
+			if config.Removed.HasStep() {
+				branches = append(branches, config.Removed.BranchTarget(RemoveCandidateProjectBranchRemoved))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RemoveCandidateProjectBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RemoveCandidateProjectBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RemoveCandidateProjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const SearchCandidatesBranchFound sdkgo.BranchID = "found"

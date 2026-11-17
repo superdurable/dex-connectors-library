@@ -2,6 +2,908 @@
   "connector": "ashby",
   "scenarios": [
     {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":[{\"id\":\"bcffca12-5b09-4a76-acf2-00a8e267b222\",\"title\":\"Senior Engineers\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"isArchived\":false}],\"moreDataAvailable\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.listProjects",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "moreDataAvailable": false,
+          "projects": [
+            {
+              "createdAt": "2024-01-15T10:30:00.000Z",
+              "id": "bcffca12-5b09-4a76-acf2-00a8e267b222",
+              "isArchived": false,
+              "title": "Senior Engineers"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listCandidateProjects-listed",
+      "operation": "listCandidateProjects"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.listProjects",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "moreDataAvailable": false,
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listCandidateProjects-providerRejected",
+      "operation": "listCandidateProjects"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.listProjects",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "moreDataAvailable": false,
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listCandidateProjects-invalidResponse",
+      "operation": "listCandidateProjects"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "moreDataAvailable": false,
+          "projects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": "bad-id",
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listCandidateProjects-defect",
+      "operation": "listCandidateProjects"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.listProjects",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listCandidateProjects-rateLimit",
+      "operation": "listCandidateProjects"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.listProjects",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listCandidateProjects-unavailable",
+      "operation": "listCandidateProjects"
+    },
+    {
+      "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.listProjects",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "cursor": "start",
+            "limit": 20
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "cursor": "start",
+        "limit": 20
+      },
+      "name": "listCandidateProjects-transportFailure",
+      "operation": "listCandidateProjects"
+    },
+    {
+      "callId": "79fdb43a-67a4-50b3-8cc7-6dd814be7a82",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"e9ed20fd-d45f-4aad-8a00-a19bfba0083e\",\"name\":\"Example Candidate\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"updatedAt\":\"2024-01-16T10:30:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.addProject",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2024-01-15T10:30:00.000Z",
+          "id": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+          "name": "Example Candidate",
+          "updatedAt": "2024-01-16T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79fdb43a-67a4-50b3-8cc7-6dd814be7a82",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+      },
+      "name": "addCandidateProject-added",
+      "operation": "addCandidateProject"
+    },
+    {
+      "callId": "79fdb43a-67a4-50b3-8cc7-6dd814be7a82",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.addProject",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79fdb43a-67a4-50b3-8cc7-6dd814be7a82",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+      },
+      "name": "addCandidateProject-providerRejected",
+      "operation": "addCandidateProject"
+    },
+    {
+      "callId": "79fdb43a-67a4-50b3-8cc7-6dd814be7a82",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.addProject",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79fdb43a-67a4-50b3-8cc7-6dd814be7a82",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+      },
+      "name": "addCandidateProject-invalidResponse",
+      "operation": "addCandidateProject"
+    },
+    {
+      "callId": "79fdb43a-67a4-50b3-8cc7-6dd814be7a82",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79fdb43a-67a4-50b3-8cc7-6dd814be7a82",
+      "input": {
+        "candidateId": "bad-id",
+        "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+      },
+      "name": "addCandidateProject-defect",
+      "operation": "addCandidateProject"
+    },
+    {
+      "callId": "79fdb43a-67a4-50b3-8cc7-6dd814be7a82",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.addProject",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79fdb43a-67a4-50b3-8cc7-6dd814be7a82",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+      },
+      "name": "addCandidateProject-rateLimit",
+      "operation": "addCandidateProject"
+    },
+    {
+      "callId": "79fdb43a-67a4-50b3-8cc7-6dd814be7a82",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.addProject",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79fdb43a-67a4-50b3-8cc7-6dd814be7a82",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+      },
+      "name": "addCandidateProject-unavailable",
+      "operation": "addCandidateProject"
+    },
+    {
+      "callId": "79fdb43a-67a4-50b3-8cc7-6dd814be7a82",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.addProject",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79fdb43a-67a4-50b3-8cc7-6dd814be7a82",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+      },
+      "name": "addCandidateProject-transportFailure",
+      "operation": "addCandidateProject"
+    },
+    {
+      "callId": "9782fc80-706d-59d7-8081-f378ac6a9d3d",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"e9ed20fd-d45f-4aad-8a00-a19bfba0083e\",\"name\":\"Example Candidate\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"updatedAt\":\"2024-01-16T10:30:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.removeProject",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2024-01-15T10:30:00.000Z",
+          "id": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+          "name": "Example Candidate",
+          "updatedAt": "2024-01-16T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9782fc80-706d-59d7-8081-f378ac6a9d3d",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+      },
+      "name": "removeCandidateProject-removed",
+      "operation": "removeCandidateProject"
+    },
+    {
+      "callId": "9782fc80-706d-59d7-8081-f378ac6a9d3d",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.removeProject",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9782fc80-706d-59d7-8081-f378ac6a9d3d",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+      },
+      "name": "removeCandidateProject-providerRejected",
+      "operation": "removeCandidateProject"
+    },
+    {
+      "callId": "9782fc80-706d-59d7-8081-f378ac6a9d3d",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.removeProject",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9782fc80-706d-59d7-8081-f378ac6a9d3d",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+      },
+      "name": "removeCandidateProject-invalidResponse",
+      "operation": "removeCandidateProject"
+    },
+    {
+      "callId": "9782fc80-706d-59d7-8081-f378ac6a9d3d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9782fc80-706d-59d7-8081-f378ac6a9d3d",
+      "input": {
+        "candidateId": "bad-id",
+        "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+      },
+      "name": "removeCandidateProject-defect",
+      "operation": "removeCandidateProject"
+    },
+    {
+      "callId": "9782fc80-706d-59d7-8081-f378ac6a9d3d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.removeProject",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9782fc80-706d-59d7-8081-f378ac6a9d3d",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+      },
+      "name": "removeCandidateProject-rateLimit",
+      "operation": "removeCandidateProject"
+    },
+    {
+      "callId": "9782fc80-706d-59d7-8081-f378ac6a9d3d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.removeProject",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9782fc80-706d-59d7-8081-f378ac6a9d3d",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+      },
+      "name": "removeCandidateProject-unavailable",
+      "operation": "removeCandidateProject"
+    },
+    {
+      "callId": "9782fc80-706d-59d7-8081-f378ac6a9d3d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.removeProject",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9782fc80-706d-59d7-8081-f378ac6a9d3d",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "projectId": "bcffca12-5b09-4a76-acf2-00a8e267b222"
+      },
+      "name": "removeCandidateProject-transportFailure",
+      "operation": "removeCandidateProject"
+    },
+    {
       "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
       "exchanges": [
         {

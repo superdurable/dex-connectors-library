@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listCandidateProjects/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateProjectPage](`{"projects":[{"id":"bcffca12-5b09-4a76-acf2-00a8e267b222","title":"Senior Engineers","createdAt":"2024-01-15T10:30:00.000Z","isArchived":false}],"moreDataAvailable":false}`)
+			return err
+		}},
+		{name: "addCandidateProject/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "removeCandidateProject/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
 		{name: "searchCandidates/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[ashby.CandidateSearchResults](`{"candidates":[{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}]}`)
 			return err
@@ -54,6 +66,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListCandidateProjects().Definition().Operation.OperationID != "listCandidateProjects" {
+		t.Errorf("listCandidateProjects mock has another definition")
+	}
+	if mock.AddCandidateProject().Definition().Operation.OperationID != "addCandidateProject" {
+		t.Errorf("addCandidateProject mock has another definition")
+	}
+	if mock.RemoveCandidateProject().Definition().Operation.OperationID != "removeCandidateProject" {
+		t.Errorf("removeCandidateProject mock has another definition")
+	}
 	if mock.SearchCandidates().Definition().Operation.OperationID != "searchCandidates" {
 		t.Errorf("searchCandidates mock has another definition")
 	}

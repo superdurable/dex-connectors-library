@@ -10,6 +10,8 @@ The Worker also registers `AshbyCandidateCreate`, which calls `createCandidate` 
 
 The Worker also registers `AshbyCandidateSearch`, which calls `searchCandidates` with `{"name":"Example Candidate","email":"example@example.com","limit":20}`. Find a candidate name or complete email address in Ashby **Candidates > Search**; at least one is required, and blank `limit` uses the provider's maximum of 100 results. The API key needs **Candidates read**. Optional branches are unwired.
 
+The Worker also registers `AshbyCandidateProject`, which calls `addCandidateProject` with `{"candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","projectId":"bcffca12-5b09-4a76-acf2-00a8e267b222"}`. Replace both UUIDs with an existing candidate and project from Ashby **Sourcing > Projects**; the key needs **Candidates write**. Optional branches are unwired.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/ashby/go`, run:
@@ -20,6 +22,7 @@ dexcli visualize ./examples/candidate-inspection/flow/rename_workflow.go --schem
 dexcli visualize ./examples/candidate-inspection/flow/tag_workflow.go --schema-version 2.0 --json --out /tmp/ashby-candidate-tag-fdg
 dexcli visualize ./examples/candidate-inspection/flow/create_workflow.go --schema-version 2.0 --json --out /tmp/ashby-candidate-create-fdg
 dexcli visualize ./examples/candidate-inspection/flow/search_workflow.go --schema-version 2.0 --json --out /tmp/ashby-candidate-search-fdg
+dexcli visualize ./examples/candidate-inspection/flow/project_workflow.go --schema-version 2.0 --json --out /tmp/ashby-candidate-project-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.

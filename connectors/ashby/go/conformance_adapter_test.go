@@ -40,6 +40,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			fenceContext.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
+		"listCandidateProjects": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCandidateProjects(), reference),
+		"addCandidateProject": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.AddCandidateProject(), reference, scenario.CallID),
+		"removeCandidateProject": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.RemoveCandidateProject(), reference, scenario.CallID),
 		"searchCandidates": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchCandidates(), reference),
 		"createCandidate": newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateCandidate(), reference, scenario.CallID),
 		"addCandidateTag": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.AddCandidateTag(), reference, scenario.CallID),
