@@ -74,7 +74,7 @@ UPSERT_MEMBER_DEFINITION = MutationDefinition(
     (
         BranchDefinition(UPSERTED, "Mailchimp holds the contact with the requested values, written now or by an earlier attempt, and returned it.", False),
         BranchDefinition(PROVIDER_REJECTED, "Mailchimp conclusively rejected the contact, such as an invalid merge field, a permanently deleted address, or a contact in a compliance state; nothing was written.", True),
-        BranchDefinition(INVALID_RESPONSE, "Mailchimp returned an invalid or oversized contact, so the change may have been applied.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and never selected: an invalid or oversized contact repeats the absolute upsert.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -91,7 +91,7 @@ UPDATE_MEMBER_TAGS_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "Mailchimp accepted the tag changes, including tags the contact already had or already lacked.", False),
         BranchDefinition(NOT_FOUND, "The audience has no contact with that address, or the audience does not exist; nothing was changed.", True),
         BranchDefinition(PROVIDER_REJECTED, "Mailchimp conclusively rejected the tag changes, such as an invalid API key or a role without access.", True),
-        BranchDefinition(INVALID_RESPONSE, "Mailchimp accepted the request but returned an oversized or credential-reflecting body, so the tags may have changed.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and never selected: an oversized or credential-reflecting body repeats the tag declaration.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

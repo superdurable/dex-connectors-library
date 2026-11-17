@@ -290,15 +290,13 @@ def _mutation_exchange(
 ) -> MutationAttempt[Any] | None:
     if exchange.outcome == "succeeded":
         return None
-    # A status that is not a definite refusal is retried; an unusable 2xx keeps invalidResponse.
-    if exchange.outcome != "invalid" and _is_outcome_unknown_after_dispatch(exchange):
+    # A status that is not a definite refusal and an unusable 2xx are retried.
+    if _is_outcome_unknown_after_dispatch(exchange):
         assert exchange.failure is not None
         return MutationAttempt.retry(exchange.failure, exchange.retry_after)
     branch = (
         "notFound"
         if exchange.outcome == "notFound" and has_not_found
-        else "invalidResponse"
-        if exchange.outcome == "invalid"
         else "defect"
         if exchange.outcome == "defect"
         else "providerRejected"
@@ -532,15 +530,13 @@ class UpsertMemberOperation:
             member = _decode_member(_decode_object(exchange.body), subscriber_hash)
             return MutationAttempt.branch_result("upserted", UpsertMemberOutput(member), receipt)
         except (ValueError, TypeError, KeyError):
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                empty,
-                receipt,
+            # The absolute upsert is safe to resend, so an unusable answer is retried.
+            return MutationAttempt.retry(
                 failure(
                     FailureKind.PROTOCOL,
                     "upsertMember",
                     "Mailchimp accepted the contact but returned an invalid contact",
-                ),
+                )
             )
 
 

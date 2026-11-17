@@ -411,7 +411,7 @@ var UpsertMemberDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertMemberBranchUpserted, Description: "Mailchimp holds the contact with the requested values, written now or by an earlier attempt, and returned it."},
 		{ID: UpsertMemberBranchProviderRejected, Description: "Mailchimp conclusively rejected the contact, such as an invalid merge field, a permanently deleted address, or a contact in a compliance state; nothing was written.", Optional: true},
-		{ID: UpsertMemberBranchInvalidResponse, Description: "Mailchimp returned an invalid or oversized contact, so the change may have been applied.", Optional: true},
+		{ID: UpsertMemberBranchInvalidResponse, Description: "Kept for compatibility and never selected: an invalid or oversized contact repeats the absolute upsert.", Optional: true},
 		{ID: UpsertMemberBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -489,7 +489,7 @@ var UpdateMemberTagsDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateMemberTagsBranchUpdated, Description: "Mailchimp accepted the tag changes, including tags the contact already had or already lacked."},
 		{ID: UpdateMemberTagsBranchNotFound, Description: "The audience has no contact with that address, or the audience does not exist; nothing was changed.", Optional: true},
 		{ID: UpdateMemberTagsBranchProviderRejected, Description: "Mailchimp conclusively rejected the tag changes, such as an invalid API key or a role without access.", Optional: true},
-		{ID: UpdateMemberTagsBranchInvalidResponse, Description: "Mailchimp accepted the request but returned an oversized or credential-reflecting body, so the tags may have changed.", Optional: true},
+		{ID: UpdateMemberTagsBranchInvalidResponse, Description: "Kept for compatibility and never selected: an oversized or credential-reflecting body repeats the tag declaration.", Optional: true},
 		{ID: UpdateMemberTagsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

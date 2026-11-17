@@ -31,13 +31,13 @@ func queryAttemptForExchange[OUT any](result mailchimpExchange, receipt sdkgo.Re
 }
 
 // repeatableMutationAttemptForExchange retries every unconfirmed outcome of a write that sets absolute values,
-// including a status that is not a definite refusal. An unusable 2xx keeps its declared invalidResponse branch.
+// including a status that is not a definite refusal and an unusable 2xx.
 func repeatableMutationAttemptForExchange[OUT any](result mailchimpExchange, receipt sdkgo.Receipt, branches repeatableBranches) (sdkgo.MutationAttempt[OUT], bool) {
 	var zero OUT
 	switch {
 	case result.outcome == exchangeSucceeded:
 		return sdkgo.MutationAttempt[OUT]{}, false
-	case result.outcome != exchangeInvalid && result.isOutcomeUnknownAfterDispatch():
+	case result.isOutcomeUnknownAfterDispatch():
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
 	default:
 		return sdkgo.NewMutationBranch(branches.branchFor(result.outcome), zero, &result.failure, receipt), true

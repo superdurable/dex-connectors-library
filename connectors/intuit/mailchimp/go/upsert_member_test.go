@@ -97,7 +97,7 @@ func TestUpsertMemberRetriesEveryUnconfirmedOutcomeBecauseThePutRepeats(t *testi
 	}
 }
 
-func TestUpsertMemberSelectsProviderRejectedAndInvalidResponseWithoutMailchimpText(t *testing.T) {
+func TestUpsertMemberSelectsProviderRejectedWithoutMailchimpText(t *testing.T) {
 	for _, test := range []struct {
 		name    string
 		status  int
@@ -114,8 +114,6 @@ func TestUpsertMemberSelectsProviderRejectedAndInvalidResponseWithoutMailchimpTe
 			message: "Mailchimp found no such resource (HTTP 404) [Resource Not Found]"},
 		{name: "unprocessable", status: http.StatusUnprocessableEntity, title: "Invalid Resource", branch: mailchimp.UpsertMemberBranchProviderRejected,
 			message: "Mailchimp rejected the request (HTTP 422) [Invalid Resource]"},
-		{name: "invalid contact", status: http.StatusOK, body: `{"status":"subscribed"}`, branch: mailchimp.UpsertMemberBranchInvalidResponse,
-			message: "Mailchimp accepted the contact but returned an invalid contact: the contact has no subscriber hash"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingMailchimp(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -134,7 +132,7 @@ func TestUpsertMemberSelectsProviderRejectedAndInvalidResponseWithoutMailchimpTe
 	}
 }
 
-func TestUpsertMemberRetriesUnknownStatuses(t *testing.T) {
+func TestUpsertMemberRetriesUnknownOutcomes(t *testing.T) {
 	for _, test := range []struct {
 		name   string
 		status int
@@ -143,6 +141,7 @@ func TestUpsertMemberRetriesUnknownStatuses(t *testing.T) {
 		{name: "conflict", status: http.StatusConflict, body: `{"title":"Conflict"}`},
 		{name: "too early", status: http.StatusTooEarly, body: `{"title":"Too Early"}`},
 		{name: "redirect", status: http.StatusTemporaryRedirect, body: `{"title":"Moved"}`},
+		{name: "invalid contact", status: http.StatusOK, body: `{"status":"subscribed"}`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingMailchimp(t, func(response http.ResponseWriter, _ *http.Request, _ int) {

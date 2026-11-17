@@ -156,7 +156,7 @@ spec:
       branches:
         - {id: upserted, goName: Upserted, description: "Mailchimp holds the contact with the requested values, written now or by an earlier attempt, and returned it."}
         - {id: providerRejected, goName: ProviderRejected, description: "Mailchimp conclusively rejected the contact, such as an invalid merge field, a permanently deleted address, or a contact in a compliance state; nothing was written.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Mailchimp returned an invalid or oversized contact, so the change may have been applied.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and never selected: an invalid or oversized contact repeats the absolute upsert.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -185,7 +185,7 @@ spec:
         - {id: updated, goName: Updated, description: "Mailchimp accepted the tag changes, including tags the contact already had or already lacked."}
         - {id: notFound, goName: NotFound, description: "The audience has no contact with that address, or the audience does not exist; nothing was changed.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Mailchimp conclusively rejected the tag changes, such as an invalid API key or a role without access.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Mailchimp accepted the request but returned an oversized or credential-reflecting body, so the tags may have changed.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and never selected: an oversized or credential-reflecting body repeats the tag declaration.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

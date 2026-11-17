@@ -79,7 +79,7 @@ export interface UpsertMemberStepConfig<StepInput, OperationInput = UpsertMember
   upserted: StepTarget<MutationResult<OperationOutput>>;
   /** Mailchimp conclusively rejected the contact, such as an invalid merge field, a permanently deleted address, or a contact in a compliance state; nothing was written. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Mailchimp returned an invalid or oversized contact, so the change may have been applied. */
+  /** Kept for compatibility and never selected: an invalid or oversized contact repeats the absolute upsert. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -112,7 +112,7 @@ export interface UpdateMemberTagsStepConfig<StepInput, OperationInput = UpdateMe
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Mailchimp conclusively rejected the tag changes, such as an invalid API key or a role without access. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Mailchimp accepted the request but returned an oversized or credential-reflecting body, so the tags may have changed. */
+  /** Kept for compatibility and never selected: an oversized or credential-reflecting body repeats the tag declaration. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

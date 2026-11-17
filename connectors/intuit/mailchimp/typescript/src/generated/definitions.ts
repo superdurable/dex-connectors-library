@@ -86,7 +86,7 @@ export const UpsertMemberBranch = {
 export const UpsertMemberBranchUpserted = UpsertMemberBranch.Upserted;
 /** Mailchimp conclusively rejected the contact, such as an invalid merge field, a permanently deleted address, or a contact in a compliance state; nothing was written. */
 export const UpsertMemberBranchProviderRejected = UpsertMemberBranch.ProviderRejected;
-/** Mailchimp returned an invalid or oversized contact, so the change may have been applied. */
+/** Kept for compatibility and never selected: an invalid or oversized contact repeats the absolute upsert. */
 export const UpsertMemberBranchInvalidResponse = UpsertMemberBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpsertMemberBranchDefect = UpsertMemberBranch.Defect;
@@ -96,7 +96,7 @@ export const UpsertMemberDefinition: MutationDefinition = {
   branches: [
     { id: "upserted", description: "Mailchimp holds the contact with the requested values, written now or by an earlier attempt, and returned it." },
     { id: "providerRejected", description: "Mailchimp conclusively rejected the contact, such as an invalid merge field, a permanently deleted address, or a contact in a compliance state; nothing was written.", optional: true },
-    { id: "invalidResponse", description: "Mailchimp returned an invalid or oversized contact, so the change may have been applied.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and never selected: an invalid or oversized contact repeats the absolute upsert.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
@@ -119,7 +119,7 @@ export const UpdateMemberTagsBranchUpdated = UpdateMemberTagsBranch.Updated;
 export const UpdateMemberTagsBranchNotFound = UpdateMemberTagsBranch.NotFound;
 /** Mailchimp conclusively rejected the tag changes, such as an invalid API key or a role without access. */
 export const UpdateMemberTagsBranchProviderRejected = UpdateMemberTagsBranch.ProviderRejected;
-/** Mailchimp accepted the request but returned an oversized or credential-reflecting body, so the tags may have changed. */
+/** Kept for compatibility and never selected: an oversized or credential-reflecting body repeats the tag declaration. */
 export const UpdateMemberTagsBranchInvalidResponse = UpdateMemberTagsBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateMemberTagsBranchDefect = UpdateMemberTagsBranch.Defect;
@@ -130,7 +130,7 @@ export const UpdateMemberTagsDefinition: MutationDefinition = {
     { id: "updated", description: "Mailchimp accepted the tag changes, including tags the contact already had or already lacked." },
     { id: "notFound", description: "The audience has no contact with that address, or the audience does not exist; nothing was changed.", optional: true },
     { id: "providerRejected", description: "Mailchimp conclusively rejected the tag changes, such as an invalid API key or a role without access.", optional: true },
-    { id: "invalidResponse", description: "Mailchimp accepted the request but returned an oversized or credential-reflecting body, so the tags may have changed.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and never selected: an oversized or credential-reflecting body repeats the tag declaration.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

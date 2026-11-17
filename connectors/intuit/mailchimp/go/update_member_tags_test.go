@@ -50,10 +50,9 @@ func TestUpdateMemberTagsRetriesUnconfirmedOutcomesAndSelectsNotFound(t *testing
 	reflected := newRecordingMailchimp(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusOK, `{"echo":"`+testAPIKey+`"}`)
 	})
-	result, err = sdkgo.RunMutation(newMailchimpDexContext("tags-reflected"), newMailchimpClient(t, reflected.URL).UpdateMemberTags(), mailchimpConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, mailchimp.UpdateMemberTagsBranchInvalidResponse, result.Branch)
-	requireNoSecretOrProviderText(t, result)
+	_, err = sdkgo.RunMutation(newMailchimpDexContext("tags-reflected"), newMailchimpClient(t, reflected.URL).UpdateMemberTags(), mailchimpConnection, input)
+	require.ErrorAs(t, err, &retry, "an unusable answer to the repeatable tag declaration is retried")
+	require.NotContains(t, retry.Failure.Message, testAPIKey)
 
 	for _, status := range []int{http.StatusConflict, http.StatusTooEarly, http.StatusMethodNotAllowed, http.StatusTemporaryRedirect} {
 		unknown := newRecordingMailchimp(t, func(response http.ResponseWriter, _ *http.Request, _ int) {

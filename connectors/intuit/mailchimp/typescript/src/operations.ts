@@ -94,7 +94,8 @@ export class UpsertMemberOperation implements Mutation<UpsertMemberInput, Upsert
     const classified = mutationExchange(result, receipt, emptyUpsert, false);
     if (classified) return classified;
     try { return newMutationBranch('upserted', { member: decodeMember(result.body, hash) }, receipt); }
-    catch { return newMutationBranch('invalidResponse', emptyUpsert, receipt, mailchimpFailure(operation, 'PROTOCOL', 'Mailchimp accepted the contact but returned an invalid contact')); }
+    // The absolute upsert is safe to resend, so an unusable answer is retried.
+    catch { return newMutationRetry(mailchimpFailure(operation, 'PROTOCOL', 'Mailchimp accepted the contact but returned an invalid contact')); }
   }
 }
 /** Set contact tags active or inactive with repeatable declarations. */
@@ -275,9 +276,9 @@ function queryExchange<T>(exchange: MailchimpExchange, receipt: ReceiptDraft, ze
 }
 function mutationExchange<T>(exchange: MailchimpExchange, receipt: ReceiptDraft, zero: T, hasNotFound: boolean): MutationAttempt<T> | undefined {
   if (exchange.outcome === 'succeeded') return undefined;
-  // A status that is not a definite refusal is retried; an unusable 2xx keeps invalidResponse.
-  if (exchange.outcome !== 'invalid' && isOutcomeUnknownAfterDispatch(exchange)) return newMutationRetry(exchange.failure!, exchange.retryAfterMs);
-  const branch = exchange.outcome === 'notFound' && hasNotFound ? 'notFound' : exchange.outcome === 'invalid' ? 'invalidResponse' : exchange.outcome === 'defect' ? 'defect' : 'providerRejected';
+  // A status that is not a definite refusal and an unusable 2xx are retried.
+  if (isOutcomeUnknownAfterDispatch(exchange)) return newMutationRetry(exchange.failure!, exchange.retryAfterMs);
+  const branch = exchange.outcome === 'notFound' && hasNotFound ? 'notFound' : exchange.outcome === 'defect' ? 'defect' : 'providerRejected';
   return newMutationBranch(branch, zero, receipt, exchange.failure!);
 }
 function credentialQueryDefect<T>(operation: string, zero: T): QueryAttempt<T> { return newQueryBranch('defect', zero, zeroReceipt(), mailchimpFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable')); }

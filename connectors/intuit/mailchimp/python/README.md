@@ -19,7 +19,8 @@ an audience contact, and persists its safe result. Its input is a Mailchimp
 audience ID and bare email address. The key stays in Dex Web Connections and
 is resolved at each provider call; it is never a Flow input or Attribute.
 Contact operations reject malformed bare addresses before contacting Mailchimp.
-Malformed contact or campaign responses select `invalidResponse`.
+Malformed contact reads and campaign responses select `invalidResponse`; a
+malformed answer to `upsertMember` or `updateMemberTags` is retried.
 
 From this directory:
 

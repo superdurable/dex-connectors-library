@@ -214,7 +214,7 @@ func UpsertMemberProviderRejected(value mailchimp.UpsertMemberOutput, failure *s
 	return connectormock.Branch(mailchimp.UpsertMemberBranchProviderRejected, value, failure)
 }
 
-// UpsertMemberInvalidResponse selects the invalidResponse branch: Mailchimp returned an invalid or oversized contact, so the change may have been applied.
+// UpsertMemberInvalidResponse selects the invalidResponse branch: Kept for compatibility and never selected: an invalid or oversized contact repeats the absolute upsert.
 func UpsertMemberInvalidResponse(value mailchimp.UpsertMemberOutput, failure *sdkgo.Failure) connectormock.Case[mailchimp.UpsertMemberOutput] {
 	return connectormock.Branch(mailchimp.UpsertMemberBranchInvalidResponse, value, failure)
 }
@@ -261,7 +261,7 @@ func UpdateMemberTagsProviderRejected(value mailchimp.UpdateMemberTagsOutput, fa
 	return connectormock.Branch(mailchimp.UpdateMemberTagsBranchProviderRejected, value, failure)
 }
 
-// UpdateMemberTagsInvalidResponse selects the invalidResponse branch: Mailchimp accepted the request but returned an oversized or credential-reflecting body, so the tags may have changed.
+// UpdateMemberTagsInvalidResponse selects the invalidResponse branch: Kept for compatibility and never selected: an oversized or credential-reflecting body repeats the tag declaration.
 func UpdateMemberTagsInvalidResponse(value mailchimp.UpdateMemberTagsOutput, failure *sdkgo.Failure) connectormock.Case[mailchimp.UpdateMemberTagsOutput] {
 	return connectormock.Branch(mailchimp.UpdateMemberTagsBranchInvalidResponse, value, failure)
 }

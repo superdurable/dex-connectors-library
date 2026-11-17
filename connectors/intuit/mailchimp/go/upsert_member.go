@@ -117,8 +117,9 @@ func (operation UpsertMemberOperation) Invoke(call sdkgo.Call, input UpsertMembe
 	}
 	member, err := decodeMemberBody(result.response.body, subscriberHash)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpsertMemberBranchInvalidResponse, UpsertMemberOutput{}, mailchimpFailurePointer(sdkgo.FailureProtocol, upsertMemberOperation,
-			"Mailchimp accepted the contact but returned an invalid contact: "+err.Error()), receipt)
+		// The absolute upsert is safe to resend, so an unusable answer is retried.
+		return sdkgo.NewMutationRetry[UpsertMemberOutput](mailchimpFailure(sdkgo.FailureProtocol, upsertMemberOperation,
+			"Mailchimp accepted the contact but returned an invalid contact: "+err.Error()), 0)
 	}
 	return sdkgo.NewMutationBranch(UpsertMemberBranchUpserted, UpsertMemberOutput{Member: member}, nil, receipt)
 }

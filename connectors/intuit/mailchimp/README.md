@@ -18,8 +18,8 @@ exposes these operation-specific Dex Step factories:
 | --- | --- | --- | --- | --- |
 | `mailchimp.NewGetMemberStep` | Query | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `mailchimp.NewListMembersStep` | Query | async | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `mailchimp.NewUpsertMemberStep` | Mutation | async | `upserted` | `providerRejected`, `invalidResponse`, `defect` |
-| `mailchimp.NewUpdateMemberTagsStep` | Mutation | async | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `mailchimp.NewUpsertMemberStep` | Mutation | async | `upserted` | `providerRejected`, `invalidResponse` (never selected), `defect` |
+| `mailchimp.NewUpdateMemberTagsStep` | Mutation | async | `updated` | `notFound`, `providerRejected`, `invalidResponse` (never selected), `defect` |
 | `mailchimp.NewSendCampaignStep` | Mutation | sync | `sent` | `alreadySent`, `notSendable`, `notFound`, `providerRejected`, `invalidResponse`, `uncertain`, `defect` |
 
 Only the happy-path branch of each operation is required; every other branch
@@ -265,15 +265,15 @@ A token that contains the API key is dropped.
 | 503 | Retry | Retry | Retry, send not counted |
 | connection refused before sending | Retry | Retry | Retry, send not counted |
 | 408, other 5xx, lost or unreadable response | Retry | Retry | unknown |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `invalidResponse`; the write may have been applied | unknown |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | Retry | unknown |
 | invalid input or connection credentials | `defect`, with no request | same | `defect` when no earlier send is possible |
 
 An unknown sendCampaign outcome is retried below the send cap and selects
 `uncertain` at it, as [Duplicate safety](#duplicate-safety) describes. The
 campaign read before a first send maps like a read, because nothing has been
-sent yet. upsertMember and updateMemberTags repeat harmlessly, so their
-unusable 2xx keeps selecting `invalidResponse`, which may follow an applied
-write. The Receipt
+sent yet. upsertMember and updateMemberTags repeat harmlessly, so an unusable
+2xx is retried; both keep `invalidResponse` declared for compatibility and
+never select it. The Receipt
 carries the Call ID, the subscriber hash, audience ID, or campaign ID, and
 Mailchimp's `X-Request-Id` header when present.
 
