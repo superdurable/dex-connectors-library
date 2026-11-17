@@ -20,6 +20,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[freshbooks.Invoice](`{"accountId":"KAG77","invoiceId":2201278,"invoiceNumber":"0000003","amount":"800.00","currencyCode":"USD","paymentStatus":"unpaid"}`)
 			return err
 		}},
+		{name: "listInvoices/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshbooks.InvoicePage](`{"accountId":"KAG77","page":1,"pageCount":1,"total":1,"invoices":[{"accountId":"KAG77","invoiceId":2201278,"invoiceNumber":"0000003","amount":"800.00","currencyCode":"USD","paymentStatus":"unpaid"}]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +36,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetInvoice().Definition().Operation.OperationID != "getInvoice" {
 		t.Errorf("getInvoice mock has another definition")
+	}
+	if mock.ListInvoices().Definition().Operation.OperationID != "listInvoices" {
+		t.Errorf("listInvoices mock has another definition")
 	}
 }

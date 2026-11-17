@@ -17,8 +17,9 @@ import (
 
 // Mock is a scripted freshbooks connection. Script each operation through its accessor.
 type Mock struct {
-	connection freshbooks.Connection
-	getInvoice *connectormock.Query[freshbooks.GetInvoiceInput, freshbooks.Invoice]
+	connection   freshbooks.Connection
+	getInvoice   *connectormock.Query[freshbooks.GetInvoiceInput, freshbooks.Invoice]
+	listInvoices *connectormock.Query[freshbooks.ListInvoicesInput, freshbooks.InvoicePage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +27,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getInvoice: connectormock.NewQuery[freshbooks.GetInvoiceInput, freshbooks.Invoice](t, freshbooks.GetInvoiceDefinition),
+		getInvoice:   connectormock.NewQuery[freshbooks.GetInvoiceInput, freshbooks.Invoice](t, freshbooks.GetInvoiceDefinition),
+		listInvoices: connectormock.NewQuery[freshbooks.ListInvoicesInput, freshbooks.InvoicePage](t, freshbooks.ListInvoicesDefinition),
 	}
 	mock.getInvoice.Default(GetInvoiceDefault())
+	mock.listInvoices.Default(ListInvoicesDefault())
 	connection, err := freshbooks.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "freshbooks", Name: connectionName})
 	if err != nil {
 		t.Fatalf("freshbooks mock connection: %v", err)
@@ -45,10 +48,18 @@ func (mock *Mock) GetInvoice() *connectormock.Query[freshbooks.GetInvoiceInput, 
 	return mock.getInvoice
 }
 
+// ListInvoices returns the listInvoices script.
+func (mock *Mock) ListInvoices() *connectormock.Query[freshbooks.ListInvoicesInput, freshbooks.InvoicePage] {
+	return mock.listInvoices
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetInvoice() sdkgo.Query[freshbooks.GetInvoiceInput, freshbooks.Invoice] {
 	return operations.mock.getInvoice
+}
+func (operations mockOperations) ListInvoices() sdkgo.Query[freshbooks.ListInvoicesInput, freshbooks.InvoicePage] {
+	return operations.mock.listInvoices
 }
 
 // GetInvoiceFound selects the found branch: FreshBooks returned the selected invoice.
@@ -89,3 +100,44 @@ func GetInvoiceFoundDefault() connectormock.Case[freshbooks.Invoice] {
 
 // GetInvoiceDefault is the manifest default, foundDefault, which New installs.
 func GetInvoiceDefault() connectormock.Case[freshbooks.Invoice] { return GetInvoiceFoundDefault() }
+
+// ListInvoicesListed selects the listed branch: FreshBooks returned the requested invoice page.
+func ListInvoicesListed(value freshbooks.InvoicePage, failure *sdkgo.Failure) connectormock.Case[freshbooks.InvoicePage] {
+	return connectormock.Branch(freshbooks.ListInvoicesBranchListed, value, failure)
+}
+
+// ListInvoicesMissing selects the missing branch: FreshBooks did not find the account.
+func ListInvoicesMissing(value freshbooks.InvoicePage, failure *sdkgo.Failure) connectormock.Case[freshbooks.InvoicePage] {
+	return connectormock.Branch(freshbooks.ListInvoicesBranchMissing, value, failure)
+}
+
+// ListInvoicesProviderRejected selects the providerRejected branch: FreshBooks conclusively rejected the read.
+func ListInvoicesProviderRejected(value freshbooks.InvoicePage, failure *sdkgo.Failure) connectormock.Case[freshbooks.InvoicePage] {
+	return connectormock.Branch(freshbooks.ListInvoicesBranchProviderRejected, value, failure)
+}
+
+// ListInvoicesInvalidResponse selects the invalidResponse branch: FreshBooks returned malformed or oversized invoice JSON.
+func ListInvoicesInvalidResponse(value freshbooks.InvoicePage, failure *sdkgo.Failure) connectormock.Case[freshbooks.InvoicePage] {
+	return connectormock.Branch(freshbooks.ListInvoicesBranchInvalidResponse, value, failure)
+}
+
+// ListInvoicesDefect selects the defect branch: The account ID, page, or OAuth credentials are invalid.
+func ListInvoicesDefect(value freshbooks.InvoicePage, failure *sdkgo.Failure) connectormock.Case[freshbooks.InvoicePage] {
+	return connectormock.Branch(freshbooks.ListInvoicesBranchDefect, value, failure)
+}
+
+// ListInvoicesRetry asks Dex to retry the listInvoices Step, after the delay when it is positive.
+func ListInvoicesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[freshbooks.InvoicePage] {
+	return connectormock.Retry[freshbooks.InvoicePage](failure, after)
+}
+
+// ListInvoicesListedDefault is the manifest mock listedDefault: Example invoice page without client contact details.
+func ListInvoicesListedDefault() connectormock.Case[freshbooks.InvoicePage] {
+	value := connectormock.MustDecodeOutput[freshbooks.InvoicePage](`{"accountId":"KAG77","page":1,"pageCount":1,"total":1,"invoices":[{"accountId":"KAG77","invoiceId":2201278,"invoiceNumber":"0000003","amount":"800.00","currencyCode":"USD","paymentStatus":"unpaid"}]}`)
+	return connectormock.Branch(freshbooks.ListInvoicesBranchListed, value, nil)
+}
+
+// ListInvoicesDefault is the manifest default, listedDefault, which New installs.
+func ListInvoicesDefault() connectormock.Case[freshbooks.InvoicePage] {
+	return ListInvoicesListedDefault()
+}
