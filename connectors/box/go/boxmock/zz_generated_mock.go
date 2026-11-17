@@ -23,6 +23,8 @@ type Mock struct {
 	copyFolder      *connectormock.Mutation[box.CopyBoxFolderInput, box.CreatedBoxItem]
 	updateFile      *connectormock.Mutation[box.UpdateBoxFileInput, box.UpdatedBoxItem]
 	updateFolder    *connectormock.Mutation[box.UpdateBoxFolderInput, box.UpdatedBoxItem]
+	shareFile       *connectormock.Mutation[box.ShareBoxFileInput, box.UpdatedBoxItem]
+	shareFolder     *connectormock.Mutation[box.ShareBoxFolderInput, box.UpdatedBoxItem]
 	downloadFile    *connectormock.Query[box.DownloadFileInput, box.DownloadedFile]
 	uploadFile      *connectormock.Mutation[box.UploadFileInput, box.UploadedFile]
 	getFile         *connectormock.Query[box.GetFileInput, box.BoxFile]
@@ -44,6 +46,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		copyFolder:      connectormock.NewMutation[box.CopyBoxFolderInput, box.CreatedBoxItem](t, box.CopyFolderDefinition),
 		updateFile:      connectormock.NewMutation[box.UpdateBoxFileInput, box.UpdatedBoxItem](t, box.UpdateFileDefinition),
 		updateFolder:    connectormock.NewMutation[box.UpdateBoxFolderInput, box.UpdatedBoxItem](t, box.UpdateFolderDefinition),
+		shareFile:       connectormock.NewMutation[box.ShareBoxFileInput, box.UpdatedBoxItem](t, box.ShareFileDefinition),
+		shareFolder:     connectormock.NewMutation[box.ShareBoxFolderInput, box.UpdatedBoxItem](t, box.ShareFolderDefinition),
 		downloadFile:    connectormock.NewQuery[box.DownloadFileInput, box.DownloadedFile](t, box.DownloadFileDefinition),
 		uploadFile:      connectormock.NewMutation[box.UploadFileInput, box.UploadedFile](t, box.UploadFileDefinition),
 		getFile:         connectormock.NewQuery[box.GetFileInput, box.BoxFile](t, box.GetFileDefinition),
@@ -59,6 +63,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.copyFolder.Default(CopyFolderDefault())
 	mock.updateFile.Default(UpdateFileDefault())
 	mock.updateFolder.Default(UpdateFolderDefault())
+	mock.shareFile.Default(ShareFileDefault())
+	mock.shareFolder.Default(ShareFolderDefault())
 	mock.downloadFile.Default(DownloadFileDefault())
 	mock.uploadFile.Default(UploadFileDefault())
 	mock.getFile.Default(GetFileDefault())
@@ -102,6 +108,16 @@ func (mock *Mock) UpdateFile() *connectormock.Mutation[box.UpdateBoxFileInput, b
 // UpdateFolder returns the updateFolder script.
 func (mock *Mock) UpdateFolder() *connectormock.Mutation[box.UpdateBoxFolderInput, box.UpdatedBoxItem] {
 	return mock.updateFolder
+}
+
+// ShareFile returns the shareFile script.
+func (mock *Mock) ShareFile() *connectormock.Mutation[box.ShareBoxFileInput, box.UpdatedBoxItem] {
+	return mock.shareFile
+}
+
+// ShareFolder returns the shareFolder script.
+func (mock *Mock) ShareFolder() *connectormock.Mutation[box.ShareBoxFolderInput, box.UpdatedBoxItem] {
+	return mock.shareFolder
 }
 
 // DownloadFile returns the downloadFile script.
@@ -163,6 +179,12 @@ func (operations mockOperations) UpdateFile() sdkgo.Mutation[box.UpdateBoxFileIn
 }
 func (operations mockOperations) UpdateFolder() sdkgo.Mutation[box.UpdateBoxFolderInput, box.UpdatedBoxItem] {
 	return operations.mock.updateFolder
+}
+func (operations mockOperations) ShareFile() sdkgo.Mutation[box.ShareBoxFileInput, box.UpdatedBoxItem] {
+	return operations.mock.shareFile
+}
+func (operations mockOperations) ShareFolder() sdkgo.Mutation[box.ShareBoxFolderInput, box.UpdatedBoxItem] {
+	return operations.mock.shareFolder
 }
 func (operations mockOperations) DownloadFile() sdkgo.Query[box.DownloadFileInput, box.DownloadedFile] {
 	return operations.mock.downloadFile
@@ -374,6 +396,86 @@ func UpdateFolderUpdateFolderDefault() connectormock.Case[box.UpdatedBoxItem] {
 // UpdateFolderDefault is the manifest default, updateFolderDefault, which New installs.
 func UpdateFolderDefault() connectormock.Case[box.UpdatedBoxItem] {
 	return UpdateFolderUpdateFolderDefault()
+}
+
+// ShareFileShared selects the shared branch: Box returned the shared file link.
+func ShareFileShared(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.ShareFileBranchShared, value, failure)
+}
+
+// ShareFileNotFound selects the notFound branch: Box did not find this file.
+func ShareFileNotFound(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.ShareFileBranchNotFound, value, failure)
+}
+
+// ShareFileProviderRejected selects the providerRejected branch: Box definitively rejected sharing.
+func ShareFileProviderRejected(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.ShareFileBranchProviderRejected, value, failure)
+}
+
+// ShareFileInvalidResponse selects the invalidResponse branch: Box returned malformed or oversized JSON.
+func ShareFileInvalidResponse(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.ShareFileBranchInvalidResponse, value, failure)
+}
+
+// ShareFileDefect selects the defect branch: Local input or credentials are invalid.
+func ShareFileDefect(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.ShareFileBranchDefect, value, failure)
+}
+
+// ShareFileRetry asks Dex to retry the shareFile Step, after the delay when it is positive.
+func ShareFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Retry[box.UpdatedBoxItem](failure, after)
+}
+
+// ShareFileShareFileDefault is the manifest mock shareFileDefault: One file has a shared link.
+func ShareFileShareFileDefault() connectormock.Case[box.UpdatedBoxItem] {
+	value := connectormock.MustDecodeOutput[box.UpdatedBoxItem](`{"id":"12345","type":"file","name":"report.txt","parentId":"0","sharedLinkUrl":"https://app.box.com/s/example"}`)
+	return connectormock.Branch(box.ShareFileBranchShared, value, nil)
+}
+
+// ShareFileDefault is the manifest default, shareFileDefault, which New installs.
+func ShareFileDefault() connectormock.Case[box.UpdatedBoxItem] { return ShareFileShareFileDefault() }
+
+// ShareFolderShared selects the shared branch: Box returned the shared folder link.
+func ShareFolderShared(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.ShareFolderBranchShared, value, failure)
+}
+
+// ShareFolderNotFound selects the notFound branch: Box did not find this folder.
+func ShareFolderNotFound(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.ShareFolderBranchNotFound, value, failure)
+}
+
+// ShareFolderProviderRejected selects the providerRejected branch: Box definitively rejected sharing.
+func ShareFolderProviderRejected(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.ShareFolderBranchProviderRejected, value, failure)
+}
+
+// ShareFolderInvalidResponse selects the invalidResponse branch: Box returned malformed or oversized JSON.
+func ShareFolderInvalidResponse(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.ShareFolderBranchInvalidResponse, value, failure)
+}
+
+// ShareFolderDefect selects the defect branch: Local input or credentials are invalid.
+func ShareFolderDefect(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Branch(box.ShareFolderBranchDefect, value, failure)
+}
+
+// ShareFolderRetry asks Dex to retry the shareFolder Step, after the delay when it is positive.
+func ShareFolderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.UpdatedBoxItem] {
+	return connectormock.Retry[box.UpdatedBoxItem](failure, after)
+}
+
+// ShareFolderShareFolderDefault is the manifest mock shareFolderDefault: One folder has a shared link.
+func ShareFolderShareFolderDefault() connectormock.Case[box.UpdatedBoxItem] {
+	value := connectormock.MustDecodeOutput[box.UpdatedBoxItem](`{"id":"54321","type":"folder","name":"Reports","parentId":"0","sharedLinkUrl":"https://app.box.com/s/folder-example"}`)
+	return connectormock.Branch(box.ShareFolderBranchShared, value, nil)
+}
+
+// ShareFolderDefault is the manifest default, shareFolderDefault, which New installs.
+func ShareFolderDefault() connectormock.Case[box.UpdatedBoxItem] {
+	return ShareFolderShareFolderDefault()
 }
 
 // DownloadFileDownloaded selects the downloaded branch: Box returned the selected file content.

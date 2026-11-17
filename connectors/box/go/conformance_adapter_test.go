@@ -36,6 +36,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"deleteFolder":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteFolder(), testConnection, scenario.CallID),
 		"updateFile":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateFile(), testConnection, scenario.CallID),
 		"updateFolder":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateFolder(), testConnection, scenario.CallID),
+		"shareFile":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.ShareFile(), testConnection, scenario.CallID),
+		"shareFolder":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.ShareFolder(), testConnection, scenario.CallID),
 		"createFolder":    newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateFolder(), testConnection, scenario.CallID),
 		"copyFile":        newConformanceMutationInvocation(t, scenario.Input, createContext, client.CopyFile(), testConnection, scenario.CallID),
 		"copyFolder":      newConformanceMutationInvocation(t, scenario.Input, createContext, client.CopyFolder(), testConnection, scenario.CallID),

@@ -6384,6 +6384,822 @@
       ],
       "name": "copyFolder-uncertain",
       "operation": "copyFolder"
+    },
+    {
+      "callId": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"12345\",\"type\":\"file\",\"name\":\"report.txt\",\"parent\":{\"id\":\"0\"},\"shared_link\":{\"url\":\"https://app.box.com/s/example\",\"access\":\"open\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "shared",
+        "failureKind": "",
+        "output": {
+          "id": "12345",
+          "name": "report.txt",
+          "parentId": "0",
+          "sharedLinkUrl": "https://app.box.com/s/example",
+          "type": "file"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "input": {
+        "access": "open",
+        "fileId": "12345"
+      },
+      "name": "shareFile-success",
+      "operation": "shareFile"
+    },
+    {
+      "callId": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "input": {
+        "access": "open",
+        "fileId": "12345"
+      },
+      "name": "shareFile-notFound",
+      "operation": "shareFile"
+    },
+    {
+      "callId": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "input": {
+        "access": "open",
+        "fileId": "12345"
+      },
+      "name": "shareFile-providerRejected",
+      "operation": "shareFile"
+    },
+    {
+      "callId": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "exchanges": [
+        {
+          "body": "bad-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "input": {
+        "access": "open",
+        "fileId": "12345"
+      },
+      "name": "shareFile-invalidResponse",
+      "operation": "shareFile"
+    },
+    {
+      "callId": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "input": {
+        "access": "invalid",
+        "fileId": "12345"
+      },
+      "name": "shareFile-defect",
+      "operation": "shareFile"
+    },
+    {
+      "callId": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "input": {
+        "access": "open",
+        "fileId": "12345"
+      },
+      "name": "shareFile-429",
+      "operation": "shareFile"
+    },
+    {
+      "callId": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "input": {
+        "access": "open",
+        "fileId": "12345"
+      },
+      "name": "shareFile-5xx",
+      "operation": "shareFile"
+    },
+    {
+      "callId": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
+      "input": {
+        "access": "open",
+        "fileId": "12345"
+      },
+      "name": "shareFile-transport",
+      "operation": "shareFile"
+    },
+    {
+      "callId": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"54321\",\"type\":\"folder\",\"name\":\"Reports\",\"parent\":{\"id\":\"0\"},\"shared_link\":{\"url\":\"https://app.box.com/s/folder-example\",\"access\":\"open\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/54321",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "shared",
+        "failureKind": "",
+        "output": {
+          "id": "54321",
+          "name": "Reports",
+          "parentId": "0",
+          "sharedLinkUrl": "https://app.box.com/s/folder-example",
+          "type": "folder"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "input": {
+        "access": "open",
+        "folderId": "54321"
+      },
+      "name": "shareFolder-success",
+      "operation": "shareFolder"
+    },
+    {
+      "callId": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/54321",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "input": {
+        "access": "open",
+        "folderId": "54321"
+      },
+      "name": "shareFolder-notFound",
+      "operation": "shareFolder"
+    },
+    {
+      "callId": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/54321",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "input": {
+        "access": "open",
+        "folderId": "54321"
+      },
+      "name": "shareFolder-providerRejected",
+      "operation": "shareFolder"
+    },
+    {
+      "callId": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "exchanges": [
+        {
+          "body": "bad-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/54321",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "input": {
+        "access": "open",
+        "folderId": "54321"
+      },
+      "name": "shareFolder-invalidResponse",
+      "operation": "shareFolder"
+    },
+    {
+      "callId": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "input": {
+        "access": "invalid",
+        "folderId": "54321"
+      },
+      "name": "shareFolder-defect",
+      "operation": "shareFolder"
+    },
+    {
+      "callId": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/54321",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "input": {
+        "access": "open",
+        "folderId": "54321"
+      },
+      "name": "shareFolder-429",
+      "operation": "shareFolder"
+    },
+    {
+      "callId": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/54321",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "input": {
+        "access": "open",
+        "folderId": "54321"
+      },
+      "name": "shareFolder-5xx",
+      "operation": "shareFolder"
+    },
+    {
+      "callId": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/54321",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "shared_link": {
+              "access": "open"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
+      "input": {
+        "access": "open",
+        "folderId": "54321"
+      },
+      "name": "shareFolder-transport",
+      "operation": "shareFolder"
     }
   ],
   "schemaVersion": 1

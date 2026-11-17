@@ -186,6 +186,40 @@ spec:
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
         - {name: updateFolderDefault, branch: updated, default: true, description: One folder was renamed and shared., output: {id: '54321', type: folder, name: Renamed, parentId: '0', sharedLinkUrl: 'https://app.box.com/s/folder-example'}}
+    - name: shareFile
+      goName: ShareFile
+      inputType: ShareBoxFileInput
+      outputType: UpdatedBoxItem
+      kind: mutation
+      description: Create or replace a Box file's shared link access.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: shared, goName: Shared, description: Box returned the shared file link.}
+        - {id: notFound, goName: NotFound, description: Box did not find this file., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected sharing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: shareFileDefault, branch: shared, default: true, description: One file has a shared link., output: {id: '12345', type: file, name: report.txt, parentId: '0', sharedLinkUrl: 'https://app.box.com/s/example'}}
+    - name: shareFolder
+      goName: ShareFolder
+      inputType: ShareBoxFolderInput
+      outputType: UpdatedBoxItem
+      kind: mutation
+      description: Create or replace a Box folder's shared link access.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: shared, goName: Shared, description: Box returned the shared folder link.}
+        - {id: notFound, goName: NotFound, description: Box did not find this folder., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected sharing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: shareFolderDefault, branch: shared, default: true, description: One folder has a shared link., output: {id: '54321', type: folder, name: Reports, parentId: '0', sharedLinkUrl: 'https://app.box.com/s/folder-example'}}
     - name: downloadFile
       goName: DownloadFile
       inputType: DownloadFileInput

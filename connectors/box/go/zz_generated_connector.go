@@ -51,6 +51,8 @@ type Operations interface {
 	CopyFolder() sdkgo.Mutation[CopyBoxFolderInput, CreatedBoxItem]
 	UpdateFile() sdkgo.Mutation[UpdateBoxFileInput, UpdatedBoxItem]
 	UpdateFolder() sdkgo.Mutation[UpdateBoxFolderInput, UpdatedBoxItem]
+	ShareFile() sdkgo.Mutation[ShareBoxFileInput, UpdatedBoxItem]
+	ShareFolder() sdkgo.Mutation[ShareBoxFolderInput, UpdatedBoxItem]
 	DownloadFile() sdkgo.Query[DownloadFileInput, DownloadedFile]
 	UploadFile() sdkgo.Mutation[UploadFileInput, UploadedFile]
 	GetFile() sdkgo.Query[GetFileInput, BoxFile]
@@ -78,6 +80,12 @@ func (operations clientOperations) UpdateFile() sdkgo.Mutation[UpdateBoxFileInpu
 }
 func (operations clientOperations) UpdateFolder() sdkgo.Mutation[UpdateBoxFolderInput, UpdatedBoxItem] {
 	return operations.client.UpdateFolder()
+}
+func (operations clientOperations) ShareFile() sdkgo.Mutation[ShareBoxFileInput, UpdatedBoxItem] {
+	return operations.client.ShareFile()
+}
+func (operations clientOperations) ShareFolder() sdkgo.Mutation[ShareBoxFolderInput, UpdatedBoxItem] {
+	return operations.client.ShareFolder()
 }
 func (operations clientOperations) DownloadFile() sdkgo.Query[DownloadFileInput, DownloadedFile] {
 	return operations.client.DownloadFile()
@@ -707,6 +715,162 @@ func NewUpdateFolderStep[IN any](config UpdateFolderStepConfig[IN]) sdkgo.Mutati
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(UpdateFolderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ShareFileBranchShared sdkgo.BranchID = "shared"
+const ShareFileBranchNotFound sdkgo.BranchID = "notFound"
+const ShareFileBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ShareFileBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ShareFileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ShareFileDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "shareFile"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ShareFileBranchShared, Description: "Box returned the shared file link."},
+		{ID: ShareFileBranchNotFound, Description: "Box did not find this file.", Optional: true},
+		{ID: ShareFileBranchProviderRejected, Description: "Box definitively rejected sharing.", Optional: true},
+		{ID: ShareFileBranchInvalidResponse, Description: "Box returned malformed or oversized JSON.", Optional: true},
+		{ID: ShareFileBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ShareFileResult = sdkgo.MutationResult[UpdatedBoxItem]
+
+type ShareFileStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=box"`
+	operationID                       struct{}                                             `connector:"operationId=shareFile"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) ShareBoxFileInput                           `connector:"mapToOperationInput"`
+	Shared                            sdkgo.Target[ShareFileResult]                        `connector:"branch=shared"`
+	NotFound                          sdkgo.Target[ShareFileResult]                        `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ShareFileResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ShareFileResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ShareFileResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedBoxItem]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewShareFileStep[IN any](config ShareFileStepConfig[IN]) sdkgo.MutationStep[IN, ShareBoxFileInput, UpdatedBoxItem] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("box connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ShareBoxFileInput, UpdatedBoxItem]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ShareFile(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ShareFileResult] {
+			branches := make([]sdkgo.BranchTarget[ShareFileResult], 0, 5)
+			if config.Shared.HasStep() {
+				branches = append(branches, config.Shared.BranchTarget(ShareFileBranchShared))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ShareFileBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ShareFileBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ShareFileBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ShareFileBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ShareFolderBranchShared sdkgo.BranchID = "shared"
+const ShareFolderBranchNotFound sdkgo.BranchID = "notFound"
+const ShareFolderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ShareFolderBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ShareFolderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ShareFolderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "shareFolder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ShareFolderBranchShared, Description: "Box returned the shared folder link."},
+		{ID: ShareFolderBranchNotFound, Description: "Box did not find this folder.", Optional: true},
+		{ID: ShareFolderBranchProviderRejected, Description: "Box definitively rejected sharing.", Optional: true},
+		{ID: ShareFolderBranchInvalidResponse, Description: "Box returned malformed or oversized JSON.", Optional: true},
+		{ID: ShareFolderBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ShareFolderResult = sdkgo.MutationResult[UpdatedBoxItem]
+
+type ShareFolderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=box"`
+	operationID                       struct{}                                             `connector:"operationId=shareFolder"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) ShareBoxFolderInput                         `connector:"mapToOperationInput"`
+	Shared                            sdkgo.Target[ShareFolderResult]                      `connector:"branch=shared"`
+	NotFound                          sdkgo.Target[ShareFolderResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ShareFolderResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ShareFolderResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ShareFolderResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedBoxItem]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewShareFolderStep[IN any](config ShareFolderStepConfig[IN]) sdkgo.MutationStep[IN, ShareBoxFolderInput, UpdatedBoxItem] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("box connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ShareBoxFolderInput, UpdatedBoxItem]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ShareFolder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ShareFolderResult] {
+			branches := make([]sdkgo.BranchTarget[ShareFolderResult], 0, 5)
+			if config.Shared.HasStep() {
+				branches = append(branches, config.Shared.BranchTarget(ShareFolderBranchShared))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ShareFolderBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ShareFolderBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ShareFolderBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ShareFolderBranchDefect))
 			}
 			return branches
 		}(),

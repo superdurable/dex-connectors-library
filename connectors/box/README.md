@@ -19,6 +19,14 @@ for root. Shared link access is `open`, `company`, or `collaborators`; Box
 enterprise policy may restrict these choices. The result includes the current
 name, parent ID, and shared link URL when Box returns them.
 
+Go `shareFile` and `shareFolder` expose sharing as dedicated safe mutations.
+Open the selected item in Box Web, copy its decimal ID from `/files/<ID>` or
+`/folders/<ID>`, then choose `open`, `company`, or `collaborators` access.
+Both operations set an absolute shared link access and return the Box URL;
+company policies can reject a chosen audience. The
+[`file-share` Flow](go/examples/file-share/README.md) exercises the factory
+through a real Dex Worker with a provider mock.
+
 Go `createFolder`, `copyFile`, and `copyFolder` use the `limited` repeat tier
 with a cap of three possible sends. They require a destination parent ID and
 an explicit name. After an unknown result, they list the destination folder
