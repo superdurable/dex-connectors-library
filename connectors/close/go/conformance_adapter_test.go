@@ -24,6 +24,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	createContext := &closeCreateConformanceContext{attempt: 1}
 	prior := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) { createContext.heartbeat = value })
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { createContext.attempt = prior + int32(attempt) }, actions: map[string]conformanceOperationInvocation{
+		"listTasks":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTasks(), connection),
+		"getTask":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTask(), connection),
+		"createTask":        newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateTask(), connection, scenario.CallID),
+		"updateTask":        newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateTask(), connection, scenario.CallID),
+		"deleteTask":        newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteTask(), connection, scenario.CallID),
 		"listOpportunities": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOpportunities(), connection),
 		"getOpportunity":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetOpportunity(), connection),
 		"createOpportunity": newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateOpportunity(), connection, scenario.CallID),

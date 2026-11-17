@@ -35,10 +35,15 @@ imported with operation-specific `newListLeadsStep` and `newGetLeadStep` factori
 | `createOpportunity` (Go) | [Close create opportunity](https://developer.close.com/api/resources/opportunities/create) |
 | `updateOpportunity` (Go) | [Close update opportunity](https://developer.close.com/api/resources/opportunities/update) |
 | `deleteOpportunity` (Go) | [Close delete opportunity](https://developer.close.com/api/resources/opportunities/delete) |
+| `listTasks` (Go) | [Close list tasks](https://developer.close.com/api/resources/tasks/list) |
+| `getTask` (Go) | [Close get task](https://developer.close.com/api/resources/tasks/get) |
+| `createTask` (Go) | [Close create task](https://developer.close.com/api/resources/tasks/create) |
+| `updateTask` (Go) | [Close update task](https://developer.close.com/api/resources/tasks/update) |
+| `deleteTask` (Go) | [Close delete task](https://developer.close.com/api/resources/tasks/delete) |
 
 Each operation returns a bounded, typed response. A 404 on a single-resource read or update selects `notFound`; a 404 on delete confirms that the record is absent. Definitive 4xx select `providerRejected`; 429 and 503 Retry. Absolute updates and deletes are repeat safe. Malformed and oversized read or update JSON selects `invalidResponse`; an unusable create response selects `uncertain`. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
 
-Lead, contact, and opportunity creation use the `limited` repeat tier and a default cap of three possible sends. If a response contains a created ID, a later attempt reads that resource before resending. When the outcome stays unknown at the cap, the operation selects `uncertain`; an application must reconcile possible duplicates. Close does not document server-side deduplication for these POST requests. Task, activity, and webhook subscription operations remain outside this release.
+Lead, contact, opportunity, and task creation use the `limited` repeat tier and a default cap of three possible sends. If a response contains a created ID, a later attempt reads that resource before resending. When the outcome stays unknown at the cap, the operation selects `uncertain`; an application must reconcile possible duplicates. Close does not document server-side deduplication for these POST requests. Activity and webhook subscription operations remain outside this release.
 
 ## Mocks
 
@@ -46,7 +51,7 @@ The generated `closemock` package includes one default Meridian answer per opera
 
 ## Example
 
-The runnable [example](go/examples/close-lookup/README.md) registers a Worker and a Flow using the static `close` connection. It reads leads, creates a sample contact on the selected lead, and lists its contacts and opportunities. Each real run creates a new contact. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
+The runnable [example](go/examples/close-lookup/README.md) registers a Worker and a Flow using the static `close` connection. It reads leads, creates a sample contact on the selected lead, and lists its contacts, opportunities, and tasks. Each real run creates a new contact. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
 
 The [TypeScript lookup example](typescript/examples/close-lookup/README.md) lists
 leads, fetches the first lead, and verifies both provider reads through a real

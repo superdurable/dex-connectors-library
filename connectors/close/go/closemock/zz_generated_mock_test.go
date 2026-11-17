@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listTasks/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.TaskPage](`{"tasks":[{"id":"task_meridian1","leadId":"lead_meridian1","text":"Review proposal","isComplete":false}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getTask/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Task](`{"id":"task_meridian1","leadId":"lead_meridian1","text":"Review proposal","isComplete":false}`)
+			return err
+		}},
+		{name: "createTask/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Task](`{"id":"task_meridian1","leadId":"lead_meridian1","text":"Review proposal","isComplete":false}`)
+			return err
+		}},
+		{name: "updateTask/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Task](`{"id":"task_meridian1","leadId":"lead_meridian1","text":"Review proposal","isComplete":true}`)
+			return err
+		}},
+		{name: "deleteTask/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedTask](`{"taskId":"task_meridian1"}`)
+			return err
+		}},
 		{name: "listOpportunities/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[close.OpportunityPage](`{"opportunities":[{"id":"oppo_meridian1","leadId":"lead_meridian1","valueCents":50000,"statusId":"stat_active1"}],"hasMore":false}`)
 			return err
@@ -86,6 +106,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListTasks().Definition().Operation.OperationID != "listTasks" {
+		t.Errorf("listTasks mock has another definition")
+	}
+	if mock.GetTask().Definition().Operation.OperationID != "getTask" {
+		t.Errorf("getTask mock has another definition")
+	}
+	if mock.CreateTask().Definition().Operation.OperationID != "createTask" {
+		t.Errorf("createTask mock has another definition")
+	}
+	if mock.UpdateTask().Definition().Operation.OperationID != "updateTask" {
+		t.Errorf("updateTask mock has another definition")
+	}
+	if mock.DeleteTask().Definition().Operation.OperationID != "deleteTask" {
+		t.Errorf("deleteTask mock has another definition")
+	}
 	if mock.ListOpportunities().Definition().Operation.OperationID != "listOpportunities" {
 		t.Errorf("listOpportunities mock has another definition")
 	}

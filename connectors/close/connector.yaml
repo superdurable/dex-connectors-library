@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: close
   displayName: Close
-  description: Create, read, and maintain Close leads, contacts, and opportunities with a connection-owned API key.
+  description: Create, read, and maintain Close leads, contacts, opportunities, and tasks with a connection-owned API key.
   company: Close
   categories: [crm-sales]
   version: v0.3.0
@@ -56,6 +56,108 @@ spec:
         - "Paste it into secret api_key. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
         - "To revoke access, delete the token on the same provider page."
   operations:
+    - name: listTasks
+      goName: ListTasks
+      inputType: ListTasksInput
+      outputType: TaskPage
+      kind: query
+      description: List a bounded page of lead tasks.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Close returned the task page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Meridian Labs has one follow-up task.
+          output: {tasks: [{id: task_meridian1, leadId: lead_meridian1, text: Review proposal, isComplete: false}], hasMore: false}
+    - name: getTask
+      goName: GetTask
+      inputType: GetTaskInput
+      outputType: Task
+      kind: query
+      description: Read one task by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Close returned the task.}
+        - {id: notFound, goName: NotFound, description: The task does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A Meridian Labs follow-up task was found.
+          output: {id: task_meridian1, leadId: lead_meridian1, text: Review proposal, isComplete: false}
+    - name: createTask
+      goName: CreateTask
+      inputType: CreateTaskInput
+      outputType: Task
+      kind: mutation
+      description: Create a lead task.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Close returned the created task.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The task may have been created but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A Meridian Labs follow-up task was created.
+          output: {id: task_meridian1, leadId: lead_meridian1, text: Review proposal, isComplete: false}
+    - name: updateTask
+      goName: UpdateTask
+      inputType: UpdateTaskInput
+      outputType: Task
+      kind: mutation
+      description: Replace selected task fields, including completion.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Close returned the updated task.}
+        - {id: notFound, goName: NotFound, description: The task does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A Meridian Labs follow-up task was completed.
+          output: {id: task_meridian1, leadId: lead_meridian1, text: Review proposal, isComplete: true}
+    - name: deleteTask
+      goName: DeleteTask
+      inputType: DeleteTaskInput
+      outputType: DeletedTask
+      kind: mutation
+      description: Delete a task by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Close accepted deletion or the task is already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A Meridian Labs task was deleted.
+          output: {taskId: task_meridian1}
     - name: listOpportunities
       goName: ListOpportunities
       inputType: ListOpportunitiesInput

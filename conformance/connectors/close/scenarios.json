@@ -5069,6 +5069,1750 @@
         "providerId": "oppo_meridian1",
         "state": "claimed"
       }
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"task_meridian1\",\"lead_id\":\"lead_meridian1\",\"text\":\"Review proposal\",\"is_complete\":false}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/task/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "_type": [
+              "lead"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "tasks": [
+            {
+              "id": "task_meridian1",
+              "isComplete": false,
+              "leadId": "lead_meridian1",
+              "text": "Review proposal"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listTasks-listed",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/task/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "_type": [
+              "lead"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "hasMore": false,
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listTasks-providerRejected",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/task/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "_type": [
+              "lead"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listTasks-invalidResponse",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "tasks": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listTasks-defect",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/task/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "_type": [
+              "lead"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listTasks-rateLimit",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/task/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "_type": [
+              "lead"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listTasks-serverUnavailable",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/task/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "_type": [
+              "lead"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listTasks-transportFailure",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"task_meridian1\",\"lead_id\":\"lead_meridian1\",\"text\":\"Review proposal\",\"is_complete\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "task_meridian1",
+          "isComplete": false,
+          "leadId": "lead_meridian1",
+          "text": "Review proposal"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task_meridian1"
+      },
+      "name": "getTask-found",
+      "operation": "getTask"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "isComplete": false,
+          "leadId": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task_meridian1"
+      },
+      "name": "getTask-notFound",
+      "operation": "getTask"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": "",
+          "isComplete": false,
+          "leadId": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task_meridian1"
+      },
+      "name": "getTask-providerRejected",
+      "operation": "getTask"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "isComplete": false,
+          "leadId": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task_meridian1"
+      },
+      "name": "getTask-invalidResponse",
+      "operation": "getTask"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "isComplete": false,
+          "leadId": "",
+          "text": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": ""
+      },
+      "name": "getTask-defect",
+      "operation": "getTask"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task_meridian1"
+      },
+      "name": "getTask-rateLimit",
+      "operation": "getTask"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task_meridian1"
+      },
+      "name": "getTask-serverUnavailable",
+      "operation": "getTask"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task_meridian1"
+      },
+      "name": "getTask-transportFailure",
+      "operation": "getTask"
+    },
+    {
+      "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"task_meridian1\",\"lead_id\":\"lead_meridian1\",\"text\":\"Review proposal\",\"is_complete\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/task/",
+          "requestBody": {
+            "_type": "lead",
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "lead_id": "lead_meridian1",
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+          "providerId": "task_meridian1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "task_meridian1",
+          "isComplete": false,
+          "leadId": "lead_meridian1",
+          "text": "Review proposal"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7184a128-637f-55a9-9aaf-258395c50909",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "leadId": "lead_meridian1",
+        "text": "Review proposal"
+      },
+      "name": "createTask-created",
+      "operation": "createTask"
+    },
+    {
+      "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/task/",
+          "requestBody": {
+            "_type": "lead",
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "lead_id": "lead_meridian1",
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "isComplete": false,
+          "leadId": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7184a128-637f-55a9-9aaf-258395c50909",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "leadId": "lead_meridian1",
+        "text": "Review proposal"
+      },
+      "name": "createTask-providerRejected",
+      "operation": "createTask"
+    },
+    {
+      "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "isComplete": false,
+          "leadId": "",
+          "text": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7184a128-637f-55a9-9aaf-258395c50909",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "leadId": "",
+        "text": "Review proposal"
+      },
+      "name": "createTask-defect",
+      "operation": "createTask"
+    },
+    {
+      "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/task/",
+          "requestBody": {
+            "_type": "lead",
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "lead_id": "lead_meridian1",
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7184a128-637f-55a9-9aaf-258395c50909",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "leadId": "lead_meridian1",
+        "text": "Review proposal"
+      },
+      "name": "createTask-rateLimit",
+      "operation": "createTask"
+    },
+    {
+      "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/task/",
+          "requestBody": {
+            "_type": "lead",
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "lead_id": "lead_meridian1",
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7184a128-637f-55a9-9aaf-258395c50909",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "leadId": "lead_meridian1",
+        "text": "Review proposal"
+      },
+      "name": "createTask-serverUnavailable",
+      "operation": "createTask"
+    },
+    {
+      "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/task/",
+          "requestBody": {
+            "_type": "lead",
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "lead_id": "lead_meridian1",
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7184a128-637f-55a9-9aaf-258395c50909",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "leadId": "lead_meridian1",
+        "text": "Review proposal"
+      },
+      "name": "createTask-serverError",
+      "operation": "createTask"
+    },
+    {
+      "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/task/",
+          "requestBody": {
+            "_type": "lead",
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "lead_id": "lead_meridian1",
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7184a128-637f-55a9-9aaf-258395c50909",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "leadId": "lead_meridian1",
+        "text": "Review proposal"
+      },
+      "name": "createTask-transportFailure",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 3,
+      "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/task/",
+          "requestBody": {
+            "_type": "lead",
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "lead_id": "lead_meridian1",
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/task/",
+          "requestBody": {
+            "_type": "lead",
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "lead_id": "lead_meridian1",
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/task/",
+          "requestBody": {
+            "_type": "lead",
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "lead_id": "lead_meridian1",
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "isComplete": false,
+          "leadId": "",
+          "text": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7184a128-637f-55a9-9aaf-258395c50909",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "leadId": "lead_meridian1",
+        "text": "Review proposal"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "7184a128-637f-55a9-9aaf-258395c50909",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTask-uncertain",
+      "operation": "createTask"
+    },
+    {
+      "callId": "a489c038-dc05-54ab-8681-d7234831c843",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"task_meridian1\",\"lead_id\":\"lead_meridian1\",\"text\":\"Review proposal\",\"is_complete\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestBody": {
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "is_complete": true,
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "task_meridian1",
+          "isComplete": true,
+          "leadId": "lead_meridian1",
+          "text": "Review proposal"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a489c038-dc05-54ab-8681-d7234831c843",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "isComplete": true,
+        "taskId": "task_meridian1",
+        "text": "Review proposal"
+      },
+      "name": "updateTask-updated",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "a489c038-dc05-54ab-8681-d7234831c843",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestBody": {
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "is_complete": true,
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "isComplete": false,
+          "leadId": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a489c038-dc05-54ab-8681-d7234831c843",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "isComplete": true,
+        "taskId": "task_meridian1",
+        "text": "Review proposal"
+      },
+      "name": "updateTask-notFound",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "a489c038-dc05-54ab-8681-d7234831c843",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestBody": {
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "is_complete": true,
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": "",
+          "isComplete": false,
+          "leadId": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a489c038-dc05-54ab-8681-d7234831c843",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "isComplete": true,
+        "taskId": "task_meridian1",
+        "text": "Review proposal"
+      },
+      "name": "updateTask-providerRejected",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "a489c038-dc05-54ab-8681-d7234831c843",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestBody": {
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "is_complete": true,
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "isComplete": false,
+          "leadId": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a489c038-dc05-54ab-8681-d7234831c843",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "isComplete": true,
+        "taskId": "task_meridian1",
+        "text": "Review proposal"
+      },
+      "name": "updateTask-invalidResponse",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "a489c038-dc05-54ab-8681-d7234831c843",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "isComplete": false,
+          "leadId": "",
+          "text": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a489c038-dc05-54ab-8681-d7234831c843",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "isComplete": true,
+        "taskId": "",
+        "text": "Review proposal"
+      },
+      "name": "updateTask-defect",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "a489c038-dc05-54ab-8681-d7234831c843",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestBody": {
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "is_complete": true,
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a489c038-dc05-54ab-8681-d7234831c843",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "isComplete": true,
+        "taskId": "task_meridian1",
+        "text": "Review proposal"
+      },
+      "name": "updateTask-rateLimit",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "a489c038-dc05-54ab-8681-d7234831c843",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestBody": {
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "is_complete": true,
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a489c038-dc05-54ab-8681-d7234831c843",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "isComplete": true,
+        "taskId": "task_meridian1",
+        "text": "Review proposal"
+      },
+      "name": "updateTask-serverUnavailable",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "a489c038-dc05-54ab-8681-d7234831c843",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestBody": {
+            "assigned_to": "user_meridian1",
+            "date": "2026-11-20",
+            "is_complete": true,
+            "text": "Review proposal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a489c038-dc05-54ab-8681-d7234831c843",
+      "input": {
+        "assignedTo": "user_meridian1",
+        "date": "2026-11-20",
+        "isComplete": true,
+        "taskId": "task_meridian1",
+        "text": "Review proposal"
+      },
+      "name": "updateTask-transportFailure",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "taskId": "task_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
+      "input": {
+        "taskId": "task_meridian1"
+      },
+      "name": "deleteTask-deleted",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "taskId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
+      "input": {
+        "taskId": "task_meridian1"
+      },
+      "name": "deleteTask-providerRejected",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
+      "exchanges": [
+        {
+          "body": "garbage",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "taskId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
+      "input": {
+        "taskId": "task_meridian1"
+      },
+      "name": "deleteTask-invalidResponse",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "taskId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
+      "input": {
+        "taskId": ""
+      },
+      "name": "deleteTask-defect",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
+      "input": {
+        "taskId": "task_meridian1"
+      },
+      "name": "deleteTask-rateLimit",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
+      "exchanges": [
+        {
+          "body": "SENTINEL",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
+      "input": {
+        "taskId": "task_meridian1"
+      },
+      "name": "deleteTask-serverUnavailable",
+      "operation": "deleteTask"
+    },
+    {
+      "callId": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/task/task_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
+      "input": {
+        "taskId": "task_meridian1"
+      },
+      "name": "deleteTask-transportFailure",
+      "operation": "deleteTask"
     }
   ],
   "schemaVersion": 1

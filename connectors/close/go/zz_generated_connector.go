@@ -40,6 +40,11 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListTasks() sdkgo.Query[ListTasksInput, TaskPage]
+	GetTask() sdkgo.Query[GetTaskInput, Task]
+	CreateTask() sdkgo.Mutation[CreateTaskInput, Task]
+	UpdateTask() sdkgo.Mutation[UpdateTaskInput, Task]
+	DeleteTask() sdkgo.Mutation[DeleteTaskInput, DeletedTask]
 	ListOpportunities() sdkgo.Query[ListOpportunitiesInput, OpportunityPage]
 	GetOpportunity() sdkgo.Query[GetOpportunityInput, Opportunity]
 	CreateOpportunity() sdkgo.Mutation[CreateOpportunityInput, Opportunity]
@@ -59,6 +64,21 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListTasks() sdkgo.Query[ListTasksInput, TaskPage] {
+	return operations.client.ListTasks()
+}
+func (operations clientOperations) GetTask() sdkgo.Query[GetTaskInput, Task] {
+	return operations.client.GetTask()
+}
+func (operations clientOperations) CreateTask() sdkgo.Mutation[CreateTaskInput, Task] {
+	return operations.client.CreateTask()
+}
+func (operations clientOperations) UpdateTask() sdkgo.Mutation[UpdateTaskInput, Task] {
+	return operations.client.UpdateTask()
+}
+func (operations clientOperations) DeleteTask() sdkgo.Mutation[DeleteTaskInput, DeletedTask] {
+	return operations.client.DeleteTask()
+}
 func (operations clientOperations) ListOpportunities() sdkgo.Query[ListOpportunitiesInput, OpportunityPage] {
 	return operations.client.ListOpportunities()
 }
@@ -240,6 +260,380 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListTasksBranchListed sdkgo.BranchID = "listed"
+const ListTasksBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTasksBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTasksBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTasksDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTasks"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTasksBranchListed, Description: "Close returned the task page."},
+		{ID: ListTasksBranchProviderRejected, Description: "Close conclusively rejected the read.", Optional: true},
+		{ID: ListTasksBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: ListTasksBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTasksResult = sdkgo.QueryResult[TaskPage]
+
+type ListTasksStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=close"`
+	operationID                    struct{}                                    `connector:"operationId=listTasks"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTasksInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTasksResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTasksResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTasksResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTasksResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TaskPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewListTasksStep[IN any](config ListTasksStepConfig[IN]) sdkgo.QueryStep[IN, ListTasksInput, TaskPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTasksInput, TaskPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTasks(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTasksResult] {
+			branches := make([]sdkgo.BranchTarget[ListTasksResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTasksBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTasksBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTasksBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTasksBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTaskBranchFound sdkgo.BranchID = "found"
+const GetTaskBranchNotFound sdkgo.BranchID = "notFound"
+const GetTaskBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTaskBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTaskBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTaskDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTask"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTaskBranchFound, Description: "Close returned the task."},
+		{ID: GetTaskBranchNotFound, Description: "The task does not exist.", Optional: true},
+		{ID: GetTaskBranchProviderRejected, Description: "Close conclusively rejected the read.", Optional: true},
+		{ID: GetTaskBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: GetTaskBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTaskResult = sdkgo.QueryResult[Task]
+
+type GetTaskStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                `connector:"connectorId=close"`
+	operationID                    struct{}                                `connector:"operationId=getTask"`
+	StepType                       string                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                   `connector:"annotations"`
+	Connection                     Connection                              `connector:"connection"`
+	ConnectionName                 string                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTaskInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTaskResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTaskResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTaskResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTaskResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTaskResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Task]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetTaskStep[IN any](config GetTaskStepConfig[IN]) sdkgo.QueryStep[IN, GetTaskInput, Task] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTaskInput, Task]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTask(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTaskResult] {
+			branches := make([]sdkgo.BranchTarget[GetTaskResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTaskBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTaskBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTaskBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTaskBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTaskBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateTaskBranchCreated sdkgo.BranchID = "created"
+const CreateTaskBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateTaskBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateTaskBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateTaskDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTask"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateTaskBranchCreated, Description: "Close returned the created task."},
+		{ID: CreateTaskBranchProviderRejected, Description: "Close conclusively rejected the creation.", Optional: true},
+		{ID: CreateTaskBranchUncertain, Description: "The task may have been created but its identity could not be confirmed.", Optional: true},
+		{ID: CreateTaskBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateTaskResult = sdkgo.MutationResult[Task]
+
+type CreateTaskStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                   `connector:"connectorId=close"`
+	operationID                       struct{}                                   `connector:"operationId=createTask"`
+	StepType                          string                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                        Connection                                 `connector:"connection"`
+	ConnectionName                    string                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateTaskInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateTaskResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateTaskResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateTaskResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateTaskResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Task]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateTaskStep[IN any](config CreateTaskStepConfig[IN]) sdkgo.MutationStep[IN, CreateTaskInput, Task] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTaskInput, Task]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateTask(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateTaskResult] {
+			branches := make([]sdkgo.BranchTarget[CreateTaskResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateTaskBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTaskBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateTaskBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateTaskBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateTaskBranchUpdated sdkgo.BranchID = "updated"
+const UpdateTaskBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateTaskBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateTaskBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateTaskBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateTaskDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTask"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateTaskBranchUpdated, Description: "Close returned the updated task."},
+		{ID: UpdateTaskBranchNotFound, Description: "The task does not exist.", Optional: true},
+		{ID: UpdateTaskBranchProviderRejected, Description: "Close conclusively rejected the update.", Optional: true},
+		{ID: UpdateTaskBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateTaskBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateTaskResult = sdkgo.MutationResult[Task]
+
+type UpdateTaskStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                   `connector:"connectorId=close"`
+	operationID                       struct{}                                   `connector:"operationId=updateTask"`
+	StepType                          string                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                        Connection                                 `connector:"connection"`
+	ConnectionName                    string                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateTaskInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateTaskResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateTaskResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateTaskResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateTaskResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateTaskResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Task]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateTaskStep[IN any](config UpdateTaskStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTaskInput, Task] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateTaskInput, Task]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateTask(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateTaskResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateTaskResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateTaskBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateTaskBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateTaskBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateTaskBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateTaskBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteTaskBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteTaskBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteTaskBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteTaskBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteTaskDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteTask"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteTaskBranchDeleted, Description: "Close accepted deletion or the task is already absent."},
+		{ID: DeleteTaskBranchProviderRejected, Description: "Close conclusively rejected the deletion.", Optional: true},
+		{ID: DeleteTaskBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteTaskBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteTaskResult = sdkgo.MutationResult[DeletedTask]
+
+type DeleteTaskStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=close"`
+	operationID                       struct{}                                          `connector:"operationId=deleteTask"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteTaskInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteTaskResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteTaskResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteTaskResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteTaskResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedTask]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteTaskStep[IN any](config DeleteTaskStepConfig[IN]) sdkgo.MutationStep[IN, DeleteTaskInput, DeletedTask] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteTaskInput, DeletedTask]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteTask(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteTaskResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteTaskResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteTaskBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteTaskBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteTaskBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteTaskBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListOpportunitiesBranchListed sdkgo.BranchID = "listed"

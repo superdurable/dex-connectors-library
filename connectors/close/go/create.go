@@ -95,7 +95,9 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 	return invokeCloseCreate(operation.client, call, "createContact", "/contact/", requestBody, CreateContactBranchCreated, CreateContactBranchProviderRejected, CreateContactBranchDefect, decodeContact, validContactID)
 }
 
-func invokeCloseCreate[T interface{ Lead | Contact | Opportunity }](client *Client, call sdkgo.Call, operation, path string, body []byte, createdBranch, rejectedBranch, defectBranch sdkgo.BranchID, decode func([]byte) (T, error), validID func(string) bool) sdkgo.MutationAttempt[T] {
+func invokeCloseCreate[T interface {
+	Lead | Contact | Opportunity | Task
+}](client *Client, call sdkgo.Call, operation, path string, body []byte, createdBranch, rejectedBranch, defectBranch sdkgo.BranchID, decode func([]byte) (T, error), validID func(string) bool) sdkgo.MutationAttempt[T] {
 	fence, err := singledispatch.NewFence(call, 45*time.Second, singledispatch.WithMaxSends(call.MaxSends()))
 	if err != nil {
 		return closeMutationBranch[T](operation, defectBranch, sdkgo.FailureLocalDefect, "dispatch fence could not be initialized")
@@ -188,13 +190,17 @@ func invokeCloseCreate[T interface{ Lead | Contact | Opportunity }](client *Clie
 	return sdkgo.NewMutationBranch(createdBranch, value, nil, sdkgo.Receipt{})
 }
 
-func closeCreatedID[T interface{ Lead | Contact | Opportunity }](value T) string {
+func closeCreatedID[T interface {
+	Lead | Contact | Opportunity | Task
+}](value T) string {
 	switch resource := any(value).(type) {
 	case Lead:
 		return resource.ID
 	case Contact:
 		return resource.ID
 	case Opportunity:
+		return resource.ID
+	case Task:
 		return resource.ID
 	default:
 		return ""
