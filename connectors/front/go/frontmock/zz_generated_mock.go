@@ -23,6 +23,8 @@ type Mock struct {
 	replyToConversation *connectormock.Mutation[front.ReplyToConversationInput, front.ConversationReply]
 	updateConversation  *connectormock.Mutation[front.UpdateConversationInput, front.UpdateConversationOutput]
 	findContactByEmail  *connectormock.Query[front.FindContactByEmailInput, front.FindContactByEmailOutput]
+	getContact          *connectormock.Query[front.GetContactInput, front.Contact]
+	listContacts        *connectormock.Query[front.ListContactsInput, front.ContactsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -35,12 +37,16 @@ func New(t testing.TB, connectionName string) *Mock {
 		replyToConversation: connectormock.NewMutation[front.ReplyToConversationInput, front.ConversationReply](t, front.ReplyToConversationDefinition),
 		updateConversation:  connectormock.NewMutation[front.UpdateConversationInput, front.UpdateConversationOutput](t, front.UpdateConversationDefinition),
 		findContactByEmail:  connectormock.NewQuery[front.FindContactByEmailInput, front.FindContactByEmailOutput](t, front.FindContactByEmailDefinition),
+		getContact:          connectormock.NewQuery[front.GetContactInput, front.Contact](t, front.GetContactDefinition),
+		listContacts:        connectormock.NewQuery[front.ListContactsInput, front.ContactsPage](t, front.ListContactsDefinition),
 	}
 	mock.searchConversations.Default(SearchConversationsDefault())
 	mock.getConversation.Default(GetConversationDefault())
 	mock.replyToConversation.Default(ReplyToConversationDefault())
 	mock.updateConversation.Default(UpdateConversationDefault())
 	mock.findContactByEmail.Default(FindContactByEmailDefault())
+	mock.getContact.Default(GetContactDefault())
+	mock.listContacts.Default(ListContactsDefault())
 	connection, err := front.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "front", Name: connectionName})
 	if err != nil {
 		t.Fatalf("front mock connection: %v", err)
@@ -77,6 +83,16 @@ func (mock *Mock) FindContactByEmail() *connectormock.Query[front.FindContactByE
 	return mock.findContactByEmail
 }
 
+// GetContact returns the getContact script.
+func (mock *Mock) GetContact() *connectormock.Query[front.GetContactInput, front.Contact] {
+	return mock.getContact
+}
+
+// ListContacts returns the listContacts script.
+func (mock *Mock) ListContacts() *connectormock.Query[front.ListContactsInput, front.ContactsPage] {
+	return mock.listContacts
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SearchConversations() sdkgo.Query[front.SearchConversationsInput, front.SearchConversationsOutput] {
@@ -93,6 +109,12 @@ func (operations mockOperations) UpdateConversation() sdkgo.Mutation[front.Updat
 }
 func (operations mockOperations) FindContactByEmail() sdkgo.Query[front.FindContactByEmailInput, front.FindContactByEmailOutput] {
 	return operations.mock.findContactByEmail
+}
+func (operations mockOperations) GetContact() sdkgo.Query[front.GetContactInput, front.Contact] {
+	return operations.mock.getContact
+}
+func (operations mockOperations) ListContacts() sdkgo.Query[front.ListContactsInput, front.ContactsPage] {
+	return operations.mock.listContacts
 }
 
 // SearchConversationsSearched selects the searched branch: Front returned one page of matching conversations; it may be empty.
@@ -383,3 +405,76 @@ func FindContactByEmailOversizedContact() connectormock.Case[front.FindContactBy
 func FindContactByEmailDefault() connectormock.Case[front.FindContactByEmailOutput] {
 	return FindContactByEmailRequesterContact()
 }
+
+// GetContactFound selects the found branch: Front returned the requested contact.
+func GetContactFound(value front.Contact, failure *sdkgo.Failure) connectormock.Case[front.Contact] {
+	return connectormock.Branch(front.GetContactBranchFound, value, failure)
+}
+
+// GetContactNotFound selects the notFound branch: Front could not find the contact.
+func GetContactNotFound(value front.Contact, failure *sdkgo.Failure) connectormock.Case[front.Contact] {
+	return connectormock.Branch(front.GetContactBranchNotFound, value, failure)
+}
+
+// GetContactProviderRejected selects the providerRejected branch: Front denied contact read access.
+func GetContactProviderRejected(value front.Contact, failure *sdkgo.Failure) connectormock.Case[front.Contact] {
+	return connectormock.Branch(front.GetContactBranchProviderRejected, value, failure)
+}
+
+// GetContactInvalidResponse selects the invalidResponse branch: Front returned an invalid contact.
+func GetContactInvalidResponse(value front.Contact, failure *sdkgo.Failure) connectormock.Case[front.Contact] {
+	return connectormock.Branch(front.GetContactBranchInvalidResponse, value, failure)
+}
+
+// GetContactDefect selects the defect branch: Contact ID or connection is invalid.
+func GetContactDefect(value front.Contact, failure *sdkgo.Failure) connectormock.Case[front.Contact] {
+	return connectormock.Branch(front.GetContactBranchDefect, value, failure)
+}
+
+// GetContactRetry asks Dex to retry the getContact Step, after the delay when it is positive.
+func GetContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[front.Contact] {
+	return connectormock.Retry[front.Contact](failure, after)
+}
+
+// GetContactFoundDefault is the manifest mock foundDefault: Example contact by ID.
+func GetContactFoundDefault() connectormock.Case[front.Contact] {
+	value := connectormock.MustDecodeOutput[front.Contact](`{"id":"crd_100","name":"Jane Smith","handles":[{"handle":"jane@acme.example.com","source":"email"}]}`)
+	return connectormock.Branch(front.GetContactBranchFound, value, nil)
+}
+
+// GetContactDefault is the manifest default, foundDefault, which New installs.
+func GetContactDefault() connectormock.Case[front.Contact] { return GetContactFoundDefault() }
+
+// ListContactsListed selects the listed branch: Front returned one contact page, possibly empty.
+func ListContactsListed(value front.ContactsPage, failure *sdkgo.Failure) connectormock.Case[front.ContactsPage] {
+	return connectormock.Branch(front.ListContactsBranchListed, value, failure)
+}
+
+// ListContactsProviderRejected selects the providerRejected branch: Front denied contact listing.
+func ListContactsProviderRejected(value front.ContactsPage, failure *sdkgo.Failure) connectormock.Case[front.ContactsPage] {
+	return connectormock.Branch(front.ListContactsBranchProviderRejected, value, failure)
+}
+
+// ListContactsInvalidResponse selects the invalidResponse branch: Front returned an invalid contact page.
+func ListContactsInvalidResponse(value front.ContactsPage, failure *sdkgo.Failure) connectormock.Case[front.ContactsPage] {
+	return connectormock.Branch(front.ListContactsBranchInvalidResponse, value, failure)
+}
+
+// ListContactsDefect selects the defect branch: Page input or connection is invalid.
+func ListContactsDefect(value front.ContactsPage, failure *sdkgo.Failure) connectormock.Case[front.ContactsPage] {
+	return connectormock.Branch(front.ListContactsBranchDefect, value, failure)
+}
+
+// ListContactsRetry asks Dex to retry the listContacts Step, after the delay when it is positive.
+func ListContactsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[front.ContactsPage] {
+	return connectormock.Retry[front.ContactsPage](failure, after)
+}
+
+// ListContactsListedDefault is the manifest mock listedDefault: Example contact page.
+func ListContactsListedDefault() connectormock.Case[front.ContactsPage] {
+	value := connectormock.MustDecodeOutput[front.ContactsPage](`{"contacts":[{"id":"crd_100","name":"Jane Smith","handles":[{"handle":"jane@acme.example.com","source":"email"}]}]}`)
+	return connectormock.Branch(front.ListContactsBranchListed, value, nil)
+}
+
+// ListContactsDefault is the manifest default, listedDefault, which New installs.
+func ListContactsDefault() connectormock.Case[front.ContactsPage] { return ListContactsListedDefault() }

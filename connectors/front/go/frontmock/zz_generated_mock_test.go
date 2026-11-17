@@ -40,6 +40,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[front.FindContactByEmailOutput](`{"contacts":[{"id":"crd_100","name":"Jane Smith","handles":[{"handle":"jane@acme.example.com","source":"email"}]}]}`)
 			return err
 		}},
+		{name: "getContact/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[front.Contact](`{"id":"crd_100","name":"Jane Smith","handles":[{"handle":"jane@acme.example.com","source":"email"}]}`)
+			return err
+		}},
+		{name: "listContacts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[front.ContactsPage](`{"contacts":[{"id":"crd_100","name":"Jane Smith","handles":[{"handle":"jane@acme.example.com","source":"email"}]}]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -64,5 +72,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.FindContactByEmail().Definition().Operation.OperationID != "findContactByEmail" {
 		t.Errorf("findContactByEmail mock has another definition")
+	}
+	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
+		t.Errorf("getContact mock has another definition")
+	}
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
 	}
 }

@@ -37,5 +37,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"replyToConversation": newConformanceMutationInvocation(t, scenario.Input, context, client.ReplyToConversation(), frontConnection, scenario.CallID),
 		"updateConversation":  newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateConversation(), frontConnection, scenario.CallID),
 		"findContactByEmail":  newConformanceQueryInvocation(t, scenario.Input, context, client.FindContactByEmail(), frontConnection),
+		"getContact":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetContact(), frontConnection),
+		"listContacts":        newConformanceQueryInvocation(t, scenario.Input, context, client.ListContacts(), frontConnection),
 	}}
 }

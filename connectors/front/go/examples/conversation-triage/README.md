@@ -2,7 +2,7 @@
 
 This example triages one Front conversation. Each `FrontConversationTriage`
 Flow is started from Dex Web **Start Flow**, or by the application, with one
-conversation ID, and it uses every Front operation:
+conversation ID, and it uses the original conversation triage operations:
 
 1. `RecordTriageRequest` checks the conversation ID and that the triage tag is
    configured, and persists the request;
@@ -30,6 +30,8 @@ Happy-path branches and `notFound` of `findContactByEmail` are wired; the
 missing contact still permits triage. An uncertain comment, a missing or merged
 conversation, a rejected request, an invalid response, and a local defect fail
 the Flow with the connector's safe message. The Flow never writes to the customer.
+
+The same Worker also registers `FrontContactDirectory`. Start it explicitly with a `GetContactInput` containing a Front `crd_` contact ID. It calls `getContact`, then `listContacts` for one 25-contact page, and completes with that page. Its mock integration test runs both Steps against a real Dex Worker and Client.
 
 ## 1. Generate the Flow Definition
 

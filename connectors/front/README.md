@@ -1,6 +1,6 @@
 # Front Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/front/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/front/go@v0.24.0` after that release is published.
 
 The Python package `dex-connector-front==0.1.0` implements all five operations.
 See the [Python package guide](python/README.md) and its runnable
@@ -29,6 +29,10 @@ The Front connector connects a Dex application to the
 | `replyToConversation` | Mutation | One reply that Front delivers to the recipients, or one internal comment, protected by the shared single-dispatch fence | `replied` |
 | `updateConversation` | Mutation | Sets the status or ticket status and the assignee and adds or removes tags; safe to repeat | `updated` |
 | `findContactByEmail` | Query | The contact whose email handle equals one address | `found` |
+| `getContact` | Query | One contact by Front ID | `found` |
+| `listContacts` | Query | One bounded page of company contacts | `listed` |
+
+The new contact reads need `contacts:read`, which the existing authorization guide already grants. Contact creation and updates require `contacts:write`, and deletion requires `contacts:delete`; these scopes are outside the existing token guide.
 
 Every other branch is optional: `notFound`, `providerRejected`,
 `invalidResponse`, and `defect`. `getConversation` adds `merged`;
@@ -266,7 +270,7 @@ new Worker selects `uncertain` without a second POST.
 
 ## Mocks
 
-`frontmock` supplies one consistent default world for all five operations:
+`frontmock` supplies one consistent default world for the conversation triage operations and the new contact reads:
 Jane's `cnv_100` conversation has an inbound message, `crd_100` is her
 contact, search includes `cnv_200` as another open conversation, the triage
 comment becomes `com_100`, and routing assigns `tea_leela` and adds
