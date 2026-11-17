@@ -17,9 +17,15 @@ import (
 
 // Mock is a scripted insightly connection. Script each operation through its accessor.
 type Mock struct {
-	connection   insightly.Connection
-	listContacts *connectormock.Query[insightly.ListContactsInput, insightly.ContactsPage]
-	getContact   *connectormock.Query[insightly.GetContactInput, insightly.ContactMetadata]
+	connection    insightly.Connection
+	listContacts  *connectormock.Query[insightly.ListContactsInput, insightly.ContactsPage]
+	getContact    *connectormock.Query[insightly.GetContactInput, insightly.ContactMetadata]
+	listRecords   *connectormock.Query[insightly.ListRecordsInput, insightly.RecordsPage]
+	getRecord     *connectormock.Query[insightly.GetRecordInput, insightly.Record]
+	searchRecords *connectormock.Query[insightly.SearchRecordsInput, insightly.RecordsPage]
+	createRecord  *connectormock.Mutation[insightly.CreateRecordInput, insightly.Record]
+	updateRecord  *connectormock.Mutation[insightly.UpdateRecordInput, insightly.Record]
+	deleteRecord  *connectormock.Mutation[insightly.DeleteRecordInput, insightly.DeletedRecord]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +33,23 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listContacts: connectormock.NewQuery[insightly.ListContactsInput, insightly.ContactsPage](t, insightly.ListContactsDefinition),
-		getContact:   connectormock.NewQuery[insightly.GetContactInput, insightly.ContactMetadata](t, insightly.GetContactDefinition),
+		listContacts:  connectormock.NewQuery[insightly.ListContactsInput, insightly.ContactsPage](t, insightly.ListContactsDefinition),
+		getContact:    connectormock.NewQuery[insightly.GetContactInput, insightly.ContactMetadata](t, insightly.GetContactDefinition),
+		listRecords:   connectormock.NewQuery[insightly.ListRecordsInput, insightly.RecordsPage](t, insightly.ListRecordsDefinition),
+		getRecord:     connectormock.NewQuery[insightly.GetRecordInput, insightly.Record](t, insightly.GetRecordDefinition),
+		searchRecords: connectormock.NewQuery[insightly.SearchRecordsInput, insightly.RecordsPage](t, insightly.SearchRecordsDefinition),
+		createRecord:  connectormock.NewMutation[insightly.CreateRecordInput, insightly.Record](t, insightly.CreateRecordDefinition),
+		updateRecord:  connectormock.NewMutation[insightly.UpdateRecordInput, insightly.Record](t, insightly.UpdateRecordDefinition),
+		deleteRecord:  connectormock.NewMutation[insightly.DeleteRecordInput, insightly.DeletedRecord](t, insightly.DeleteRecordDefinition),
 	}
 	mock.listContacts.Default(ListContactsDefault())
 	mock.getContact.Default(GetContactDefault())
+	mock.listRecords.Default(ListRecordsDefault())
+	mock.getRecord.Default(GetRecordDefault())
+	mock.searchRecords.Default(SearchRecordsDefault())
+	mock.createRecord.Default(CreateRecordDefault())
+	mock.updateRecord.Default(UpdateRecordDefault())
+	mock.deleteRecord.Default(DeleteRecordDefault())
 	connection, err := insightly.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "insightly", Name: connectionName})
 	if err != nil {
 		t.Fatalf("insightly mock connection: %v", err)
@@ -53,6 +71,36 @@ func (mock *Mock) GetContact() *connectormock.Query[insightly.GetContactInput, i
 	return mock.getContact
 }
 
+// ListRecords returns the listRecords script.
+func (mock *Mock) ListRecords() *connectormock.Query[insightly.ListRecordsInput, insightly.RecordsPage] {
+	return mock.listRecords
+}
+
+// GetRecord returns the getRecord script.
+func (mock *Mock) GetRecord() *connectormock.Query[insightly.GetRecordInput, insightly.Record] {
+	return mock.getRecord
+}
+
+// SearchRecords returns the searchRecords script.
+func (mock *Mock) SearchRecords() *connectormock.Query[insightly.SearchRecordsInput, insightly.RecordsPage] {
+	return mock.searchRecords
+}
+
+// CreateRecord returns the createRecord script.
+func (mock *Mock) CreateRecord() *connectormock.Mutation[insightly.CreateRecordInput, insightly.Record] {
+	return mock.createRecord
+}
+
+// UpdateRecord returns the updateRecord script.
+func (mock *Mock) UpdateRecord() *connectormock.Mutation[insightly.UpdateRecordInput, insightly.Record] {
+	return mock.updateRecord
+}
+
+// DeleteRecord returns the deleteRecord script.
+func (mock *Mock) DeleteRecord() *connectormock.Mutation[insightly.DeleteRecordInput, insightly.DeletedRecord] {
+	return mock.deleteRecord
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListContacts() sdkgo.Query[insightly.ListContactsInput, insightly.ContactsPage] {
@@ -60,6 +108,24 @@ func (operations mockOperations) ListContacts() sdkgo.Query[insightly.ListContac
 }
 func (operations mockOperations) GetContact() sdkgo.Query[insightly.GetContactInput, insightly.ContactMetadata] {
 	return operations.mock.getContact
+}
+func (operations mockOperations) ListRecords() sdkgo.Query[insightly.ListRecordsInput, insightly.RecordsPage] {
+	return operations.mock.listRecords
+}
+func (operations mockOperations) GetRecord() sdkgo.Query[insightly.GetRecordInput, insightly.Record] {
+	return operations.mock.getRecord
+}
+func (operations mockOperations) SearchRecords() sdkgo.Query[insightly.SearchRecordsInput, insightly.RecordsPage] {
+	return operations.mock.searchRecords
+}
+func (operations mockOperations) CreateRecord() sdkgo.Mutation[insightly.CreateRecordInput, insightly.Record] {
+	return operations.mock.createRecord
+}
+func (operations mockOperations) UpdateRecord() sdkgo.Mutation[insightly.UpdateRecordInput, insightly.Record] {
+	return operations.mock.updateRecord
+}
+func (operations mockOperations) DeleteRecord() sdkgo.Mutation[insightly.DeleteRecordInput, insightly.DeletedRecord] {
+	return operations.mock.deleteRecord
 }
 
 // ListContactsListed selects the listed branch: Insightly returned the requested contact page.
@@ -137,4 +203,217 @@ func GetContactFoundDefault() connectormock.Case[insightly.ContactMetadata] {
 // GetContactDefault is the manifest default, foundDefault, which New installs.
 func GetContactDefault() connectormock.Case[insightly.ContactMetadata] {
 	return GetContactFoundDefault()
+}
+
+// ListRecordsListed selects the listed branch: Insightly returned the record page.
+func ListRecordsListed(value insightly.RecordsPage, failure *sdkgo.Failure) connectormock.Case[insightly.RecordsPage] {
+	return connectormock.Branch(insightly.ListRecordsBranchListed, value, failure)
+}
+
+// ListRecordsProviderRejected selects the providerRejected branch: Insightly rejected the list.
+func ListRecordsProviderRejected(value insightly.RecordsPage, failure *sdkgo.Failure) connectormock.Case[insightly.RecordsPage] {
+	return connectormock.Branch(insightly.ListRecordsBranchProviderRejected, value, failure)
+}
+
+// ListRecordsInvalidResponse selects the invalidResponse branch: Insightly returned invalid record JSON.
+func ListRecordsInvalidResponse(value insightly.RecordsPage, failure *sdkgo.Failure) connectormock.Case[insightly.RecordsPage] {
+	return connectormock.Branch(insightly.ListRecordsBranchInvalidResponse, value, failure)
+}
+
+// ListRecordsDefect selects the defect branch: The resource or page input is invalid.
+func ListRecordsDefect(value insightly.RecordsPage, failure *sdkgo.Failure) connectormock.Case[insightly.RecordsPage] {
+	return connectormock.Branch(insightly.ListRecordsBranchDefect, value, failure)
+}
+
+// ListRecordsRetry asks Dex to retry the listRecords Step, after the delay when it is positive.
+func ListRecordsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[insightly.RecordsPage] {
+	return connectormock.Retry[insightly.RecordsPage](failure, after)
+}
+
+// ListRecordsListedLeads is the manifest mock listedLeads: One sample lead is listed.
+func ListRecordsListedLeads() connectormock.Case[insightly.RecordsPage] {
+	value := connectormock.MustDecodeOutput[insightly.RecordsPage](`{"records":[{"recordType":"leads","id":1201,"fields":{"LEAD_ID":1201,"FIRST_NAME":"Ada","LAST_NAME":"Lovelace"}}]}`)
+	return connectormock.Branch(insightly.ListRecordsBranchListed, value, nil)
+}
+
+// ListRecordsDefault is the manifest default, listedLeads, which New installs.
+func ListRecordsDefault() connectormock.Case[insightly.RecordsPage] { return ListRecordsListedLeads() }
+
+// GetRecordFound selects the found branch: Insightly returned the record.
+func GetRecordFound(value insightly.Record, failure *sdkgo.Failure) connectormock.Case[insightly.Record] {
+	return connectormock.Branch(insightly.GetRecordBranchFound, value, failure)
+}
+
+// GetRecordNotFound selects the notFound branch: Insightly found no record with the ID.
+func GetRecordNotFound(value insightly.Record, failure *sdkgo.Failure) connectormock.Case[insightly.Record] {
+	return connectormock.Branch(insightly.GetRecordBranchNotFound, value, failure)
+}
+
+// GetRecordProviderRejected selects the providerRejected branch: Insightly rejected the read.
+func GetRecordProviderRejected(value insightly.Record, failure *sdkgo.Failure) connectormock.Case[insightly.Record] {
+	return connectormock.Branch(insightly.GetRecordBranchProviderRejected, value, failure)
+}
+
+// GetRecordInvalidResponse selects the invalidResponse branch: Insightly returned invalid record JSON.
+func GetRecordInvalidResponse(value insightly.Record, failure *sdkgo.Failure) connectormock.Case[insightly.Record] {
+	return connectormock.Branch(insightly.GetRecordBranchInvalidResponse, value, failure)
+}
+
+// GetRecordDefect selects the defect branch: The resource or ID is invalid.
+func GetRecordDefect(value insightly.Record, failure *sdkgo.Failure) connectormock.Case[insightly.Record] {
+	return connectormock.Branch(insightly.GetRecordBranchDefect, value, failure)
+}
+
+// GetRecordRetry asks Dex to retry the getRecord Step, after the delay when it is positive.
+func GetRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[insightly.Record] {
+	return connectormock.Retry[insightly.Record](failure, after)
+}
+
+// GetRecordFoundLead is the manifest mock foundLead: One sample lead was found.
+func GetRecordFoundLead() connectormock.Case[insightly.Record] {
+	value := connectormock.MustDecodeOutput[insightly.Record](`{"recordType":"leads","id":1201,"fields":{"LEAD_ID":1201,"FIRST_NAME":"Ada","LAST_NAME":"Lovelace"}}`)
+	return connectormock.Branch(insightly.GetRecordBranchFound, value, nil)
+}
+
+// GetRecordDefault is the manifest default, foundLead, which New installs.
+func GetRecordDefault() connectormock.Case[insightly.Record] { return GetRecordFoundLead() }
+
+// SearchRecordsSearched selects the searched branch: Insightly returned the matching record page.
+func SearchRecordsSearched(value insightly.RecordsPage, failure *sdkgo.Failure) connectormock.Case[insightly.RecordsPage] {
+	return connectormock.Branch(insightly.SearchRecordsBranchSearched, value, failure)
+}
+
+// SearchRecordsProviderRejected selects the providerRejected branch: Insightly rejected the search.
+func SearchRecordsProviderRejected(value insightly.RecordsPage, failure *sdkgo.Failure) connectormock.Case[insightly.RecordsPage] {
+	return connectormock.Branch(insightly.SearchRecordsBranchProviderRejected, value, failure)
+}
+
+// SearchRecordsInvalidResponse selects the invalidResponse branch: Insightly returned invalid search JSON.
+func SearchRecordsInvalidResponse(value insightly.RecordsPage, failure *sdkgo.Failure) connectormock.Case[insightly.RecordsPage] {
+	return connectormock.Branch(insightly.SearchRecordsBranchInvalidResponse, value, failure)
+}
+
+// SearchRecordsDefect selects the defect branch: The resource, search field, or page input is invalid.
+func SearchRecordsDefect(value insightly.RecordsPage, failure *sdkgo.Failure) connectormock.Case[insightly.RecordsPage] {
+	return connectormock.Branch(insightly.SearchRecordsBranchDefect, value, failure)
+}
+
+// SearchRecordsRetry asks Dex to retry the searchRecords Step, after the delay when it is positive.
+func SearchRecordsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[insightly.RecordsPage] {
+	return connectormock.Retry[insightly.RecordsPage](failure, after)
+}
+
+// SearchRecordsMatchingLead is the manifest mock matchingLead: One lead matches the exact email address.
+func SearchRecordsMatchingLead() connectormock.Case[insightly.RecordsPage] {
+	value := connectormock.MustDecodeOutput[insightly.RecordsPage](`{"records":[{"recordType":"leads","id":1201,"fields":{"LEAD_ID":1201,"EMAIL":"ada@example.com"}}]}`)
+	return connectormock.Branch(insightly.SearchRecordsBranchSearched, value, nil)
+}
+
+// SearchRecordsDefault is the manifest default, matchingLead, which New installs.
+func SearchRecordsDefault() connectormock.Case[insightly.RecordsPage] {
+	return SearchRecordsMatchingLead()
+}
+
+// CreateRecordCreated selects the created branch: Insightly created the record.
+func CreateRecordCreated(value insightly.Record, failure *sdkgo.Failure) connectormock.Case[insightly.Record] {
+	return connectormock.Branch(insightly.CreateRecordBranchCreated, value, failure)
+}
+
+// CreateRecordProviderRejected selects the providerRejected branch: Insightly rejected the create.
+func CreateRecordProviderRejected(value insightly.Record, failure *sdkgo.Failure) connectormock.Case[insightly.Record] {
+	return connectormock.Branch(insightly.CreateRecordBranchProviderRejected, value, failure)
+}
+
+// CreateRecordDefect selects the defect branch: The resource, fields, or credentials are invalid.
+func CreateRecordDefect(value insightly.Record, failure *sdkgo.Failure) connectormock.Case[insightly.Record] {
+	return connectormock.Branch(insightly.CreateRecordBranchDefect, value, failure)
+}
+
+// CreateRecordUncertain returns an uncertain createRecord outcome.
+func CreateRecordUncertain(value insightly.Record, failure sdkgo.Failure) connectormock.Case[insightly.Record] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateRecordRetry asks Dex to retry the createRecord Step, after the delay when it is positive.
+func CreateRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[insightly.Record] {
+	return connectormock.Retry[insightly.Record](failure, after)
+}
+
+// CreateRecordCreatedLead is the manifest mock createdLead: Insightly created a lead.
+func CreateRecordCreatedLead() connectormock.Case[insightly.Record] {
+	value := connectormock.MustDecodeOutput[insightly.Record](`{"recordType":"leads","id":1201,"fields":{"LEAD_ID":1201,"FIRST_NAME":"Ada","LAST_NAME":"Lovelace"}}`)
+	return connectormock.Branch(insightly.CreateRecordBranchCreated, value, nil)
+}
+
+// CreateRecordDefault is the manifest default, createdLead, which New installs.
+func CreateRecordDefault() connectormock.Case[insightly.Record] { return CreateRecordCreatedLead() }
+
+// UpdateRecordUpdated selects the updated branch: Insightly updated the record.
+func UpdateRecordUpdated(value insightly.Record, failure *sdkgo.Failure) connectormock.Case[insightly.Record] {
+	return connectormock.Branch(insightly.UpdateRecordBranchUpdated, value, failure)
+}
+
+// UpdateRecordNotFound selects the notFound branch: Insightly found no record with the ID.
+func UpdateRecordNotFound(value insightly.Record, failure *sdkgo.Failure) connectormock.Case[insightly.Record] {
+	return connectormock.Branch(insightly.UpdateRecordBranchNotFound, value, failure)
+}
+
+// UpdateRecordProviderRejected selects the providerRejected branch: Insightly rejected the update.
+func UpdateRecordProviderRejected(value insightly.Record, failure *sdkgo.Failure) connectormock.Case[insightly.Record] {
+	return connectormock.Branch(insightly.UpdateRecordBranchProviderRejected, value, failure)
+}
+
+// UpdateRecordInvalidResponse selects the invalidResponse branch: Insightly returned invalid updated JSON.
+func UpdateRecordInvalidResponse(value insightly.Record, failure *sdkgo.Failure) connectormock.Case[insightly.Record] {
+	return connectormock.Branch(insightly.UpdateRecordBranchInvalidResponse, value, failure)
+}
+
+// UpdateRecordDefect selects the defect branch: The resource, ID, fields, or credentials are invalid.
+func UpdateRecordDefect(value insightly.Record, failure *sdkgo.Failure) connectormock.Case[insightly.Record] {
+	return connectormock.Branch(insightly.UpdateRecordBranchDefect, value, failure)
+}
+
+// UpdateRecordRetry asks Dex to retry the updateRecord Step, after the delay when it is positive.
+func UpdateRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[insightly.Record] {
+	return connectormock.Retry[insightly.Record](failure, after)
+}
+
+// UpdateRecordUpdatedLead is the manifest mock updatedLead: Insightly updated the lead surname.
+func UpdateRecordUpdatedLead() connectormock.Case[insightly.Record] {
+	value := connectormock.MustDecodeOutput[insightly.Record](`{"recordType":"leads","id":1201,"fields":{"LEAD_ID":1201,"FIRST_NAME":"Ada","LAST_NAME":"Byron"}}`)
+	return connectormock.Branch(insightly.UpdateRecordBranchUpdated, value, nil)
+}
+
+// UpdateRecordDefault is the manifest default, updatedLead, which New installs.
+func UpdateRecordDefault() connectormock.Case[insightly.Record] { return UpdateRecordUpdatedLead() }
+
+// DeleteRecordDeleted selects the deleted branch: The record was deleted or was already absent.
+func DeleteRecordDeleted(value insightly.DeletedRecord, failure *sdkgo.Failure) connectormock.Case[insightly.DeletedRecord] {
+	return connectormock.Branch(insightly.DeleteRecordBranchDeleted, value, failure)
+}
+
+// DeleteRecordProviderRejected selects the providerRejected branch: Insightly rejected the delete.
+func DeleteRecordProviderRejected(value insightly.DeletedRecord, failure *sdkgo.Failure) connectormock.Case[insightly.DeletedRecord] {
+	return connectormock.Branch(insightly.DeleteRecordBranchProviderRejected, value, failure)
+}
+
+// DeleteRecordDefect selects the defect branch: The resource, ID, or credentials are invalid.
+func DeleteRecordDefect(value insightly.DeletedRecord, failure *sdkgo.Failure) connectormock.Case[insightly.DeletedRecord] {
+	return connectormock.Branch(insightly.DeleteRecordBranchDefect, value, failure)
+}
+
+// DeleteRecordRetry asks Dex to retry the deleteRecord Step, after the delay when it is positive.
+func DeleteRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[insightly.DeletedRecord] {
+	return connectormock.Retry[insightly.DeletedRecord](failure, after)
+}
+
+// DeleteRecordDeletedLead is the manifest mock deletedLead: Insightly deleted the lead.
+func DeleteRecordDeletedLead() connectormock.Case[insightly.DeletedRecord] {
+	value := connectormock.MustDecodeOutput[insightly.DeletedRecord](`{"recordType":"leads","id":1201}`)
+	return connectormock.Branch(insightly.DeleteRecordBranchDeleted, value, nil)
+}
+
+// DeleteRecordDefault is the manifest default, deletedLead, which New installs.
+func DeleteRecordDefault() connectormock.Case[insightly.DeletedRecord] {
+	return DeleteRecordDeletedLead()
 }
