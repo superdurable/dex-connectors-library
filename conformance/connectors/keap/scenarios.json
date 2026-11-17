@@ -5096,6 +5096,1188 @@
       ],
       "name": "createContactNote-uncertain",
       "operation": "createContactNote"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{\"tags\":[{\"tag\":{\"id\":\"567\",\"name\":\"Example tag\"}}],\"next_page_token\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/tags",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "",
+          "tags": [
+            {
+              "id": "567",
+              "name": "Example tag"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactTags-happy",
+      "operation": "listContactTags"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/tags",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextPageToken": "",
+          "tags": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactTags-rejected",
+      "operation": "listContactTags"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/tags",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPageToken": "",
+          "tags": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactTags-invalid",
+      "operation": "listContactTags"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/tags",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "nextPageToken": "",
+          "tags": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactTags-notFound",
+      "operation": "listContactTags"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/tags",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactTags-rateLimit",
+      "operation": "listContactTags"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/tags",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactTags-unavailable",
+      "operation": "listContactTags"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/tags",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactTags-serverFailure",
+      "operation": "listContactTags"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts/123/tags",
+          "query": {
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": 2,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactTags-transportFailure",
+      "operation": "listContactTags"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextPageToken": "",
+          "tags": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "123",
+        "pageSize": -1,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContactTags-defect",
+      "operation": "listContactTags"
+    },
+    {
+      "callId": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "exchanges": [
+        {
+          "body": "{\"results\":{\"123\":\"SUCCESS\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:applyTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "applied",
+        "failureKind": "",
+        "output": {
+          "changed": true,
+          "contactId": "123",
+          "tagId": "567"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "applyContactTag-happy",
+      "operation": "applyContactTag"
+    },
+    {
+      "callId": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:applyTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "changed": false,
+          "contactId": "",
+          "tagId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "applyContactTag-rejected",
+      "operation": "applyContactTag"
+    },
+    {
+      "callId": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:applyTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "changed": false,
+          "contactId": "",
+          "tagId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "applyContactTag-invalid",
+      "operation": "applyContactTag"
+    },
+    {
+      "callId": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:applyTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "changed": false,
+          "contactId": "",
+          "tagId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "applyContactTag-notFound",
+      "operation": "applyContactTag"
+    },
+    {
+      "callId": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:applyTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "applyContactTag-rateLimit",
+      "operation": "applyContactTag"
+    },
+    {
+      "callId": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:applyTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "applyContactTag-unavailable",
+      "operation": "applyContactTag"
+    },
+    {
+      "callId": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:applyTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "applyContactTag-serverFailure",
+      "operation": "applyContactTag"
+    },
+    {
+      "callId": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:applyTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "applyContactTag-transportFailure",
+      "operation": "applyContactTag"
+    },
+    {
+      "callId": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "changed": false,
+          "contactId": "",
+          "tagId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "input": {
+        "contactId": "123",
+        "tagId": "bad/id"
+      },
+      "name": "applyContactTag-defect",
+      "operation": "applyContactTag"
+    },
+    {
+      "callId": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:removeTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "changed": true,
+          "contactId": "123",
+          "tagId": "567"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "removeContactTag-happy",
+      "operation": "removeContactTag"
+    },
+    {
+      "callId": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:removeTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "changed": false,
+          "contactId": "",
+          "tagId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "removeContactTag-rejected",
+      "operation": "removeContactTag"
+    },
+    {
+      "callId": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "exchanges": [
+        {
+          "body": "invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:removeTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "changed": false,
+          "contactId": "",
+          "tagId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "removeContactTag-invalid",
+      "operation": "removeContactTag"
+    },
+    {
+      "callId": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:removeTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "changed": false,
+          "contactId": "",
+          "tagId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "removeContactTag-notFound",
+      "operation": "removeContactTag"
+    },
+    {
+      "callId": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:removeTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "removeContactTag-rateLimit",
+      "operation": "removeContactTag"
+    },
+    {
+      "callId": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:removeTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "removeContactTag-unavailable",
+      "operation": "removeContactTag"
+    },
+    {
+      "callId": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:removeTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "removeContactTag-serverFailure",
+      "operation": "removeContactTag"
+    },
+    {
+      "callId": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:removeTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "removeContactTag-transportFailure",
+      "operation": "removeContactTag"
+    },
+    {
+      "callId": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "changed": false,
+          "contactId": "",
+          "tagId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "484d9eb9-dc67-5354-8b1e-bdd847479593",
+      "input": {
+        "contactId": "123",
+        "tagId": "bad/id"
+      },
+      "name": "removeContactTag-defect",
+      "operation": "removeContactTag"
     }
   ],
   "schemaVersion": 1

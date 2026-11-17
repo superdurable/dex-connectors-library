@@ -32,6 +32,9 @@ type Mock struct {
 	createContactNote *connectormock.Mutation[keap.CreateContactNoteInput, keap.ContactNote]
 	updateContactNote *connectormock.Mutation[keap.UpdateContactNoteInput, keap.ContactNote]
 	deleteContactNote *connectormock.Mutation[keap.ContactNoteIDInput, keap.ContactNoteDeletion]
+	listContactTags   *connectormock.Query[keap.ListContactTagsInput, keap.ContactTagsPage]
+	applyContactTag   *connectormock.Mutation[keap.ContactTagInput, keap.ContactTagChange]
+	removeContactTag  *connectormock.Mutation[keap.ContactTagInput, keap.ContactTagChange]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -53,6 +56,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		createContactNote: connectormock.NewMutation[keap.CreateContactNoteInput, keap.ContactNote](t, keap.CreateContactNoteDefinition),
 		updateContactNote: connectormock.NewMutation[keap.UpdateContactNoteInput, keap.ContactNote](t, keap.UpdateContactNoteDefinition),
 		deleteContactNote: connectormock.NewMutation[keap.ContactNoteIDInput, keap.ContactNoteDeletion](t, keap.DeleteContactNoteDefinition),
+		listContactTags:   connectormock.NewQuery[keap.ListContactTagsInput, keap.ContactTagsPage](t, keap.ListContactTagsDefinition),
+		applyContactTag:   connectormock.NewMutation[keap.ContactTagInput, keap.ContactTagChange](t, keap.ApplyContactTagDefinition),
+		removeContactTag:  connectormock.NewMutation[keap.ContactTagInput, keap.ContactTagChange](t, keap.RemoveContactTagDefinition),
 	}
 	mock.getContact.Default(GetContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
@@ -68,6 +74,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createContactNote.Default(CreateContactNoteDefault())
 	mock.updateContactNote.Default(UpdateContactNoteDefault())
 	mock.deleteContactNote.Default(DeleteContactNoteDefault())
+	mock.listContactTags.Default(ListContactTagsDefault())
+	mock.applyContactTag.Default(ApplyContactTagDefault())
+	mock.removeContactTag.Default(RemoveContactTagDefault())
 	connection, err := keap.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "keap", Name: connectionName})
 	if err != nil {
 		t.Fatalf("keap mock connection: %v", err)
@@ -149,6 +158,21 @@ func (mock *Mock) DeleteContactNote() *connectormock.Mutation[keap.ContactNoteID
 	return mock.deleteContactNote
 }
 
+// ListContactTags returns the listContactTags script.
+func (mock *Mock) ListContactTags() *connectormock.Query[keap.ListContactTagsInput, keap.ContactTagsPage] {
+	return mock.listContactTags
+}
+
+// ApplyContactTag returns the applyContactTag script.
+func (mock *Mock) ApplyContactTag() *connectormock.Mutation[keap.ContactTagInput, keap.ContactTagChange] {
+	return mock.applyContactTag
+}
+
+// RemoveContactTag returns the removeContactTag script.
+func (mock *Mock) RemoveContactTag() *connectormock.Mutation[keap.ContactTagInput, keap.ContactTagChange] {
+	return mock.removeContactTag
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetContact() sdkgo.Query[keap.GetContactInput, keap.ContactProfile] {
@@ -192,6 +216,15 @@ func (operations mockOperations) UpdateContactNote() sdkgo.Mutation[keap.UpdateC
 }
 func (operations mockOperations) DeleteContactNote() sdkgo.Mutation[keap.ContactNoteIDInput, keap.ContactNoteDeletion] {
 	return operations.mock.deleteContactNote
+}
+func (operations mockOperations) ListContactTags() sdkgo.Query[keap.ListContactTagsInput, keap.ContactTagsPage] {
+	return operations.mock.listContactTags
+}
+func (operations mockOperations) ApplyContactTag() sdkgo.Mutation[keap.ContactTagInput, keap.ContactTagChange] {
+	return operations.mock.applyContactTag
+}
+func (operations mockOperations) RemoveContactTag() sdkgo.Mutation[keap.ContactTagInput, keap.ContactTagChange] {
+	return operations.mock.removeContactTag
 }
 
 // GetContactFound selects the found branch: Keap returned the contact.
@@ -735,4 +768,127 @@ func DeleteContactNoteDeletedDefault() connectormock.Case[keap.ContactNoteDeleti
 // DeleteContactNoteDefault is the manifest default, deletedDefault, which New installs.
 func DeleteContactNoteDefault() connectormock.Case[keap.ContactNoteDeletion] {
 	return DeleteContactNoteDeletedDefault()
+}
+
+// ListContactTagsListed selects the listed branch: Keap returned a tag page.
+func ListContactTagsListed(value keap.ContactTagsPage, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagsPage] {
+	return connectormock.Branch(keap.ListContactTagsBranchListed, value, failure)
+}
+
+// ListContactTagsNotFound selects the notFound branch: Keap did not find the contact.
+func ListContactTagsNotFound(value keap.ContactTagsPage, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagsPage] {
+	return connectormock.Branch(keap.ListContactTagsBranchNotFound, value, failure)
+}
+
+// ListContactTagsProviderRejected selects the providerRejected branch: Keap rejected the list request.
+func ListContactTagsProviderRejected(value keap.ContactTagsPage, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagsPage] {
+	return connectormock.Branch(keap.ListContactTagsBranchProviderRejected, value, failure)
+}
+
+// ListContactTagsInvalidResponse selects the invalidResponse branch: Keap returned invalid tag list JSON.
+func ListContactTagsInvalidResponse(value keap.ContactTagsPage, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagsPage] {
+	return connectormock.Branch(keap.ListContactTagsBranchInvalidResponse, value, failure)
+}
+
+// ListContactTagsDefect selects the defect branch: Input or credentials are invalid.
+func ListContactTagsDefect(value keap.ContactTagsPage, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagsPage] {
+	return connectormock.Branch(keap.ListContactTagsBranchDefect, value, failure)
+}
+
+// ListContactTagsRetry asks Dex to retry the listContactTags Step, after the delay when it is positive.
+func ListContactTagsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.ContactTagsPage] {
+	return connectormock.Retry[keap.ContactTagsPage](failure, after)
+}
+
+// ListContactTagsListedDefault is the manifest mock listedDefault: A sample applied tag page is returned.
+func ListContactTagsListedDefault() connectormock.Case[keap.ContactTagsPage] {
+	value := connectormock.MustDecodeOutput[keap.ContactTagsPage](`{"tags":[{"id":"567","name":"Example tag"}],"nextPageToken":""}`)
+	return connectormock.Branch(keap.ListContactTagsBranchListed, value, nil)
+}
+
+// ListContactTagsDefault is the manifest default, listedDefault, which New installs.
+func ListContactTagsDefault() connectormock.Case[keap.ContactTagsPage] {
+	return ListContactTagsListedDefault()
+}
+
+// ApplyContactTagApplied selects the applied branch: Keap accepted the tag application.
+func ApplyContactTagApplied(value keap.ContactTagChange, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagChange] {
+	return connectormock.Branch(keap.ApplyContactTagBranchApplied, value, failure)
+}
+
+// ApplyContactTagNotFound selects the notFound branch: Keap did not find the tag or contact.
+func ApplyContactTagNotFound(value keap.ContactTagChange, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagChange] {
+	return connectormock.Branch(keap.ApplyContactTagBranchNotFound, value, failure)
+}
+
+// ApplyContactTagProviderRejected selects the providerRejected branch: Keap rejected the tag application.
+func ApplyContactTagProviderRejected(value keap.ContactTagChange, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagChange] {
+	return connectormock.Branch(keap.ApplyContactTagBranchProviderRejected, value, failure)
+}
+
+// ApplyContactTagInvalidResponse selects the invalidResponse branch: Keap returned invalid tag application JSON.
+func ApplyContactTagInvalidResponse(value keap.ContactTagChange, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagChange] {
+	return connectormock.Branch(keap.ApplyContactTagBranchInvalidResponse, value, failure)
+}
+
+// ApplyContactTagDefect selects the defect branch: Input or credentials are invalid.
+func ApplyContactTagDefect(value keap.ContactTagChange, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagChange] {
+	return connectormock.Branch(keap.ApplyContactTagBranchDefect, value, failure)
+}
+
+// ApplyContactTagRetry asks Dex to retry the applyContactTag Step, after the delay when it is positive.
+func ApplyContactTagRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.ContactTagChange] {
+	return connectormock.Retry[keap.ContactTagChange](failure, after)
+}
+
+// ApplyContactTagAppliedDefault is the manifest mock appliedDefault: A sample tag application is accepted.
+func ApplyContactTagAppliedDefault() connectormock.Case[keap.ContactTagChange] {
+	value := connectormock.MustDecodeOutput[keap.ContactTagChange](`{"contactId":"123","tagId":"567","changed":true}`)
+	return connectormock.Branch(keap.ApplyContactTagBranchApplied, value, nil)
+}
+
+// ApplyContactTagDefault is the manifest default, appliedDefault, which New installs.
+func ApplyContactTagDefault() connectormock.Case[keap.ContactTagChange] {
+	return ApplyContactTagAppliedDefault()
+}
+
+// RemoveContactTagRemoved selects the removed branch: Keap accepted the tag removal.
+func RemoveContactTagRemoved(value keap.ContactTagChange, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagChange] {
+	return connectormock.Branch(keap.RemoveContactTagBranchRemoved, value, failure)
+}
+
+// RemoveContactTagNotFound selects the notFound branch: Keap did not find the tag or contact.
+func RemoveContactTagNotFound(value keap.ContactTagChange, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagChange] {
+	return connectormock.Branch(keap.RemoveContactTagBranchNotFound, value, failure)
+}
+
+// RemoveContactTagProviderRejected selects the providerRejected branch: Keap rejected the tag removal.
+func RemoveContactTagProviderRejected(value keap.ContactTagChange, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagChange] {
+	return connectormock.Branch(keap.RemoveContactTagBranchProviderRejected, value, failure)
+}
+
+// RemoveContactTagInvalidResponse selects the invalidResponse branch: Keap returned invalid tag removal JSON.
+func RemoveContactTagInvalidResponse(value keap.ContactTagChange, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagChange] {
+	return connectormock.Branch(keap.RemoveContactTagBranchInvalidResponse, value, failure)
+}
+
+// RemoveContactTagDefect selects the defect branch: Input or credentials are invalid.
+func RemoveContactTagDefect(value keap.ContactTagChange, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagChange] {
+	return connectormock.Branch(keap.RemoveContactTagBranchDefect, value, failure)
+}
+
+// RemoveContactTagRetry asks Dex to retry the removeContactTag Step, after the delay when it is positive.
+func RemoveContactTagRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.ContactTagChange] {
+	return connectormock.Retry[keap.ContactTagChange](failure, after)
+}
+
+// RemoveContactTagRemovedDefault is the manifest mock removedDefault: A sample tag removal is accepted.
+func RemoveContactTagRemovedDefault() connectormock.Case[keap.ContactTagChange] {
+	value := connectormock.MustDecodeOutput[keap.ContactTagChange](`{"contactId":"123","tagId":"567","changed":true}`)
+	return connectormock.Branch(keap.RemoveContactTagBranchRemoved, value, nil)
+}
+
+// RemoveContactTagDefault is the manifest default, removedDefault, which New installs.
+func RemoveContactTagDefault() connectormock.Case[keap.ContactTagChange] {
+	return RemoveContactTagRemovedDefault()
 }

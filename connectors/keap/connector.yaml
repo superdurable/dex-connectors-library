@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: keap
   displayName: Keap
-  description: Manage Keap CRM v2 contacts, companies, and contact notes.
+  description: Manage Keap CRM v2 contacts, companies, notes, and tags.
   company: Keap
   categories: [crm-sales, marketing]
   version: v0.2.0
@@ -344,3 +344,66 @@ spec:
           default: true
           description: A sample contact note is deleted.
           output: {contactId: '123', noteId: '456', deleted: true}
+    - name: listContactTags
+      goName: ListContactTags
+      inputType: ListContactTagsInput
+      outputType: ContactTagsPage
+      kind: query
+      description: List one page of tags applied to a Keap contact.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Keap returned a tag page.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid tag list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample applied tag page is returned.
+          output: {tags: [{id: '567', name: Example tag}], nextPageToken: ''}
+    - name: applyContactTag
+      goName: ApplyContactTag
+      inputType: ContactTagInput
+      outputType: ContactTagChange
+      kind: mutation
+      description: Apply an existing Keap tag to one contact.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: applied, goName: Applied, description: Keap accepted the tag application.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the tag or contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the tag application., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid tag application JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: appliedDefault
+          branch: applied
+          default: true
+          description: A sample tag application is accepted.
+          output: {contactId: '123', tagId: '567', changed: true}
+    - name: removeContactTag
+      goName: RemoveContactTag
+      inputType: ContactTagInput
+      outputType: ContactTagChange
+      kind: mutation
+      description: Remove an existing Keap tag from one contact.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: removed, goName: Removed, description: Keap accepted the tag removal.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the tag or contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the tag removal., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid tag removal JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: removedDefault
+          branch: removed
+          default: true
+          description: A sample tag removal is accepted.
+          output: {contactId: '123', tagId: '567', changed: true}

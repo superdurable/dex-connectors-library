@@ -72,6 +72,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[keap.ContactNoteDeletion](`{"contactId":"123","noteId":"456","deleted":true}`)
 			return err
 		}},
+		{name: "listContactTags/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactTagsPage](`{"tags":[{"id":"567","name":"Example tag"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "applyContactTag/appliedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactTagChange](`{"contactId":"123","tagId":"567","changed":true}`)
+			return err
+		}},
+		{name: "removeContactTag/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactTagChange](`{"contactId":"123","tagId":"567","changed":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -123,5 +135,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteContactNote().Definition().Operation.OperationID != "deleteContactNote" {
 		t.Errorf("deleteContactNote mock has another definition")
+	}
+	if mock.ListContactTags().Definition().Operation.OperationID != "listContactTags" {
+		t.Errorf("listContactTags mock has another definition")
+	}
+	if mock.ApplyContactTag().Definition().Operation.OperationID != "applyContactTag" {
+		t.Errorf("applyContactTag mock has another definition")
+	}
+	if mock.RemoveContactTag().Definition().Operation.OperationID != "removeContactTag" {
+		t.Errorf("removeContactTag mock has another definition")
 	}
 }

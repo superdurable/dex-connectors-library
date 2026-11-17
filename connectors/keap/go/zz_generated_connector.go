@@ -54,6 +54,9 @@ type Operations interface {
 	CreateContactNote() sdkgo.Mutation[CreateContactNoteInput, ContactNote]
 	UpdateContactNote() sdkgo.Mutation[UpdateContactNoteInput, ContactNote]
 	DeleteContactNote() sdkgo.Mutation[ContactNoteIDInput, ContactNoteDeletion]
+	ListContactTags() sdkgo.Query[ListContactTagsInput, ContactTagsPage]
+	ApplyContactTag() sdkgo.Mutation[ContactTagInput, ContactTagChange]
+	RemoveContactTag() sdkgo.Mutation[ContactTagInput, ContactTagChange]
 }
 
 type clientOperations struct{ client *Client }
@@ -99,6 +102,15 @@ func (operations clientOperations) UpdateContactNote() sdkgo.Mutation[UpdateCont
 }
 func (operations clientOperations) DeleteContactNote() sdkgo.Mutation[ContactNoteIDInput, ContactNoteDeletion] {
 	return operations.client.DeleteContactNote()
+}
+func (operations clientOperations) ListContactTags() sdkgo.Query[ListContactTagsInput, ContactTagsPage] {
+	return operations.client.ListContactTags()
+}
+func (operations clientOperations) ApplyContactTag() sdkgo.Mutation[ContactTagInput, ContactTagChange] {
+	return operations.client.ApplyContactTag()
+}
+func (operations clientOperations) RemoveContactTag() sdkgo.Mutation[ContactTagInput, ContactTagChange] {
+	return operations.client.RemoveContactTag()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1294,6 +1306,239 @@ func NewDeleteContactNoteStep[IN any](config DeleteContactNoteStepConfig[IN]) sd
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteContactNoteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListContactTagsBranchListed sdkgo.BranchID = "listed"
+const ListContactTagsBranchNotFound sdkgo.BranchID = "notFound"
+const ListContactTagsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListContactTagsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListContactTagsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListContactTagsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listContactTags"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListContactTagsBranchListed, Description: "Keap returned a tag page."},
+		{ID: ListContactTagsBranchNotFound, Description: "Keap did not find the contact.", Optional: true},
+		{ID: ListContactTagsBranchProviderRejected, Description: "Keap rejected the list request.", Optional: true},
+		{ID: ListContactTagsBranchInvalidResponse, Description: "Keap returned invalid tag list JSON.", Optional: true},
+		{ID: ListContactTagsBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListContactTagsResult = sdkgo.QueryResult[ContactTagsPage]
+
+type ListContactTagsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=keap"`
+	operationID                    struct{}                                           `connector:"operationId=listContactTags"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListContactTagsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListContactTagsResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListContactTagsResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListContactTagsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListContactTagsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListContactTagsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContactTagsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListContactTagsStep[IN any](config ListContactTagsStepConfig[IN]) sdkgo.QueryStep[IN, ListContactTagsInput, ContactTagsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("keap connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListContactTagsInput, ContactTagsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListContactTags(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListContactTagsResult] {
+			branches := make([]sdkgo.BranchTarget[ListContactTagsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListContactTagsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListContactTagsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListContactTagsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListContactTagsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListContactTagsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ApplyContactTagBranchApplied sdkgo.BranchID = "applied"
+const ApplyContactTagBranchNotFound sdkgo.BranchID = "notFound"
+const ApplyContactTagBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ApplyContactTagBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ApplyContactTagBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ApplyContactTagDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "applyContactTag"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ApplyContactTagBranchApplied, Description: "Keap accepted the tag application."},
+		{ID: ApplyContactTagBranchNotFound, Description: "Keap did not find the tag or contact.", Optional: true},
+		{ID: ApplyContactTagBranchProviderRejected, Description: "Keap rejected the tag application.", Optional: true},
+		{ID: ApplyContactTagBranchInvalidResponse, Description: "Keap returned invalid tag application JSON.", Optional: true},
+		{ID: ApplyContactTagBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ApplyContactTagResult = sdkgo.MutationResult[ContactTagChange]
+
+type ApplyContactTagStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=keap"`
+	operationID                       struct{}                                               `connector:"operationId=applyContactTag"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) ContactTagInput                               `connector:"mapToOperationInput"`
+	Applied                           sdkgo.Target[ApplyContactTagResult]                    `connector:"branch=applied"`
+	NotFound                          sdkgo.Target[ApplyContactTagResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ApplyContactTagResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ApplyContactTagResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ApplyContactTagResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactTagChange]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewApplyContactTagStep[IN any](config ApplyContactTagStepConfig[IN]) sdkgo.MutationStep[IN, ContactTagInput, ContactTagChange] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("keap connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ContactTagInput, ContactTagChange]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ApplyContactTag(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ApplyContactTagResult] {
+			branches := make([]sdkgo.BranchTarget[ApplyContactTagResult], 0, 5)
+			if config.Applied.HasStep() {
+				branches = append(branches, config.Applied.BranchTarget(ApplyContactTagBranchApplied))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ApplyContactTagBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ApplyContactTagBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ApplyContactTagBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ApplyContactTagBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RemoveContactTagBranchRemoved sdkgo.BranchID = "removed"
+const RemoveContactTagBranchNotFound sdkgo.BranchID = "notFound"
+const RemoveContactTagBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RemoveContactTagBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const RemoveContactTagBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RemoveContactTagDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "removeContactTag"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RemoveContactTagBranchRemoved, Description: "Keap accepted the tag removal."},
+		{ID: RemoveContactTagBranchNotFound, Description: "Keap did not find the tag or contact.", Optional: true},
+		{ID: RemoveContactTagBranchProviderRejected, Description: "Keap rejected the tag removal.", Optional: true},
+		{ID: RemoveContactTagBranchInvalidResponse, Description: "Keap returned invalid tag removal JSON.", Optional: true},
+		{ID: RemoveContactTagBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RemoveContactTagResult = sdkgo.MutationResult[ContactTagChange]
+
+type RemoveContactTagStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=keap"`
+	operationID                       struct{}                                               `connector:"operationId=removeContactTag"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) ContactTagInput                               `connector:"mapToOperationInput"`
+	Removed                           sdkgo.Target[RemoveContactTagResult]                   `connector:"branch=removed"`
+	NotFound                          sdkgo.Target[RemoveContactTagResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[RemoveContactTagResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[RemoveContactTagResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[RemoveContactTagResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactTagChange]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewRemoveContactTagStep[IN any](config RemoveContactTagStepConfig[IN]) sdkgo.MutationStep[IN, ContactTagInput, ContactTagChange] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("keap connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ContactTagInput, ContactTagChange]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RemoveContactTag(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RemoveContactTagResult] {
+			branches := make([]sdkgo.BranchTarget[RemoveContactTagResult], 0, 5)
+			if config.Removed.HasStep() {
+				branches = append(branches, config.Removed.BranchTarget(RemoveContactTagBranchRemoved))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(RemoveContactTagBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RemoveContactTagBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RemoveContactTagBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RemoveContactTagBranchDefect))
 			}
 			return branches
 		}(),

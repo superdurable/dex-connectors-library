@@ -24,7 +24,7 @@ import (
 func TestContactReadUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := keapmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, NewDirectoryFlow(mock.Connection()), NewCompanyFlow(mock.Connection()), NewNoteFlow(mock.Connection())})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewDirectoryFlow(mock.Connection()), NewCompanyFlow(mock.Connection()), NewNoteFlow(mock.Connection()), NewTagFlow(mock.Connection())})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -91,4 +91,16 @@ func TestContactReadUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, noteResult.DecodeSingleOutput(&note))
 	require.Equal(t, "456", note.ID)
 	require.Len(t, mock.GetContactNote().Calls(), 1)
+	tagFlow := NewTagFlow(mock.Connection())
+	tagFlowID := "keap-tags-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, tagFlow, tagFlowID, keap.ListContactTagsInput{ContactID: "123", PageSize: 20}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	tagResult, err := client.WaitForFlow(ctx, tagFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, tagResult.Status, tagResult.ErrorMessage)
+	var tags keap.ContactTagsPage
+	require.NoError(t, tagResult.DecodeSingleOutput(&tags))
+	require.Len(t, tags.Tags, 1)
+	require.Equal(t, "567", tags.Tags[0].ID)
+	require.Len(t, mock.ListContactTags().Calls(), 1)
 }
