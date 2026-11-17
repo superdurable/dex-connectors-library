@@ -1,0 +1,638 @@
+{
+  "connector": "dimleap",
+  "scenarios": [
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"model-a\",\"object\":\"model\",\"description\":\"private\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "modelIDs": [
+            "model-a"
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-success",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-empty",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"synthetic-00\",\"object\":\"model\"},{\"id\":\"synthetic-01\",\"object\":\"model\"},{\"id\":\"synthetic-02\",\"object\":\"model\"},{\"id\":\"synthetic-03\",\"object\":\"model\"},{\"id\":\"synthetic-04\",\"object\":\"model\"},{\"id\":\"synthetic-05\",\"object\":\"model\"},{\"id\":\"synthetic-06\",\"object\":\"model\"},{\"id\":\"synthetic-07\",\"object\":\"model\"},{\"id\":\"synthetic-08\",\"object\":\"model\"},{\"id\":\"synthetic-09\",\"object\":\"model\"},{\"id\":\"synthetic-10\",\"object\":\"model\"},{\"id\":\"synthetic-11\",\"object\":\"model\"},{\"id\":\"synthetic-12\",\"object\":\"model\"},{\"id\":\"synthetic-13\",\"object\":\"model\"},{\"id\":\"synthetic-14\",\"object\":\"model\"},{\"id\":\"synthetic-15\",\"object\":\"model\"},{\"id\":\"synthetic-16\",\"object\":\"model\"},{\"id\":\"synthetic-17\",\"object\":\"model\"},{\"id\":\"synthetic-18\",\"object\":\"model\"},{\"id\":\"synthetic-19\",\"object\":\"model\"},{\"id\":\"synthetic-20\",\"object\":\"model\"},{\"id\":\"synthetic-21\",\"object\":\"model\"},{\"id\":\"synthetic-22\",\"object\":\"model\"},{\"id\":\"synthetic-23\",\"object\":\"model\"},{\"id\":\"synthetic-24\",\"object\":\"model\"},{\"id\":\"synthetic-25\",\"object\":\"model\"},{\"id\":\"synthetic-26\",\"object\":\"model\"},{\"id\":\"synthetic-27\",\"object\":\"model\"},{\"id\":\"synthetic-28\",\"object\":\"model\"},{\"id\":\"synthetic-29\",\"object\":\"model\"},{\"id\":\"synthetic-30\",\"object\":\"model\"},{\"id\":\"synthetic-31\",\"object\":\"model\"},{\"id\":\"synthetic-32\",\"object\":\"model\"},{\"id\":\"synthetic-33\",\"object\":\"model\"},{\"id\":\"synthetic-34\",\"object\":\"model\"},{\"id\":\"synthetic-35\",\"object\":\"model\"},{\"id\":\"synthetic-36\",\"object\":\"model\"},{\"id\":\"synthetic-37\",\"object\":\"model\"},{\"id\":\"synthetic-38\",\"object\":\"model\"},{\"id\":\"synthetic-39\",\"object\":\"model\"},{\"id\":\"synthetic-40\",\"object\":\"model\"},{\"id\":\"synthetic-41\",\"object\":\"model\"},{\"id\":\"synthetic-42\",\"object\":\"model\"},{\"id\":\"synthetic-43\",\"object\":\"model\"},{\"id\":\"synthetic-44\",\"object\":\"model\"},{\"id\":\"synthetic-45\",\"object\":\"model\"},{\"id\":\"synthetic-46\",\"object\":\"model\"},{\"id\":\"synthetic-47\",\"object\":\"model\"},{\"id\":\"synthetic-48\",\"object\":\"model\"},{\"id\":\"synthetic-49\",\"object\":\"model\"},{\"id\":\"synthetic-50\",\"object\":\"model\"},{\"id\":\"synthetic-51\",\"object\":\"model\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "modelIDs": [
+            "synthetic-00",
+            "synthetic-01",
+            "synthetic-02",
+            "synthetic-03",
+            "synthetic-04",
+            "synthetic-05",
+            "synthetic-06",
+            "synthetic-07",
+            "synthetic-08",
+            "synthetic-09",
+            "synthetic-10",
+            "synthetic-11",
+            "synthetic-12",
+            "synthetic-13",
+            "synthetic-14",
+            "synthetic-15",
+            "synthetic-16",
+            "synthetic-17",
+            "synthetic-18",
+            "synthetic-19",
+            "synthetic-20",
+            "synthetic-21",
+            "synthetic-22",
+            "synthetic-23",
+            "synthetic-24",
+            "synthetic-25",
+            "synthetic-26",
+            "synthetic-27",
+            "synthetic-28",
+            "synthetic-29",
+            "synthetic-30",
+            "synthetic-31",
+            "synthetic-32",
+            "synthetic-33",
+            "synthetic-34",
+            "synthetic-35",
+            "synthetic-36",
+            "synthetic-37",
+            "synthetic-38",
+            "synthetic-39",
+            "synthetic-40",
+            "synthetic-41",
+            "synthetic-42",
+            "synthetic-43",
+            "synthetic-44",
+            "synthetic-45",
+            "synthetic-46",
+            "synthetic-47",
+            "synthetic-48",
+            "synthetic-49"
+          ],
+          "total": 52
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-first-fifty",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-unauthorized",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-forbidden",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Location": "https://other.example/steal"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 302
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-redirect",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-rate-limit",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-server-error",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-request-timeout",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "{\"object\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-malformed",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-missing-list",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-null-list",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"\",\"object\":\"model\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-bad-id",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"model-a\",\"object\":\"other\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-bad-object",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-oversize",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-test-secret"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-transport-before-send",
+      "operation": "listModels"
+    },
+    {
+      "callId": "9d8e81f0-4afc-5e35-8b3e-88bf02ae8b9f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-missing-credentials",
+      "operation": "listModels"
+    }
+  ],
+  "schemaVersion": 1
+}
