@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -18,6 +19,7 @@ CONNECTOR_ID = "mysql"
 PROVIDER = "mysql"
 QUERY_OPERATION_ID = "query"
 EXECUTE_OPERATION_ID = "execute"
+EXECUTE_NON_IDEMPOTENT_OPERATION_ID = "executeNonIdempotent"
 COMPLETED = "completed"
 DEFECT = "defect"
 INVALID_RESPONSE = "invalidResponse"
@@ -48,7 +50,7 @@ EXECUTE_DEFINITION = MutationDefinition(
         BranchDefinition(COMPLETED, "The server committed the statement's transaction; the Result holds the rows affected, the last insert ID, the warning count, and any RETURNING rows.", False),
         BranchDefinition(LIMIT_EXCEEDED, "The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.", True),
         BranchDefinition(PROVIDER_REJECTED, "The server conclusively refused the connection, statement, or commit, such as a duplicate key, a syntax error, or a permission error; nothing was written.", True),
-        BranchDefinition(UNCERTAIN, "The connection failed after COMMIT was sent, so whether the server committed the write is unknown.", True),
+        BranchDefinition(UNCERTAIN, "Retained for identity stability and never selected: a COMMIT with an unknown outcome is retried, because execute statements must be repeat-safe.", True),
         BranchDefinition(INVALID_RESPONSE, "The server returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
@@ -57,4 +59,23 @@ EXECUTE_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
+)
+
+EXECUTE_NON_IDEMPOTENT_DEFINITION = MutationDefinition(
+    OperationRef(CONNECTOR_ID, EXECUTE_NON_IDEMPOTENT_OPERATION_ID),
+    (
+        BranchDefinition(COMPLETED, "The server committed the statement's transaction; the Result holds the rows affected, the last insert ID, the warning count, and any RETURNING rows.", False),
+        BranchDefinition(LIMIT_EXCEEDED, "The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.", True),
+        BranchDefinition(PROVIDER_REJECTED, "The server conclusively refused the connection, statement, or commit, such as a duplicate key, a syntax error, or a permission error; nothing was written.", True),
+        BranchDefinition(UNCERTAIN, "COMMIT may have reached the server, in this or an earlier attempt, and its outcome is unknown; the connector never runs the statement again, so inspect the database before writing again.", True),
+        BranchDefinition(INVALID_RESPONSE, "The server returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", True),
+        BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
+    ),
+    StepDefaults(
+        timedelta(seconds=30),
+        1,
+        execute_retry=default_connector_step_execute_retry_policy(),
+    ),
+    repeat_on_unknown=RepeatOnUnknown.UNSAFE,
 )

@@ -6,6 +6,6 @@ export * from './generated/definitions.js';
 export * from './generated/steps.js';
 export { Connection, newConnection, newConnectionWithOperations } from './generated/connection.js';
 export { MySQLClient, type MySQLClientOptions, type MySQLConnectionFactory } from './client.js';
-export { QueryRowsOperation, ExecuteStatementOperation } from './operations.js';
+export { QueryRowsOperation, ExecuteStatementOperation, ExecuteStatementNonIdempotentOperation } from './operations.js';
 export { classifyDriverError, type ClassifiedFailure, type SessionPhase } from './failures.js';
 export { newProjectConnection } from './project.js';

@@ -17,9 +17,10 @@ import (
 
 // Mock is a scripted mysql connection. Script each operation through its accessor.
 type Mock struct {
-	connection       mysql.Connection
-	queryRows        *connectormock.Query[mysql.QueryRowsInput, mysql.RowSet]
-	executeStatement *connectormock.Mutation[mysql.ExecuteStatementInput, mysql.StatementExecution]
+	connection                    mysql.Connection
+	queryRows                     *connectormock.Query[mysql.QueryRowsInput, mysql.RowSet]
+	executeStatement              *connectormock.Mutation[mysql.ExecuteStatementInput, mysql.StatementExecution]
+	executeStatementNonIdempotent *connectormock.Mutation[mysql.ExecuteStatementInput, mysql.StatementExecution]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		queryRows:        connectormock.NewQuery[mysql.QueryRowsInput, mysql.RowSet](t, mysql.QueryRowsDefinition),
-		executeStatement: connectormock.NewMutation[mysql.ExecuteStatementInput, mysql.StatementExecution](t, mysql.ExecuteStatementDefinition),
+		queryRows:                     connectormock.NewQuery[mysql.QueryRowsInput, mysql.RowSet](t, mysql.QueryRowsDefinition),
+		executeStatement:              connectormock.NewMutation[mysql.ExecuteStatementInput, mysql.StatementExecution](t, mysql.ExecuteStatementDefinition),
+		executeStatementNonIdempotent: connectormock.NewMutation[mysql.ExecuteStatementInput, mysql.StatementExecution](t, mysql.ExecuteStatementNonIdempotentDefinition),
 	}
 	mock.queryRows.Default(QueryRowsDefault())
 	mock.executeStatement.Default(ExecuteStatementDefault())
+	mock.executeStatementNonIdempotent.Default(ExecuteStatementNonIdempotentDefault())
 	connection, err := mysql.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "mysql", Name: connectionName})
 	if err != nil {
 		t.Fatalf("mysql mock connection: %v", err)
@@ -53,6 +56,11 @@ func (mock *Mock) ExecuteStatement() *connectormock.Mutation[mysql.ExecuteStatem
 	return mock.executeStatement
 }
 
+// ExecuteStatementNonIdempotent returns the executeNonIdempotent script.
+func (mock *Mock) ExecuteStatementNonIdempotent() *connectormock.Mutation[mysql.ExecuteStatementInput, mysql.StatementExecution] {
+	return mock.executeStatementNonIdempotent
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) QueryRows() sdkgo.Query[mysql.QueryRowsInput, mysql.RowSet] {
@@ -60,6 +68,9 @@ func (operations mockOperations) QueryRows() sdkgo.Query[mysql.QueryRowsInput, m
 }
 func (operations mockOperations) ExecuteStatement() sdkgo.Mutation[mysql.ExecuteStatementInput, mysql.StatementExecution] {
 	return operations.mock.executeStatement
+}
+func (operations mockOperations) ExecuteStatementNonIdempotent() sdkgo.Mutation[mysql.ExecuteStatementInput, mysql.StatementExecution] {
+	return operations.mock.executeStatementNonIdempotent
 }
 
 // QueryRowsCompleted selects the completed branch: The server ran the read-only statement and returned every row, possibly none, within maxRows and maxResponseBytes.
@@ -169,4 +180,56 @@ func ExecuteStatementDuplicateKey() connectormock.Case[mysql.StatementExecution]
 // ExecuteStatementDefault is the manifest default, completedDefaultAnswer, which New installs.
 func ExecuteStatementDefault() connectormock.Case[mysql.StatementExecution] {
 	return ExecuteStatementCompletedDefaultAnswer()
+}
+
+// ExecuteStatementNonIdempotentCompleted selects the completed branch: The server committed the statement's transaction; the Result holds the rows affected, the last insert ID, the warning count, and any RETURNING rows.
+func ExecuteStatementNonIdempotentCompleted(value mysql.StatementExecution, failure *sdkgo.Failure) connectormock.Case[mysql.StatementExecution] {
+	return connectormock.Branch(mysql.ExecuteStatementNonIdempotentBranchCompleted, value, failure)
+}
+
+// ExecuteStatementNonIdempotentLimitExceeded selects the limitExceeded branch: The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.
+func ExecuteStatementNonIdempotentLimitExceeded(value mysql.StatementExecution, failure *sdkgo.Failure) connectormock.Case[mysql.StatementExecution] {
+	return connectormock.Branch(mysql.ExecuteStatementNonIdempotentBranchLimitExceeded, value, failure)
+}
+
+// ExecuteStatementNonIdempotentProviderRejected selects the providerRejected branch: The server conclusively refused the connection, statement, or commit, such as a duplicate key, a syntax error, or a permission error; nothing was written.
+func ExecuteStatementNonIdempotentProviderRejected(value mysql.StatementExecution, failure *sdkgo.Failure) connectormock.Case[mysql.StatementExecution] {
+	return connectormock.Branch(mysql.ExecuteStatementNonIdempotentBranchProviderRejected, value, failure)
+}
+
+// ExecuteStatementNonIdempotentUncertain returns an uncertain executeNonIdempotent outcome.
+func ExecuteStatementNonIdempotentUncertain(value mysql.StatementExecution, failure sdkgo.Failure) connectormock.Case[mysql.StatementExecution] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// ExecuteStatementNonIdempotentInvalidResponse selects the invalidResponse branch: The server returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.
+func ExecuteStatementNonIdempotentInvalidResponse(value mysql.StatementExecution, failure *sdkgo.Failure) connectormock.Case[mysql.StatementExecution] {
+	return connectormock.Branch(mysql.ExecuteStatementNonIdempotentBranchInvalidResponse, value, failure)
+}
+
+// ExecuteStatementNonIdempotentDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+func ExecuteStatementNonIdempotentDefect(value mysql.StatementExecution, failure *sdkgo.Failure) connectormock.Case[mysql.StatementExecution] {
+	return connectormock.Branch(mysql.ExecuteStatementNonIdempotentBranchDefect, value, failure)
+}
+
+// ExecuteStatementNonIdempotentRetry asks Dex to retry the executeNonIdempotent Step, after the delay when it is positive.
+func ExecuteStatementNonIdempotentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[mysql.StatementExecution] {
+	return connectormock.Retry[mysql.StatementExecution](failure, after)
+}
+
+// ExecuteStatementNonIdempotentAddedToDailyTotal is the manifest mock addedToDailyTotal: Adding the $250.00 order 88213 refund to the daily total commits once.
+func ExecuteStatementNonIdempotentAddedToDailyTotal() connectormock.Case[mysql.StatementExecution] {
+	value := connectormock.MustDecodeOutput[mysql.StatementExecution](`{"rowsAffected":1,"columns":[],"rows":[],"lastInsertId":"0","warningCount":0}`)
+	return connectormock.Branch(mysql.ExecuteStatementNonIdempotentBranchCompleted, value, nil)
+}
+
+// ExecuteStatementNonIdempotentMissingDailyTotalTable is the manifest mock missingDailyTotalTable: Adding to a missing refund_daily_totals table is rejected before commit.
+func ExecuteStatementNonIdempotentMissingDailyTotalTable() connectormock.Case[mysql.StatementExecution] {
+	var value mysql.StatementExecution
+	return connectormock.Branch(mysql.ExecuteStatementNonIdempotentBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "Adding to a missing refund_daily_totals table is rejected before commit."})
+}
+
+// ExecuteStatementNonIdempotentDefault is the manifest default, addedToDailyTotal, which New installs.
+func ExecuteStatementNonIdempotentDefault() connectormock.Case[mysql.StatementExecution] {
+	return ExecuteStatementNonIdempotentAddedToDailyTotal()
 }

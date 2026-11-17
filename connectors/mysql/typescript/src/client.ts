@@ -6,7 +6,7 @@ import { isIP } from 'node:net';
 import mysql, { type Connection, type ConnectionOptions } from 'mysql2/promise';
 import { SecretString, type Call, type CredentialProvider, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
-import { ExecuteStatementOperation, QueryRowsOperation } from './operations.js';
+import { ExecuteStatementNonIdempotentOperation, ExecuteStatementOperation, QueryRowsOperation } from './operations.js';
 
 class MySQLIPIdentityError extends Error {
   readonly code = 'MYSQL_IP_IDENTITY_UNSUPPORTED';
@@ -63,8 +63,10 @@ export class MySQLClient {
 
   /** Bind the read-only query operation. */
   query(): QueryRowsOperation { return new QueryRowsOperation(this); }
-  /** Bind the transactional write operation. */
+  /** Bind the repeat-safe transactional write operation. */
   execute(): ExecuteStatementOperation { return new ExecuteStatementOperation(this); }
+  /** Bind the fenced transactional write operation, which never runs its statement twice. */
+  executeNonIdempotent(): ExecuteStatementNonIdempotentOperation { return new ExecuteStatementNonIdempotentOperation(this); }
 
   /** Resolve the password for one call without retaining it on the client. */
   async resolvePassword(call: Call): Promise<string | undefined> {

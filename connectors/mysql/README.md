@@ -7,16 +7,23 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/mysql`.
 > is not verified.
 
 This module runs parameterized SQL against a MySQL or MariaDB database from
-Dex Steps. It has two operations:
+Dex Steps. It has three operations:
 
 - `query` (`QueryRows`) runs one read statement inside a read-only
   transaction and returns bounded rows.
-- `execute` (`ExecuteStatement`) runs one write statement in its own
-  transaction, commits it, and returns the rows affected, the last insert ID,
-  the warning count, and any bounded MariaDB `RETURNING` rows.
+- `execute` (`ExecuteStatement`) runs one repeat-safe write statement in its
+  own transaction, commits it, and returns the rows affected, the last insert
+  ID, the warning count, and any bounded MariaDB `RETURNING` rows. It is
+  `repeatOnUnknown: safe`: a `COMMIT` with an unknown outcome runs the
+  statement again.
+- `executeNonIdempotent` (`ExecuteStatementNonIdempotent`) runs a write that
+  must not run twice, such as adding to a balance, with the same input and
+  Result. It is `repeatOnUnknown: unsafe`: it commits at most once and selects
+  `uncertain` when a `COMMIT` outcome is unknown.
 
-The [TypeScript package](typescript/README.md) provides the same `query` and
-`execute` operation identities through the native `mysql2` driver. Its
+The [TypeScript package](typescript/README.md) provides the same `query`,
+`execute`, and `executeNonIdempotent` operation identities through the native
+`mysql2` driver. Its
 checked-in [refund lookup example](typescript/examples/lookup-refund/README.md)
 uses a static Dex connection name. TypeScript native database integration runs
 in CI's MySQL service container; live TypeScript behavior against a user-owned
@@ -239,9 +246,16 @@ transaction back.
 | `completed` | The server acknowledged `COMMIT` |
 | `limitExceeded` | `MaxRowsAffected`, `maxRows`, or `maxResponseBytes` was exceeded; nothing was written |
 | `providerRejected` | A duplicate key or constraint violation, which names its key, or a syntax, data, permission, or connection rejection; nothing was written |
-| `uncertain` | The connection failed after `COMMIT` was sent, or the server reported an error while committing other than a deadlock, a lock-wait timeout, SQLSTATE 40001, or a constraint error |
+| `uncertain` | Never selected by `execute`; declared for identity stability. `executeNonIdempotent` selects it as described below |
 | `invalidResponse` | A `RETURNING` value or `ROW_COUNT()` result that does not match its type, or a reply the driver cannot decode; nothing was written |
 | `defect` | Invalid input, including an `IdempotencyKeyPlaceholder` that is not the last placeholder |
+
+`executeNonIdempotent` declares the same branches and runs the same
+transaction. Its `uncertain` branch is selected when the connection failed
+after `COMMIT` was sent, when the server reported an error while committing
+other than a deadlock, a lock-wait timeout, SQLSTATE 40001, or a constraint
+error, or on a later attempt of a Step execution whose earlier attempt may
+have sent `COMMIT`.
 
 Only a happy path is required. Every other branch is optional, and an unwired
 optional branch fails the Flow.
@@ -277,7 +291,7 @@ retried.
 
 ## Retries, uncertainty, and idempotency
 
-Both operations return Retry, which Dex retries with the Step's one-hour default retry budget, for:
+Every operation returns Retry, which Dex retries with the Step's one-hour default retry budget, for:
 
 - connection refusal and connect timeouts;
 - error 1040 (too many connections) and 1203 (account connection limit);
@@ -292,10 +306,21 @@ connector counts the bytes it writes below TLS, so a `COMMIT` that never left
 the client is also retried.
 
 A connection lost after `COMMIT` was sent is different: the server may have
-committed. The connector selects `uncertain` instead of retrying, and the
-Result's `Receipt.IdempotencyKey` tells the application which write to look
-for. The same applies when the server reports an error such as 1180 while
-committing.
+committed. The same applies when the server reports an error such as 1180
+while committing. `execute` returns Retry for this unknown outcome too, so Dex
+runs the statement again with the same idempotency key until the retry budget
+runs out; it never selects `uncertain`.
+
+`executeNonIdempotent` instead guards `COMMIT` with the shared single-dispatch
+fence (`sdkgo/singledispatch`, with sync durability). Before `COMMIT` it
+records a claim in the Step heartbeat. After an unknown outcome it selects
+`uncertain`, and a later attempt that finds the claim, or no checkpoint after
+a lost Worker, selects `uncertain` without connecting. Only a proven rollback,
+such as a connection lost before `COMMIT` or a deadlock at `COMMIT`, records
+that nothing was committed and returns Retry. An unreadable checkpoint returns
+Retry without connecting. The server has no generic read-back for an
+arbitrary statement, so the application reconciles `uncertain` itself; the
+Result's `Receipt.IdempotencyKey` identifies the Step execution.
 
 Dex can run `execute` more than once for one Step execution after a Worker is
 lost mid-call. The scripted integration test commits the first `INSERT`, holds
@@ -324,8 +349,8 @@ turns data errors into warnings.
 `execute` keeps the repository's async default because most statements finish
 in milliseconds. Sync durability would not remove the need for idempotency,
 because a Worker lost after `COMMIT` still runs the Step execution again. Make
-every write idempotent, and treat a statement that is not idempotent as a
-defect in the Flow.
+every `execute` statement repeat-safe, and run a statement that is not, such
+as `UPDATE ... SET total = total + ?`, with `executeNonIdempotent`.
 
 The runnable example's write, from
 [`examples/record-refund/flow/workflow.go`](go/examples/record-refund/flow/workflow.go):
@@ -345,18 +370,28 @@ return mysql.ExecuteStatementInput{
 }
 ```
 
-MySQL has no `RETURNING` clause, so both `completed` and `uncertain` go to a
-read-back by the key and the reported ID:
+MySQL has no `RETURNING` clause, so `completed` goes to a read-back by the key
+and the reported ID:
 
 ```go
 Completed:           sdkgo.GoTo(sdkgo.StepRef[mysql.ExecuteStatementResult](findInsertedRefundStepType)),
-Uncertain:           sdkgo.GoTo(sdkgo.StepRef[mysql.ExecuteStatementResult](findInsertedRefundStepType)),
 ResultAttribute:     &refundInsertResultAttribute,
 ```
 
 When the read-back finds no row, the example fails the Flow for review instead
 of inserting again. A `COMMIT` stalled on semi-synchronous replication can
 still become visible after the read.
+
+The example then adds a new refund to a daily total, which must not run twice:
+
+```go
+AddRefundToDailyTotalStatement = `INSERT INTO refund_daily_totals (refund_date, total_usd)
+VALUES (UTC_DATE(), ?)
+ON DUPLICATE KEY UPDATE total_usd = total_usd + VALUES(total_usd)`
+```
+
+It wires only `completed`, so an `uncertain` daily total fails the Flow for
+review instead of counting the refund twice.
 
 Every call is bounded by `connectTimeout + statementTimeout + 5s` on the
 client, including `COMMIT`, which the driver sends without a context, so it
@@ -390,8 +425,9 @@ sum under the Step's Execute timeout.
 
 [`examples/record-refund`](go/examples/record-refund/README.md) records one
 refund in a ledger at most once. It uses `query` for the duplicate check and
-the read-back, and `execute` for the idempotent upsert, and reconciles an
-uncertain `COMMIT`.
+the read-back, `execute` for the idempotent upsert, which it retries after an
+unknown `COMMIT`, and `executeNonIdempotent` to add the refund to a daily
+total once.
 
 ## Verification
 
@@ -459,7 +495,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=live ./... -cou
 
 ## Mocks
 
-`mysqlmock` provides a committed refund row for the order `88213` and a no-op insert after another Flow won the race. Named `rowLimit`, `missingTable`, and `duplicateKey` cases cover definite limits and rejections. The [record refund example](go/examples/record-refund/flow/workflow_mock_integration_test.go) scripts the first query as empty with six columns, then checks the Flow's write and read-back calls against a real Dex Worker.
+`mysqlmock` provides a committed refund row for the order `88213` and a no-op insert after another Flow won the race. Named `rowLimit`, `missingTable`, and `duplicateKey` cases cover definite limits and rejections. The executeNonIdempotent default adds that refund to the daily total, and `missingDailyTotalTable` covers its rejection. The [record refund example](go/examples/record-refund/flow/workflow_mock_integration_test.go) scripts the first query as empty with six columns, then checks the Flow's write and read-back calls against a real Dex Worker.
 
 ```go
 mock := mysqlmock.New(t, ConnectionName)
@@ -471,12 +507,12 @@ mock.QueryRows().Respond(mysqlmock.QueryRowsCompleted(mysql.RowSet{Columns: []my
 harness := startTestWorkerWithConnection(t, mock.Connection())
 ```
 
-Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/mysql/go@v0.23.0`.
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/mysql/go@v0.24.0`.
 
 ## Python package
 
-The [Python package](python/README.md) provides the manifest's `query` and
-`execute` operations as typed Dex Steps. Its runnable refund Flow uses the
+The [Python package](python/README.md) provides the manifest's `query`,
+`execute`, and `executeNonIdempotent` operations as typed Dex Steps. Its runnable refund Flow uses the
 static `mysql-ledger` connection. Native-driver database tests run in CI's
 MySQL service container; live provider behavior for this new package remains
 unverified locally.

@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package recordrefund demonstrates the MySQL query and execute operations in a Flow started from
-// Dex Web Start Flow. It records one refund in a ledger table at most once: a read-only query finds
-// an existing refund for the order, and an INSERT ... ON DUPLICATE KEY UPDATE keyed by the Step's
-// idempotency key writes a new one. MySQL has no RETURNING clause, so the Flow always reads the row
-// back, which also reconciles an uncertain COMMIT.
+// Package recordrefund demonstrates the MySQL query, execute, and executeNonIdempotent operations in
+// a Flow started from Dex Web Start Flow. It records one refund in a ledger table at most once: a
+// read-only query finds an existing refund for the order, and an INSERT ... ON DUPLICATE KEY UPDATE
+// keyed by the Step's idempotency key writes a new one, which execute repeats after an unknown
+// COMMIT. MySQL has no RETURNING clause, so the Flow always reads the row back. The Flow then adds a
+// new refund to the daily refund total with executeNonIdempotent, because adding twice double-counts.
 package recordrefund
 
 import (
@@ -37,6 +38,8 @@ const (
 	insertRefundStepType            = "InsertRefund"
 	findInsertedRefundStepType      = "FindInsertedRefund"
 	completeRefundRecordingStepType = "CompleteRefundRecording"
+	addRefundToDailyTotalStepType   = "AddRefundToDailyTotal"
+	completeDailyTotalStepType      = "CompleteDailyTotal"
 
 	refundColumns = "refund_id, order_id, amount_usd, external_reference, idempotency_key, recorded_at"
 	// FindRecordedRefundStatement reads the order's existing refund inside a read-only transaction.
@@ -52,6 +55,10 @@ VALUES (?, ?, ?, ?)
 ON DUPLICATE KEY UPDATE refund_id = LAST_INSERT_ID(refund_id)`
 	// FindInsertedRefundStatement reads back this Step's row by its key, or the conflicting row by the reported ID.
 	FindInsertedRefundStatement = "SELECT " + refundColumns + " FROM refund_ledger WHERE idempotency_key = ? OR refund_id = CAST(? AS UNSIGNED)"
+	// AddRefundToDailyTotalStatement adds the amount to today's UTC total; running it twice counts the refund twice.
+	AddRefundToDailyTotalStatement = `INSERT INTO refund_daily_totals (refund_date, total_usd)
+VALUES (UTC_DATE(), ?)
+ON DUPLICATE KEY UPDATE total_usd = total_usd + VALUES(total_usd)`
 )
 
 var (
@@ -94,8 +101,10 @@ type Outcome struct {
 	Status string `json:"status"`
 	// Refund is the ledger row for the order.
 	Refund Refund `json:"refund"`
-	// WasReconciled reports that this Flow's row was confirmed by the read-back after an uncertain or replayed INSERT.
+	// WasReconciled reports that this Flow's row was confirmed by the read-back after a replayed INSERT.
 	WasReconciled bool `json:"wasReconciled,omitempty"`
+	// IsAddedToDailyTotal reports that this Flow added its new refund to the daily refund total.
+	IsAddedToDailyTotal bool `json:"isAddedToDailyTotal,omitempty"`
 }
 
 // Flow records one refund in a MySQL ledger at most once.
@@ -112,7 +121,7 @@ func NewFlow(connection mysql.Connection) *Flow {
 // GetFlowType returns FlowType.
 func (*Flow) GetFlowType() string { return FlowType }
 
-// GetSteps returns the request, query, decision, write, read-back, and completion Steps.
+// GetSteps returns the request, query, decision, write, read-back, daily-total, and completion Steps.
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(recordRefundRequest{}),
@@ -136,9 +145,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: flow.MapToInsertRefundInput,
 			Completed:           sdkgo.GoTo(sdkgo.StepRef[mysql.ExecuteStatementResult](findInsertedRefundStepType)),
-			// Read back an uncertain commit by its idempotency key before completing the refund.
-			Uncertain:       sdkgo.GoTo(sdkgo.StepRef[mysql.ExecuteStatementResult](findInsertedRefundStepType)),
-			ResultAttribute: &refundInsertResultAttribute,
+			ResultAttribute:     &refundInsertResultAttribute,
 		})),
 		dex.DefineStep(mysql.NewQueryRowsStep(mysql.QueryRowsStepConfig[mysql.ExecuteStatementResult]{
 			StepType: findInsertedRefundStepType, ConnectionName: ConnectionName,
@@ -151,6 +158,17 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Completed:           sdkgo.GoTo(completeRefundRecording{}),
 		})),
 		dex.DefineStep(completeRefundRecording{}),
+		dex.DefineStep(mysql.NewExecuteStatementNonIdempotentStep(mysql.ExecuteStatementNonIdempotentStepConfig[Outcome]{
+			StepType: addRefundToDailyTotalStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{
+				GroupID: "mysql", GroupLabel: "MySQL",
+				Explanation: "Add the new refund to today's total at most once.",
+			},
+			Connection:          flow.connection,
+			MapToOperationInput: flow.MapToAddRefundToDailyTotalInput,
+			Completed:           sdkgo.GoTo(completeDailyTotal{}),
+		})),
+		dex.DefineStep(completeDailyTotal{}),
 	}
 }
 
@@ -217,9 +235,17 @@ func (*Flow) MapToInsertRefundInput(input Input) mysql.ExecuteStatementInput {
 	}
 }
 
-// MapToFindInsertedRefundInput reads back by the key the Receipt reports and the ID LAST_INSERT_ID() reported.
+// MapToAddRefundToDailyTotalInput binds the recorded refund's exact amount.
 //
-// An uncertain insert reports LastInsertID "0", which matches no AUTO_INCREMENT row, so only the key applies.
+// ON DUPLICATE KEY UPDATE reports 1 row affected for a new day's row and 2 for an updated one.
+func (*Flow) MapToAddRefundToDailyTotalInput(outcome Outcome) mysql.ExecuteStatementInput {
+	maxRowsAffected := int64(2)
+	return mysql.ExecuteStatementInput{
+		Statement: AddRefundToDailyTotalStatement, Parameters: []any{outcome.Refund.AmountUSD}, MaxRowsAffected: &maxRowsAffected,
+	}
+}
+
+// MapToFindInsertedRefundInput reads back by the key the Receipt reports and the ID LAST_INSERT_ID() reported.
 func (*Flow) MapToFindInsertedRefundInput(result mysql.ExecuteStatementResult) mysql.QueryRowsInput {
 	return mysql.QueryRowsInput{
 		Statement:  FindInsertedRefundStatement,
@@ -271,8 +297,7 @@ func resolveRefundOutcome(insert mysql.ExecuteStatementResult, readBack mysql.Qu
 			return Outcome{}, err
 		}
 		if refund.IdempotencyKey == string(insert.Receipt.IdempotencyKey) {
-			wasReconciled := insert.Branch == mysql.ExecuteStatementBranchUncertain || insert.Value.RowsAffected == 0
-			return Outcome{Status: StatusRecorded, Refund: refund, WasReconciled: wasReconciled}, nil
+			return Outcome{Status: StatusRecorded, Refund: refund, WasReconciled: insert.Value.RowsAffected == 0}, nil
 		}
 		otherFlowsRefund = &refund
 	}
@@ -344,7 +369,7 @@ func (decideRefundRecording) Execute(ctx dex.Context, result mysql.QueryRowsResu
 }
 
 // dex:group group-id:mysql group-label:"MySQL"
-// dex:explanation text:"Complete with this Flow's row or another Flow's refund; otherwise stop for review."
+// dex:explanation text:"Record this Flow's row or complete with another Flow's refund; otherwise stop for review."
 type completeRefundRecording struct {
 	dex.StepDefaultsNoWaitFor[mysql.QueryRowsResult]
 }
@@ -361,6 +386,29 @@ func (completeRefundRecording) Execute(ctx dex.Context, readBack mysql.QueryRows
 	if err != nil {
 		return dex.ForceFail(err.Error()), nil
 	}
+	if err := refundOutcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	if outcome.Status == StatusRecorded {
+		return dex.GoTo(sdkgo.StepRef[Outcome](addRefundToDailyTotalStepType), outcome), nil
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:mysql group-label:"MySQL"
+// dex:explanation text:"Complete with the recorded refund after adding it to today's total."
+type completeDailyTotal struct {
+	dex.StepDefaultsNoWaitFor[mysql.ExecuteStatementNonIdempotentResult]
+}
+
+func (completeDailyTotal) GetStepType() string { return completeDailyTotalStepType }
+
+func (completeDailyTotal) Execute(ctx dex.Context, _ mysql.ExecuteStatementNonIdempotentResult) (*dex.StepDecision, error) {
+	outcome, err := refundOutcomeAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	outcome.IsAddedToDailyTotal = true
 	if err := refundOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

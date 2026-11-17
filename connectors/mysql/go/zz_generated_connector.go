@@ -56,6 +56,7 @@ type Connection struct {
 type Operations interface {
 	QueryRows() sdkgo.Query[QueryRowsInput, RowSet]
 	ExecuteStatement() sdkgo.Mutation[ExecuteStatementInput, StatementExecution]
+	ExecuteStatementNonIdempotent() sdkgo.Mutation[ExecuteStatementInput, StatementExecution]
 }
 
 type clientOperations struct{ client *Client }
@@ -65,6 +66,9 @@ func (operations clientOperations) QueryRows() sdkgo.Query[QueryRowsInput, RowSe
 }
 func (operations clientOperations) ExecuteStatement() sdkgo.Mutation[ExecuteStatementInput, StatementExecution] {
 	return operations.client.ExecuteStatement()
+}
+func (operations clientOperations) ExecuteStatementNonIdempotent() sdkgo.Mutation[ExecuteStatementInput, StatementExecution] {
+	return operations.client.ExecuteStatementNonIdempotent()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -323,7 +327,7 @@ var ExecuteStatementDefinition = sdkgo.MutationDefinition{
 		{ID: ExecuteStatementBranchCompleted, Description: "The server committed the statement's transaction; the Result holds the rows affected, the last insert ID, the warning count, and any RETURNING rows."},
 		{ID: ExecuteStatementBranchLimitExceeded, Description: "The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.", Optional: true},
 		{ID: ExecuteStatementBranchProviderRejected, Description: "The server conclusively refused the connection, statement, or commit, such as a duplicate key, a syntax error, or a permission error; nothing was written.", Optional: true},
-		{ID: ExecuteStatementBranchUncertain, Description: "The connection failed after COMMIT was sent, so whether the server committed the write is unknown.", Optional: true},
+		{ID: ExecuteStatementBranchUncertain, Description: "Retained for identity stability and never selected: a COMMIT with an unknown outcome is retried, because execute statements must be repeat-safe.", Optional: true},
 		{ID: ExecuteStatementBranchInvalidResponse, Description: "The server returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", Optional: true},
 		{ID: ExecuteStatementBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -332,6 +336,7 @@ var ExecuteStatementDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type ExecuteStatementResult = sdkgo.MutationResult[StatementExecution]
@@ -385,6 +390,90 @@ func NewExecuteStatementStep[IN any](config ExecuteStatementStepConfig[IN]) sdkg
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ExecuteStatementBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ExecuteStatementNonIdempotentBranchCompleted sdkgo.BranchID = "completed"
+const ExecuteStatementNonIdempotentBranchLimitExceeded sdkgo.BranchID = "limitExceeded"
+const ExecuteStatementNonIdempotentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ExecuteStatementNonIdempotentBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const ExecuteStatementNonIdempotentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ExecuteStatementNonIdempotentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ExecuteStatementNonIdempotentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "executeNonIdempotent"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ExecuteStatementNonIdempotentBranchCompleted, Description: "The server committed the statement's transaction; the Result holds the rows affected, the last insert ID, the warning count, and any RETURNING rows."},
+		{ID: ExecuteStatementNonIdempotentBranchLimitExceeded, Description: "The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.", Optional: true},
+		{ID: ExecuteStatementNonIdempotentBranchProviderRejected, Description: "The server conclusively refused the connection, statement, or commit, such as a duplicate key, a syntax error, or a permission error; nothing was written.", Optional: true},
+		{ID: ExecuteStatementNonIdempotentBranchUncertain, Description: "COMMIT may have reached the server, in this or an earlier attempt, and its outcome is unknown; the connector never runs the statement again, so inspect the database before writing again.", Optional: true},
+		{ID: ExecuteStatementNonIdempotentBranchInvalidResponse, Description: "The server returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", Optional: true},
+		{ID: ExecuteStatementNonIdempotentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownUnsafe,
+}
+
+type ExecuteStatementNonIdempotentResult = sdkgo.MutationResult[StatementExecution]
+
+type ExecuteStatementNonIdempotentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=mysql"`
+	operationID                       struct{}                                                 `connector:"operationId=executeNonIdempotent"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) ExecuteStatementInput                           `connector:"mapToOperationInput"`
+	Completed                         sdkgo.Target[ExecuteStatementNonIdempotentResult]        `connector:"branch=completed"`
+	LimitExceeded                     sdkgo.Target[ExecuteStatementNonIdempotentResult]        `connector:"branch=limitExceeded,optional"`
+	ProviderRejected                  sdkgo.Target[ExecuteStatementNonIdempotentResult]        `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[ExecuteStatementNonIdempotentResult]        `connector:"branch=uncertain,optional"`
+	InvalidResponse                   sdkgo.Target[ExecuteStatementNonIdempotentResult]        `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ExecuteStatementNonIdempotentResult]        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[StatementExecution]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewExecuteStatementNonIdempotentStep[IN any](config ExecuteStatementNonIdempotentStepConfig[IN]) sdkgo.MutationStep[IN, ExecuteStatementInput, StatementExecution] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("mysql connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ExecuteStatementInput, StatementExecution]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ExecuteStatementNonIdempotent(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ExecuteStatementNonIdempotentResult] {
+			branches := make([]sdkgo.BranchTarget[ExecuteStatementNonIdempotentResult], 0, 6)
+			if config.Completed.HasStep() {
+				branches = append(branches, config.Completed.BranchTarget(ExecuteStatementNonIdempotentBranchCompleted))
+			}
+			if config.LimitExceeded.HasStep() {
+				branches = append(branches, config.LimitExceeded.BranchTarget(ExecuteStatementNonIdempotentBranchLimitExceeded))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ExecuteStatementNonIdempotentBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(ExecuteStatementNonIdempotentBranchUncertain))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ExecuteStatementNonIdempotentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ExecuteStatementNonIdempotentBranchDefect))
 			}
 			return branches
 		}(),

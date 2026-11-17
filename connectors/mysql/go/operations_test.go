@@ -465,7 +465,7 @@ func TestExecuteStatementReturnsMariaDBReturningRows(t *testing.T) {
 	require.Equal(t, "7", result.Value.LastInsertID)
 }
 
-func TestExecuteStatementReportsUncertainOnlyAfterCommitIsSent(t *testing.T) {
+func TestExecuteStatementRetriesACommitWithAnUnknownOutcome(t *testing.T) {
 	for name, testCase := range map[string]struct {
 		commit        scriptedmysql.CommitAction
 		wantCommitted bool
@@ -477,12 +477,12 @@ func TestExecuteStatementReportsUncertainOnlyAfterCommitIsSent(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			database := &scriptedDatabase{shape: scriptedmysql.Shape{ParameterCount: 1}, execution: scriptedmysql.Execution{AffectedRows: 1}, commit: testCase.commit}
 			_, client := startScriptedDatabase(t, database, scriptedmysql.Options{}, nil)
-			result, err := execute(t, client, newStep(), mysql.ExecuteStatementInput{Statement: "UPDATE t SET note = ?", Parameters: []any{secretLookingText}})
-			require.NoError(t, err, "uncertainty is a branch, never a retry")
-			require.Equal(t, mysql.ExecuteStatementBranchUncertain, result.Branch)
-			require.NotEmpty(t, result.Receipt.IdempotencyKey, "the Receipt carries the key for reconciliation")
+			_, err := execute(t, client, newStep(), mysql.ExecuteStatementInput{Statement: "UPDATE t SET note = ?", Parameters: []any{secretLookingText}})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "execute is repeat-safe, so an unknown COMMIT runs again instead of selecting uncertain")
+			require.Contains(t, retry.Failure.Message, "whether the transaction committed is unknown")
+			require.NotContains(t, retry.Failure.Message, secretLookingText)
 			require.Equal(t, testCase.wantCommitted, database.hasCommitted.Load())
-			requireSecretFree(t, result)
 		})
 	}
 

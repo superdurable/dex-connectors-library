@@ -126,15 +126,19 @@ it.each([
   ['rows-then-close', 'query', 'retry'],
   ['blackhole-setup', 'query', 'retry'],
   ['blackhole-execute', 'query', 'retry'],
-  ['blackhole-commit', 'execute', 'uncertain'],
+  ['blackhole-commit', 'execute', 'retry'],
+  ['blackhole-commit', 'executeNonIdempotent', 'uncertain'],
 ] as const)('classifies %s during %s as %s before the call deadline', async (mode, operation, expectedKind) => {
   const { server, sockets, port } = await startServer(mode);
   try {
     const client = new MySQLClient({ host: '127.0.0.1', port, database: 'd', user: 'u', sslMode: 'disabled', connectTimeoutMs: 50, statementTimeoutMs: 50 }, { resolve: async () => ({ password: new SecretString('p') }) });
     const started = Date.now();
+    const fencedCall = { ...call, context: { ...call.context, attempt: 1, runId: 'run', flowId: 'socket-flow', flowStartedAt: new Date(0), deadline: new Date(Date.now() + 30_000), hasLastHeartbeatValue: () => false, getLastHeartbeatValue: () => undefined, recordHeartbeat: async () => undefined } } as unknown as Call;
     const result = operation === 'query'
       ? await client.query().invoke(call, { statement: 'SELECT n FROM t' })
-      : await client.execute().invoke(call, { statement: 'UPDATE t SET n = 1' });
+      : operation === 'execute'
+        ? await client.execute().invoke(call, { statement: 'UPDATE t SET n = 1' })
+        : await client.executeNonIdempotent().invoke(fencedCall, { statement: 'UPDATE t SET n = n + 1' });
     expect(result).toMatchObject({ kind: expectedKind, failure: { kind: 'TRANSPORT' } });
     expect(Date.now() - started).toBeLessThan(7000);
   } finally {

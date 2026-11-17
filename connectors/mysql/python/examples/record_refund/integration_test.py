@@ -47,10 +47,16 @@ async def test_record_refund_with_real_dex(tmp_path: Path) -> None:
             await client.start_flow(flow, flow_id, RefundRequest("88213", "250.00"))
             result = await client.wait_for_flow(flow_id, timedelta(seconds=30))
             assert result.status == dex.FlowStatus.COMPLETED, result.error_message
-            assert result.single_output(RefundOutcome).status == "recorded"
+            outcome = result.single_output(RefundOutcome)
+            assert outcome.status == "recorded" and outcome.is_added_to_daily_total
             query_calls = [call for call in mock.query_script.calls() if call.flow_id == flow_id]
             assert len(query_calls) == 2
             assert query_calls[0].call_id == query_calls[1].call_id
+            daily_total_calls = [
+                call for call in mock.execute_non_idempotent_script.calls() if call.flow_id == flow_id
+            ]
+            assert len(daily_total_calls) == 1
+            assert daily_total_calls[0].input.parameters == ("250.00",)
     finally:
         await worker.stop()
         await task

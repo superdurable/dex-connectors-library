@@ -3,22 +3,22 @@ kind: Connector
 metadata:
   name: mysql
   displayName: MySQL
-  description: Run one parameterized read-only query, or one transactional write statement, against a MySQL or MariaDB database.
+  description: Run one parameterized read-only query, or one transactional repeat-safe or non-idempotent write statement, against a MySQL or MariaDB database.
   company: MySQL
   categories: [databases-storage]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: mysql
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-mysql
-      operations: [query, execute]
+      operations: [query, execute, executeNonIdempotent]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-mysql"
-      operations: [query, execute]
+      operations: [query, execute, executeNonIdempotent]
       triggers: []
   codegen:
     go:
@@ -130,18 +130,20 @@ spec:
       inputType: ExecuteStatementInput
       outputType: StatementExecution
       kind: mutation
-      description: Run one parameterized write statement in its own transaction and return its rows affected, last insert ID, and any bounded MariaDB RETURNING rows.
+      description: Run one parameterized, repeat-safe write statement in its own transaction and return its rows affected, last insert ID, and any bounded MariaDB RETURNING rows.
       idempotency: required
       branches:
         - {id: completed, goName: Completed, description: "The server committed the statement's transaction; the Result holds the rows affected, the last insert ID, the warning count, and any RETURNING rows."}
         - {id: limitExceeded, goName: LimitExceeded, description: "The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "The server conclusively refused the connection, statement, or commit, such as a duplicate key, a syntax error, or a permission error; nothing was written.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The connection failed after COMMIT was sent, so whether the server committed the write is unknown.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Retained for identity stability and never selected: a COMMIT with an unknown outcome is retried, because execute statements must be repeat-safe.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "The server returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The application supplies repeat-safe SQL; non-idempotent SQL uses executeNonIdempotent.
+        repeatOnUnknown: safe
       mocks:
         - name: completedDefaultAnswer
           branch: completed
@@ -156,3 +158,34 @@ spec:
           branch: providerRejected
           description: "Inserting a duplicate unique key is rejected before commit."
           failure: {"kind":"CONFLICT","message":"Inserting a duplicate unique key is rejected before commit."}
+    - name: executeNonIdempotent
+      goName: ExecuteStatementNonIdempotent
+      inputType: ExecuteStatementInput
+      outputType: StatementExecution
+      kind: mutation
+      description: Run one parameterized write statement that must not run twice, such as a relative balance update, in its own transaction; an unconfirmed COMMIT selects uncertain instead of running it again.
+      idempotency: required
+      branches:
+        - {id: completed, goName: Completed, description: "The server committed the statement's transaction; the Result holds the rows affected, the last insert ID, the warning count, and any RETURNING rows."}
+        - {id: limitExceeded, goName: LimitExceeded, description: "The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The server conclusively refused the connection, statement, or commit, such as a duplicate key, a syntax error, or a permission error; nothing was written.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "COMMIT may have reached the server, in this or an earlier attempt, and its outcome is unknown; the connector never runs the statement again, so inspect the database before writing again.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The server returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        # The single-dispatch fence needs sync heartbeats to see an earlier attempt's COMMIT.
+        durability: sync
+        dispatchFence: true
+        # A repeated relative write, such as adding to a balance, applies twice.
+        repeatOnUnknown: unsafe
+      mocks:
+        - name: addedToDailyTotal
+          branch: completed
+          description: "Adding the $250.00 order 88213 refund to the daily total commits once."
+          default: true
+          output: {"rowsAffected":1,"columns":[],"rows":[],"lastInsertId":"0","warningCount":0}
+        - name: missingDailyTotalTable
+          branch: providerRejected
+          description: "Adding to a missing refund_daily_totals table is rejected before commit."
+          failure: {"kind":"NOT_FOUND","message":"Adding to a missing refund_daily_totals table is rejected before commit."}

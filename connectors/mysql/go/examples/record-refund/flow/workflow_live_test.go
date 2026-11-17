@@ -192,9 +192,15 @@ func TestRecordRefundExampleWithRealDexAndMySQL(t *testing.T) {
 		require.Equal(t, outcome.Refund.IdempotencyKey, rows[0]["idempotency_key"])
 	})
 
-	t.Run("reconciles a COMMIT whose reply was lost after MySQL applied it", func(t *testing.T) {
+	t.Run("retries and reconciles a COMMIT whose reply was lost after MySQL applied it", func(t *testing.T) {
+		// Connection 1 is FindRecordedRefund; connection 2 is the first InsertRefund dispatch.
 		proxy, err := commitfaultproxy.Start(net.JoinHostPort(ledger.config.Host, strconv.FormatInt(ledger.config.Port, 10)),
-			func(int) commitfaultproxy.Fault { return commitfaultproxy.DropAfterCommitReachesServer })
+			func(connectionNumber int) commitfaultproxy.Fault {
+				if connectionNumber == 2 {
+					return commitfaultproxy.DropAfterCommitReachesServer
+				}
+				return commitfaultproxy.PassThrough
+			})
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, proxy.Close()) })
 		config := ledger.config
@@ -204,8 +210,9 @@ func TestRecordRefundExampleWithRealDexAndMySQL(t *testing.T) {
 		flowID, result := faulty.runRefundFlow(t, Input{OrderID: orderID, AmountUSD: "99.99"})
 		outcome := faulty.requireCompletedOutcome(t, flowID, result)
 		require.Equal(t, StatusRecorded, outcome.Status)
-		require.True(t, outcome.WasReconciled, "InsertRefund selected uncertain and the read-back found the row")
-		require.Equal(t, 1, proxy.CommitMessages(), "the uncertain write was never retried")
+		require.True(t, outcome.WasReconciled, "InsertRefund retried, changed nothing, and the read-back found the row")
+		require.True(t, outcome.IsAddedToDailyTotal)
+		require.Equal(t, 3, proxy.CommitMessages(), "the lost INSERT COMMIT, its retry, and the daily total each committed once")
 		rows := ledger.refundsForOrder(t, orderID)
 		require.Len(t, rows, 1)
 		require.Equal(t, outcome.Refund.IdempotencyKey, rows[0]["idempotency_key"])

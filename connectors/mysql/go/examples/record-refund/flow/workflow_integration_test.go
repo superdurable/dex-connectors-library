@@ -7,6 +7,7 @@ package recordrefund
 
 import (
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -51,6 +52,7 @@ type scriptedRefundLedger struct {
 	insertFaults            []bool
 	waitForCommitDisconnect bool
 	racingOrderBeforeInsert string
+	dailyTotalCents         int64
 }
 
 func newScriptedRefundLedger() *scriptedRefundLedger {
@@ -72,6 +74,8 @@ func (ledger *scriptedRefundLedger) prepare(sql string) (scriptedmysql.Shape, *s
 		return scriptedmysql.Shape{ParameterCount: 2}, nil
 	case InsertRefundStatement:
 		return scriptedmysql.Shape{ParameterCount: 4}, nil
+	case AddRefundToDailyTotalStatement:
+		return scriptedmysql.Shape{ParameterCount: 1}, nil
 	}
 	return scriptedmysql.Shape{}, &scriptedmysql.ServerError{Number: 1064, SQLState: "42000", Message: "unexpected statement"}
 }
@@ -87,6 +91,13 @@ func (ledger *scriptedRefundLedger) execute(statement scriptedmysql.Statement) s
 		return ledger.selectRows(func(row ledgerRow) bool {
 			return row.idempotencyKey == statement.Parameters[0].Text || row.refundID == refundID
 		})
+	case AddRefundToDailyTotalStatement:
+		cents := parseCents(statement.Parameters[0].Text)
+		affectedRows := int64(2)
+		if ledger.dailyTotalCents == 0 {
+			affectedRows = 1
+		}
+		return scriptedmysql.Execution{AffectedRows: affectedRows, OnCommit: func() { ledger.addToDailyTotal(cents) }}
 	}
 	if len(ledger.insertFaults) > 0 {
 		isDropped := ledger.insertFaults[0]
@@ -149,6 +160,28 @@ func (ledger *scriptedRefundLedger) appendRow(row ledgerRow) {
 	ledger.rows = append(ledger.rows, row)
 }
 
+func (ledger *scriptedRefundLedger) addToDailyTotal(cents int64) {
+	ledger.mu.Lock()
+	defer ledger.mu.Unlock()
+	ledger.dailyTotalCents += cents
+}
+
+func (ledger *scriptedRefundLedger) committedDailyTotalCents() int64 {
+	ledger.mu.Lock()
+	defer ledger.mu.Unlock()
+	return ledger.dailyTotalCents
+}
+
+// parseCents reads a validated decimal amount such as "250.00" or "8" as cents.
+func parseCents(amount string) int64 {
+	whole, fraction, _ := strings.Cut(amount, ".")
+	cents, err := strconv.ParseInt(whole+(fraction + "00")[:2], 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	return cents
+}
+
 func (ledger *scriptedRefundLedger) commit() scriptedmysql.CommitAction {
 	ledger.mu.Lock()
 	defer ledger.mu.Unlock()
@@ -186,13 +219,17 @@ func startScriptedLedger(t *testing.T, ledger *scriptedRefundLedger) (*scriptedm
 }
 
 func insertExecutions(server *scriptedmysql.Server) []scriptedmysql.Event {
-	var inserts []scriptedmysql.Event
+	return executionsOf(server, InsertRefundStatement)
+}
+
+func executionsOf(server *scriptedmysql.Server, statement string) []scriptedmysql.Event {
+	var executions []scriptedmysql.Event
 	for _, event := range server.EventsOfKind(scriptedmysql.EventExecute) {
-		if event.Text == InsertRefundStatement {
-			inserts = append(inserts, event)
+		if event.Text == statement {
+			executions = append(executions, event)
 		}
 	}
-	return inserts
+	return executions
 }
 
 func TestRecordRefundExampleWithRealDex(t *testing.T) {
@@ -225,9 +262,15 @@ func TestRecordRefundExampleWithRealDex(t *testing.T) {
 				transactions = append(transactions, event.Text)
 			}
 		}
-		require.Equal(t, []string{"START TRANSACTION READ ONLY", "START TRANSACTION", "START TRANSACTION READ ONLY"}, transactions,
-			"both reads run read-only and only the insert can write")
-		require.Len(t, server.EventsOfKind(scriptedmysql.EventCommit), 1, "only the write commits")
+		require.Equal(t, []string{"START TRANSACTION READ ONLY", "START TRANSACTION", "START TRANSACTION READ ONLY", "START TRANSACTION"}, transactions,
+			"both reads run read-only and only the two writes can write")
+		require.Len(t, server.EventsOfKind(scriptedmysql.EventCommit), 2, "only the two writes commit")
+		require.True(t, outcome.IsAddedToDailyTotal)
+		require.Equal(t, int64(25000), ledger.committedDailyTotalCents())
+		dailyTotals := executionsOf(server, AddRefundToDailyTotalStatement)
+		require.Len(t, dailyTotals, 1)
+		require.Equal(t, "250.00", dailyTotals[0].Parameters[0].Text, "executeNonIdempotent binds no idempotency key")
+		require.Len(t, dailyTotals[0].Parameters, 1)
 		for _, handshake := range server.EventsOfKind(scriptedmysql.EventHandshake) {
 			require.Equal(t, "dex_app", handshake.Text)
 		}
@@ -254,7 +297,7 @@ func TestRecordRefundExampleWithRealDex(t *testing.T) {
 		require.Equal(t, committedBefore+1, ledger.committedRowCount(), "only the racing Flow's row exists")
 	})
 
-	t.Run("reconciles a COMMIT whose reply was lost after it applied", func(t *testing.T) {
+	t.Run("retries a COMMIT whose reply was lost after it applied and reads the row back", func(t *testing.T) {
 		ledger.mu.Lock()
 		ledger.commitActions = []scriptedmysql.CommitAction{scriptedmysql.CommitThenDropConnection}
 		ledger.mu.Unlock()
@@ -263,23 +306,37 @@ func TestRecordRefundExampleWithRealDex(t *testing.T) {
 		flowID, result := harness.runRefundFlow(t, Input{OrderID: "90001", AmountUSD: "41000.00"})
 		outcome := harness.requireCompletedOutcome(t, flowID, result)
 		require.Equal(t, StatusRecorded, outcome.Status)
-		require.True(t, outcome.WasReconciled, "the uncertain branch read the row back by its key")
+		require.True(t, outcome.WasReconciled, "the replayed INSERT changed nothing, so the read-back confirmed the row")
 		require.Equal(t, "90001", outcome.Refund.OrderID)
-		require.Len(t, insertExecutions(server), before+1, "an uncertain write is never retried")
+		require.Len(t, insertExecutions(server), before+2, "execute repeats an unknown COMMIT with the same key")
 		require.Equal(t, committedBefore+1, ledger.committedRowCount())
 	})
 
-	t.Run("fails for review when an uncertain COMMIT left no row", func(t *testing.T) {
+	t.Run("retries a COMMIT lost before it applied and records the refund", func(t *testing.T) {
 		ledger.mu.Lock()
 		ledger.commitActions = []scriptedmysql.CommitAction{scriptedmysql.DropConnectionWithoutCommitting}
 		ledger.mu.Unlock()
 		before := len(insertExecutions(server))
 		committedBefore := ledger.committedRowCount()
-		_, result := harness.runRefundFlow(t, Input{OrderID: "90002", AmountUSD: "10.00"})
-		require.Equal(t, dex.FlowFailed, result.Status)
-		require.Contains(t, result.ErrorMessage, "no refund_ledger row carries this Flow's idempotency key")
-		require.Len(t, insertExecutions(server), before+1)
-		require.Equal(t, committedBefore, ledger.committedRowCount())
+		flowID, result := harness.runRefundFlow(t, Input{OrderID: "90002", AmountUSD: "10.00"})
+		outcome := harness.requireCompletedOutcome(t, flowID, result)
+		require.Equal(t, StatusRecorded, outcome.Status)
+		require.False(t, outcome.WasReconciled, "the retry inserted the row")
+		require.Len(t, insertExecutions(server), before+2)
+		require.Equal(t, committedBefore+1, ledger.committedRowCount())
+	})
+
+	t.Run("stops for review when the daily total COMMIT reply was lost", func(t *testing.T) {
+		ledger.mu.Lock()
+		ledger.commitActions = []scriptedmysql.CommitAction{scriptedmysql.CommitAndReply, scriptedmysql.CommitThenDropConnection}
+		ledger.mu.Unlock()
+		before := len(executionsOf(server, AddRefundToDailyTotalStatement))
+		totalBefore := ledger.committedDailyTotalCents()
+		_, result := harness.runRefundFlow(t, Input{OrderID: "90007", AmountUSD: "3.00"})
+		require.Equal(t, dex.FlowFailed, result.Status, "the unwired uncertain branch fails the Flow")
+		require.Contains(t, result.ErrorMessage, "uncertain")
+		require.Len(t, executionsOf(server, AddRefundToDailyTotalStatement), before+1, "executeNonIdempotent never runs the statement again")
+		require.Equal(t, totalBefore+300, ledger.committedDailyTotalCents(), "the refund was counted exactly once")
 	})
 
 	t.Run("retries a write lost before COMMIT with the same idempotency key", func(t *testing.T) {

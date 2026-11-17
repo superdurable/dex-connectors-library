@@ -1,10 +1,10 @@
 {
   "connectorId": "mysql",
-  "releaseTag": "connectors/mysql/go/v0.23.0",
+  "releaseTag": "connectors/mysql/go/v0.24.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-mysql",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -71,7 +71,79 @@
       "kind": "mutation",
       "operationId": "execute",
       "inputType": "ExecuteStatementInput",
-      "description": "Run one parameterized write statement in its own transaction and return its rows affected, last insert ID, and any bounded MariaDB RETURNING rows.",
+      "description": "Run one parameterized, repeat-safe write statement in its own transaction and return its rows affected, last insert ID, and any bounded MariaDB RETURNING rows.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "completed",
+          "field": "completed",
+          "optional": false
+        },
+        {
+          "id": "limitExceeded",
+          "field": "limitExceeded",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ExecuteStatementInput is one parameterized write statement.",
+        "properties": {
+          "idempotencyKeyPlaceholder": {
+            "description": "IdempotencyKeyPlaceholder, when non-zero, is the position n of the nth ? placeholder, which receives this Step execution's idempotency key. It must equal len(Parameters)+1, so the key is always the last placeholder. The key is a 36-character UUID that stays the same across every retry and Worker replacement of one Step execution, and it is also returned in the Result's Receipt.",
+            "type": "integer"
+          },
+          "maxRowsAffected": {
+            "description": "MaxRowsAffected, when set, is the most rows the statement may affect. A statement that affects more is rolled back and selects limitExceeded, which guards against a missing WHERE clause. Nil applies no limit; zero allows only a statement that changes nothing.",
+            "type": "integer"
+          },
+          "parameters": {
+            "description": "Parameters binds the ? placeholders in order, with the same value rules as QueryRowsInput.",
+            "items": {},
+            "type": "array"
+          },
+          "statement": {
+            "description": "Statement is one SQL statement written as a constant in application code, such as \"INSERT INTO refunds (order_id, amount) VALUES (?, ?)\". Values belong in Parameters: the connector never formats them into SQL text, and it cannot detect a statement built by concatenating untrusted input. Only INSERT, UPDATE, DELETE, REPLACE, and WITH statements are accepted, because DDL, LOCK TABLES, and similar statements commit implicitly and would escape the connector's transaction. A MariaDB RETURNING clause returns rows in the Result.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "statement"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newExecuteStatementNonIdempotentStep",
+      "kind": "mutation",
+      "operationId": "executeNonIdempotent",
+      "inputType": "ExecuteStatementInput",
+      "description": "Run one parameterized write statement that must not run twice, such as a relative balance update, in its own transaction; an unconfirmed COMMIT selects uncertain instead of running it again.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

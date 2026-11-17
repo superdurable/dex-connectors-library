@@ -24,6 +24,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/mysql/go/internal/commitfaultproxy"
 	"github.com/superdurable/dex-connectors-library/connectors/mysql/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 // liveDatabase is a real MySQL or MariaDB account configured through MYSQL_CONNECTOR_TEST_* variables.
@@ -509,15 +510,9 @@ func TestLiveExecuteRollsBackRejectedAndOverLimitStatements(t *testing.T) {
 	require.Equal(t, mysql.ExecuteStatementBranchDefect, transactionControl.Branch)
 }
 
-func TestLiveExecuteReportsUncertainOnlyWhenCommitMayHaveReachedTheServer(t *testing.T) {
-	database := requireLiveDatabase(t)
-	client := database.newClient(t, database.config())
-	table := createLiveTable(t, database, "idempotency_key CHAR(36) PRIMARY KEY, note VARCHAR(40) NOT NULL")
-	faults := []commitfaultproxy.Fault{
-		commitfaultproxy.DropAtStatementExecute,
-		commitfaultproxy.DropBeforeCommitReachesServer,
-		commitfaultproxy.DropAfterCommitReachesServer,
-	}
+// startLiveCommitFaultProxy returns a client whose first sessions suffer faults, in order.
+func startLiveCommitFaultProxy(t *testing.T, database liveDatabase, faults ...commitfaultproxy.Fault) (*commitfaultproxy.Proxy, *mysql.Client) {
+	t.Helper()
 	proxy, err := commitfaultproxy.Start(net.JoinHostPort(database.host, strconv.FormatInt(database.port, 10)), func(sessionNumber int) commitfaultproxy.Fault {
 		if sessionNumber <= len(faults) {
 			return faults[sessionNumber-1]
@@ -528,46 +523,74 @@ func TestLiveExecuteReportsUncertainOnlyWhenCommitMayHaveReachedTheServer(t *tes
 	t.Cleanup(func() { require.NoError(t, proxy.Close()) })
 	config := database.config()
 	config.Host, config.Port, config.SSLMode = "127.0.0.1", int64(proxy.Port()), mysql.SSLModeDisabled
-	proxied := database.newClient(t, config)
+	return proxy, database.newClient(t, config)
+}
+
+func TestLiveExecuteRetriesEveryLostConnectionAndWritesOnce(t *testing.T) {
+	database := requireLiveDatabase(t)
+	client := database.newClient(t, database.config())
+	table := createLiveTable(t, database, "idempotency_key CHAR(36) PRIMARY KEY, note VARCHAR(40) NOT NULL")
+	proxy, proxied := startLiveCommitFaultProxy(t, database,
+		commitfaultproxy.DropAtStatementExecute,
+		commitfaultproxy.DropBeforeCommitReachesServer,
+		commitfaultproxy.DropAfterCommitReachesServer,
+	)
 	insert := func(step *testsupport.DexContext, note string) (mysql.ExecuteStatementResult, error) {
 		return runLiveExecute(t, proxied, step, mysql.ExecuteStatementInput{
 			Statement:  "INSERT INTO " + table + " (note, idempotency_key) VALUES (?, ?) ON DUPLICATE KEY UPDATE idempotency_key = idempotency_key",
 			Parameters: []any{note}, IdempotencyKeyPlaceholder: 2,
 		})
 	}
-	keyExists := func(key sdkgo.IdempotencyKey) bool {
-		result := runLiveQuery(t, client, "SELECT COUNT(*) AS matches FROM "+table+" WHERE idempotency_key = ?", string(key))
-		return result.Value.Rows[0]["matches"] == "1"
+	noteCount := func(note string) string {
+		result := runLiveQuery(t, client, "SELECT COUNT(*) AS matches FROM "+table+" WHERE note = ?", note)
+		return fmt.Sprint(result.Value.Rows[0]["matches"])
 	}
 
-	atExecute := newLiveStep(t)
-	_, err = insert(atExecute, "dropped at execute")
 	var retry *sdkgo.RetryError
+	atExecute := newLiveStep(t)
+	_, err := insert(atExecute, "dropped at execute")
 	require.ErrorAs(t, err, &retry, "a connection lost before COMMIT committed nothing, so Dex may retry")
-	require.Equal(t, "0", countLiveRows(t, client, table))
 
-	beforeCommit, err := insert(newLiveStep(t), "dropped before commit")
-	require.NoError(t, err)
-	require.Equal(t, mysql.ExecuteStatementBranchUncertain, beforeCommit.Branch, "the client cannot tell whether COMMIT arrived")
-	require.False(t, keyExists(beforeCommit.Receipt.IdempotencyKey), "this COMMIT never reached the server")
+	beforeCommit := newLiveStep(t)
+	_, err = insert(beforeCommit, "dropped before commit")
+	require.ErrorAs(t, err, &retry, "execute is repeat-safe, so an unknown COMMIT returns Retry")
+	require.Equal(t, "0", noteCount("dropped before commit"), "this COMMIT never reached the server")
 
-	afterCommitStep := newLiveStep(t)
-	afterCommit, err := insert(afterCommitStep, "dropped after commit")
-	require.NoError(t, err)
-	require.Equal(t, mysql.ExecuteStatementBranchUncertain, afterCommit.Branch)
-	require.Equal(t, sdkgo.FailureTransport, afterCommit.Failure.Kind)
-	require.True(t, keyExists(afterCommit.Receipt.IdempotencyKey), "this COMMIT was applied although its reply was lost")
+	afterCommit := newLiveStep(t)
+	_, err = insert(afterCommit, "dropped after commit")
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
+	require.Equal(t, "1", noteCount("dropped after commit"), "this COMMIT was applied although its reply was lost")
 
-	replay, err := insert(afterCommitStep, "dropped after commit")
-	require.NoError(t, err)
-	require.Equal(t, mysql.ExecuteStatementBranchCompleted, replay.Branch, replay.Failure)
-	require.Equal(t, int64(0), replay.Value.RowsAffected, "replaying the same key is a no-op")
+	for step, wantRowsAffected := range map[*testsupport.DexContext]int64{atExecute: 1, beforeCommit: 1, afterCommit: 0} {
+		step.AttemptNumber = 2
+		retried, err := insert(step, "retried")
+		require.NoError(t, err)
+		require.Equal(t, mysql.ExecuteStatementBranchCompleted, retried.Branch, retried.Failure)
+		require.Equal(t, wantRowsAffected, retried.Value.RowsAffected, "the retry writes only a key that is not yet committed")
+	}
+	require.Equal(t, "3", countLiveRows(t, client, table))
+	require.Equal(t, 6, proxy.Sessions())
+}
 
-	retried, err := insert(atExecute, "dropped at execute")
+func TestLiveExecuteNonIdempotentSelectsUncertainAndNeverRunsAgain(t *testing.T) {
+	database := requireLiveDatabase(t)
+	client := database.newClient(t, database.config())
+	table := createLiveTable(t, database, "account_id VARCHAR(40) PRIMARY KEY, amount DECIMAL(12, 2) NOT NULL")
+	requireLiveExecute(t, client, "INSERT INTO "+table+" (account_id, amount) VALUES ('acct_1', 0)")
+	_, proxied := startLiveCommitFaultProxy(t, database, commitfaultproxy.DropAfterCommitReachesServer)
+	input := mysql.ExecuteStatementInput{Statement: "UPDATE " + table + " SET amount = amount + ? WHERE account_id = ?", Parameters: []any{"25.00", "acct_1"}}
+	step := singledispatchtest.NewContext("live-"+t.Name(), fmt.Sprintf("fenced-step-%d", time.Now().UnixNano()))
+
+	result, err := sdkgo.RunMutation(step, proxied.ExecuteStatementNonIdempotent(), liveConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, int64(1), retried.Value.RowsAffected, "the retried Step execution writes once")
-	require.Equal(t, "2", countLiveRows(t, client, table))
-	require.Equal(t, 5, proxy.Sessions())
+	require.Equal(t, mysql.ExecuteStatementNonIdempotentBranchUncertain, result.Branch, "the reply to an applied COMMIT was lost")
+	step.AdvanceAttempt()
+	again, err := sdkgo.RunMutation(step, proxied.ExecuteStatementNonIdempotent(), liveConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, mysql.ExecuteStatementNonIdempotentBranchUncertain, again.Branch)
+	balance := runLiveQuery(t, client, "SELECT amount FROM "+table+" WHERE account_id = 'acct_1'")
+	require.Equal(t, "25.00", balance.Value.Rows[0]["amount"], "the increment was applied exactly once")
 }
 
 // tableReadLock holds LOCK TABLES ... READ, which blocks writes but not reads from other sessions.

@@ -4,6 +4,7 @@
 package mysql
 
 import (
+	"context"
 	"database/sql/driver"
 	"fmt"
 
@@ -76,27 +77,29 @@ func (ExecuteStatementOperation) IdempotencyKey(callID sdkgo.CallID, _ ExecuteSt
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke runs one statement in its own transaction and commits it.
+// Invoke runs one repeat-safe statement in its own transaction and commits it.
 //
 // Invoke opens one connection, pins the connector's session settings, sends START TRANSACTION,
 // prepares the statement, checks its placeholders, runs it, reads any RETURNING rows, and reads
 // ROW_COUNT() and LAST_INSERT_ID(). It rolls back, by closing the connection before COMMIT, when a
 // bound or MaxRowsAffected is exceeded. Every failure before COMMIT leaves nothing committed:
-// transient ones return Retry and conclusive ones select a branch. A failure after COMMIT is sent
-// selects uncertain, because the server may have committed.
+// transient ones return Retry and conclusive ones select a branch. A COMMIT whose outcome is
+// unknown, such as a connection lost after COMMIT was sent, also returns Retry, so Dex runs the
+// statement again; execute never selects uncertain.
 //
-// Dex can run Invoke more than once for one Step execution, for example after a Worker is lost
-// mid-call or when an async Step outlasts its local phase. Make the statement idempotent, such as
-// INSERT ... ON DUPLICATE KEY UPDATE keyed by IdempotencyKeyPlaceholder.
+// Dex can therefore run the statement more than once for one Step execution, also after a Worker
+// is lost mid-call or when an async Step outlasts its local phase. Make the statement repeat-safe,
+// such as INSERT ... ON DUPLICATE KEY UPDATE keyed by IdempotencyKeyPlaceholder, an absolute
+// UPDATE, or a DELETE. Use ExecuteStatementNonIdempotent for a statement that must not run twice.
 func (operation ExecuteStatementOperation) Invoke(call sdkgo.Call, input ExecuteStatementInput) sdkgo.MutationAttempt[StatementExecution] {
 	client := operation.client
 	statement, err := bindExecuteStatement(call, input)
 	if err != nil {
-		return executeDefect(sdkgo.FailureValidation, err.Error(), sdkgo.Receipt{})
+		return writeDefect(executeOperationID, sdkgo.FailureValidation, err.Error(), sdkgo.Receipt{})
 	}
 	password, isResolved := client.resolvePassword(call)
 	if !isResolved {
-		return executeDefect(sdkgo.FailureAuthentication, "MySQL connection credentials are unavailable", sdkgo.Receipt{})
+		return writeDefect(executeOperationID, sdkgo.FailureAuthentication, "MySQL connection credentials are unavailable", sdkgo.Receipt{})
 	}
 	ctx, cancel := client.newCallContext(call)
 	defer cancel()
@@ -104,71 +107,86 @@ func (operation ExecuteStatementOperation) Invoke(call sdkgo.Call, input Execute
 	defer session.close()
 	if err != nil {
 		failure := session.classifyFailure(err, phase)
-		return executeAttemptForFailure(failure, client.receipt(call, session, failure))
+		return writeAttemptForFailure(executeOperationID, failure, client.receipt(call, session, failure))
 	}
+	pending, failure, isReadyToCommit := client.runStatementBeforeCommit(ctx, session, statement, input.MaxRowsAffected)
+	if !isReadyToCommit {
+		return writeAttemptForFailure(executeOperationID, failure, client.receipt(call, session, failure))
+	}
+	if err := session.commitTransaction(ctx, pending.transaction); err != nil {
+		failure := session.classifyFailure(err, phaseCommit)
+		if failure.disposition == dispositionUncertain {
+			// The statement is repeat-safe, so an unknown COMMIT outcome runs it again.
+			failure.disposition = dispositionRetry
+		}
+		return writeAttemptForFailure(executeOperationID, failure, client.receipt(call, session, failure))
+	}
+	return sdkgo.NewMutationBranch(ExecuteStatementBranchCompleted, pending.execution(), nil, client.receipt(call, session, classifiedFailure{}))
+}
+
+// pendingCommit is an open transaction whose statement ran within every bound.
+type pendingCommit struct {
+	transaction driver.Tx
+	read        rowRead
+	outcome     statementOutcome
+}
+
+func (pending pendingCommit) execution() StatementExecution {
+	return StatementExecution{
+		RowsAffected: pending.outcome.rowsAffected, LastInsertID: pending.outcome.lastInsertID, WarningCount: pending.outcome.warningCount,
+		Columns: pending.read.columns, Rows: pending.read.rows,
+	}
+}
+
+// runStatementBeforeCommit starts the transaction and runs the statement within its bounds.
+// It never sends COMMIT, so a returned failure always means nothing was committed.
+func (client *Client) runStatementBeforeCommit(ctx context.Context, session *databaseSession, statement boundStatement, maxRowsAffected *int64) (pendingCommit, classifiedFailure, bool) {
 	transaction, err := session.beginTransaction(ctx, false)
 	if err != nil {
-		failure := session.classifyFailure(err, phaseBegin)
-		return executeAttemptForFailure(failure, client.receipt(call, session, failure))
+		return pendingCommit{}, session.classifyFailure(err, phaseBegin), false
 	}
 	prepared, err := session.prepareStatement(ctx, statement.sql)
 	if err != nil {
-		failure := session.classifyFailure(err, phaseStatement)
-		return executeAttemptForFailure(failure, client.receipt(call, session, failure))
+		return pendingCommit{}, session.classifyFailure(err, phaseStatement), false
 	}
 	if err := validatePreparedStatement(prepared, len(statement.parameterValues)); err != nil {
-		return executeDefect(sdkgo.FailureValidation, err.Error(), client.receipt(call, session, classifiedFailure{}))
+		return pendingCommit{}, classifiedFailure{disposition: dispositionDefect, kind: sdkgo.FailureValidation, message: err.Error()}, false
 	}
 	queryer, isQueryer := prepared.(driver.StmtQueryContext)
 	if !isQueryer {
-		failure := session.classifyFailure(errDriverInterfaceMissing, phaseStatement)
-		return executeAttemptForFailure(failure, client.receipt(call, session, failure))
+		return pendingCommit{}, session.classifyFailure(errDriverInterfaceMissing, phaseStatement), false
 	}
 	rows, err := queryer.QueryContext(ctx, statement.parameterValues)
 	if err != nil {
-		failure := session.classifyFailure(err, phaseStatement)
-		return executeAttemptForFailure(failure, client.receipt(call, session, failure))
+		return pendingCommit{}, session.classifyFailure(err, phaseStatement), false
 	}
 	read, err := readBoundedRows(rows, session.meter, client.maxRows, client.maxResponseBytes)
 	if err != nil {
-		failure := session.classifyFailure(err, phaseStatement)
-		return executeAttemptForFailure(failure, client.receipt(call, session, failure))
+		return pendingCommit{}, session.classifyFailure(err, phaseStatement), false
 	}
 	if read.isTruncated {
-		failure := classifiedFailure{
-			kind:    sdkgo.FailureResponseTooLarge,
+		return pendingCommit{}, classifiedFailure{
+			disposition: dispositionLimitExceeded, kind: sdkgo.FailureResponseTooLarge,
 			message: "RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction was rolled back",
-		}
-		return sdkgo.NewMutationBranch(ExecuteStatementBranchLimitExceeded, emptyStatementExecution(), failurePointer(executeOperationID, failure), client.receipt(call, session, failure))
+		}, false
 	}
 	if err := rows.Close(); err != nil {
-		failure := session.classifyFailure(err, phaseStatement)
-		return executeAttemptForFailure(failure, client.receipt(call, session, failure))
+		return pendingCommit{}, session.classifyFailure(err, phaseStatement), false
 	}
 	outcome, err := session.readStatementOutcome(ctx)
 	if err != nil {
-		failure := session.classifyFailure(err, phaseStatement)
-		return executeAttemptForFailure(failure, client.receipt(call, session, failure))
+		return pendingCommit{}, session.classifyFailure(err, phaseStatement), false
 	}
 	if outcome.rowsAffected < 0 {
 		outcome.rowsAffected = int64(len(read.rows))
 	}
-	if input.MaxRowsAffected != nil && outcome.rowsAffected > *input.MaxRowsAffected {
-		failure := classifiedFailure{
-			kind:    sdkgo.FailureConflict,
-			message: fmt.Sprintf("the statement affected %d rows but maxRowsAffected is %d, so the transaction was rolled back", outcome.rowsAffected, *input.MaxRowsAffected),
-		}
-		return sdkgo.NewMutationBranch(ExecuteStatementBranchLimitExceeded, emptyStatementExecution(), failurePointer(executeOperationID, failure), client.receipt(call, session, failure))
+	if maxRowsAffected != nil && outcome.rowsAffected > *maxRowsAffected {
+		return pendingCommit{}, classifiedFailure{
+			disposition: dispositionLimitExceeded, kind: sdkgo.FailureConflict,
+			message: fmt.Sprintf("the statement affected %d rows but maxRowsAffected is %d, so the transaction was rolled back", outcome.rowsAffected, *maxRowsAffected),
+		}, false
 	}
-	if err := session.commitTransaction(ctx, transaction); err != nil {
-		failure := session.classifyFailure(err, phaseCommit)
-		return executeAttemptForFailure(failure, client.receipt(call, session, failure))
-	}
-	execution := StatementExecution{
-		RowsAffected: outcome.rowsAffected, LastInsertID: outcome.lastInsertID, WarningCount: outcome.warningCount,
-		Columns: read.columns, Rows: read.rows,
-	}
-	return sdkgo.NewMutationBranch(ExecuteStatementBranchCompleted, execution, nil, client.receipt(call, session, classifiedFailure{}))
+	return pendingCommit{transaction: transaction, read: read, outcome: outcome}, classifiedFailure{}, true
 }
 
 // bindExecuteStatement validates the input and appends the idempotency key as the last placeholder.
@@ -196,24 +214,26 @@ func bindExecuteStatement(call sdkgo.Call, input ExecuteStatementInput) (boundSt
 	}
 }
 
-func executeAttemptForFailure(failure classifiedFailure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[StatementExecution] {
+// writeAttemptForFailure maps a failure to a branch; both write operations share their branch IDs.
+func writeAttemptForFailure(operationID string, failure classifiedFailure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[StatementExecution] {
 	switch failure.disposition {
 	case dispositionRetry:
-		return sdkgo.NewMutationRetry[StatementExecution](sdkFailure(executeOperationID, failure), 0)
+		return sdkgo.NewMutationRetry[StatementExecution](sdkFailure(operationID, failure), 0)
 	case dispositionUncertain:
-		return sdkgo.NewMutationUncertain(emptyStatementExecution(), sdkFailure(executeOperationID, failure), receipt)
+		return sdkgo.NewMutationUncertain(emptyStatementExecution(), sdkFailure(operationID, failure), receipt)
+	case dispositionLimitExceeded:
+		return sdkgo.NewMutationBranch(ExecuteStatementBranchLimitExceeded, emptyStatementExecution(), failurePointer(operationID, failure), receipt)
 	case dispositionInvalidResponse:
-		return sdkgo.NewMutationBranch(ExecuteStatementBranchInvalidResponse, emptyStatementExecution(), failurePointer(executeOperationID, failure), receipt)
+		return sdkgo.NewMutationBranch(ExecuteStatementBranchInvalidResponse, emptyStatementExecution(), failurePointer(operationID, failure), receipt)
 	case dispositionDefect:
-		return sdkgo.NewMutationBranch(ExecuteStatementBranchDefect, emptyStatementExecution(), failurePointer(executeOperationID, failure), receipt)
+		return sdkgo.NewMutationBranch(ExecuteStatementBranchDefect, emptyStatementExecution(), failurePointer(operationID, failure), receipt)
 	default:
-		return sdkgo.NewMutationBranch(ExecuteStatementBranchProviderRejected, emptyStatementExecution(), failurePointer(executeOperationID, failure), receipt)
+		return sdkgo.NewMutationBranch(ExecuteStatementBranchProviderRejected, emptyStatementExecution(), failurePointer(operationID, failure), receipt)
 	}
 }
 
-func executeDefect(kind sdkgo.FailureKind, message string, receipt sdkgo.Receipt) sdkgo.MutationAttempt[StatementExecution] {
-	failure := classifiedFailure{disposition: dispositionDefect, kind: kind, message: message}
-	return sdkgo.NewMutationBranch(ExecuteStatementBranchDefect, emptyStatementExecution(), failurePointer(executeOperationID, failure), receipt)
+func writeDefect(operationID string, kind sdkgo.FailureKind, message string, receipt sdkgo.Receipt) sdkgo.MutationAttempt[StatementExecution] {
+	return writeAttemptForFailure(operationID, classifiedFailure{disposition: dispositionDefect, kind: kind, message: message}, receipt)
 }
 
 func emptyStatementExecution() StatementExecution {
