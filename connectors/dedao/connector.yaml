@@ -15,6 +15,11 @@ spec:
       package: dex-connector-dedao
       operations: [getNoteTaskStatus]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-dedao"
+      operations: [getNoteTaskStatus]
+      triggers: []
   codegen:
     go:
       package: dedao

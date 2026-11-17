@@ -8,4 +8,4 @@ Sign in to the [Get Note Open Platform](https://www.biji.com/openapi), create an
 
 ## Example and verification
 
-The [Go runnable Flow](go/examples/get-note-task-status/) and [Python runnable Flow](python/examples/get_note_task_status/) start with a task ID from `data.tasks[0].task_id` of a prior note-save call and complete with a typed `GetNoteTaskStatusOutput`. The Python package replays Go-recorded provider scenarios and verifies retry through a real Dex Worker and Client. Live Get Note authorization and status response variation remain unverified without a user-controlled Dex Web Connection.
+The [Go runnable Flow](go/examples/get-note-task-status/), [Python runnable Flow](python/examples/get_note_task_status/), and [TypeScript runnable Flow](typescript/examples/task-status/) start with a task ID from `data.tasks[0].task_id` of a prior note-save call and complete with a typed `GetNoteTaskStatusOutput`. The language packages replay Go-recorded provider scenarios and verify retry through a real Dex Worker and Client. Live Get Note authorization and status response variation remain unverified without a user-controlled Dex Web Connection.
