@@ -13,3 +13,6 @@ The runnable example is in [`go/examples/agent-list`](go/examples/agent-list). T
 
 The [Python package](python/README.md) implements `listRunningAgents` with a
 runnable Dex Flow and Go-recorded provider conformance scenarios.
+
+
+The [TypeScript package](typescript/README.md) implements the same `listRunningAgents` Query with Go-recorded conformance scenarios and a runnable Dex Flow.
