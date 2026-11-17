@@ -13,6 +13,8 @@ The [`assign-issue` example](go/examples/assign-issue/README.md) exercises
 an absolute issue assignment through a real Dex Worker in its mock test.
 The [`create-project` example](go/examples/create-project/README.md) exercises
 bounded project creation through a real Dex Worker in its mock test.
+The [`create-release` example](go/examples/create-release/README.md) exercises
+bounded release creation through a real Dex Worker in its mock test.
 
 The Python package is [`dex-connector-sentry`](python/README.md), imported as
 `dex_connectors.sentry`. The TypeScript package is
@@ -35,8 +37,13 @@ The Python package is [`dex-connector-sentry`](python/README.md), imported as
 | `renameProject` | mutation | Project |
 | `deleteProject` | mutation | DeletedProject |
 | `createProject` | mutation | Project |
+| `createRelease` | mutation | Release |
+| `getRelease` | query | Release |
+| `listReleases` | query | ReleasePage |
+| `updateRelease` | mutation | Release |
+| `deleteRelease` | mutation | DeletedRelease |
 
-The five new Go queries use the `safe` repeat tier. List operations return one
+The Go queries use the `safe` repeat tier. List operations return one
 provider page; pass a Sentry cursor to request a known later page. Sentry
 returns continuation cursors in its `Link` header, which these typed outputs
 do not yet expose. Python and TypeScript retain their declared issue operations.
@@ -52,6 +59,15 @@ optional `uncertain` when the send cap is reached without confirmation. The
 organization and team slugs come from Sentry **Settings > Teams**; the name
 and project slug are nonempty Flow inputs. Some organizations also require
 `org:write` or Team Admin permission for creation.
+
+Releases are identified by version within an organization. `createRelease`
+uses the `limited` tier, a three-send cap, and version read-back after an
+unknown outcome. `getRelease` and `listReleases` are safe queries.
+`updateRelease` sets an absolute `open` or `archived` status and optional
+reference and URL; `deleteRelease` permanently removes that version and its
+files. Both writes use the `safe` repeat tier. A token needs
+`project:releases` or the endpoint-specific project/CI scopes in
+[Sentry's release API](https://docs.sentry.io/api/releases/).
 
 `listIssues` returns the first provider page (default unresolved query); cursor pagination is not exposed in this initial release. `updateIssueStatus` sends an absolute status in a PUT request. Repeating `resolved`, `unresolved`, or `ignored` sets the same state. Only the submitted status field is changed.
 
@@ -108,6 +124,7 @@ flow := NewFlow(mock.Connection())
 - [https://docs.sentry.io/api/projects/update-a-project/](https://docs.sentry.io/api/projects/update-a-project/)
 - [https://docs.sentry.io/api/projects/delete-a-project/](https://docs.sentry.io/api/projects/delete-a-project/)
 - [https://docs.sentry.io/api/projects/create-a-new-project/](https://docs.sentry.io/api/projects/create-a-new-project/)
+- [https://docs.sentry.io/api/releases/](https://docs.sentry.io/api/releases/)
 
 The HTTP unit tests verify request shapes and local classification against
 an `httptest` server. The TypeScript example runs against a local HTTP fixture

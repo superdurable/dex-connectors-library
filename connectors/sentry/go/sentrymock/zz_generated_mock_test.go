@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createRelease/createReleaseDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Release](`{"version":"app@1.0.0","status":"open"}`)
+			return err
+		}},
+		{name: "getRelease/getReleaseDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Release](`{"version":"app@1.0.0","status":"open"}`)
+			return err
+		}},
+		{name: "listReleases/listReleasesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.ReleasePage](`{"releases":[{"version":"app@1.0.0","status":"open"}]}`)
+			return err
+		}},
+		{name: "updateRelease/updateReleaseDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Release](`{"version":"app@1.0.0","status":"archived"}`)
+			return err
+		}},
+		{name: "deleteRelease/deleteReleaseDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.DeletedRelease](`{"version":"app@1.0.0"}`)
+			return err
+		}},
 		{name: "createProject/createProjectDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[sentry.Project](`{"id":"43","slug":"app","name":"Application"}`)
 			return err
@@ -75,6 +95,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateRelease().Definition().Operation.OperationID != "createRelease" {
+		t.Errorf("createRelease mock has another definition")
+	}
+	if mock.GetRelease().Definition().Operation.OperationID != "getRelease" {
+		t.Errorf("getRelease mock has another definition")
+	}
+	if mock.ListReleases().Definition().Operation.OperationID != "listReleases" {
+		t.Errorf("listReleases mock has another definition")
+	}
+	if mock.UpdateRelease().Definition().Operation.OperationID != "updateRelease" {
+		t.Errorf("updateRelease mock has another definition")
+	}
+	if mock.DeleteRelease().Definition().Operation.OperationID != "deleteRelease" {
+		t.Errorf("deleteRelease mock has another definition")
+	}
 	if mock.CreateProject().Definition().Operation.OperationID != "createProject" {
 		t.Errorf("createProject mock has another definition")
 	}

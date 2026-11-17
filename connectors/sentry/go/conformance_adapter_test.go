@@ -42,6 +42,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"renameProject":     newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.RenameProject(), testConnection, scenario.CallID),
 		"deleteProject":     newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteProject(), testConnection, scenario.CallID),
 		"createProject":     newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateProject(), testConnection, scenario.CallID),
+		"createRelease":     newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateRelease(), testConnection, scenario.CallID),
+		"getRelease":        newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetRelease(), testConnection),
+		"listReleases":      newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListReleases(), testConnection),
+		"updateRelease":     newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateRelease(), testConnection, scenario.CallID),
+		"deleteRelease":     newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteRelease(), testConnection, scenario.CallID),
 	}}
 }
 

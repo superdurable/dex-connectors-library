@@ -40,6 +40,11 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateRelease() sdkgo.Mutation[CreateReleaseInput, Release]
+	GetRelease() sdkgo.Query[GetReleaseInput, Release]
+	ListReleases() sdkgo.Query[ListReleasesInput, ReleasePage]
+	UpdateRelease() sdkgo.Mutation[UpdateReleaseInput, Release]
+	DeleteRelease() sdkgo.Mutation[DeleteReleaseInput, DeletedRelease]
 	CreateProject() sdkgo.Mutation[CreateProjectInput, Project]
 	AssignIssue() sdkgo.Mutation[AssignIssueInput, Issue]
 	DeleteIssue() sdkgo.Mutation[DeleteIssueInput, DeletedIssue]
@@ -57,6 +62,21 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateRelease() sdkgo.Mutation[CreateReleaseInput, Release] {
+	return operations.client.CreateRelease()
+}
+func (operations clientOperations) GetRelease() sdkgo.Query[GetReleaseInput, Release] {
+	return operations.client.GetRelease()
+}
+func (operations clientOperations) ListReleases() sdkgo.Query[ListReleasesInput, ReleasePage] {
+	return operations.client.ListReleases()
+}
+func (operations clientOperations) UpdateRelease() sdkgo.Mutation[UpdateReleaseInput, Release] {
+	return operations.client.UpdateRelease()
+}
+func (operations clientOperations) DeleteRelease() sdkgo.Mutation[DeleteReleaseInput, DeletedRelease] {
+	return operations.client.DeleteRelease()
+}
 func (operations clientOperations) CreateProject() sdkgo.Mutation[CreateProjectInput, Project] {
 	return operations.client.CreateProject()
 }
@@ -232,6 +252,386 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const CreateReleaseBranchCreated sdkgo.BranchID = "created"
+const CreateReleaseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateReleaseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateReleaseBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateReleaseDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createRelease"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateReleaseBranchCreated, Description: "Sentry created or confirmed the release."},
+		{ID: CreateReleaseBranchProviderRejected, Description: "Sentry definitively rejected creation.", Optional: true},
+		{ID: CreateReleaseBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateReleaseBranchUncertain, Description: "The send cap was reached without confirming creation.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateReleaseResult = sdkgo.MutationResult[Release]
+
+type CreateReleaseStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=sentry"`
+	operationID                       struct{}                                      `connector:"operationId=createRelease"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateReleaseInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateReleaseResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateReleaseResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateReleaseResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateReleaseResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Release]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateReleaseStep[IN any](config CreateReleaseStepConfig[IN]) sdkgo.MutationStep[IN, CreateReleaseInput, Release] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sentry connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateReleaseInput, Release]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateRelease(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateReleaseResult] {
+			branches := make([]sdkgo.BranchTarget[CreateReleaseResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateReleaseBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateReleaseBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateReleaseBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateReleaseBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetReleaseBranchFound sdkgo.BranchID = "found"
+const GetReleaseBranchNotFound sdkgo.BranchID = "notFound"
+const GetReleaseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetReleaseBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetReleaseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetReleaseDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getRelease"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetReleaseBranchFound, Description: "Sentry returned the release."},
+		{ID: GetReleaseBranchNotFound, Description: "The release does not exist.", Optional: true},
+		{ID: GetReleaseBranchProviderRejected, Description: "Sentry definitively rejected retrieval.", Optional: true},
+		{ID: GetReleaseBranchInvalidResponse, Description: "Sentry returned malformed or oversized JSON.", Optional: true},
+		{ID: GetReleaseBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetReleaseResult = sdkgo.QueryResult[Release]
+
+type GetReleaseStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=sentry"`
+	operationID                    struct{}                                   `connector:"operationId=getRelease"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetReleaseInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetReleaseResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetReleaseResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetReleaseResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetReleaseResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetReleaseResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Release]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetReleaseStep[IN any](config GetReleaseStepConfig[IN]) sdkgo.QueryStep[IN, GetReleaseInput, Release] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sentry connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetReleaseInput, Release]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetRelease(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetReleaseResult] {
+			branches := make([]sdkgo.BranchTarget[GetReleaseResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetReleaseBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetReleaseBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetReleaseBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetReleaseBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetReleaseBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListReleasesBranchListed sdkgo.BranchID = "listed"
+const ListReleasesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListReleasesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListReleasesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListReleasesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listReleases"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListReleasesBranchListed, Description: "Sentry returned the release page."},
+		{ID: ListReleasesBranchProviderRejected, Description: "Sentry definitively rejected listing.", Optional: true},
+		{ID: ListReleasesBranchInvalidResponse, Description: "Sentry returned malformed or oversized JSON.", Optional: true},
+		{ID: ListReleasesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListReleasesResult = sdkgo.QueryResult[ReleasePage]
+
+type ListReleasesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=sentry"`
+	operationID                    struct{}                                       `connector:"operationId=listReleases"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListReleasesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListReleasesResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListReleasesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListReleasesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListReleasesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ReleasePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListReleasesStep[IN any](config ListReleasesStepConfig[IN]) sdkgo.QueryStep[IN, ListReleasesInput, ReleasePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sentry connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListReleasesInput, ReleasePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListReleases(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListReleasesResult] {
+			branches := make([]sdkgo.BranchTarget[ListReleasesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListReleasesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListReleasesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListReleasesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListReleasesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateReleaseBranchUpdated sdkgo.BranchID = "updated"
+const UpdateReleaseBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateReleaseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateReleaseBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateReleaseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateReleaseDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateRelease"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateReleaseBranchUpdated, Description: "Sentry updated the release."},
+		{ID: UpdateReleaseBranchNotFound, Description: "The release does not exist.", Optional: true},
+		{ID: UpdateReleaseBranchProviderRejected, Description: "Sentry definitively rejected the update.", Optional: true},
+		{ID: UpdateReleaseBranchInvalidResponse, Description: "Sentry returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateReleaseBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateReleaseResult = sdkgo.MutationResult[Release]
+
+type UpdateReleaseStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=sentry"`
+	operationID                       struct{}                                      `connector:"operationId=updateRelease"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateReleaseInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateReleaseResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateReleaseResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateReleaseResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateReleaseResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateReleaseResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Release]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateReleaseStep[IN any](config UpdateReleaseStepConfig[IN]) sdkgo.MutationStep[IN, UpdateReleaseInput, Release] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sentry connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateReleaseInput, Release]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateRelease(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateReleaseResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateReleaseResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateReleaseBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateReleaseBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateReleaseBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateReleaseBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateReleaseBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteReleaseBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteReleaseBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteReleaseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteReleaseBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteReleaseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteReleaseDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteRelease"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteReleaseBranchDeleted, Description: "Sentry accepted release deletion."},
+		{ID: DeleteReleaseBranchNotFound, Description: "The release does not exist.", Optional: true},
+		{ID: DeleteReleaseBranchProviderRejected, Description: "Sentry definitively rejected deletion.", Optional: true},
+		{ID: DeleteReleaseBranchInvalidResponse, Description: "Sentry returned unexpected deletion content.", Optional: true},
+		{ID: DeleteReleaseBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteReleaseResult = sdkgo.MutationResult[DeletedRelease]
+
+type DeleteReleaseStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=sentry"`
+	operationID                       struct{}                                             `connector:"operationId=deleteRelease"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteReleaseInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteReleaseResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteReleaseResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteReleaseResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteReleaseResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteReleaseResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedRelease]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteReleaseStep[IN any](config DeleteReleaseStepConfig[IN]) sdkgo.MutationStep[IN, DeleteReleaseInput, DeletedRelease] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sentry connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteReleaseInput, DeletedRelease]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteRelease(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteReleaseResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteReleaseResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteReleaseBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteReleaseBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteReleaseBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteReleaseBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteReleaseBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const CreateProjectBranchCreated sdkgo.BranchID = "created"

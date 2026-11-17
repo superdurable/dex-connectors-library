@@ -18,6 +18,11 @@ import (
 // Mock is a scripted sentry connection. Script each operation through its accessor.
 type Mock struct {
 	connection        sentry.Connection
+	createRelease     *connectormock.Mutation[sentry.CreateReleaseInput, sentry.Release]
+	getRelease        *connectormock.Query[sentry.GetReleaseInput, sentry.Release]
+	listReleases      *connectormock.Query[sentry.ListReleasesInput, sentry.ReleasePage]
+	updateRelease     *connectormock.Mutation[sentry.UpdateReleaseInput, sentry.Release]
+	deleteRelease     *connectormock.Mutation[sentry.DeleteReleaseInput, sentry.DeletedRelease]
 	createProject     *connectormock.Mutation[sentry.CreateProjectInput, sentry.Project]
 	assignIssue       *connectormock.Mutation[sentry.AssignIssueInput, sentry.Issue]
 	deleteIssue       *connectormock.Mutation[sentry.DeleteIssueInput, sentry.DeletedIssue]
@@ -38,6 +43,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createRelease:     connectormock.NewMutation[sentry.CreateReleaseInput, sentry.Release](t, sentry.CreateReleaseDefinition),
+		getRelease:        connectormock.NewQuery[sentry.GetReleaseInput, sentry.Release](t, sentry.GetReleaseDefinition),
+		listReleases:      connectormock.NewQuery[sentry.ListReleasesInput, sentry.ReleasePage](t, sentry.ListReleasesDefinition),
+		updateRelease:     connectormock.NewMutation[sentry.UpdateReleaseInput, sentry.Release](t, sentry.UpdateReleaseDefinition),
+		deleteRelease:     connectormock.NewMutation[sentry.DeleteReleaseInput, sentry.DeletedRelease](t, sentry.DeleteReleaseDefinition),
 		createProject:     connectormock.NewMutation[sentry.CreateProjectInput, sentry.Project](t, sentry.CreateProjectDefinition),
 		assignIssue:       connectormock.NewMutation[sentry.AssignIssueInput, sentry.Issue](t, sentry.AssignIssueDefinition),
 		deleteIssue:       connectormock.NewMutation[sentry.DeleteIssueInput, sentry.DeletedIssue](t, sentry.DeleteIssueDefinition),
@@ -52,6 +62,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		getProject:        connectormock.NewQuery[sentry.GetProjectInput, sentry.Project](t, sentry.GetProjectDefinition),
 		listOrganizations: connectormock.NewQuery[sentry.ListOrganizationsInput, sentry.OrganizationPage](t, sentry.ListOrganizationsDefinition),
 	}
+	mock.createRelease.Default(CreateReleaseDefault())
+	mock.getRelease.Default(GetReleaseDefault())
+	mock.listReleases.Default(ListReleasesDefault())
+	mock.updateRelease.Default(UpdateReleaseDefault())
+	mock.deleteRelease.Default(DeleteReleaseDefault())
 	mock.createProject.Default(CreateProjectDefault())
 	mock.assignIssue.Default(AssignIssueDefault())
 	mock.deleteIssue.Default(DeleteIssueDefault())
@@ -75,6 +90,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() sentry.Connection { return mock.connection }
+
+// CreateRelease returns the createRelease script.
+func (mock *Mock) CreateRelease() *connectormock.Mutation[sentry.CreateReleaseInput, sentry.Release] {
+	return mock.createRelease
+}
+
+// GetRelease returns the getRelease script.
+func (mock *Mock) GetRelease() *connectormock.Query[sentry.GetReleaseInput, sentry.Release] {
+	return mock.getRelease
+}
+
+// ListReleases returns the listReleases script.
+func (mock *Mock) ListReleases() *connectormock.Query[sentry.ListReleasesInput, sentry.ReleasePage] {
+	return mock.listReleases
+}
+
+// UpdateRelease returns the updateRelease script.
+func (mock *Mock) UpdateRelease() *connectormock.Mutation[sentry.UpdateReleaseInput, sentry.Release] {
+	return mock.updateRelease
+}
+
+// DeleteRelease returns the deleteRelease script.
+func (mock *Mock) DeleteRelease() *connectormock.Mutation[sentry.DeleteReleaseInput, sentry.DeletedRelease] {
+	return mock.deleteRelease
+}
 
 // CreateProject returns the createProject script.
 func (mock *Mock) CreateProject() *connectormock.Mutation[sentry.CreateProjectInput, sentry.Project] {
@@ -143,6 +183,21 @@ func (mock *Mock) ListOrganizations() *connectormock.Query[sentry.ListOrganizati
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateRelease() sdkgo.Mutation[sentry.CreateReleaseInput, sentry.Release] {
+	return operations.mock.createRelease
+}
+func (operations mockOperations) GetRelease() sdkgo.Query[sentry.GetReleaseInput, sentry.Release] {
+	return operations.mock.getRelease
+}
+func (operations mockOperations) ListReleases() sdkgo.Query[sentry.ListReleasesInput, sentry.ReleasePage] {
+	return operations.mock.listReleases
+}
+func (operations mockOperations) UpdateRelease() sdkgo.Mutation[sentry.UpdateReleaseInput, sentry.Release] {
+	return operations.mock.updateRelease
+}
+func (operations mockOperations) DeleteRelease() sdkgo.Mutation[sentry.DeleteReleaseInput, sentry.DeletedRelease] {
+	return operations.mock.deleteRelease
+}
 func (operations mockOperations) CreateProject() sdkgo.Mutation[sentry.CreateProjectInput, sentry.Project] {
 	return operations.mock.createProject
 }
@@ -181,6 +236,199 @@ func (operations mockOperations) GetProject() sdkgo.Query[sentry.GetProjectInput
 }
 func (operations mockOperations) ListOrganizations() sdkgo.Query[sentry.ListOrganizationsInput, sentry.OrganizationPage] {
 	return operations.mock.listOrganizations
+}
+
+// CreateReleaseCreated selects the created branch: Sentry created or confirmed the release.
+func CreateReleaseCreated(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.CreateReleaseBranchCreated, value, failure)
+}
+
+// CreateReleaseProviderRejected selects the providerRejected branch: Sentry definitively rejected creation.
+func CreateReleaseProviderRejected(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.CreateReleaseBranchProviderRejected, value, failure)
+}
+
+// CreateReleaseDefect selects the defect branch: Local input or credentials are invalid.
+func CreateReleaseDefect(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.CreateReleaseBranchDefect, value, failure)
+}
+
+// CreateReleaseUncertain returns an uncertain createRelease outcome.
+func CreateReleaseUncertain(value sentry.Release, failure sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateReleaseRetry asks Dex to retry the createRelease Step, after the delay when it is positive.
+func CreateReleaseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Release] {
+	return connectormock.Retry[sentry.Release](failure, after)
+}
+
+// CreateReleaseCreateReleaseDefault is the manifest mock createReleaseDefault: One release was created.
+func CreateReleaseCreateReleaseDefault() connectormock.Case[sentry.Release] {
+	value := connectormock.MustDecodeOutput[sentry.Release](`{"version":"app@1.0.0","status":"open"}`)
+	return connectormock.Branch(sentry.CreateReleaseBranchCreated, value, nil)
+}
+
+// CreateReleaseDefault is the manifest default, createReleaseDefault, which New installs.
+func CreateReleaseDefault() connectormock.Case[sentry.Release] {
+	return CreateReleaseCreateReleaseDefault()
+}
+
+// GetReleaseFound selects the found branch: Sentry returned the release.
+func GetReleaseFound(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.GetReleaseBranchFound, value, failure)
+}
+
+// GetReleaseNotFound selects the notFound branch: The release does not exist.
+func GetReleaseNotFound(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.GetReleaseBranchNotFound, value, failure)
+}
+
+// GetReleaseProviderRejected selects the providerRejected branch: Sentry definitively rejected retrieval.
+func GetReleaseProviderRejected(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.GetReleaseBranchProviderRejected, value, failure)
+}
+
+// GetReleaseInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func GetReleaseInvalidResponse(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.GetReleaseBranchInvalidResponse, value, failure)
+}
+
+// GetReleaseDefect selects the defect branch: Local input or credentials are invalid.
+func GetReleaseDefect(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.GetReleaseBranchDefect, value, failure)
+}
+
+// GetReleaseRetry asks Dex to retry the getRelease Step, after the delay when it is positive.
+func GetReleaseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Release] {
+	return connectormock.Retry[sentry.Release](failure, after)
+}
+
+// GetReleaseGetReleaseDefault is the manifest mock getReleaseDefault: One release was found.
+func GetReleaseGetReleaseDefault() connectormock.Case[sentry.Release] {
+	value := connectormock.MustDecodeOutput[sentry.Release](`{"version":"app@1.0.0","status":"open"}`)
+	return connectormock.Branch(sentry.GetReleaseBranchFound, value, nil)
+}
+
+// GetReleaseDefault is the manifest default, getReleaseDefault, which New installs.
+func GetReleaseDefault() connectormock.Case[sentry.Release] { return GetReleaseGetReleaseDefault() }
+
+// ListReleasesListed selects the listed branch: Sentry returned the release page.
+func ListReleasesListed(value sentry.ReleasePage, failure *sdkgo.Failure) connectormock.Case[sentry.ReleasePage] {
+	return connectormock.Branch(sentry.ListReleasesBranchListed, value, failure)
+}
+
+// ListReleasesProviderRejected selects the providerRejected branch: Sentry definitively rejected listing.
+func ListReleasesProviderRejected(value sentry.ReleasePage, failure *sdkgo.Failure) connectormock.Case[sentry.ReleasePage] {
+	return connectormock.Branch(sentry.ListReleasesBranchProviderRejected, value, failure)
+}
+
+// ListReleasesInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func ListReleasesInvalidResponse(value sentry.ReleasePage, failure *sdkgo.Failure) connectormock.Case[sentry.ReleasePage] {
+	return connectormock.Branch(sentry.ListReleasesBranchInvalidResponse, value, failure)
+}
+
+// ListReleasesDefect selects the defect branch: Local input or credentials are invalid.
+func ListReleasesDefect(value sentry.ReleasePage, failure *sdkgo.Failure) connectormock.Case[sentry.ReleasePage] {
+	return connectormock.Branch(sentry.ListReleasesBranchDefect, value, failure)
+}
+
+// ListReleasesRetry asks Dex to retry the listReleases Step, after the delay when it is positive.
+func ListReleasesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.ReleasePage] {
+	return connectormock.Retry[sentry.ReleasePage](failure, after)
+}
+
+// ListReleasesListReleasesDefault is the manifest mock listReleasesDefault: One release was listed.
+func ListReleasesListReleasesDefault() connectormock.Case[sentry.ReleasePage] {
+	value := connectormock.MustDecodeOutput[sentry.ReleasePage](`{"releases":[{"version":"app@1.0.0","status":"open"}]}`)
+	return connectormock.Branch(sentry.ListReleasesBranchListed, value, nil)
+}
+
+// ListReleasesDefault is the manifest default, listReleasesDefault, which New installs.
+func ListReleasesDefault() connectormock.Case[sentry.ReleasePage] {
+	return ListReleasesListReleasesDefault()
+}
+
+// UpdateReleaseUpdated selects the updated branch: Sentry updated the release.
+func UpdateReleaseUpdated(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.UpdateReleaseBranchUpdated, value, failure)
+}
+
+// UpdateReleaseNotFound selects the notFound branch: The release does not exist.
+func UpdateReleaseNotFound(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.UpdateReleaseBranchNotFound, value, failure)
+}
+
+// UpdateReleaseProviderRejected selects the providerRejected branch: Sentry definitively rejected the update.
+func UpdateReleaseProviderRejected(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.UpdateReleaseBranchProviderRejected, value, failure)
+}
+
+// UpdateReleaseInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func UpdateReleaseInvalidResponse(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.UpdateReleaseBranchInvalidResponse, value, failure)
+}
+
+// UpdateReleaseDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateReleaseDefect(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.UpdateReleaseBranchDefect, value, failure)
+}
+
+// UpdateReleaseRetry asks Dex to retry the updateRelease Step, after the delay when it is positive.
+func UpdateReleaseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Release] {
+	return connectormock.Retry[sentry.Release](failure, after)
+}
+
+// UpdateReleaseUpdateReleaseDefault is the manifest mock updateReleaseDefault: One release was updated.
+func UpdateReleaseUpdateReleaseDefault() connectormock.Case[sentry.Release] {
+	value := connectormock.MustDecodeOutput[sentry.Release](`{"version":"app@1.0.0","status":"archived"}`)
+	return connectormock.Branch(sentry.UpdateReleaseBranchUpdated, value, nil)
+}
+
+// UpdateReleaseDefault is the manifest default, updateReleaseDefault, which New installs.
+func UpdateReleaseDefault() connectormock.Case[sentry.Release] {
+	return UpdateReleaseUpdateReleaseDefault()
+}
+
+// DeleteReleaseDeleted selects the deleted branch: Sentry accepted release deletion.
+func DeleteReleaseDeleted(value sentry.DeletedRelease, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedRelease] {
+	return connectormock.Branch(sentry.DeleteReleaseBranchDeleted, value, failure)
+}
+
+// DeleteReleaseNotFound selects the notFound branch: The release does not exist.
+func DeleteReleaseNotFound(value sentry.DeletedRelease, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedRelease] {
+	return connectormock.Branch(sentry.DeleteReleaseBranchNotFound, value, failure)
+}
+
+// DeleteReleaseProviderRejected selects the providerRejected branch: Sentry definitively rejected deletion.
+func DeleteReleaseProviderRejected(value sentry.DeletedRelease, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedRelease] {
+	return connectormock.Branch(sentry.DeleteReleaseBranchProviderRejected, value, failure)
+}
+
+// DeleteReleaseInvalidResponse selects the invalidResponse branch: Sentry returned unexpected deletion content.
+func DeleteReleaseInvalidResponse(value sentry.DeletedRelease, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedRelease] {
+	return connectormock.Branch(sentry.DeleteReleaseBranchInvalidResponse, value, failure)
+}
+
+// DeleteReleaseDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteReleaseDefect(value sentry.DeletedRelease, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedRelease] {
+	return connectormock.Branch(sentry.DeleteReleaseBranchDefect, value, failure)
+}
+
+// DeleteReleaseRetry asks Dex to retry the deleteRelease Step, after the delay when it is positive.
+func DeleteReleaseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.DeletedRelease] {
+	return connectormock.Retry[sentry.DeletedRelease](failure, after)
+}
+
+// DeleteReleaseDeleteReleaseDefault is the manifest mock deleteReleaseDefault: One release was deleted.
+func DeleteReleaseDeleteReleaseDefault() connectormock.Case[sentry.DeletedRelease] {
+	value := connectormock.MustDecodeOutput[sentry.DeletedRelease](`{"version":"app@1.0.0"}`)
+	return connectormock.Branch(sentry.DeleteReleaseBranchDeleted, value, nil)
+}
+
+// DeleteReleaseDefault is the manifest default, deleteReleaseDefault, which New installs.
+func DeleteReleaseDefault() connectormock.Case[sentry.DeletedRelease] {
+	return DeleteReleaseDeleteReleaseDefault()
 }
 
 // CreateProjectCreated selects the created branch: Sentry created or confirmed the project.

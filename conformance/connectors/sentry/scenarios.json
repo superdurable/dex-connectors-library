@@ -4921,6 +4921,1909 @@
       ],
       "name": "createProject-send-cap",
       "operation": "createProject"
+    },
+    {
+      "callId": "21850227-280b-5047-8ded-38014a764eda",
+      "exchanges": [
+        {
+          "body": "{\"version\":\"app@1.0.0\",\"status\":\"open\",\"projects\":[{\"slug\":\"app\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/releases/",
+          "requestBody": {
+            "projects": [
+              "app"
+            ],
+            "version": "app@1.0.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21850227-280b-5047-8ded-38014a764eda",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "projects": [
+            {
+              "slug": "app"
+            }
+          ],
+          "status": "open",
+          "version": "app@1.0.0"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21850227-280b-5047-8ded-38014a764eda",
+      "input": {
+        "organization": "acme",
+        "project": "app",
+        "version": "app@1.0.0"
+      },
+      "name": "createRelease-success",
+      "operation": "createRelease"
+    },
+    {
+      "callId": "21850227-280b-5047-8ded-38014a764eda",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/releases/",
+          "requestBody": {
+            "projects": [
+              "app"
+            ],
+            "version": "app@1.0.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21850227-280b-5047-8ded-38014a764eda",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "status": "",
+          "version": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21850227-280b-5047-8ded-38014a764eda",
+      "input": {
+        "organization": "acme",
+        "project": "app",
+        "version": "app@1.0.0"
+      },
+      "name": "createRelease-providerRejected",
+      "operation": "createRelease"
+    },
+    {
+      "callId": "21850227-280b-5047-8ded-38014a764eda",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/releases/",
+          "requestBody": {
+            "projects": [
+              "app"
+            ],
+            "version": "app@1.0.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21850227-280b-5047-8ded-38014a764eda",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21850227-280b-5047-8ded-38014a764eda",
+      "input": {
+        "organization": "acme",
+        "project": "app",
+        "version": "app@1.0.0"
+      },
+      "name": "createRelease-429",
+      "operation": "createRelease"
+    },
+    {
+      "callId": "21850227-280b-5047-8ded-38014a764eda",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/releases/",
+          "requestBody": {
+            "projects": [
+              "app"
+            ],
+            "version": "app@1.0.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21850227-280b-5047-8ded-38014a764eda",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21850227-280b-5047-8ded-38014a764eda",
+      "input": {
+        "organization": "acme",
+        "project": "app",
+        "version": "app@1.0.0"
+      },
+      "name": "createRelease-5xx",
+      "operation": "createRelease"
+    },
+    {
+      "callId": "21850227-280b-5047-8ded-38014a764eda",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/releases/",
+          "requestBody": {
+            "projects": [
+              "app"
+            ],
+            "version": "app@1.0.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21850227-280b-5047-8ded-38014a764eda",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21850227-280b-5047-8ded-38014a764eda",
+      "input": {
+        "organization": "acme",
+        "project": "app",
+        "version": "app@1.0.0"
+      },
+      "name": "createRelease-transport",
+      "operation": "createRelease"
+    },
+    {
+      "callId": "21850227-280b-5047-8ded-38014a764eda",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "status": "",
+          "version": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21850227-280b-5047-8ded-38014a764eda",
+      "input": {
+        "organization": "",
+        "project": "app",
+        "version": "app@1.0.0"
+      },
+      "name": "createRelease-defect",
+      "operation": "createRelease"
+    },
+    {
+      "attempts": 2,
+      "callId": "21850227-280b-5047-8ded-38014a764eda",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/releases/",
+          "requestBody": {
+            "projects": [
+              "app"
+            ],
+            "version": "app@1.0.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"version\":\"app@1.0.0\",\"status\":\"open\",\"projects\":[{\"slug\":\"app\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "projects": [
+            {
+              "slug": "app"
+            }
+          ],
+          "status": "open",
+          "version": "app@1.0.0"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21850227-280b-5047-8ded-38014a764eda",
+      "input": {
+        "organization": "acme",
+        "project": "app",
+        "version": "app@1.0.0"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "21850227-280b-5047-8ded-38014a764eda",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createRelease-readback",
+      "operation": "createRelease"
+    },
+    {
+      "attempts": 3,
+      "callId": "21850227-280b-5047-8ded-38014a764eda",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/releases/",
+          "requestBody": {
+            "projects": [
+              "app"
+            ],
+            "version": "app@1.0.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"detail\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/releases/",
+          "requestBody": {
+            "projects": [
+              "app"
+            ],
+            "version": "app@1.0.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"detail\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/releases/",
+          "requestBody": {
+            "projects": [
+              "app"
+            ],
+            "version": "app@1.0.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "21850227-280b-5047-8ded-38014a764eda",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "status": "",
+          "version": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "21850227-280b-5047-8ded-38014a764eda",
+      "input": {
+        "organization": "acme",
+        "project": "app",
+        "version": "app@1.0.0"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "21850227-280b-5047-8ded-38014a764eda",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "21850227-280b-5047-8ded-38014a764eda",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createRelease-uncertain",
+      "operation": "createRelease"
+    },
+    {
+      "callId": "5b1b0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"version\":\"app@1.0.0\",\"status\":\"open\",\"projects\":[{\"slug\":\"app\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "projects": [
+            {
+              "slug": "app"
+            }
+          ],
+          "status": "open",
+          "version": "app@1.0.0"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "version": "app@1.0.0"
+      },
+      "name": "getRelease-success",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "5b2b0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "status": "",
+          "version": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "version": "app@1.0.0"
+      },
+      "name": "getRelease-providerRejected",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "5b3b0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "version": "app@1.0.0"
+      },
+      "name": "getRelease-429",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "5b4b0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "version": "app@1.0.0"
+      },
+      "name": "getRelease-5xx",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "5b5b0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "version": "app@1.0.0"
+      },
+      "name": "getRelease-transport",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "5b6b0000-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "status": "",
+          "version": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "",
+        "version": "app@1.0.0"
+      },
+      "name": "getRelease-defect",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "5b7b0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "status": "",
+          "version": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "version": "app@1.0.0"
+      },
+      "name": "getRelease-notFound",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "5b8b0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "status": "",
+          "version": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "version": "app@1.0.0"
+      },
+      "name": "getRelease-invalidResponse",
+      "operation": "getRelease"
+    },
+    {
+      "callId": "6b1b0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "[{\"version\":\"app@1.0.0\",\"status\":\"open\",\"projects\":[{\"slug\":\"app\"}]}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "app"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "releases": [
+            {
+              "projects": [
+                {
+                  "slug": "app"
+                }
+              ],
+              "status": "open",
+              "version": "app@1.0.0"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "app"
+      },
+      "name": "listReleases-success",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6b2b0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "app"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "releases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "app"
+      },
+      "name": "listReleases-providerRejected",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6b3b0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "app"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "app"
+      },
+      "name": "listReleases-429",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6b4b0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "app"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "app"
+      },
+      "name": "listReleases-5xx",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6b5b0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "app"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "app"
+      },
+      "name": "listReleases-transport",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6b6b0000-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "releases": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "",
+        "query": "app"
+      },
+      "name": "listReleases-defect",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6b7b0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/releases/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "app"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "releases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "app"
+      },
+      "name": "listReleases-invalidResponse",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "exchanges": [
+        {
+          "body": "{\"version\":\"app@1.0.0\",\"status\":\"archived\",\"ref\":\"abc123\",\"url\":\"https://example.test/release\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestBody": {
+            "ref": "abc123",
+            "status": "archived",
+            "url": "https://example.test/release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "ref": "abc123",
+          "status": "archived",
+          "url": "https://example.test/release",
+          "version": "app@1.0.0"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "input": {
+        "organization": "acme",
+        "ref": "abc123",
+        "status": "archived",
+        "url": "https://example.test/release",
+        "version": "app@1.0.0"
+      },
+      "name": "updateRelease-success",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestBody": {
+            "ref": "abc123",
+            "status": "archived",
+            "url": "https://example.test/release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "status": "",
+          "version": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "input": {
+        "organization": "acme",
+        "ref": "abc123",
+        "status": "archived",
+        "url": "https://example.test/release",
+        "version": "app@1.0.0"
+      },
+      "name": "updateRelease-providerRejected",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestBody": {
+            "ref": "abc123",
+            "status": "archived",
+            "url": "https://example.test/release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "input": {
+        "organization": "acme",
+        "ref": "abc123",
+        "status": "archived",
+        "url": "https://example.test/release",
+        "version": "app@1.0.0"
+      },
+      "name": "updateRelease-429",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestBody": {
+            "ref": "abc123",
+            "status": "archived",
+            "url": "https://example.test/release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "input": {
+        "organization": "acme",
+        "ref": "abc123",
+        "status": "archived",
+        "url": "https://example.test/release",
+        "version": "app@1.0.0"
+      },
+      "name": "updateRelease-5xx",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestBody": {
+            "ref": "abc123",
+            "status": "archived",
+            "url": "https://example.test/release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "input": {
+        "organization": "acme",
+        "ref": "abc123",
+        "status": "archived",
+        "url": "https://example.test/release",
+        "version": "app@1.0.0"
+      },
+      "name": "updateRelease-transport",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "status": "",
+          "version": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "input": {
+        "organization": "",
+        "ref": "abc123",
+        "status": "archived",
+        "url": "https://example.test/release",
+        "version": "app@1.0.0"
+      },
+      "name": "updateRelease-defect",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestBody": {
+            "ref": "abc123",
+            "status": "archived",
+            "url": "https://example.test/release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "status": "",
+          "version": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "input": {
+        "organization": "acme",
+        "ref": "abc123",
+        "status": "archived",
+        "url": "https://example.test/release",
+        "version": "app@1.0.0"
+      },
+      "name": "updateRelease-notFound",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestBody": {
+            "ref": "abc123",
+            "status": "archived",
+            "url": "https://example.test/release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "status": "",
+          "version": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f125fe53-ecbf-5fbd-9121-a77bc3065ae8",
+      "input": {
+        "organization": "acme",
+        "ref": "abc123",
+        "status": "archived",
+        "url": "https://example.test/release",
+        "version": "app@1.0.0"
+      },
+      "name": "updateRelease-invalidResponse",
+      "operation": "updateRelease"
+    },
+    {
+      "callId": "37721751-04bf-5b08-8067-84feacd756ab",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "version": "app@1.0.0"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37721751-04bf-5b08-8067-84feacd756ab",
+      "input": {
+        "organization": "acme",
+        "version": "app@1.0.0"
+      },
+      "name": "deleteRelease-success",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "37721751-04bf-5b08-8067-84feacd756ab",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "version": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37721751-04bf-5b08-8067-84feacd756ab",
+      "input": {
+        "organization": "acme",
+        "version": "app@1.0.0"
+      },
+      "name": "deleteRelease-providerRejected",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "37721751-04bf-5b08-8067-84feacd756ab",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37721751-04bf-5b08-8067-84feacd756ab",
+      "input": {
+        "organization": "acme",
+        "version": "app@1.0.0"
+      },
+      "name": "deleteRelease-429",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "37721751-04bf-5b08-8067-84feacd756ab",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37721751-04bf-5b08-8067-84feacd756ab",
+      "input": {
+        "organization": "acme",
+        "version": "app@1.0.0"
+      },
+      "name": "deleteRelease-5xx",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "37721751-04bf-5b08-8067-84feacd756ab",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37721751-04bf-5b08-8067-84feacd756ab",
+      "input": {
+        "organization": "acme",
+        "version": "app@1.0.0"
+      },
+      "name": "deleteRelease-transport",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "37721751-04bf-5b08-8067-84feacd756ab",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "version": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37721751-04bf-5b08-8067-84feacd756ab",
+      "input": {
+        "organization": "",
+        "version": "app@1.0.0"
+      },
+      "name": "deleteRelease-defect",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "37721751-04bf-5b08-8067-84feacd756ab",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "version": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37721751-04bf-5b08-8067-84feacd756ab",
+      "input": {
+        "organization": "acme",
+        "version": "app@1.0.0"
+      },
+      "name": "deleteRelease-notFound",
+      "operation": "deleteRelease"
+    },
+    {
+      "callId": "37721751-04bf-5b08-8067-84feacd756ab",
+      "exchanges": [
+        {
+          "body": "unexpected",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/organizations/acme/releases/app@1.0.0/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "version": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37721751-04bf-5b08-8067-84feacd756ab",
+      "input": {
+        "organization": "acme",
+        "version": "app@1.0.0"
+      },
+      "name": "deleteRelease-invalidResponse",
+      "operation": "deleteRelease"
     }
   ],
   "schemaVersion": 1

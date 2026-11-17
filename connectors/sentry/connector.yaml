@@ -70,6 +70,89 @@ spec:
       - Paste the token into the secret api_key field and save the connection; leave
         baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
+  - name: createRelease
+    goName: CreateRelease
+    inputType: CreateReleaseInput
+    outputType: Release
+    kind: mutation
+    description: Create a versioned release for one organization project.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Sentry created or confirmed the release.}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected creation., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createReleaseDefault, branch: created, default: true, description: One release was created., output: {version: app@1.0.0, status: open}}
+  - name: getRelease
+    goName: GetRelease
+    inputType: GetReleaseInput
+    outputType: Release
+    kind: query
+    description: Retrieve one organization release by version.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Sentry returned the release.}
+    - {id: notFound, goName: NotFound, description: The release does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected retrieval., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getReleaseDefault, branch: found, default: true, description: One release was found., output: {version: app@1.0.0, status: open}}
+  - name: listReleases
+    goName: ListReleases
+    inputType: ListReleasesInput
+    outputType: ReleasePage
+    kind: query
+    description: List one organization's releases with a cursor and query filter.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Sentry returned the release page.}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected listing., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listReleasesDefault, branch: listed, default: true, description: One release was listed., output: {releases: [{version: app@1.0.0, status: open}]}}
+  - name: updateRelease
+    goName: UpdateRelease
+    inputType: UpdateReleaseInput
+    outputType: Release
+    kind: mutation
+    description: Replace selected release metadata and status by version.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Sentry updated the release.}
+    - {id: notFound, goName: NotFound, description: The release does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected the update., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateReleaseDefault, branch: updated, default: true, description: One release was updated., output: {version: app@1.0.0, status: archived}}
+  - name: deleteRelease
+    goName: DeleteRelease
+    inputType: DeleteReleaseInput
+    outputType: DeletedRelease
+    kind: mutation
+    description: Permanently delete one release by version.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Sentry accepted release deletion.}
+    - {id: notFound, goName: NotFound, description: The release does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected deletion., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned unexpected deletion content., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteReleaseDefault, branch: deleted, default: true, description: One release was deleted., output: {version: app@1.0.0}}
   - name: createProject
     goName: CreateProject
     inputType: CreateProjectInput
