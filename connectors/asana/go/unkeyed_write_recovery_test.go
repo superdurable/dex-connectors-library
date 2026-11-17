@@ -229,7 +229,7 @@ func TestUnkeyedWriteMismatchedReadBackIsUncertain(t *testing.T) {
 	}
 }
 
-func TestUnkeyedWriteStaleResendPermissionAfterAcceptedPostFailsClosed(t *testing.T) {
+func TestUnkeyedWriteStaleResendPermissionCountsTheLaterSend(t *testing.T) {
 	for _, operation := range unkeyedWriteTestOperations {
 		t.Run(operation.name, func(t *testing.T) {
 			provider := newRecordingAsana(t, func(response http.ResponseWriter, _ *http.Request, index int) {
@@ -247,10 +247,10 @@ func TestUnkeyedWriteStaleResendPermissionAfterAcceptedPostFailsClosed(t *testin
 			branch, _, err := operation.run(client, second)
 			require.NoError(t, err)
 			require.Equal(t, operation.successBranch, branch)
-			third := newReplayAsanaDexContext("stale-resend", 3, first.lastHeartbeat())
+			third := newReplayAsanaDexContext("stale-resend", asana.CreateTaskDefinition.MaxSends+2, first.lastHeartbeat())
 			branch, _, err = operation.run(client, third)
 			require.NoError(t, err)
-			require.Equal(t, operation.uncertainBranch, branch)
+			require.Equal(t, operation.uncertainBranch, branch, "the stale grant counts the later attempts up to the cap")
 			require.Equal(t, 2, provider.requestCount())
 			require.Equal(t, http.MethodPost, provider.request(0).method)
 			require.Equal(t, http.MethodPost, provider.request(1).method)
@@ -258,7 +258,7 @@ func TestUnkeyedWriteStaleResendPermissionAfterAcceptedPostFailsClosed(t *testin
 	}
 }
 
-func TestUnkeyedWriteCheckpointFailuresFailClosed(t *testing.T) {
+func TestUnkeyedWriteUntrustedCheckpointsRetryWithoutSending(t *testing.T) {
 	for _, operation := range unkeyedWriteTestOperations {
 		t.Run(operation.name, func(t *testing.T) {
 			provider := newRecordingAsana(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -273,21 +273,28 @@ func TestUnkeyedWriteCheckpointFailuresFailClosed(t *testing.T) {
 				attempt int32
 				value   json.RawMessage
 			}{
-				{name: "missing", attempt: 2},
-				{name: "stale", attempt: 3, value: first.lastHeartbeat()},
 				{name: "foreign call", attempt: 2, value: changedCheckpoint(t, first.lastHeartbeat(), func(checkpoint map[string]any) { checkpoint["callId"] = "foreign" })},
-				{name: "foreign operation", attempt: 2, value: changedCheckpoint(t, first.lastHeartbeat(), func(checkpoint map[string]any) { checkpoint["operation"] = "foreign" })},
-				{name: "invalid gid", attempt: 2, value: changedCheckpoint(t, first.lastHeartbeat(), func(checkpoint map[string]any) { checkpoint["objectId"] = "invalid" })},
+				{name: "unknown state", attempt: 2, value: changedCheckpoint(t, first.lastHeartbeat(), func(checkpoint map[string]any) { checkpoint["state"] = "foreign" })},
 				{name: "unreadable", attempt: 2, value: json.RawMessage(`{"callId":`)},
 			} {
 				t.Run(checkpoint.name, func(t *testing.T) {
 					stepContext := newReplayAsanaDexContext("checkpoint", checkpoint.attempt, checkpoint.value)
-					branch, _, err := operation.run(client, stepContext)
-					require.NoError(t, err)
-					require.Equal(t, operation.uncertainBranch, branch)
+					_, _, err := operation.run(client, stepContext)
+					requireRetry(t, err, sdkgo.FailureAvailability)
 					require.Equal(t, 1, provider.requestCount())
 				})
 			}
+			invalidID := newReplayAsanaDexContext("checkpoint", 2, changedCheckpoint(t, first.lastHeartbeat(), func(checkpoint map[string]any) {
+				checkpoint["state"], checkpoint["providerId"] = "claimed", "invalid"
+			}))
+			branch, _, err := operation.run(client, invalidID)
+			require.NoError(t, err)
+			require.Equal(t, operation.uncertainBranch, branch, "an invalid saved ID can never be read back")
+			atCap := newReplayAsanaDexContext("checkpoint", asana.CreateTaskDefinition.MaxSends+1, nil)
+			branch, _, err = operation.run(client, atCap)
+			require.NoError(t, err)
+			require.Equal(t, operation.uncertainBranch, branch, "without a checkpoint each earlier attempt counts as a send")
+			require.Equal(t, 1, provider.requestCount())
 		})
 	}
 }

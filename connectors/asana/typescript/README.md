@@ -1,6 +1,6 @@
 # Asana connector for Dex TypeScript
 
-Install `@superdurable/connector-asana@0.2.0` alongside `@superdurable/dex` 1.45.4 or newer and `@superdurable/connectors-sdk` 0.12.0. This package implements `listTasks`, `getTask`, `createTask`, `updateTask`, and `addComment`, and, from 0.2.0, the `taskChanged` poll Trigger at parity with Go.
+Install `@superdurable/connector-asana@0.2.1` alongside `@superdurable/dex` 1.45.4 or newer and `@superdurable/connectors-sdk` 0.12.0. This package implements `listTasks`, `getTask`, `createTask`, `updateTask`, and `addComment`, and, from 0.2.0, the `taskChanged` poll Trigger at parity with Go.
 
 `Client` takes a `Config` and a `CredentialProvider<Credentials>`. Use `newProjectConnection` to load the named Dex Web connection, or `newConnection` to bind a client explicitly. The [approved request example](examples/approved-request-task/flow.ts) is a runnable Flow using every operation and the static `asana-approved-requests` connection name. Start its [Worker](examples/approved-request-task/main.ts) after configuring that connection in Dex Web. The [example guide](examples/approved-request-task/README.md) gives local verification commands.
 

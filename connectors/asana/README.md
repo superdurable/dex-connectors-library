@@ -1,8 +1,8 @@
 # Asana Connector
 
-TypeScript: install `@superdurable/connector-asana@0.2.0`. Its [package README](typescript/README.md) and [runnable approved-request example](typescript/examples/approved-request-task/README.md) cover all five operations, and its [task-changed example](typescript/examples/task-changed/README.md) covers the `taskChanged` Trigger. Go and TypeScript share recorded provider conformance scenarios; the TypeScript example was exercised with a real Dex Worker and a local Asana stand-in. Live Asana behavior remains unverified for the TypeScript port.
+TypeScript: install `@superdurable/connector-asana@0.2.1`. Its [package README](typescript/README.md) and [runnable approved-request example](typescript/examples/approved-request-task/README.md) cover all five operations, and its [task-changed example](typescript/examples/task-changed/README.md) covers the `taskChanged` Trigger. Go and TypeScript share recorded provider conformance scenarios; the TypeScript example was exercised with a real Dex Worker and a local Asana stand-in. Live Asana behavior remains unverified for the TypeScript port.
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/asana/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/asana/go@v0.24.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/asana`.
 
@@ -156,18 +156,22 @@ Asana's create-only `memberships`; otherwise in the project's default section.
 gid: `Text`, `Number`, `EnumOptionID` (the option's gid, not its name), or
 `MultiEnumOptionIDs`; date and people fields are not supported.
 
-Asana documents no provider-enforced idempotency key for these POSTs. The
-connector retries 429 and 503, and retries transport failures only with
-positive evidence that the request never obtained a connection:
+Asana documents no provider-enforced idempotency key for these POSTs, so
+`createTask` and `addComment` are `limited` Mutations with the default send cap
+of 3 possibly effective POSTs per Call ID. The connector retries 429 and 503,
+retries transport failures with positive evidence that the request never
+obtained a connection, and resends an unknown outcome while another POST stays
+within the cap:
 
 | Outcome | Result |
 | --- | --- |
-| 201 with a task gid | `created` |
-| 400, 401, 402, 403, 404, or another 4xx except 408 and 429 | `providerRejected` |
+| 201 with a task gid | `created`, and the gid is checkpointed for read-back |
+| 400, 401, 403, 404, 411, 413, 414, 415, or 422 on the first POST | Checkpoint `canResend`, then `providerRejected` |
+| One of those refusals after an earlier possible POST | `uncertain` |
 | 429 or 503 | Retry, after `Retry-After` when supplied |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 408, 3xx, or 5xx other than 503 after dispatch | `uncertain` |
-| 2xx whose body is oversized, unreadable, unusable, or reflects the token | `uncertain` |
+| Timeout, dropped connection, 3xx, 402, 408, 409, another 4xx, or another 5xx after dispatch | Retry and resend below the send cap; `uncertain` at the cap |
+| 2xx whose body is oversized, unreadable, unusable, or reflects the token | Retry and resend below the send cap; `uncertain` at the cap |
 
 On `providerRejected` and `uncertain`, the Value echoes the requested name,
 project, section, and workspace without a task gid. Asana's `external.gid`
@@ -190,8 +194,9 @@ later field change was rejected. Asana does not document what `addTask` does
 for a section of a project the task is not in.
 
 Because a repeated move or `PUT` leaves the same task, every ambiguous outcome,
-including a timeout after dispatch or a 5xx, retries instead of selecting
-`uncertain`. A retry can move the task back to the top of the
+including a timeout after dispatch, a 5xx, a 3xx, a 409 or another status outside
+400, 401, 403, 404, 411, 413, 414, 415, and 422, or an oversized response,
+retries instead of selecting `uncertain`. A retry can move the task back to the top of the
 section if someone reordered it in between.
 
 ### addComment
@@ -219,16 +224,18 @@ override these Steps to async.
 assigned, scheduled, and in the section exactly as with one request;
 `TestSlowUpdateBackupAttemptLeavesTheSameTaskWithRealDex` guards this.
 
-The connector records a dispatch heartbeat before either POST and keeps it alive
-during the request. A later attempt may send only after the prior attempt
-checkpointed a 429, 503, or provably unsent transport result. A valid task or
-story gid is checkpointed for read-back. A near-deadline attempt also records
-that no POST was sent before asking Dex to retry. If Dex loses or restores no checkpoint,
-or a checkpoint is stale, the connector fails closed as `uncertain` and sends
-no second POST. Dex heartbeat recording is not an acknowledgement that the
-checkpoint was persisted, so an accepted write can still become `uncertain`.
-Under an async override, the local-phase heartbeat is not visible to a later
-attempt, so even a 429 or 503 may become `uncertain` instead of retrying.
+The connector records the shared single-dispatch claim, with a send count,
+before either POST and keeps it alive during the request. A 429, 503, or
+provably unsent transport result records that nothing was sent. A valid task or
+story gid is checkpointed, and a later attempt reads it back by gid and never
+posts again. A near-deadline attempt also records that no POST was sent before
+asking Dex to retry. A lost, missing, or stale checkpoint counts each earlier
+attempt as a possible POST, so another POST follows only below the send cap;
+an unreadable or foreign checkpoint returns Retry without sending. Asana has no
+lookup by Call ID, so a resend can duplicate a task or comment; at most the cap
+of them exist. Set the Step's `MaxSends` to 1 to forbid any resend. Under an
+async override, the local-phase heartbeat is not visible to a later attempt, so
+attempts may count as possible POSTs and reach `uncertain` sooner.
 An application handles `uncertain` without creating again automatically; the
 [`approved-request-task`](go/examples/approved-request-task) example parks the
 create for an operator, who confirms the task found in the project or approves
@@ -375,7 +382,7 @@ deleted task completes without a read.
 
 ## Python package
 
-The `python/` package releases independently as `dex-connector-asana` v0.2.0.
+The `python/` package releases independently as `dex-connector-asana` v0.2.1.
 It implements `listTasks`, `getTask`, `createTask`, `updateTask`, and
 `addComment`, and, from 0.2.0, the `taskChanged` Trigger at parity with Go on
 the Python Connector SDK's poll Trigger kit (`dex-connectors-sdk` 0.12.0 or

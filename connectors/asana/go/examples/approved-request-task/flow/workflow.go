@@ -254,7 +254,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: createRequestTaskStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "asana", GroupLabel: "Asana",
-				Explanation: "Create the task once; an unknown outcome is reconciled, never created again automatically.",
+				Explanation: "Create the task; an unknown outcome is resent up to the send cap, then reconciled by an operator.",
 			},
 			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
 				ID: "requestProject", UnitID: asana.UIUnitProjectPicker, Label: "Request project and section",
@@ -301,7 +301,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: commentOnRequestTaskStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "asana", GroupLabel: "Asana",
-				Explanation: "Add the approval comment once; an unknown outcome fails the Flow without resending.",
+				Explanation: "Add the approval comment; an unknown outcome is resent up to the send cap, then fails the Flow.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToAddCommentInput,
 			Added: sdkgo.GoTo(recordApprovalComment{}),
