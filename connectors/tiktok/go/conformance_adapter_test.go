@@ -24,12 +24,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	createContext := singledispatchtest.NewContext("tiktok-conformance", "create-campaign")
 	createAdgroupContext := singledispatchtest.NewContext("tiktok-conformance", "create-adgroup")
+	createAdContext := singledispatchtest.NewContext("tiktok-conformance", "create-ad")
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		if attempt > 1 {
 			createContext.AdvanceAttempt()
 			createAdgroupContext.AdvanceAttempt()
+			createAdContext.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
+		"createAd":             newConformanceMutationInvocation(t, scenario.Input, createAdContext, client.CreateAd(), reference, scenario.CallID),
+		"updateAd":             newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateAd(), reference, scenario.CallID),
 		"createAdgroup":        newConformanceMutationInvocation(t, scenario.Input, createAdgroupContext, client.CreateAdgroup(), reference, scenario.CallID),
 		"updateAdgroup":        newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateAdgroup(), reference, scenario.CallID),
 		"createCampaign":       newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateCampaign(), reference, scenario.CallID),

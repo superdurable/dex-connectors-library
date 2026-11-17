@@ -33,7 +33,9 @@ func TestCampaignDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	updateCampaignFlow := NewUpdateCampaignFlow(mock.Connection())
 	createAdgroupFlow := NewCreateAdgroupFlow(mock.Connection())
 	updateAdgroupFlow := NewUpdateAdgroupFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, adgroupsFlow, adsFlow, campaignStatusFlow, adgroupStatusFlow, adStatusFlow, createCampaignFlow, updateCampaignFlow, createAdgroupFlow, updateAdgroupFlow})
+	createAdFlow := NewCreateAdFlow(mock.Connection())
+	updateAdFlow := NewUpdateAdFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, adgroupsFlow, adsFlow, campaignStatusFlow, adgroupStatusFlow, adStatusFlow, createCampaignFlow, updateCampaignFlow, createAdgroupFlow, updateAdgroupFlow, createAdFlow, updateAdFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -136,4 +138,19 @@ func TestCampaignDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, updateAdgroupResult.Status, updateAdgroupResult.ErrorMessage)
 	require.Len(t, mock.UpdateAdgroup().Calls(), 1)
+	createAdFlowID := flowID + "-create-ad"
+	_, err = client.StartFlow(ctx, createAdFlow, createAdFlowID, tiktok.CreateAdInput{AdvertiserID: "1845123456789012344", AdgroupID: "1845123456789012346", Name: "Example Ad", Text: "Example ad copy", VideoID: "video-1", ImageID: "image-1", IdentityID: "identity-1", IdentityType: "CUSTOMIZED_USER", CallToAction: "LEARN_MORE", LandingPageURL: "https://example.com/landing"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	createAdResult, err := client.WaitForFlow(ctx, createAdFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, createAdResult.Status, createAdResult.ErrorMessage)
+	require.Len(t, mock.CreateAd().Calls(), 1)
+	updateAdFlowID := flowID + "-update-ad"
+	updatedAdName := "Updated Ad"
+	_, err = client.StartFlow(ctx, updateAdFlow, updateAdFlowID, tiktok.UpdateAdInput{AdvertiserID: "1845123456789012344", AdgroupID: "1845123456789012346", AdID: "1845123456789012347", Name: &updatedAdName}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	updateAdResult, err := client.WaitForFlow(ctx, updateAdFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, updateAdResult.Status, updateAdResult.ErrorMessage)
+	require.Len(t, mock.UpdateAd().Calls(), 1)
 }
