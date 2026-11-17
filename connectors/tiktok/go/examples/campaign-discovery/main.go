@@ -46,6 +46,8 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		campaigndiscovery.NewCampaignStatusFlow(connection),
 		campaigndiscovery.NewAdgroupStatusFlow(connection),
 		campaigndiscovery.NewAdStatusFlow(connection),
+		campaigndiscovery.NewCreateCampaignFlow(connection),
+		campaigndiscovery.NewUpdateCampaignFlow(connection),
 	})
 	if err != nil {
 		return fmt.Errorf("register TikTok campaign discovery Flow: %w", err)

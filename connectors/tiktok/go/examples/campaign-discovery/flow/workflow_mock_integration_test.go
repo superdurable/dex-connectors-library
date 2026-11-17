@@ -29,7 +29,9 @@ func TestCampaignDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	campaignStatusFlow := NewCampaignStatusFlow(mock.Connection())
 	adgroupStatusFlow := NewAdgroupStatusFlow(mock.Connection())
 	adStatusFlow := NewAdStatusFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, adgroupsFlow, adsFlow, campaignStatusFlow, adgroupStatusFlow, adStatusFlow})
+	createCampaignFlow := NewCreateCampaignFlow(mock.Connection())
+	updateCampaignFlow := NewUpdateCampaignFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, adgroupsFlow, adsFlow, campaignStatusFlow, adgroupStatusFlow, adStatusFlow, createCampaignFlow, updateCampaignFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -102,4 +104,19 @@ func TestCampaignDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, adStatusResult.Status, adStatusResult.ErrorMessage)
 	require.Len(t, mock.UpdateAdStatus().Calls(), 1)
+	createCampaignFlowID := flowID + "-create-campaign"
+	_, err = client.StartFlow(ctx, createCampaignFlow, createCampaignFlowID, tiktok.CreateCampaignInput{AdvertiserID: "1845123456789012344", Name: "Example Campaign", ObjectiveType: "LEAD_GENERATION", BudgetMode: "BUDGET_MODE_TOTAL", Budget: 50}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	createCampaignResult, err := client.WaitForFlow(ctx, createCampaignFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, createCampaignResult.Status, createCampaignResult.ErrorMessage)
+	require.Len(t, mock.CreateCampaign().Calls(), 1)
+	updateCampaignFlowID := flowID + "-update-campaign"
+	updatedCampaignName := "Updated Campaign"
+	_, err = client.StartFlow(ctx, updateCampaignFlow, updateCampaignFlowID, tiktok.UpdateCampaignInput{AdvertiserID: "1845123456789012344", CampaignID: "1845123456789012345", Name: &updatedCampaignName}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	updateCampaignResult, err := client.WaitForFlow(ctx, updateCampaignFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, updateCampaignResult.Status, updateCampaignResult.ErrorMessage)
+	require.Len(t, mock.UpdateCampaign().Calls(), 1)
 }

@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createCampaign/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.CampaignWriteResult](`{"id":"1845123456789012345"}`)
+			return err
+		}},
+		{name: "updateCampaign/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.CampaignWriteResult](`{"id":"1845123456789012345"}`)
+			return err
+		}},
 		{name: "updateCampaignStatus/updatedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[tiktok.AdvertisingStatusResult](`{"resourceId":"1845123456789012345","operationStatus":"DISABLE"}`)
 			return err
@@ -50,6 +58,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateCampaign().Definition().Operation.OperationID != "createCampaign" {
+		t.Errorf("createCampaign mock has another definition")
+	}
+	if mock.UpdateCampaign().Definition().Operation.OperationID != "updateCampaign" {
+		t.Errorf("updateCampaign mock has another definition")
+	}
 	if mock.UpdateCampaignStatus().Definition().Operation.OperationID != "updateCampaignStatus" {
 		t.Errorf("updateCampaignStatus mock has another definition")
 	}

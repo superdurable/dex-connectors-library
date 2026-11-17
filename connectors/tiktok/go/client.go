@@ -6,6 +6,7 @@ package tiktok
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -96,6 +97,10 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 }
 
 func (client *Client) post(call sdkgo.Call, path string, body []byte) providerResponse {
+	return client.postWithContext(call, call.Context, path, body)
+}
+
+func (client *Client) postWithContext(call sdkgo.Call, requestContext context.Context, path string, body []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -104,7 +109,7 @@ func (client *Client) post(call sdkgo.Call, path string, body []byte) providerRe
 	if !providerhttp.IsHeaderSafeCredential(accessToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+path, bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(requestContext, http.MethodPost, client.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}

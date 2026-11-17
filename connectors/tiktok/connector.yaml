@@ -56,6 +56,46 @@ spec:
         - Exchange the returned auth_code with the app ID and secret at the documented /oauth2/access_token/ endpoint. Save only the returned access_token in Dex Web secret access_token; never put the app secret or token in Flow input. Renew or reauthorize when TikTok invalidates it.
         - Open https://ads.tiktok.com > Ads Manager > Account Name > ID and copy the decimal ad account ID into listCampaigns advertiserId. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: createCampaign
+      goName: CreateCampaign
+      inputType: CreateCampaignInput
+      outputType: CampaignWriteResult
+      kind: mutation
+      description: Create a regular campaign for an authorized advertiser.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: TikTok created the campaign and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the create., optional: true}
+        - {id: uncertain, goName: Uncertain, description: TikTok may have created the campaign but no ID was confirmed after the send cap., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, credentials, or checkpoint are invalid.", optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Example campaign was created.
+          output: {id: '1845123456789012345'}
+    - name: updateCampaign
+      goName: UpdateCampaign
+      inputType: UpdateCampaignInput
+      outputType: CampaignWriteResult
+      kind: mutation
+      description: Replace a campaign name or budget.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: TikTok confirmed the campaign update.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Example campaign was updated.
+          output: {id: '1845123456789012345'}
     - name: updateCampaignStatus
       goName: UpdateCampaignStatus
       inputType: UpdateCampaignStatusInput

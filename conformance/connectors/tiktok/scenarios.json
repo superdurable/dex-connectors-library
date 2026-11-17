@@ -2072,6 +2072,802 @@
       },
       "name": "updateAdStatus-transportFailure",
       "operation": "updateAdStatus"
+    },
+    {
+      "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"campaign_id\":\"1845123456789012345\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/create/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 50,
+            "budget_mode": "BUDGET_MODE_TOTAL",
+            "campaign_name": "Example Campaign",
+            "objective_type": "LEAD_GENERATION"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+          "providerId": "1845123456789012345",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "1845123456789012345"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 50,
+        "budgetMode": "BUDGET_MODE_TOTAL",
+        "name": "Example Campaign",
+        "objectiveType": "LEAD_GENERATION"
+      },
+      "name": "createCampaign-success",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "exchanges": [
+        {
+          "body": "{\"code\":40001,\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/create/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 50,
+            "budget_mode": "BUDGET_MODE_TOTAL",
+            "campaign_name": "Example Campaign",
+            "objective_type": "LEAD_GENERATION"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 50,
+        "budgetMode": "BUDGET_MODE_TOTAL",
+        "name": "Example Campaign",
+        "objectiveType": "LEAD_GENERATION"
+      },
+      "name": "createCampaign-providerRejected",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "exchanges": [
+        {
+          "body": "{\"invalid\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/create/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 50,
+            "budget_mode": "BUDGET_MODE_TOTAL",
+            "campaign_name": "Example Campaign",
+            "objective_type": "LEAD_GENERATION"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 50,
+        "budgetMode": "BUDGET_MODE_TOTAL",
+        "name": "Example Campaign",
+        "objectiveType": "LEAD_GENERATION"
+      },
+      "name": "createCampaign-invalidResponse",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 50,
+        "budgetMode": "BUDGET_MODE_TOTAL",
+        "name": "",
+        "objectiveType": "LEAD_GENERATION"
+      },
+      "name": "createCampaign-defect",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/create/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 50,
+            "budget_mode": "BUDGET_MODE_TOTAL",
+            "campaign_name": "Example Campaign",
+            "objective_type": "LEAD_GENERATION"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 50,
+        "budgetMode": "BUDGET_MODE_TOTAL",
+        "name": "Example Campaign",
+        "objectiveType": "LEAD_GENERATION"
+      },
+      "name": "createCampaign-rateLimit",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/create/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 50,
+            "budget_mode": "BUDGET_MODE_TOTAL",
+            "campaign_name": "Example Campaign",
+            "objective_type": "LEAD_GENERATION"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 50,
+        "budgetMode": "BUDGET_MODE_TOTAL",
+        "name": "Example Campaign",
+        "objectiveType": "LEAD_GENERATION"
+      },
+      "name": "createCampaign-serverError",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/create/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 50,
+            "budget_mode": "BUDGET_MODE_TOTAL",
+            "campaign_name": "Example Campaign",
+            "objective_type": "LEAD_GENERATION"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 50,
+        "budgetMode": "BUDGET_MODE_TOTAL",
+        "name": "Example Campaign",
+        "objectiveType": "LEAD_GENERATION"
+      },
+      "name": "createCampaign-transportFailure",
+      "operation": "createCampaign"
+    },
+    {
+      "attempts": 3,
+      "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/create/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 50,
+            "budget_mode": "BUDGET_MODE_TOTAL",
+            "campaign_name": "Example Campaign",
+            "objective_type": "LEAD_GENERATION"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/create/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 50,
+            "budget_mode": "BUDGET_MODE_TOTAL",
+            "campaign_name": "Example Campaign",
+            "objective_type": "LEAD_GENERATION"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/create/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 50,
+            "budget_mode": "BUDGET_MODE_TOTAL",
+            "campaign_name": "Example Campaign",
+            "objective_type": "LEAD_GENERATION"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 50,
+        "budgetMode": "BUDGET_MODE_TOTAL",
+        "name": "Example Campaign",
+        "objectiveType": "LEAD_GENERATION"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCampaign-capUncertain",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 70,
+            "campaign_id": "1845123456789012345",
+            "campaign_name": "Updated Campaign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "1845123456789012345"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "campaignId": "1845123456789012345",
+        "name": "Updated Campaign"
+      },
+      "name": "updateCampaign-success",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "exchanges": [
+        {
+          "body": "{\"code\":40001,\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "campaign_id": "1845123456789012345",
+            "campaign_name": "Updated Campaign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "campaignId": "1845123456789012345",
+        "name": "Updated Campaign"
+      },
+      "name": "updateCampaign-providerRejected",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "exchanges": [
+        {
+          "body": "{\"invalid\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "campaign_id": "1845123456789012345",
+            "campaign_name": "Updated Campaign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "campaignId": "1845123456789012345",
+        "name": "Updated Campaign"
+      },
+      "name": "updateCampaign-invalidResponse",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "campaignId": "",
+        "name": "Updated Campaign"
+      },
+      "name": "updateCampaign-defect",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "campaign_id": "1845123456789012345",
+            "campaign_name": "Updated Campaign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "campaignId": "1845123456789012345",
+        "name": "Updated Campaign"
+      },
+      "name": "updateCampaign-rateLimit",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "campaign_id": "1845123456789012345",
+            "campaign_name": "Updated Campaign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "campaignId": "1845123456789012345",
+        "name": "Updated Campaign"
+      },
+      "name": "updateCampaign-serverError",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "campaign_id": "1845123456789012345",
+            "campaign_name": "Updated Campaign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "campaignId": "1845123456789012345",
+        "name": "Updated Campaign"
+      },
+      "name": "updateCampaign-transportFailure",
+      "operation": "updateCampaign"
     }
   ],
   "schemaVersion": 1
