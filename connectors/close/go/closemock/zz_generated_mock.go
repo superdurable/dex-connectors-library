@@ -18,6 +18,11 @@ import (
 // Mock is a scripted close connection. Script each operation through its accessor.
 type Mock struct {
 	connection        close.Connection
+	listCalls         *connectormock.Query[close.ListCallsInput, close.CallPage]
+	getCall           *connectormock.Query[close.GetCallInput, close.CallActivity]
+	logCall           *connectormock.Mutation[close.LogCallInput, close.CallActivity]
+	updateCall        *connectormock.Mutation[close.UpdateCallInput, close.CallActivity]
+	deleteCall        *connectormock.Mutation[close.DeleteCallInput, close.DeletedCall]
 	listNotes         *connectormock.Query[close.ListNotesInput, close.NotePage]
 	getNote           *connectormock.Query[close.GetNoteInput, close.Note]
 	createNote        *connectormock.Mutation[close.CreateNoteInput, close.Note]
@@ -50,6 +55,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listCalls:         connectormock.NewQuery[close.ListCallsInput, close.CallPage](t, close.ListCallsDefinition),
+		getCall:           connectormock.NewQuery[close.GetCallInput, close.CallActivity](t, close.GetCallDefinition),
+		logCall:           connectormock.NewMutation[close.LogCallInput, close.CallActivity](t, close.LogCallDefinition),
+		updateCall:        connectormock.NewMutation[close.UpdateCallInput, close.CallActivity](t, close.UpdateCallDefinition),
+		deleteCall:        connectormock.NewMutation[close.DeleteCallInput, close.DeletedCall](t, close.DeleteCallDefinition),
 		listNotes:         connectormock.NewQuery[close.ListNotesInput, close.NotePage](t, close.ListNotesDefinition),
 		getNote:           connectormock.NewQuery[close.GetNoteInput, close.Note](t, close.GetNoteDefinition),
 		createNote:        connectormock.NewMutation[close.CreateNoteInput, close.Note](t, close.CreateNoteDefinition),
@@ -76,6 +86,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteContact:     connectormock.NewMutation[close.DeleteContactInput, close.DeletedContact](t, close.DeleteContactDefinition),
 		getLead:           connectormock.NewQuery[close.GetLeadInput, close.Lead](t, close.GetLeadDefinition),
 	}
+	mock.listCalls.Default(ListCallsDefault())
+	mock.getCall.Default(GetCallDefault())
+	mock.logCall.Default(LogCallDefault())
+	mock.updateCall.Default(UpdateCallDefault())
+	mock.deleteCall.Default(DeleteCallDefault())
 	mock.listNotes.Default(ListNotesDefault())
 	mock.getNote.Default(GetNoteDefault())
 	mock.createNote.Default(CreateNoteDefault())
@@ -111,6 +126,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() close.Connection { return mock.connection }
+
+// ListCalls returns the listCalls script.
+func (mock *Mock) ListCalls() *connectormock.Query[close.ListCallsInput, close.CallPage] {
+	return mock.listCalls
+}
+
+// GetCall returns the getCall script.
+func (mock *Mock) GetCall() *connectormock.Query[close.GetCallInput, close.CallActivity] {
+	return mock.getCall
+}
+
+// LogCall returns the logCall script.
+func (mock *Mock) LogCall() *connectormock.Mutation[close.LogCallInput, close.CallActivity] {
+	return mock.logCall
+}
+
+// UpdateCall returns the updateCall script.
+func (mock *Mock) UpdateCall() *connectormock.Mutation[close.UpdateCallInput, close.CallActivity] {
+	return mock.updateCall
+}
+
+// DeleteCall returns the deleteCall script.
+func (mock *Mock) DeleteCall() *connectormock.Mutation[close.DeleteCallInput, close.DeletedCall] {
+	return mock.deleteCall
+}
 
 // ListNotes returns the listNotes script.
 func (mock *Mock) ListNotes() *connectormock.Query[close.ListNotesInput, close.NotePage] {
@@ -233,6 +273,21 @@ func (mock *Mock) GetLead() *connectormock.Query[close.GetLeadInput, close.Lead]
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListCalls() sdkgo.Query[close.ListCallsInput, close.CallPage] {
+	return operations.mock.listCalls
+}
+func (operations mockOperations) GetCall() sdkgo.Query[close.GetCallInput, close.CallActivity] {
+	return operations.mock.getCall
+}
+func (operations mockOperations) LogCall() sdkgo.Mutation[close.LogCallInput, close.CallActivity] {
+	return operations.mock.logCall
+}
+func (operations mockOperations) UpdateCall() sdkgo.Mutation[close.UpdateCallInput, close.CallActivity] {
+	return operations.mock.updateCall
+}
+func (operations mockOperations) DeleteCall() sdkgo.Mutation[close.DeleteCallInput, close.DeletedCall] {
+	return operations.mock.deleteCall
+}
 func (operations mockOperations) ListNotes() sdkgo.Query[close.ListNotesInput, close.NotePage] {
 	return operations.mock.listNotes
 }
@@ -308,6 +363,186 @@ func (operations mockOperations) DeleteContact() sdkgo.Mutation[close.DeleteCont
 func (operations mockOperations) GetLead() sdkgo.Query[close.GetLeadInput, close.Lead] {
 	return operations.mock.getLead
 }
+
+// ListCallsListed selects the listed branch: Close returned the call page.
+func ListCallsListed(value close.CallPage, failure *sdkgo.Failure) connectormock.Case[close.CallPage] {
+	return connectormock.Branch(close.ListCallsBranchListed, value, failure)
+}
+
+// ListCallsProviderRejected selects the providerRejected branch: Close conclusively rejected the read.
+func ListCallsProviderRejected(value close.CallPage, failure *sdkgo.Failure) connectormock.Case[close.CallPage] {
+	return connectormock.Branch(close.ListCallsBranchProviderRejected, value, failure)
+}
+
+// ListCallsInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func ListCallsInvalidResponse(value close.CallPage, failure *sdkgo.Failure) connectormock.Case[close.CallPage] {
+	return connectormock.Branch(close.ListCallsBranchInvalidResponse, value, failure)
+}
+
+// ListCallsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListCallsDefect(value close.CallPage, failure *sdkgo.Failure) connectormock.Case[close.CallPage] {
+	return connectormock.Branch(close.ListCallsBranchDefect, value, failure)
+}
+
+// ListCallsRetry asks Dex to retry the listCalls Step, after the delay when it is positive.
+func ListCallsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.CallPage] {
+	return connectormock.Retry[close.CallPage](failure, after)
+}
+
+// ListCallsListedDefault is the manifest mock listedDefault: Meridian Labs has one logged call.
+func ListCallsListedDefault() connectormock.Case[close.CallPage] {
+	value := connectormock.MustDecodeOutput[close.CallPage](`{"calls":[{"id":"acti_call_meridian1","leadId":"lead_meridian1","direction":"outbound","status":"completed","durationSeconds":120}],"hasMore":false}`)
+	return connectormock.Branch(close.ListCallsBranchListed, value, nil)
+}
+
+// ListCallsDefault is the manifest default, listedDefault, which New installs.
+func ListCallsDefault() connectormock.Case[close.CallPage] { return ListCallsListedDefault() }
+
+// GetCallFound selects the found branch: Close returned the call.
+func GetCallFound(value close.CallActivity, failure *sdkgo.Failure) connectormock.Case[close.CallActivity] {
+	return connectormock.Branch(close.GetCallBranchFound, value, failure)
+}
+
+// GetCallNotFound selects the notFound branch: The call activity does not exist.
+func GetCallNotFound(value close.CallActivity, failure *sdkgo.Failure) connectormock.Case[close.CallActivity] {
+	return connectormock.Branch(close.GetCallBranchNotFound, value, failure)
+}
+
+// GetCallProviderRejected selects the providerRejected branch: Close conclusively rejected the read.
+func GetCallProviderRejected(value close.CallActivity, failure *sdkgo.Failure) connectormock.Case[close.CallActivity] {
+	return connectormock.Branch(close.GetCallBranchProviderRejected, value, failure)
+}
+
+// GetCallInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func GetCallInvalidResponse(value close.CallActivity, failure *sdkgo.Failure) connectormock.Case[close.CallActivity] {
+	return connectormock.Branch(close.GetCallBranchInvalidResponse, value, failure)
+}
+
+// GetCallDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetCallDefect(value close.CallActivity, failure *sdkgo.Failure) connectormock.Case[close.CallActivity] {
+	return connectormock.Branch(close.GetCallBranchDefect, value, failure)
+}
+
+// GetCallRetry asks Dex to retry the getCall Step, after the delay when it is positive.
+func GetCallRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.CallActivity] {
+	return connectormock.Retry[close.CallActivity](failure, after)
+}
+
+// GetCallFoundDefault is the manifest mock foundDefault: A Meridian Labs logged call was found.
+func GetCallFoundDefault() connectormock.Case[close.CallActivity] {
+	value := connectormock.MustDecodeOutput[close.CallActivity](`{"id":"acti_call_meridian1","leadId":"lead_meridian1","direction":"outbound","status":"completed","durationSeconds":120}`)
+	return connectormock.Branch(close.GetCallBranchFound, value, nil)
+}
+
+// GetCallDefault is the manifest default, foundDefault, which New installs.
+func GetCallDefault() connectormock.Case[close.CallActivity] { return GetCallFoundDefault() }
+
+// LogCallLogged selects the logged branch: Close returned the logged call.
+func LogCallLogged(value close.CallActivity, failure *sdkgo.Failure) connectormock.Case[close.CallActivity] {
+	return connectormock.Branch(close.LogCallBranchLogged, value, failure)
+}
+
+// LogCallProviderRejected selects the providerRejected branch: Close conclusively rejected the call log.
+func LogCallProviderRejected(value close.CallActivity, failure *sdkgo.Failure) connectormock.Case[close.CallActivity] {
+	return connectormock.Branch(close.LogCallBranchProviderRejected, value, failure)
+}
+
+// LogCallUncertain returns an uncertain logCall outcome.
+func LogCallUncertain(value close.CallActivity, failure sdkgo.Failure) connectormock.Case[close.CallActivity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// LogCallDefect selects the defect branch: Local input or connection credentials are invalid.
+func LogCallDefect(value close.CallActivity, failure *sdkgo.Failure) connectormock.Case[close.CallActivity] {
+	return connectormock.Branch(close.LogCallBranchDefect, value, failure)
+}
+
+// LogCallRetry asks Dex to retry the logCall Step, after the delay when it is positive.
+func LogCallRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.CallActivity] {
+	return connectormock.Retry[close.CallActivity](failure, after)
+}
+
+// LogCallLoggedDefault is the manifest mock loggedDefault: A Meridian Labs external call was logged.
+func LogCallLoggedDefault() connectormock.Case[close.CallActivity] {
+	value := connectormock.MustDecodeOutput[close.CallActivity](`{"id":"acti_call_meridian1","leadId":"lead_meridian1","direction":"outbound","status":"completed","durationSeconds":120}`)
+	return connectormock.Branch(close.LogCallBranchLogged, value, nil)
+}
+
+// LogCallDefault is the manifest default, loggedDefault, which New installs.
+func LogCallDefault() connectormock.Case[close.CallActivity] { return LogCallLoggedDefault() }
+
+// UpdateCallUpdated selects the updated branch: Close returned the updated call.
+func UpdateCallUpdated(value close.CallActivity, failure *sdkgo.Failure) connectormock.Case[close.CallActivity] {
+	return connectormock.Branch(close.UpdateCallBranchUpdated, value, failure)
+}
+
+// UpdateCallNotFound selects the notFound branch: The call activity does not exist.
+func UpdateCallNotFound(value close.CallActivity, failure *sdkgo.Failure) connectormock.Case[close.CallActivity] {
+	return connectormock.Branch(close.UpdateCallBranchNotFound, value, failure)
+}
+
+// UpdateCallProviderRejected selects the providerRejected branch: Close conclusively rejected the update.
+func UpdateCallProviderRejected(value close.CallActivity, failure *sdkgo.Failure) connectormock.Case[close.CallActivity] {
+	return connectormock.Branch(close.UpdateCallBranchProviderRejected, value, failure)
+}
+
+// UpdateCallInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func UpdateCallInvalidResponse(value close.CallActivity, failure *sdkgo.Failure) connectormock.Case[close.CallActivity] {
+	return connectormock.Branch(close.UpdateCallBranchInvalidResponse, value, failure)
+}
+
+// UpdateCallDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateCallDefect(value close.CallActivity, failure *sdkgo.Failure) connectormock.Case[close.CallActivity] {
+	return connectormock.Branch(close.UpdateCallBranchDefect, value, failure)
+}
+
+// UpdateCallRetry asks Dex to retry the updateCall Step, after the delay when it is positive.
+func UpdateCallRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.CallActivity] {
+	return connectormock.Retry[close.CallActivity](failure, after)
+}
+
+// UpdateCallUpdatedDefault is the manifest mock updatedDefault: A Meridian Labs call note was updated.
+func UpdateCallUpdatedDefault() connectormock.Case[close.CallActivity] {
+	value := connectormock.MustDecodeOutput[close.CallActivity](`{"id":"acti_call_meridian1","leadId":"lead_meridian1","direction":"outbound","status":"completed","durationSeconds":120,"note":"Follow-up agreed"}`)
+	return connectormock.Branch(close.UpdateCallBranchUpdated, value, nil)
+}
+
+// UpdateCallDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCallDefault() connectormock.Case[close.CallActivity] { return UpdateCallUpdatedDefault() }
+
+// DeleteCallDeleted selects the deleted branch: Close accepted deletion or the call is already absent.
+func DeleteCallDeleted(value close.DeletedCall, failure *sdkgo.Failure) connectormock.Case[close.DeletedCall] {
+	return connectormock.Branch(close.DeleteCallBranchDeleted, value, failure)
+}
+
+// DeleteCallProviderRejected selects the providerRejected branch: Close conclusively rejected the deletion.
+func DeleteCallProviderRejected(value close.DeletedCall, failure *sdkgo.Failure) connectormock.Case[close.DeletedCall] {
+	return connectormock.Branch(close.DeleteCallBranchProviderRejected, value, failure)
+}
+
+// DeleteCallInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func DeleteCallInvalidResponse(value close.DeletedCall, failure *sdkgo.Failure) connectormock.Case[close.DeletedCall] {
+	return connectormock.Branch(close.DeleteCallBranchInvalidResponse, value, failure)
+}
+
+// DeleteCallDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteCallDefect(value close.DeletedCall, failure *sdkgo.Failure) connectormock.Case[close.DeletedCall] {
+	return connectormock.Branch(close.DeleteCallBranchDefect, value, failure)
+}
+
+// DeleteCallRetry asks Dex to retry the deleteCall Step, after the delay when it is positive.
+func DeleteCallRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.DeletedCall] {
+	return connectormock.Retry[close.DeletedCall](failure, after)
+}
+
+// DeleteCallDeletedDefault is the manifest mock deletedDefault: A Meridian Labs call log was deleted.
+func DeleteCallDeletedDefault() connectormock.Case[close.DeletedCall] {
+	value := connectormock.MustDecodeOutput[close.DeletedCall](`{"callId":"acti_call_meridian1"}`)
+	return connectormock.Branch(close.DeleteCallBranchDeleted, value, nil)
+}
+
+// DeleteCallDefault is the manifest default, deletedDefault, which New installs.
+func DeleteCallDefault() connectormock.Case[close.DeletedCall] { return DeleteCallDeletedDefault() }
 
 // ListNotesListed selects the listed branch: Close returned the note page.
 func ListNotesListed(value close.NotePage, failure *sdkgo.Failure) connectormock.Case[close.NotePage] {

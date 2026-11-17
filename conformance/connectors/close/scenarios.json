@@ -8530,6 +8530,1723 @@
       },
       "name": "deleteNote-transportFailure",
       "operation": "deleteNote"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"acti_call_meridian1\",\"lead_id\":\"lead_meridian1\",\"direction\":\"outbound\",\"status\":\"completed\",\"duration\":120,\"note\":\"Follow-up\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/call/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "calls": [
+            {
+              "direction": "outbound",
+              "durationSeconds": 120,
+              "id": "acti_call_meridian1",
+              "leadId": "lead_meridian1",
+              "note": "Follow-up",
+              "status": "completed"
+            }
+          ],
+          "hasMore": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listCalls-listed",
+      "operation": "listCalls"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/call/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "calls": [],
+          "hasMore": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listCalls-providerRejected",
+      "operation": "listCalls"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "broken-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/call/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "calls": [],
+          "hasMore": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listCalls-invalidResponse",
+      "operation": "listCalls"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "calls": [],
+          "hasMore": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "bad"
+      },
+      "name": "listCalls-defect",
+      "operation": "listCalls"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/call/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listCalls-rateLimit",
+      "operation": "listCalls"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/call/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listCalls-serverUnavailable",
+      "operation": "listCalls"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/call/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listCalls-transportFailure",
+      "operation": "listCalls"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"acti_call_meridian1\",\"lead_id\":\"lead_meridian1\",\"direction\":\"outbound\",\"status\":\"completed\",\"duration\":120,\"note\":\"Follow-up\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "direction": "outbound",
+          "durationSeconds": 120,
+          "id": "acti_call_meridian1",
+          "leadId": "lead_meridian1",
+          "note": "Follow-up",
+          "status": "completed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "callId": "acti_call_meridian1"
+      },
+      "name": "getCall-found",
+      "operation": "getCall"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "direction": "",
+          "durationSeconds": null,
+          "id": "",
+          "leadId": "",
+          "note": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "callId": "acti_call_meridian1"
+      },
+      "name": "getCall-notFound",
+      "operation": "getCall"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "direction": "",
+          "durationSeconds": null,
+          "id": "",
+          "leadId": "",
+          "note": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "callId": "acti_call_meridian1"
+      },
+      "name": "getCall-providerRejected",
+      "operation": "getCall"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "broken-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "direction": "",
+          "durationSeconds": null,
+          "id": "",
+          "leadId": "",
+          "note": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "callId": "acti_call_meridian1"
+      },
+      "name": "getCall-invalidResponse",
+      "operation": "getCall"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "direction": "",
+          "durationSeconds": null,
+          "id": "",
+          "leadId": "",
+          "note": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "callId": "bad"
+      },
+      "name": "getCall-defect",
+      "operation": "getCall"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "callId": "acti_call_meridian1"
+      },
+      "name": "getCall-rateLimit",
+      "operation": "getCall"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "callId": "acti_call_meridian1"
+      },
+      "name": "getCall-serverUnavailable",
+      "operation": "getCall"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "callId": "acti_call_meridian1"
+      },
+      "name": "getCall-transportFailure",
+      "operation": "getCall"
+    },
+    {
+      "callId": "0189d827-a990-503e-b565-a086d65f340d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"acti_call_meridian1\",\"lead_id\":\"lead_meridian1\",\"direction\":\"outbound\",\"status\":\"completed\",\"duration\":120,\"note\":\"Follow-up\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/call/",
+          "requestBody": {
+            "direction": "outbound",
+            "duration": 120,
+            "lead_id": "lead_meridian1",
+            "note": "Follow-up",
+            "phone": "+16505551234"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "logged",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0189d827-a990-503e-b565-a086d65f340d",
+          "providerId": "acti_call_meridian1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "direction": "outbound",
+          "durationSeconds": 120,
+          "id": "acti_call_meridian1",
+          "leadId": "lead_meridian1",
+          "note": "Follow-up",
+          "status": "completed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0189d827-a990-503e-b565-a086d65f340d",
+      "input": {
+        "direction": "outbound",
+        "durationSeconds": 120,
+        "leadId": "lead_meridian1",
+        "note": "Follow-up",
+        "phone": "+16505551234"
+      },
+      "name": "logCall-logged",
+      "operation": "logCall"
+    },
+    {
+      "callId": "0189d827-a990-503e-b565-a086d65f340d",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/call/",
+          "requestBody": {
+            "direction": "outbound",
+            "duration": 120,
+            "lead_id": "lead_meridian1",
+            "note": "Follow-up",
+            "phone": "+16505551234"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0189d827-a990-503e-b565-a086d65f340d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "direction": "",
+          "durationSeconds": null,
+          "id": "",
+          "leadId": "",
+          "note": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0189d827-a990-503e-b565-a086d65f340d",
+      "input": {
+        "direction": "outbound",
+        "durationSeconds": 120,
+        "leadId": "lead_meridian1",
+        "note": "Follow-up",
+        "phone": "+16505551234"
+      },
+      "name": "logCall-providerRejected",
+      "operation": "logCall"
+    },
+    {
+      "callId": "0189d827-a990-503e-b565-a086d65f340d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "direction": "",
+          "durationSeconds": null,
+          "id": "",
+          "leadId": "",
+          "note": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0189d827-a990-503e-b565-a086d65f340d",
+      "input": {
+        "direction": "outbound",
+        "durationSeconds": 120,
+        "leadId": "bad"
+      },
+      "name": "logCall-defect",
+      "operation": "logCall"
+    },
+    {
+      "callId": "0189d827-a990-503e-b565-a086d65f340d",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/call/",
+          "requestBody": {
+            "direction": "outbound",
+            "duration": 120,
+            "lead_id": "lead_meridian1",
+            "note": "Follow-up",
+            "phone": "+16505551234"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0189d827-a990-503e-b565-a086d65f340d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0189d827-a990-503e-b565-a086d65f340d",
+      "input": {
+        "direction": "outbound",
+        "durationSeconds": 120,
+        "leadId": "lead_meridian1",
+        "note": "Follow-up",
+        "phone": "+16505551234"
+      },
+      "name": "logCall-rateLimit",
+      "operation": "logCall"
+    },
+    {
+      "callId": "0189d827-a990-503e-b565-a086d65f340d",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/call/",
+          "requestBody": {
+            "direction": "outbound",
+            "duration": 120,
+            "lead_id": "lead_meridian1",
+            "note": "Follow-up",
+            "phone": "+16505551234"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0189d827-a990-503e-b565-a086d65f340d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0189d827-a990-503e-b565-a086d65f340d",
+      "input": {
+        "direction": "outbound",
+        "durationSeconds": 120,
+        "leadId": "lead_meridian1",
+        "note": "Follow-up",
+        "phone": "+16505551234"
+      },
+      "name": "logCall-serverUnavailable",
+      "operation": "logCall"
+    },
+    {
+      "callId": "0189d827-a990-503e-b565-a086d65f340d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/call/",
+          "requestBody": {
+            "direction": "outbound",
+            "duration": 120,
+            "lead_id": "lead_meridian1",
+            "note": "Follow-up",
+            "phone": "+16505551234"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0189d827-a990-503e-b565-a086d65f340d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0189d827-a990-503e-b565-a086d65f340d",
+      "input": {
+        "direction": "outbound",
+        "durationSeconds": 120,
+        "leadId": "lead_meridian1",
+        "note": "Follow-up",
+        "phone": "+16505551234"
+      },
+      "name": "logCall-transportFailure",
+      "operation": "logCall"
+    },
+    {
+      "callId": "0189d827-a990-503e-b565-a086d65f340d",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/call/",
+          "requestBody": {
+            "direction": "outbound",
+            "duration": 120,
+            "lead_id": "lead_meridian1",
+            "note": "Follow-up",
+            "phone": "+16505551234"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0189d827-a990-503e-b565-a086d65f340d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0189d827-a990-503e-b565-a086d65f340d",
+      "input": {
+        "direction": "outbound",
+        "durationSeconds": 120,
+        "leadId": "lead_meridian1",
+        "note": "Follow-up",
+        "phone": "+16505551234"
+      },
+      "name": "logCall-serverError",
+      "operation": "logCall"
+    },
+    {
+      "attempts": 3,
+      "callId": "0189d827-a990-503e-b565-a086d65f340d",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/call/",
+          "requestBody": {
+            "direction": "outbound",
+            "duration": 120,
+            "lead_id": "lead_meridian1",
+            "note": "Follow-up",
+            "phone": "+16505551234"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/call/",
+          "requestBody": {
+            "direction": "outbound",
+            "duration": 120,
+            "lead_id": "lead_meridian1",
+            "note": "Follow-up",
+            "phone": "+16505551234"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/call/",
+          "requestBody": {
+            "direction": "outbound",
+            "duration": 120,
+            "lead_id": "lead_meridian1",
+            "note": "Follow-up",
+            "phone": "+16505551234"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "0189d827-a990-503e-b565-a086d65f340d",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "direction": "",
+          "durationSeconds": null,
+          "id": "",
+          "leadId": "",
+          "note": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0189d827-a990-503e-b565-a086d65f340d",
+      "input": {
+        "direction": "outbound",
+        "durationSeconds": 120,
+        "leadId": "lead_meridian1",
+        "note": "Follow-up",
+        "phone": "+16505551234"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "0189d827-a990-503e-b565-a086d65f340d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "0189d827-a990-503e-b565-a086d65f340d",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "logCall-uncertain",
+      "operation": "logCall"
+    },
+    {
+      "callId": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"acti_call_meridian1\",\"lead_id\":\"lead_meridian1\",\"direction\":\"outbound\",\"status\":\"completed\",\"duration\":120,\"note\":\"Updated\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestBody": {
+            "note": "Updated",
+            "outcome_id": "outcome_meridian1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "direction": "outbound",
+          "durationSeconds": 120,
+          "id": "acti_call_meridian1",
+          "leadId": "lead_meridian1",
+          "note": "Updated",
+          "status": "completed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "input": {
+        "callId": "acti_call_meridian1",
+        "note": "Updated",
+        "outcomeId": "outcome_meridian1"
+      },
+      "name": "updateCall-updated",
+      "operation": "updateCall"
+    },
+    {
+      "callId": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestBody": {
+            "note": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "direction": "",
+          "durationSeconds": null,
+          "id": "",
+          "leadId": "",
+          "note": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "input": {
+        "callId": "acti_call_meridian1",
+        "note": "Updated"
+      },
+      "name": "updateCall-notFound",
+      "operation": "updateCall"
+    },
+    {
+      "callId": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestBody": {
+            "note": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "direction": "",
+          "durationSeconds": null,
+          "id": "",
+          "leadId": "",
+          "note": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "input": {
+        "callId": "acti_call_meridian1",
+        "note": "Updated"
+      },
+      "name": "updateCall-providerRejected",
+      "operation": "updateCall"
+    },
+    {
+      "callId": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "exchanges": [
+        {
+          "body": "broken-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestBody": {
+            "note": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "direction": "",
+          "durationSeconds": null,
+          "id": "",
+          "leadId": "",
+          "note": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "input": {
+        "callId": "acti_call_meridian1",
+        "note": "Updated"
+      },
+      "name": "updateCall-invalidResponse",
+      "operation": "updateCall"
+    },
+    {
+      "callId": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "direction": "",
+          "durationSeconds": null,
+          "id": "",
+          "leadId": "",
+          "note": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "input": {
+        "callId": "bad",
+        "note": "Updated"
+      },
+      "name": "updateCall-defect",
+      "operation": "updateCall"
+    },
+    {
+      "callId": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestBody": {
+            "note": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "input": {
+        "callId": "acti_call_meridian1",
+        "note": "Updated"
+      },
+      "name": "updateCall-rateLimit",
+      "operation": "updateCall"
+    },
+    {
+      "callId": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestBody": {
+            "note": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "input": {
+        "callId": "acti_call_meridian1",
+        "note": "Updated"
+      },
+      "name": "updateCall-serverUnavailable",
+      "operation": "updateCall"
+    },
+    {
+      "callId": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestBody": {
+            "note": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "387648f1-a660-538e-9f18-b63bdd2779bf",
+      "input": {
+        "callId": "acti_call_meridian1",
+        "note": "Updated"
+      },
+      "name": "updateCall-transportFailure",
+      "operation": "updateCall"
+    },
+    {
+      "callId": "3d744219-7c0a-5183-8a33-8a684e9fb980",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "callId": "acti_call_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d744219-7c0a-5183-8a33-8a684e9fb980",
+      "input": {
+        "callId": "acti_call_meridian1"
+      },
+      "name": "deleteCall-deleted",
+      "operation": "deleteCall"
+    },
+    {
+      "callId": "3d744219-7c0a-5183-8a33-8a684e9fb980",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "callId": "acti_call_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d744219-7c0a-5183-8a33-8a684e9fb980",
+      "input": {
+        "callId": "acti_call_meridian1"
+      },
+      "name": "deleteCall-alreadyDeleted",
+      "operation": "deleteCall"
+    },
+    {
+      "callId": "3d744219-7c0a-5183-8a33-8a684e9fb980",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "callId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d744219-7c0a-5183-8a33-8a684e9fb980",
+      "input": {
+        "callId": "acti_call_meridian1"
+      },
+      "name": "deleteCall-providerRejected",
+      "operation": "deleteCall"
+    },
+    {
+      "callId": "3d744219-7c0a-5183-8a33-8a684e9fb980",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "callId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d744219-7c0a-5183-8a33-8a684e9fb980",
+      "input": {
+        "callId": "bad"
+      },
+      "name": "deleteCall-defect",
+      "operation": "deleteCall"
+    },
+    {
+      "callId": "3d744219-7c0a-5183-8a33-8a684e9fb980",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d744219-7c0a-5183-8a33-8a684e9fb980",
+      "input": {
+        "callId": "acti_call_meridian1"
+      },
+      "name": "deleteCall-rateLimit",
+      "operation": "deleteCall"
+    },
+    {
+      "callId": "3d744219-7c0a-5183-8a33-8a684e9fb980",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d744219-7c0a-5183-8a33-8a684e9fb980",
+      "input": {
+        "callId": "acti_call_meridian1"
+      },
+      "name": "deleteCall-serverUnavailable",
+      "operation": "deleteCall"
+    },
+    {
+      "callId": "3d744219-7c0a-5183-8a33-8a684e9fb980",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/call/acti_call_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d744219-7c0a-5183-8a33-8a684e9fb980",
+      "input": {
+        "callId": "acti_call_meridian1"
+      },
+      "name": "deleteCall-transportFailure",
+      "operation": "deleteCall"
     }
   ],
   "schemaVersion": 1

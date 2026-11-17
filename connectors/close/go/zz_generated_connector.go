@@ -40,6 +40,11 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListCalls() sdkgo.Query[ListCallsInput, CallPage]
+	GetCall() sdkgo.Query[GetCallInput, CallActivity]
+	LogCall() sdkgo.Mutation[LogCallInput, CallActivity]
+	UpdateCall() sdkgo.Mutation[UpdateCallInput, CallActivity]
+	DeleteCall() sdkgo.Mutation[DeleteCallInput, DeletedCall]
 	ListNotes() sdkgo.Query[ListNotesInput, NotePage]
 	GetNote() sdkgo.Query[GetNoteInput, Note]
 	CreateNote() sdkgo.Mutation[CreateNoteInput, Note]
@@ -69,6 +74,21 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListCalls() sdkgo.Query[ListCallsInput, CallPage] {
+	return operations.client.ListCalls()
+}
+func (operations clientOperations) GetCall() sdkgo.Query[GetCallInput, CallActivity] {
+	return operations.client.GetCall()
+}
+func (operations clientOperations) LogCall() sdkgo.Mutation[LogCallInput, CallActivity] {
+	return operations.client.LogCall()
+}
+func (operations clientOperations) UpdateCall() sdkgo.Mutation[UpdateCallInput, CallActivity] {
+	return operations.client.UpdateCall()
+}
+func (operations clientOperations) DeleteCall() sdkgo.Mutation[DeleteCallInput, DeletedCall] {
+	return operations.client.DeleteCall()
+}
 func (operations clientOperations) ListNotes() sdkgo.Query[ListNotesInput, NotePage] {
 	return operations.client.ListNotes()
 }
@@ -280,6 +300,380 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListCallsBranchListed sdkgo.BranchID = "listed"
+const ListCallsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCallsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCallsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCallsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCalls"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCallsBranchListed, Description: "Close returned the call page."},
+		{ID: ListCallsBranchProviderRejected, Description: "Close conclusively rejected the read.", Optional: true},
+		{ID: ListCallsBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: ListCallsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCallsResult = sdkgo.QueryResult[CallPage]
+
+type ListCallsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=close"`
+	operationID                    struct{}                                    `connector:"operationId=listCalls"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCallsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCallsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCallsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCallsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCallsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CallPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewListCallsStep[IN any](config ListCallsStepConfig[IN]) sdkgo.QueryStep[IN, ListCallsInput, CallPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCallsInput, CallPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCalls(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCallsResult] {
+			branches := make([]sdkgo.BranchTarget[ListCallsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCallsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCallsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCallsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCallsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCallBranchFound sdkgo.BranchID = "found"
+const GetCallBranchNotFound sdkgo.BranchID = "notFound"
+const GetCallBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCallBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCallBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCallDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCall"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCallBranchFound, Description: "Close returned the call."},
+		{ID: GetCallBranchNotFound, Description: "The call activity does not exist.", Optional: true},
+		{ID: GetCallBranchProviderRejected, Description: "Close conclusively rejected the read.", Optional: true},
+		{ID: GetCallBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: GetCallBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCallResult = sdkgo.QueryResult[CallActivity]
+
+type GetCallStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=close"`
+	operationID                    struct{}                                        `connector:"operationId=getCall"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCallInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCallResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCallResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCallResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCallResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCallResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CallActivity]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetCallStep[IN any](config GetCallStepConfig[IN]) sdkgo.QueryStep[IN, GetCallInput, CallActivity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCallInput, CallActivity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCall(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCallResult] {
+			branches := make([]sdkgo.BranchTarget[GetCallResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCallBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCallBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCallBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCallBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCallBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const LogCallBranchLogged sdkgo.BranchID = "logged"
+const LogCallBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const LogCallBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const LogCallBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var LogCallDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "logCall"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: LogCallBranchLogged, Description: "Close returned the logged call."},
+		{ID: LogCallBranchProviderRejected, Description: "Close conclusively rejected the call log.", Optional: true},
+		{ID: LogCallBranchUncertain, Description: "The call may have been logged but its identity could not be confirmed.", Optional: true},
+		{ID: LogCallBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type LogCallResult = sdkgo.MutationResult[CallActivity]
+
+type LogCallStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=close"`
+	operationID                       struct{}                                           `connector:"operationId=logCall"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) LogCallInput                              `connector:"mapToOperationInput"`
+	Logged                            sdkgo.Target[LogCallResult]                        `connector:"branch=logged"`
+	ProviderRejected                  sdkgo.Target[LogCallResult]                        `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[LogCallResult]                        `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[LogCallResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CallActivity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewLogCallStep[IN any](config LogCallStepConfig[IN]) sdkgo.MutationStep[IN, LogCallInput, CallActivity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, LogCallInput, CallActivity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.LogCall(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[LogCallResult] {
+			branches := make([]sdkgo.BranchTarget[LogCallResult], 0, 4)
+			if config.Logged.HasStep() {
+				branches = append(branches, config.Logged.BranchTarget(LogCallBranchLogged))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(LogCallBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(LogCallBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(LogCallBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCallBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCallBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateCallBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCallBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateCallBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateCallDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCall"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCallBranchUpdated, Description: "Close returned the updated call."},
+		{ID: UpdateCallBranchNotFound, Description: "The call activity does not exist.", Optional: true},
+		{ID: UpdateCallBranchProviderRejected, Description: "Close conclusively rejected the update.", Optional: true},
+		{ID: UpdateCallBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateCallBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateCallResult = sdkgo.MutationResult[CallActivity]
+
+type UpdateCallStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=close"`
+	operationID                       struct{}                                           `connector:"operationId=updateCall"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCallInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCallResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateCallResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateCallResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateCallResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateCallResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CallActivity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateCallStep[IN any](config UpdateCallStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCallInput, CallActivity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCallInput, CallActivity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCall(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCallResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCallResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCallBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateCallBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCallBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateCallBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCallBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteCallBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteCallBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteCallBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteCallBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteCallDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteCall"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteCallBranchDeleted, Description: "Close accepted deletion or the call is already absent."},
+		{ID: DeleteCallBranchProviderRejected, Description: "Close conclusively rejected the deletion.", Optional: true},
+		{ID: DeleteCallBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteCallBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteCallResult = sdkgo.MutationResult[DeletedCall]
+
+type DeleteCallStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=close"`
+	operationID                       struct{}                                          `connector:"operationId=deleteCall"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteCallInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteCallResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteCallResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteCallResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteCallResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedCall]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteCallStep[IN any](config DeleteCallStepConfig[IN]) sdkgo.MutationStep[IN, DeleteCallInput, DeletedCall] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteCallInput, DeletedCall]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteCall(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteCallResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteCallResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteCallBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteCallBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteCallBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteCallBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListNotesBranchListed sdkgo.BranchID = "listed"

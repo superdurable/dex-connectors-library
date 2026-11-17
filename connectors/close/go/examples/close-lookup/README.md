@@ -1,6 +1,6 @@
 # Close lookup example
 
-This Worker registers `CloseLookup` with static connection name `close`. It calls `listLeads`, `getLead`, Go `createContact`, Go `listContacts`, Go `listOpportunities`, Go `listTasks`, and Go `listNotes` in one typed Flow. Each real run creates a new contact named `Ada Example` under the first lead.
+This Worker registers `CloseLookup` with static connection name `close`. It calls `listLeads`, `getLead`, Go `createContact`, Go `listContacts`, Go `listOpportunities`, Go `listTasks`, Go `listNotes`, and Go `listCalls` in one typed Flow. Each real run creates a new contact named `Ada Example` under the first lead.
 
 ## Generate and run
 
@@ -30,4 +30,4 @@ dexcli dev -open=false -dex-port 9230 -web-port 9231 \
 
 Configure the static `close` connection in Dex Web, then in a second terminal run `GOWORK=off go run ./examples/close-lookup` from `connectors/close` with the project environment described in [`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md). Start `CloseLookup` through Dex Web's Start Flow form.
 
-The deterministic mapping unit test runs with `GOWORK=off go test ./examples/close-lookup/...`. The mock-backed real Dex integration test exercises the contact creation Step and subsequent read without a provider credential. Live provider creation remains unverified.
+The deterministic mapping unit test runs with `GOWORK=off go test ./examples/close-lookup/...`. The mock-backed real Dex integration test exercises the contact creation Step and subsequent reads, including calls, without a provider credential. Live provider creation remains unverified.

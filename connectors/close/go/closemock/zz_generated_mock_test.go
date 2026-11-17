@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listCalls/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.CallPage](`{"calls":[{"id":"acti_call_meridian1","leadId":"lead_meridian1","direction":"outbound","status":"completed","durationSeconds":120}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getCall/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.CallActivity](`{"id":"acti_call_meridian1","leadId":"lead_meridian1","direction":"outbound","status":"completed","durationSeconds":120}`)
+			return err
+		}},
+		{name: "logCall/loggedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.CallActivity](`{"id":"acti_call_meridian1","leadId":"lead_meridian1","direction":"outbound","status":"completed","durationSeconds":120}`)
+			return err
+		}},
+		{name: "updateCall/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.CallActivity](`{"id":"acti_call_meridian1","leadId":"lead_meridian1","direction":"outbound","status":"completed","durationSeconds":120,"note":"Follow-up agreed"}`)
+			return err
+		}},
+		{name: "deleteCall/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedCall](`{"callId":"acti_call_meridian1"}`)
+			return err
+		}},
 		{name: "listNotes/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[close.NotePage](`{"notes":[{"id":"acti_meridian1","leadId":"lead_meridian1","note":"Proposal reviewed","pinned":false}],"hasMore":false}`)
 			return err
@@ -126,6 +146,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListCalls().Definition().Operation.OperationID != "listCalls" {
+		t.Errorf("listCalls mock has another definition")
+	}
+	if mock.GetCall().Definition().Operation.OperationID != "getCall" {
+		t.Errorf("getCall mock has another definition")
+	}
+	if mock.LogCall().Definition().Operation.OperationID != "logCall" {
+		t.Errorf("logCall mock has another definition")
+	}
+	if mock.UpdateCall().Definition().Operation.OperationID != "updateCall" {
+		t.Errorf("updateCall mock has another definition")
+	}
+	if mock.DeleteCall().Definition().Operation.OperationID != "deleteCall" {
+		t.Errorf("deleteCall mock has another definition")
+	}
 	if mock.ListNotes().Definition().Operation.OperationID != "listNotes" {
 		t.Errorf("listNotes mock has another definition")
 	}

@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: close
   displayName: Close
-  description: Create, read, and maintain Close leads, contacts, opportunities, tasks, and notes with a connection-owned API key.
+  description: Create, read, and maintain Close leads, contacts, opportunities, tasks, notes, and call logs with a connection-owned API key.
   company: Close
   categories: [crm-sales]
   version: v0.3.0
@@ -52,10 +52,112 @@ spec:
       startURL: https://app.close.com/settings/api/
       steps:
         - "Open https://app.close.com/settings/api/ and sign in; navigate to Settings > Developer > API Keys."
-        - "Create a token for the identity that may read and maintain the desired leads and contacts, then copy the secret value when shown."
+        - "Create a token for the identity that may read and maintain the desired leads, contacts, opportunities, tasks, and activities, then copy the secret value when shown."
         - "Paste it into secret api_key. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
         - "To revoke access, delete the token on the same provider page."
   operations:
+    - name: listCalls
+      goName: ListCalls
+      inputType: ListCallsInput
+      outputType: CallPage
+      kind: query
+      description: List a bounded page of call activities on a lead.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Close returned the call page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Meridian Labs has one logged call.
+          output: {calls: [{id: acti_call_meridian1, leadId: lead_meridian1, direction: outbound, status: completed, durationSeconds: 120}], hasMore: false}
+    - name: getCall
+      goName: GetCall
+      inputType: GetCallInput
+      outputType: CallActivity
+      kind: query
+      description: Read one call activity by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Close returned the call.}
+        - {id: notFound, goName: NotFound, description: The call activity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A Meridian Labs logged call was found.
+          output: {id: acti_call_meridian1, leadId: lead_meridian1, direction: outbound, status: completed, durationSeconds: 120}
+    - name: logCall
+      goName: LogCall
+      inputType: LogCallInput
+      outputType: CallActivity
+      kind: mutation
+      description: Log a completed external call on a lead.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: logged, goName: Logged, description: Close returned the logged call.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the call log., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The call may have been logged but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: loggedDefault
+          branch: logged
+          default: true
+          description: A Meridian Labs external call was logged.
+          output: {id: acti_call_meridian1, leadId: lead_meridian1, direction: outbound, status: completed, durationSeconds: 120}
+    - name: updateCall
+      goName: UpdateCall
+      inputType: UpdateCallInput
+      outputType: CallActivity
+      kind: mutation
+      description: Replace a call note or outcome ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Close returned the updated call.}
+        - {id: notFound, goName: NotFound, description: The call activity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A Meridian Labs call note was updated.
+          output: {id: acti_call_meridian1, leadId: lead_meridian1, direction: outbound, status: completed, durationSeconds: 120, note: Follow-up agreed}
+    - name: deleteCall
+      goName: DeleteCall
+      inputType: DeleteCallInput
+      outputType: DeletedCall
+      kind: mutation
+      description: Delete a call activity by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Close accepted deletion or the call is already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A Meridian Labs call log was deleted.
+          output: {callId: acti_call_meridian1}
     - name: listNotes
       goName: ListNotes
       inputType: ListNotesInput
