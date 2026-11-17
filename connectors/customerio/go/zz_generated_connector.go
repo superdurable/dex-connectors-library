@@ -22,10 +22,13 @@ type Config struct {
 	BaseURL          string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
 	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	TrackingBaseURL  string        `json:"trackingBaseUrl,omitempty" yaml:"trackingBaseUrl,omitempty"`
 }
 
 type Credentials struct {
-	PrivateKey sdkgo.SecretString
+	PrivateKey     sdkgo.SecretString
+	TrackingSiteID string
+	TrackingAPIKey sdkgo.SecretString
 }
 
 // CredentialSource is the credential provider New requires: this connector never refreshes its credentials.
@@ -40,6 +43,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	UpsertCustomer() sdkgo.Mutation[UpsertCustomerInput, CustomerWriteOutput]
+	DeleteCustomer() sdkgo.Mutation[DeleteCustomerInput, CustomerWriteOutput]
 	GetCampaign() sdkgo.Query[GetCampaignInput, CampaignSummary]
 	ListCampaigns() sdkgo.Query[ListCampaignsInput, CampaignsPage]
 	GetCampaignMetrics() sdkgo.Query[GetCampaignMetricsInput, CampaignMetrics]
@@ -48,6 +53,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) UpsertCustomer() sdkgo.Mutation[UpsertCustomerInput, CustomerWriteOutput] {
+	return operations.client.UpsertCustomer()
+}
+func (operations clientOperations) DeleteCustomer() sdkgo.Mutation[DeleteCustomerInput, CustomerWriteOutput] {
+	return operations.client.DeleteCustomer()
+}
 func (operations clientOperations) GetCampaign() sdkgo.Query[GetCampaignInput, CampaignSummary] {
 	return operations.client.GetCampaign()
 }
@@ -113,13 +124,17 @@ func NewProjectConnection(project *projectconfig.LoadedProject, connectionName s
 
 func decodeCredentials(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
-		PrivateKey string `json:"privateKey"`
+		PrivateKey     string `json:"privateKey"`
+		TrackingSiteID string `json:"trackingSiteId"`
+		TrackingAPIKey string `json:"trackingApiKey"`
 	}
 	if err := projectconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
 	credentials := Credentials{
-		PrivateKey: sdkgo.NewSecretString(fields.PrivateKey),
+		PrivateKey:     sdkgo.NewSecretString(fields.PrivateKey),
+		TrackingSiteID: fields.TrackingSiteID,
+		TrackingAPIKey: sdkgo.NewSecretString(fields.TrackingAPIKey),
 	}
 	return credentials, credentials.Validate()
 }
@@ -158,6 +173,7 @@ func DefaultConfig() Config {
 		BaseURL:          "https://api.customer.io",
 		Timeout:          time.Duration(15000000000),
 		MaxResponseBytes: 1048576,
+		TrackingBaseURL:  "https://track.customer.io",
 	}
 }
 
@@ -171,6 +187,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.TrackingBaseURL == "" {
+		config.TrackingBaseURL = defaults.TrackingBaseURL
 	}
 	return config
 }
@@ -188,6 +207,12 @@ func (config Config) Validate() error {
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
 	}
+	if config.TrackingBaseURL != "" {
+		parsed, err := url.Parse(config.TrackingBaseURL)
+		if err != nil || parsed.Scheme == "" || parsed.Hostname() == "" {
+			return fmt.Errorf("configuration trackingBaseUrl must be an absolute URL")
+		}
+	}
 	return nil
 }
 
@@ -196,6 +221,142 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential privateKey is required")
 	}
 	return nil
+}
+
+const UpsertCustomerBranchUpserted sdkgo.BranchID = "upserted"
+const UpsertCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpsertCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpsertCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "upsertCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpsertCustomerBranchUpserted, Description: "Customer.io accepted the customer upsert."},
+		{ID: UpsertCustomerBranchProviderRejected, Description: "Customer.io rejected the customer data.", Optional: true},
+		{ID: UpsertCustomerBranchDefect, Description: "Input or Track credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpsertCustomerResult = sdkgo.MutationResult[CustomerWriteOutput]
+
+type UpsertCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=customerio"`
+	operationID                       struct{}                                                  `connector:"operationId=upsertCustomer"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpsertCustomerInput                              `connector:"mapToOperationInput"`
+	Upserted                          sdkgo.Target[UpsertCustomerResult]                        `connector:"branch=upserted"`
+	ProviderRejected                  sdkgo.Target[UpsertCustomerResult]                        `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpsertCustomerResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CustomerWriteOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewUpsertCustomerStep[IN any](config UpsertCustomerStepConfig[IN]) sdkgo.MutationStep[IN, UpsertCustomerInput, CustomerWriteOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("customerio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpsertCustomerInput, CustomerWriteOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpsertCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpsertCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[UpsertCustomerResult], 0, 3)
+			if config.Upserted.HasStep() {
+				branches = append(branches, config.Upserted.BranchTarget(UpsertCustomerBranchUpserted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpsertCustomerBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpsertCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteCustomerBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteCustomerBranchDeleted, Description: "Customer.io deleted the customer."},
+		{ID: DeleteCustomerBranchNotFound, Description: "No customer has this identifier.", Optional: true},
+		{ID: DeleteCustomerBranchProviderRejected, Description: "Customer.io rejected the deletion.", Optional: true},
+		{ID: DeleteCustomerBranchDefect, Description: "Input or Track credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteCustomerResult = sdkgo.MutationResult[CustomerWriteOutput]
+
+type DeleteCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=customerio"`
+	operationID                       struct{}                                                  `connector:"operationId=deleteCustomer"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteCustomerInput                              `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteCustomerResult]                        `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteCustomerResult]                        `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteCustomerResult]                        `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteCustomerResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CustomerWriteOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteCustomerStep[IN any](config DeleteCustomerStepConfig[IN]) sdkgo.MutationStep[IN, DeleteCustomerInput, CustomerWriteOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("customerio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteCustomerInput, CustomerWriteOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteCustomerResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteCustomerBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteCustomerBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetCampaignBranchFound sdkgo.BranchID = "found"

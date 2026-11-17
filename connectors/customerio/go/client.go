@@ -28,6 +28,7 @@ func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{ht
 // Client holds immutable provider settings and resolves credentials per call.
 type Client struct {
 	baseURL          string
+	trackingBaseURL  string
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
@@ -46,7 +47,11 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Customer.io API URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	trackingBaseURL, err := providerhttp.ValidateBaseURL(config.TrackingBaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("Customer.io Track API URL: %w", err)
+	}
+	client := &Client{baseURL: baseURL, trackingBaseURL: trackingBaseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Customer.io client option is required")

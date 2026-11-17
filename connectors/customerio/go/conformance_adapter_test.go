@@ -21,8 +21,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	if scenario.Name == "listCampaigns-defect" {
 		privateKey = ""
 	}
-	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
-		reference: {PrivateKey: sdkgo.NewSecretString(privateKey)},
+	client, err := New(Config{BaseURL: endpoint, TrackingBaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
+		reference: {PrivateKey: sdkgo.NewSecretString(privateKey), TrackingSiteID: "sample-tracking-site-id", TrackingAPIKey: sdkgo.NewSecretString("sample-tracking-api-key")},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
@@ -30,5 +30,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"getCampaign":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCampaign(), reference),
 		"listCampaigns":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCampaigns(), reference),
 		"getCampaignMetrics":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCampaignMetrics(), reference),
+		"upsertCustomer":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpsertCustomer(), reference, scenario.CallID),
+		"deleteCustomer":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCustomer(), reference, scenario.CallID),
 	}}
 }

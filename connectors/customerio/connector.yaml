@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: customerio
   displayName: Customer.io
-  description: Look up Customer.io customers and campaign metadata through the App API.
+  description: Look up customers and campaigns through the App API and manage customers through the Track API.
   company: Customer.io
   categories: [marketing]
   version: v0.2.0
@@ -40,6 +40,11 @@ spec:
         type: integer
         description: Maximum complete App API JSON response in bytes as a positive integer. Blank uses the displayed default; increase for large customer or campaign responses.
         default: 1048576
+      - name: trackingBaseUrl
+        goName: TrackingBaseURL
+        type: url
+        description: Customer.io Track API HTTPS root. Blank uses the displayed US-region default; override with https://track-eu.customer.io for an EU workspace. Do not include a path, query, or credentials.
+        default: https://track.customer.io
   auth:
     type: apiKey
     connectionKind: customerio-app-private-key
@@ -49,12 +54,60 @@ spec:
         type: secretString
         required: true
         description: Secret App API private key from Customer.io > Settings > API Credentials > App API > Create API Key. Copy the complete sk_ key or existing App API key with profile and campaign read access, not its label; blank prevents calls. Dex sends it only as a Bearer credential.
+      - name: trackingSiteId
+        goName: TrackingSiteID
+        type: string
+        description: Non-secret Site ID from Customer.io > Settings > API Credentials > Track API Keys. Copy the Site ID for this workspace, not the key label; blank disables Track API writes. Dex uses it as the Basic-auth username.
+      - name: trackingApiKey
+        goName: TrackingAPIKey
+        type: secretString
+        description: Secret API key from Customer.io > Settings > API Credentials > Track API Keys > Create Key. Copy the complete key, not its label; blank disables Track API writes. Dex uses it only as the Basic-auth password.
     guide:
       startURL: https://fly.customer.io
       steps:
         - In Customer.io open Settings > API Credentials > App API and create or select a private key with profile and campaign read access. Copy the complete sk_ value into secret privateKey; an existing App API key also works. Blank prevents calls. Do not put the key in Flow input.
-        - Leave baseUrl blank for the US region, or use https://api-eu.customer.io for an EU workspace. Leave timeout and maxResponseBytes blank for their displayed defaults. Find a non-secret customer email on the workspace People page, then pass its full email address as email; blank is invalid.
+        - For customer writes, open Settings > API Credentials > Track API Keys. Copy the non-secret Site ID and create or select a secret Track API key for this workspace; enter both in trackingSiteId and trackingApiKey. Blank either field disables Track writes. Track API credentials are distinct from the App API privateKey and must match this workspace.
+        - Leave baseUrl and trackingBaseUrl blank for US-region defaults, or use https://api-eu.customer.io and https://track-eu.customer.io for an EU workspace. Leave timeout and maxResponseBytes blank for their displayed defaults. Find a non-secret customer email on the workspace People page, then pass its full email address as email; blank is invalid.
   operations:
+    - name: upsertCustomer
+      goName: UpsertCustomer
+      inputType: UpsertCustomerInput
+      outputType: CustomerWriteOutput
+      kind: mutation
+      description: Create or update one customer through the Track API, replacing only supplied attribute values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: upserted, goName: Upserted, description: Customer.io accepted the customer upsert.}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the customer data., optional: true}
+        - {id: defect, goName: Defect, description: Input or Track credentials are invalid., optional: true}
+      mocks:
+        - name: upsertedDefault
+          branch: upserted
+          default: true
+          description: One sample customer is added or updated.
+          output: {identifier: customer-123}
+    - name: deleteCustomer
+      goName: DeleteCustomer
+      inputType: DeleteCustomerInput
+      outputType: CustomerWriteOutput
+      kind: mutation
+      description: Permanently remove one customer through the Track API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Customer.io deleted the customer.}
+        - {id: notFound, goName: NotFound, description: No customer has this identifier., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or Track credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample customer is deleted.
+          output: {identifier: customer-123}
     - name: getCampaign
       goName: GetCampaign
       inputType: GetCampaignInput

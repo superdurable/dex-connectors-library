@@ -18,6 +18,8 @@ import (
 // Mock is a scripted customerio connection. Script each operation through its accessor.
 type Mock struct {
 	connection          customerio.Connection
+	upsertCustomer      *connectormock.Mutation[customerio.UpsertCustomerInput, customerio.CustomerWriteOutput]
+	deleteCustomer      *connectormock.Mutation[customerio.DeleteCustomerInput, customerio.CustomerWriteOutput]
 	getCampaign         *connectormock.Query[customerio.GetCampaignInput, customerio.CampaignSummary]
 	listCampaigns       *connectormock.Query[customerio.ListCampaignsInput, customerio.CampaignsPage]
 	getCampaignMetrics  *connectormock.Query[customerio.GetCampaignMetricsInput, customerio.CampaignMetrics]
@@ -29,11 +31,15 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		upsertCustomer:      connectormock.NewMutation[customerio.UpsertCustomerInput, customerio.CustomerWriteOutput](t, customerio.UpsertCustomerDefinition),
+		deleteCustomer:      connectormock.NewMutation[customerio.DeleteCustomerInput, customerio.CustomerWriteOutput](t, customerio.DeleteCustomerDefinition),
 		getCampaign:         connectormock.NewQuery[customerio.GetCampaignInput, customerio.CampaignSummary](t, customerio.GetCampaignDefinition),
 		listCampaigns:       connectormock.NewQuery[customerio.ListCampaignsInput, customerio.CampaignsPage](t, customerio.ListCampaignsDefinition),
 		getCampaignMetrics:  connectormock.NewQuery[customerio.GetCampaignMetricsInput, customerio.CampaignMetrics](t, customerio.GetCampaignMetricsDefinition),
 		getCustomersByEmail: connectormock.NewQuery[customerio.GetCustomersByEmailInput, customerio.CustomerLookupPage](t, customerio.GetCustomersByEmailDefinition),
 	}
+	mock.upsertCustomer.Default(UpsertCustomerDefault())
+	mock.deleteCustomer.Default(DeleteCustomerDefault())
 	mock.getCampaign.Default(GetCampaignDefault())
 	mock.listCampaigns.Default(ListCampaignsDefault())
 	mock.getCampaignMetrics.Default(GetCampaignMetricsDefault())
@@ -48,6 +54,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() customerio.Connection { return mock.connection }
+
+// UpsertCustomer returns the upsertCustomer script.
+func (mock *Mock) UpsertCustomer() *connectormock.Mutation[customerio.UpsertCustomerInput, customerio.CustomerWriteOutput] {
+	return mock.upsertCustomer
+}
+
+// DeleteCustomer returns the deleteCustomer script.
+func (mock *Mock) DeleteCustomer() *connectormock.Mutation[customerio.DeleteCustomerInput, customerio.CustomerWriteOutput] {
+	return mock.deleteCustomer
+}
 
 // GetCampaign returns the getCampaign script.
 func (mock *Mock) GetCampaign() *connectormock.Query[customerio.GetCampaignInput, customerio.CampaignSummary] {
@@ -71,6 +87,12 @@ func (mock *Mock) GetCustomersByEmail() *connectormock.Query[customerio.GetCusto
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) UpsertCustomer() sdkgo.Mutation[customerio.UpsertCustomerInput, customerio.CustomerWriteOutput] {
+	return operations.mock.upsertCustomer
+}
+func (operations mockOperations) DeleteCustomer() sdkgo.Mutation[customerio.DeleteCustomerInput, customerio.CustomerWriteOutput] {
+	return operations.mock.deleteCustomer
+}
 func (operations mockOperations) GetCampaign() sdkgo.Query[customerio.GetCampaignInput, customerio.CampaignSummary] {
 	return operations.mock.getCampaign
 }
@@ -82,6 +104,73 @@ func (operations mockOperations) GetCampaignMetrics() sdkgo.Query[customerio.Get
 }
 func (operations mockOperations) GetCustomersByEmail() sdkgo.Query[customerio.GetCustomersByEmailInput, customerio.CustomerLookupPage] {
 	return operations.mock.getCustomersByEmail
+}
+
+// UpsertCustomerUpserted selects the upserted branch: Customer.io accepted the customer upsert.
+func UpsertCustomerUpserted(value customerio.CustomerWriteOutput, failure *sdkgo.Failure) connectormock.Case[customerio.CustomerWriteOutput] {
+	return connectormock.Branch(customerio.UpsertCustomerBranchUpserted, value, failure)
+}
+
+// UpsertCustomerProviderRejected selects the providerRejected branch: Customer.io rejected the customer data.
+func UpsertCustomerProviderRejected(value customerio.CustomerWriteOutput, failure *sdkgo.Failure) connectormock.Case[customerio.CustomerWriteOutput] {
+	return connectormock.Branch(customerio.UpsertCustomerBranchProviderRejected, value, failure)
+}
+
+// UpsertCustomerDefect selects the defect branch: Input or Track credentials are invalid.
+func UpsertCustomerDefect(value customerio.CustomerWriteOutput, failure *sdkgo.Failure) connectormock.Case[customerio.CustomerWriteOutput] {
+	return connectormock.Branch(customerio.UpsertCustomerBranchDefect, value, failure)
+}
+
+// UpsertCustomerRetry asks Dex to retry the upsertCustomer Step, after the delay when it is positive.
+func UpsertCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[customerio.CustomerWriteOutput] {
+	return connectormock.Retry[customerio.CustomerWriteOutput](failure, after)
+}
+
+// UpsertCustomerUpsertedDefault is the manifest mock upsertedDefault: One sample customer is added or updated.
+func UpsertCustomerUpsertedDefault() connectormock.Case[customerio.CustomerWriteOutput] {
+	value := connectormock.MustDecodeOutput[customerio.CustomerWriteOutput](`{"identifier":"customer-123"}`)
+	return connectormock.Branch(customerio.UpsertCustomerBranchUpserted, value, nil)
+}
+
+// UpsertCustomerDefault is the manifest default, upsertedDefault, which New installs.
+func UpsertCustomerDefault() connectormock.Case[customerio.CustomerWriteOutput] {
+	return UpsertCustomerUpsertedDefault()
+}
+
+// DeleteCustomerDeleted selects the deleted branch: Customer.io deleted the customer.
+func DeleteCustomerDeleted(value customerio.CustomerWriteOutput, failure *sdkgo.Failure) connectormock.Case[customerio.CustomerWriteOutput] {
+	return connectormock.Branch(customerio.DeleteCustomerBranchDeleted, value, failure)
+}
+
+// DeleteCustomerNotFound selects the notFound branch: No customer has this identifier.
+func DeleteCustomerNotFound(value customerio.CustomerWriteOutput, failure *sdkgo.Failure) connectormock.Case[customerio.CustomerWriteOutput] {
+	return connectormock.Branch(customerio.DeleteCustomerBranchNotFound, value, failure)
+}
+
+// DeleteCustomerProviderRejected selects the providerRejected branch: Customer.io rejected the deletion.
+func DeleteCustomerProviderRejected(value customerio.CustomerWriteOutput, failure *sdkgo.Failure) connectormock.Case[customerio.CustomerWriteOutput] {
+	return connectormock.Branch(customerio.DeleteCustomerBranchProviderRejected, value, failure)
+}
+
+// DeleteCustomerDefect selects the defect branch: Input or Track credentials are invalid.
+func DeleteCustomerDefect(value customerio.CustomerWriteOutput, failure *sdkgo.Failure) connectormock.Case[customerio.CustomerWriteOutput] {
+	return connectormock.Branch(customerio.DeleteCustomerBranchDefect, value, failure)
+}
+
+// DeleteCustomerRetry asks Dex to retry the deleteCustomer Step, after the delay when it is positive.
+func DeleteCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[customerio.CustomerWriteOutput] {
+	return connectormock.Retry[customerio.CustomerWriteOutput](failure, after)
+}
+
+// DeleteCustomerDeletedDefault is the manifest mock deletedDefault: One sample customer is deleted.
+func DeleteCustomerDeletedDefault() connectormock.Case[customerio.CustomerWriteOutput] {
+	value := connectormock.MustDecodeOutput[customerio.CustomerWriteOutput](`{"identifier":"customer-123"}`)
+	return connectormock.Branch(customerio.DeleteCustomerBranchDeleted, value, nil)
+}
+
+// DeleteCustomerDefault is the manifest default, deletedDefault, which New installs.
+func DeleteCustomerDefault() connectormock.Case[customerio.CustomerWriteOutput] {
+	return DeleteCustomerDeletedDefault()
 }
 
 // GetCampaignFound selects the found branch: Customer.io returned the campaign.

@@ -1300,6 +1300,492 @@
       },
       "name": "getCampaignMetrics-transportFailure",
       "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "253d2bae-caa4-5aa6-b300-6db875d1f0db",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/customers/customer-123",
+          "requestBody": {
+            "first_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "identifier": "customer-123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "253d2bae-caa4-5aa6-b300-6db875d1f0db",
+      "input": {
+        "attributes": {
+          "first_name": "Ada"
+        },
+        "identifier": "customer-123"
+      },
+      "name": "upsertCustomer-success",
+      "operation": "upsertCustomer"
+    },
+    {
+      "callId": "253d2bae-caa4-5aa6-b300-6db875d1f0db",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/customers/customer-123",
+          "requestBody": {
+            "first_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "identifier": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "253d2bae-caa4-5aa6-b300-6db875d1f0db",
+      "input": {
+        "attributes": {
+          "first_name": "Ada"
+        },
+        "identifier": "customer-123"
+      },
+      "name": "upsertCustomer-providerRejected",
+      "operation": "upsertCustomer"
+    },
+    {
+      "callId": "253d2bae-caa4-5aa6-b300-6db875d1f0db",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "identifier": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "253d2bae-caa4-5aa6-b300-6db875d1f0db",
+      "input": {
+        "attributes": {
+          "first_name": "Ada"
+        },
+        "identifier": ""
+      },
+      "name": "upsertCustomer-defect",
+      "operation": "upsertCustomer"
+    },
+    {
+      "callId": "b0000004-924f-5476-9c72-69d0dc131bcc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/customers/customer-123",
+          "requestBody": {
+            "first_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0000004-924f-5476-9c72-69d0dc131bcc",
+      "input": {
+        "attributes": {
+          "first_name": "Ada"
+        },
+        "identifier": "customer-123"
+      },
+      "name": "upsertCustomer-rateLimit",
+      "operation": "upsertCustomer"
+    },
+    {
+      "callId": "b0000005-924f-5476-9c72-69d0dc131bcc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/customers/customer-123",
+          "requestBody": {
+            "first_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0000005-924f-5476-9c72-69d0dc131bcc",
+      "input": {
+        "attributes": {
+          "first_name": "Ada"
+        },
+        "identifier": "customer-123"
+      },
+      "name": "upsertCustomer-serverUnavailable",
+      "operation": "upsertCustomer"
+    },
+    {
+      "callId": "b0000006-924f-5476-9c72-69d0dc131bcc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/customers/customer-123",
+          "requestBody": {
+            "first_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0000006-924f-5476-9c72-69d0dc131bcc",
+      "input": {
+        "attributes": {
+          "first_name": "Ada"
+        },
+        "identifier": "customer-123"
+      },
+      "name": "upsertCustomer-transportFailure",
+      "operation": "upsertCustomer"
+    },
+    {
+      "callId": "e4532931-de02-54e8-b322-5a549f461f30",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/customers/customer-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "identifier": "customer-123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4532931-de02-54e8-b322-5a549f461f30",
+      "input": {
+        "identifier": "customer-123"
+      },
+      "name": "deleteCustomer-success",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "e4532931-de02-54e8-b322-5a549f461f30",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/customers/customer-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "identifier": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4532931-de02-54e8-b322-5a549f461f30",
+      "input": {
+        "identifier": "customer-123"
+      },
+      "name": "deleteCustomer-notFound",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "e4532931-de02-54e8-b322-5a549f461f30",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/customers/customer-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "identifier": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4532931-de02-54e8-b322-5a549f461f30",
+      "input": {
+        "identifier": "customer-123"
+      },
+      "name": "deleteCustomer-providerRejected",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "e4532931-de02-54e8-b322-5a549f461f30",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "identifier": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4532931-de02-54e8-b322-5a549f461f30",
+      "input": {
+        "identifier": ""
+      },
+      "name": "deleteCustomer-defect",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "b000000b-6346-5d36-94f4-d2762b5ffd0e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/customers/customer-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b000000b-6346-5d36-94f4-d2762b5ffd0e",
+      "input": {
+        "identifier": "customer-123"
+      },
+      "name": "deleteCustomer-rateLimit",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "b000000c-6346-5d36-94f4-d2762b5ffd0e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/customers/customer-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b000000c-6346-5d36-94f4-d2762b5ffd0e",
+      "input": {
+        "identifier": "customer-123"
+      },
+      "name": "deleteCustomer-serverUnavailable",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "b000000d-6346-5d36-94f4-d2762b5ffd0e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/customers/customer-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b000000d-6346-5d36-94f4-d2762b5ffd0e",
+      "input": {
+        "identifier": "customer-123"
+      },
+      "name": "deleteCustomer-transportFailure",
+      "operation": "deleteCustomer"
     }
   ],
   "schemaVersion": 1

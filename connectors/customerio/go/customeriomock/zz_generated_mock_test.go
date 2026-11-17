@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "upsertCustomer/upsertedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.CustomerWriteOutput](`{"identifier":"customer-123"}`)
+			return err
+		}},
+		{name: "deleteCustomer/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.CustomerWriteOutput](`{"identifier":"customer-123"}`)
+			return err
+		}},
 		{name: "getCampaign/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[customerio.CampaignSummary](`{"id":5,"name":"Welcome series","active":true,"state":"running"}`)
 			return err
@@ -42,6 +50,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.UpsertCustomer().Definition().Operation.OperationID != "upsertCustomer" {
+		t.Errorf("upsertCustomer mock has another definition")
+	}
+	if mock.DeleteCustomer().Definition().Operation.OperationID != "deleteCustomer" {
+		t.Errorf("deleteCustomer mock has another definition")
+	}
 	if mock.GetCampaign().Definition().Operation.OperationID != "getCampaign" {
 		t.Errorf("getCampaign mock has another definition")
 	}
