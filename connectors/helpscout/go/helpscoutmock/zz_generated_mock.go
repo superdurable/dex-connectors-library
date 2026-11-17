@@ -286,7 +286,7 @@ func UpdateConversationProviderRejected(value helpscout.UpdateConversationOutput
 	return connectormock.Branch(helpscout.UpdateConversationBranchProviderRejected, value, failure)
 }
 
-// UpdateConversationInvalidResponse selects the invalidResponse branch: Help Scout returned a malformed or oversized conversation, so part of the change may have been applied.
+// UpdateConversationInvalidResponse selects the invalidResponse branch: Help Scout returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.
 func UpdateConversationInvalidResponse(value helpscout.UpdateConversationOutput, failure *sdkgo.Failure) connectormock.Case[helpscout.UpdateConversationOutput] {
 	return connectormock.Branch(helpscout.UpdateConversationBranchInvalidResponse, value, failure)
 }
@@ -319,10 +319,10 @@ func UpdateConversationProviderRejectedFailure() connectormock.Case[helpscout.Up
 	return connectormock.Branch(helpscout.UpdateConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Help Scout refused to change the locked conversation (HTTP 412)."})
 }
 
-// UpdateConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: Matches an oversized read-back after a status update.
+// UpdateConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: Matches an oversized conversation read before a status update.
 func UpdateConversationInvalidResponseFailure() connectormock.Case[helpscout.UpdateConversationOutput] {
 	var value helpscout.UpdateConversationOutput
-	return connectormock.Branch(helpscout.UpdateConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureResponseTooLarge, Message: "Help Scout returned an oversized conversation read-back."})
+	return connectormock.Branch(helpscout.UpdateConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureResponseTooLarge, Message: "Help Scout returned an oversized conversation before the change."})
 }
 
 // UpdateConversationDefault is the manifest default, updatedDefaultAnswer, which New installs.

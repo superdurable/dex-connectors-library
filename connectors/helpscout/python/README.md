@@ -5,7 +5,7 @@
 ## Install
 
 ```sh
-uv add dex-connector-helpscout==0.2.0
+uv add dex-connector-helpscout==0.2.1
 ```
 
 This package requires `dex-connectors-sdk>=0.11.0,<1` and `dex-python-sdk>=1.28.0`.
@@ -49,7 +49,7 @@ Inbox payloads use the Go connector's JSON field names, so Go, TypeScript, and P
 
 `searchConversations` combines inbox, status, tag, customer email, modification time, and page filters. `getConversation` reads one conversation and the newest thread page, and selects `merged` for Help Scout's redirect to another conversation. `findCustomerByEmail` returns all matches on its first page, up to 50; no match selects `notFound`.
 
-`replyToConversation` uses Dex's durable single-dispatch checkpoint. It sends a reply or internal note at most once after an ambiguous outcome and selects `uncertain` when the provider may have accepted it without a confirmable thread ID. A confirmed ID is read back on retry. `updateConversation` compares the current state, sends absolute status, assignee, and tag writes only when needed, and reads the final state back. Repeat attempts converge on the requested values.
+`replyToConversation` uses Dex's durable single-dispatch checkpoint. It resends a reply or internal note after an ambiguous outcome while the manifest send cap allows, and selects `uncertain` at the cap when the provider may have accepted it without a confirmable thread ID. A confirmed ID is read back on retry. `updateConversation` compares the current state, sends absolute status, assignee, and tag writes only when needed, and reads the final state back. Repeat attempts converge on the requested values.
 
 Every operation uses the generated Step factory and its stable branch IDs. Only the required happy-path branch should be wired by default. The provider can return new conversation status strings, which results preserve unchanged. Treat provider text and HTML as untrusted before rendering.
 

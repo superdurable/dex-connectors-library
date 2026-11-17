@@ -73,7 +73,7 @@ REPLY_TO_CONVERSATION_DEFINITION = MutationDefinition(
         BranchDefinition(REPLIED, "Help Scout created the reply or note and returned its thread ID.", False),
         BranchDefinition(NOT_FOUND, "The conversation does not exist, was merged, or is not visible to the app's Help Scout user; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The thread was sent but Help Scout's answer was lost, a server error, or unreadable, so it may exist; the connector never sends it again.", True),
+        BranchDefinition(UNCERTAIN, "The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, an unlisted status, or a 2xx without a thread ID, or an accepted thread could not be confirmed by read-back. Without a thread ID, an unknown outcome is resent while the cap allows.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -91,7 +91,7 @@ UPDATE_CONVERSATION_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt.", False),
         BranchDefinition(NOT_FOUND, "The conversation does not exist, was merged, or is not visible to the app's Help Scout user.", True),
         BranchDefinition(PROVIDER_REJECTED, "Help Scout conclusively rejected the change, such as an assignee who is not a user or team of the account.", True),
-        BranchDefinition(INVALID_RESPONSE, "Help Scout returned a malformed or oversized conversation, so part of the change may have been applied.", True),
+        BranchDefinition(INVALID_RESPONSE, "Help Scout returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -99,8 +99,7 @@ UPDATE_CONVERSATION_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
-    repeat_on_unknown=RepeatOnUnknown.LIMITED,
-    max_sends=3,
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 FIND_CUSTOMER_BY_EMAIL_DEFINITION = QueryDefinition(

@@ -1,10 +1,10 @@
 {
   "connectorId": "helpscout",
-  "releaseTag": "connectors/helpscout/go/v0.24.0",
+  "releaseTag": "connectors/helpscout/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-helpscout",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {

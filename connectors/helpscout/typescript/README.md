@@ -28,8 +28,9 @@ Attributes, Results, Streams, or logs.
 | `newFindCustomerByEmailStep` | `GET /v3/customers` | `found` |
 
 Other branches are optional. An unwired optional branch fails its Flow.
-`replyToConversation` uses sync durability and a durable dispatch fence: an
-unconfirmed sent reply is `uncertain`, while a confirmed 429, 503, or 504
+`replyToConversation` uses sync durability and a durable dispatch fence with
+the manifest send cap: an unconfirmed sent reply is resent while the cap
+allows and selects `uncertain` at the cap, while a confirmed 429 or 503
 permits a retry. `updateConversation` writes final values and can safely
 repeat after a lost answer. Both mutations derive their idempotency key from
 the Dex Call ID; Help Scout receives no idempotency header.

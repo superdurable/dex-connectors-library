@@ -214,7 +214,7 @@ export function updateConversationProviderRejectedFailure(): Case<UpdateConversa
 /** Manifest scenario invalidResponseFailure for updateConversation. */
 export function updateConversationInvalidResponseFailure(): Case<UpdateConversationOutput> {
   const value = emptyUpdateConversationOutput;
-  return branchCase("invalidResponse", value, { kind: "RESPONSE_TOO_LARGE", provider: ConnectorID, operation: "updateConversation", message: "Help Scout returned an oversized conversation read-back." });
+  return branchCase("invalidResponse", value, { kind: "RESPONSE_TOO_LARGE", provider: ConnectorID, operation: "updateConversation", message: "Help Scout returned an oversized conversation before the change." });
 }
 
 /** Script the found branch. */

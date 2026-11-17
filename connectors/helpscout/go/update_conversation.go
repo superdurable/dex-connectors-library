@@ -81,7 +81,7 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 	if err != nil {
 		return credentialMutationAttempt(operationID, UpdateConversationBranchDefect, UpdateConversationOutput{}, err)
 	}
-	current, attempt, isTerminal := client.readConversationForUpdate(call, &credentials, input.ConversationID, UpdateConversationOutput{})
+	current, attempt, isTerminal := client.readConversationForUpdate(call, &credentials, input.ConversationID, UpdateConversationOutput{}, false)
 	if isTerminal {
 		return attempt
 	}
@@ -97,11 +97,16 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 	currentOutput := UpdateConversationOutput{Conversation: current}
 	for _, write := range writes {
 		response, err := client.send(call.Context, call, &credentials, write)
+		if isUnknownWriteOutcome(response, err) {
+			// Every write sets a final value, so an unknown outcome repeats it.
+			return sdkgo.NewMutationRetry[UpdateConversationOutput](helpScoutFailure(operationID, sdkgo.FailureAvailability,
+				fmt.Sprintf("the Help Scout write outcome is unknown (HTTP %d)", response.statusCode)), 0)
+		}
 		if attempt, isTerminal, _ := classifyIdempotentMutationExchange(client, call, operationID, credentials, response, err, branches, input.ConversationID, currentOutput); isTerminal {
 			return attempt
 		}
 	}
-	updated, attempt, isTerminal := client.readConversationForUpdate(call, &credentials, input.ConversationID, currentOutput)
+	updated, attempt, isTerminal := client.readConversationForUpdate(call, &credentials, input.ConversationID, currentOutput, true)
 	if isTerminal {
 		return attempt
 	}
@@ -109,12 +114,34 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 		client.receipt(call, input.ConversationID, ""))
 }
 
+// isUnknownWriteOutcome reports an answer to a sent write that neither confirms nor definitely refuses it.
+func isUnknownWriteOutcome(response helpScoutResponse, err error) bool {
+	if err != nil {
+		return errors.Is(err, errHelpScoutResponseTooLarge) || errors.Is(err, errHelpScoutResponseMalformed)
+	}
+	status := response.statusCode
+	// classifyIdempotentMutationExchange already retries 408, 429, and 5xx.
+	return (status < 200 || status >= 300) && status != http.StatusTooManyRequests &&
+		status != http.StatusRequestTimeout && status < 500 && !isDefiniteRefusalStatus(status)
+}
+
 // readConversationForUpdate reads the conversation; a merged one selects notFound with the new ID.
+// After a write, every failed or unusable read-back retries, because the final values are safe to repeat.
 func (client *Client) readConversationForUpdate(
-	call sdkgo.Call, credentials *Credentials, conversationID int64, value UpdateConversationOutput,
+	call sdkgo.Call, credentials *Credentials, conversationID int64, value UpdateConversationOutput, isAfterWrite bool,
 ) (Conversation, sdkgo.MutationAttempt[UpdateConversationOutput], bool) {
 	operationID := UpdateConversationDefinition.Operation.OperationID
 	response, err := client.send(call.Context, call, credentials, helpScoutRequest{method: http.MethodGet, path: conversationPath(conversationID)})
+	if isAfterWrite {
+		branches := failureBranches{providerRejected: UpdateConversationBranchProviderRejected, invalidResponse: UpdateConversationBranchInvalidResponse}
+		if attempt, isTerminal, isRetry := classifyIdempotentMutationExchange(client, call, operationID, *credentials, response, err, branches, conversationID, value); isTerminal {
+			if isRetry {
+				return Conversation{}, attempt, true
+			}
+			return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationOutput](helpScoutFailure(operationID, sdkgo.FailureAvailability,
+				"Help Scout accepted the change but its read-back failed"), 0), true
+		}
+	}
 	if err == nil && response.statusCode == http.StatusMovedPermanently {
 		message := "the conversation was merged into another; update that conversation"
 		if mergedIntoID, locationErr := parseConversationLocation(response.header.Get("Location")); locationErr == nil {
@@ -131,6 +158,10 @@ func (client *Client) readConversationForUpdate(
 		return Conversation{}, attempt, true
 	}
 	conversation, err := decodeConversationBody(response.body, conversationID)
+	if err != nil && isAfterWrite {
+		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationOutput](helpScoutFailure(operationID, sdkgo.FailureProtocol,
+			"Help Scout accepted the change but returned an invalid conversation: "+err.Error()), 0), true
+	}
 	if err != nil {
 		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, value,
 			helpScoutFailurePointer(operationID, sdkgo.FailureProtocol, "Help Scout returned an invalid conversation: "+err.Error()),
