@@ -33,6 +33,8 @@ const (
 	uploadCopyStepType       = "UploadTextCopy"
 	readBackCopyStepType     = "ReadBackTextCopy"
 	completeCopyStepType     = "CompleteTextCopy"
+	renameCopyStepType       = "RenameTextCopy"
+	completeRenamedStepType  = "CompleteRenamedTextCopy"
 	fallbackTextMimeType     = "text/plain"
 )
 
@@ -50,6 +52,8 @@ type Input struct {
 	CopyFolderName string `json:"copyFolderName"`
 	// CopyName is the name of the uploaded copy, such as Ops Policy (copy).txt.
 	CopyName string `json:"copyName"`
+	// FinalName optionally renames the uploaded copy after read-back; blank keeps CopyName.
+	FinalName string `json:"finalName,omitempty"`
 	// ShouldReplaceExisting replaces a different existing copy; false lets an unwired conflict fail the Flow.
 	ShouldReplaceExisting bool `json:"shouldReplaceExisting,omitempty"`
 }
@@ -114,6 +118,14 @@ type CopyRequest struct {
 	Text string `json:"text"`
 	// ConflictBehavior is fail, or replace when the request asked to replace an existing copy.
 	ConflictBehavior onedrive.ConflictBehavior `json:"conflictBehavior"`
+}
+
+// RenameRequest is the application input for an optional final rename.
+type RenameRequest struct {
+	// ItemID is the uploaded copy's Graph ID.
+	ItemID string `json:"itemId"`
+	// Name is the desired final name.
+	Name string `json:"name"`
 }
 
 // Flow copies one text file, resolved by exact name, into an ensured copy folder.
@@ -258,6 +270,13 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Found: sdkgo.GoTo(completeTextCopy{}),
 		})),
 		dex.DefineStep(completeTextCopy{}),
+		dex.DefineStep(onedrive.NewRenameItemStep(onedrive.RenameItemStepConfig[RenameRequest]{
+			StepType: renameCopyStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "onedrive", GroupLabel: "OneDrive and SharePoint", Explanation: "Set the copied file's requested final name after Graph confirms the upload."},
+			Connection:  flow.connection, MapToOperationInput: flow.MapToRenameItemInput,
+			Renamed: sdkgo.GoTo(completeRenamedTextCopy{}),
+		})),
+		dex.DefineStep(completeRenamedTextCopy{}),
 	}
 }
 
@@ -335,6 +354,11 @@ func (flow *Flow) MapToUploadFileInput(request CopyRequest) onedrive.UploadFileI
 // MapToGetFileInput reads back the uploaded copy.
 func (flow *Flow) MapToGetFileInput(result onedrive.UploadFileResult) onedrive.GetFileInput {
 	return onedrive.GetFileInput{DriveID: flow.destinationLocation.Value.DriveID, ItemID: result.Value.Item.ID}
+}
+
+// MapToRenameItemInput sets the copied file's final name in the destination drive.
+func (flow *Flow) MapToRenameItemInput(request RenameRequest) onedrive.RenameItemInput {
+	return onedrive.RenameItemInput{DriveID: flow.destinationLocation.Value.DriveID, ItemID: request.ItemID, Name: request.Name}
 }
 
 // rootWhenBlank keeps searchFiles in folder mode, which looks a name up by path, for the drive root.
@@ -490,22 +514,52 @@ type completeTextCopy struct {
 func (completeTextCopy) GetStepType() string { return completeCopyStepType }
 
 func (completeTextCopy) Execute(ctx dex.Context, result onedrive.GetFileResult) (*dex.StepDecision, error) {
-	outcome, err := outcomeAttribute.Get(ctx)
+	request, err := requestAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if request.FinalName != "" && request.FinalName != result.Value.Name {
+		return dex.GoTo(sdkgo.StepRef[RenameRequest](renameCopyStepType), RenameRequest{ItemID: result.Value.ID, Name: request.FinalName}), nil
+	}
+	outcome, err := finishTextCopy(ctx, result.Value)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:text-copy group-label:"Text copy"
+// dex:explanation text:"Record the renamed copy and complete the Flow."
+type completeRenamedTextCopy struct {
+	dex.StepDefaultsNoWaitFor[onedrive.RenameItemResult]
+}
+
+func (completeRenamedTextCopy) GetStepType() string { return completeRenamedStepType }
+
+func (completeRenamedTextCopy) Execute(ctx dex.Context, result onedrive.RenameItemResult) (*dex.StepDecision, error) {
+	outcome, err := finishTextCopy(ctx, result.Value.Item)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+func finishTextCopy(ctx dex.Context, copiedFile onedrive.DriveItem) (Outcome, error) {
+	outcome, err := outcomeAttribute.Get(ctx)
+	if err != nil {
+		return Outcome{}, err
 	}
 	uploadResult, err := copyUploadResultAttribute.Get(ctx)
 	if err != nil {
-		return nil, err
+		return Outcome{}, err
 	}
-	copiedFile := result.Value
 	outcome.Status = StatusCopied
 	outcome.Copy = &copiedFile
 	outcome.IsCopyExistingIdentical = uploadResult.Value.IsExistingFileIdentical
 	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
+		return Outcome{}, err
 	}
-	return dex.GracefulComplete(outcome), nil
+	return outcome, nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

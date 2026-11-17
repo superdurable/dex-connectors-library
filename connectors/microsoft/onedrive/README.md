@@ -328,8 +328,8 @@ authorization has not been verified for the Python port.
 [`examples/text-copy`](go/examples/text-copy) is a runnable Dex Web
 **Start Flow** example that looks up a text file by name in a source folder,
 ensures a copy folder in a destination folder, copies the text into it with
-`fail` or `replace`, and reads the copy back. Both locations come from the site,
-drive, and folder pickers.
+`fail` or `replace`, reads the copy back, and optionally renames it with
+`finalName`. Both locations come from the site, drive, and folder pickers.
 
 ## TypeScript
 

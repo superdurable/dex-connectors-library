@@ -19,6 +19,27 @@ func isCopyUpload(request graphfake.Request) bool {
 	return request.Method == http.MethodPut && strings.HasSuffix(request.Path, ":/content")
 }
 
+func TestTextCopyRenamesFinalFileWithRealDex(t *testing.T) {
+	graph := newGraphFixture(t)
+	harness := newTextCopyHarness(t, graph)
+	result := harness.run(t, "renamed", Input{
+		SourceName: "Ops Policy.txt", CopyFolderName: "Dex copies",
+		CopyName: "Ops Policy (draft).txt", FinalName: "Ops Policy (final).txt",
+	})
+	require.Equal(t, dex.FlowCompleted, result.status)
+	require.Equal(t, StatusCopied, result.outcome.Status)
+	require.Equal(t, "Ops Policy (final).txt", result.outcome.Copy.Name)
+	folderID := result.outcome.CopyFolder.ID
+	require.Empty(t, graph.ItemsNamed(destinationDrive, folderID, "Ops Policy (draft).txt"))
+	files := graph.ItemsNamed(destinationDrive, folderID, "Ops Policy (final).txt")
+	require.Len(t, files, 1)
+	require.Equal(t, result.outcome.Copy.ID, files[0].ID)
+	require.Equal(t, sourceText, string(files[0].Content))
+	require.Equal(t, 1, graph.CountRequests(http.MethodPatch, func(path string) bool {
+		return strings.Contains(path, "/items/"+files[0].ID)
+	}))
+}
+
 func TestTextCopyExampleCopiesAndFailsOnUnwiredBranchesWithRealDex(t *testing.T) {
 	graph := newGraphFixture(t)
 	harness := newTextCopyHarness(t, graph)
