@@ -4639,23 +4639,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "id": "",
-          "name": "",
-          "slug": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "70555c4b-afbc-56d3-8532-652363f6b87c",
       "input": {
@@ -4664,7 +4659,7 @@
         "slug": "app",
         "team": "core"
       },
-      "name": "createProject-uncertain",
+      "name": "createProject-malformed-response",
       "operation": "createProject"
     },
     {
