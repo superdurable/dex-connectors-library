@@ -18,6 +18,11 @@ import (
 // Mock is a scripted activecampaign connection. Script each operation through its accessor.
 type Mock struct {
 	connection                 activecampaign.Connection
+	listAccounts               *connectormock.Query[activecampaign.ListAccountsInput, activecampaign.AccountsPage]
+	getAccount                 *connectormock.Query[activecampaign.GetAccountInput, activecampaign.AccountMetadata]
+	createAccount              *connectormock.Mutation[activecampaign.CreateAccountInput, activecampaign.AccountMetadata]
+	updateAccount              *connectormock.Mutation[activecampaign.UpdateAccountInput, activecampaign.AccountMetadata]
+	deleteAccount              *connectormock.Mutation[activecampaign.DeleteAccountInput, activecampaign.AccountDeletion]
 	listContactListMemberships *connectormock.Query[activecampaign.ListContactListMembershipsInput, activecampaign.ContactListMembershipsPage]
 	subscribeContactToList     *connectormock.Mutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership]
 	unsubscribeContactFromList *connectormock.Mutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership]
@@ -51,6 +56,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listAccounts:               connectormock.NewQuery[activecampaign.ListAccountsInput, activecampaign.AccountsPage](t, activecampaign.ListAccountsDefinition),
+		getAccount:                 connectormock.NewQuery[activecampaign.GetAccountInput, activecampaign.AccountMetadata](t, activecampaign.GetAccountDefinition),
+		createAccount:              connectormock.NewMutation[activecampaign.CreateAccountInput, activecampaign.AccountMetadata](t, activecampaign.CreateAccountDefinition),
+		updateAccount:              connectormock.NewMutation[activecampaign.UpdateAccountInput, activecampaign.AccountMetadata](t, activecampaign.UpdateAccountDefinition),
+		deleteAccount:              connectormock.NewMutation[activecampaign.DeleteAccountInput, activecampaign.AccountDeletion](t, activecampaign.DeleteAccountDefinition),
 		listContactListMemberships: connectormock.NewQuery[activecampaign.ListContactListMembershipsInput, activecampaign.ContactListMembershipsPage](t, activecampaign.ListContactListMembershipsDefinition),
 		subscribeContactToList:     connectormock.NewMutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership](t, activecampaign.SubscribeContactToListDefinition),
 		unsubscribeContactFromList: connectormock.NewMutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership](t, activecampaign.UnsubscribeContactFromListDefinition),
@@ -78,6 +88,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		syncContact:                connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
 		updateContact:              connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
 	}
+	mock.listAccounts.Default(ListAccountsDefault())
+	mock.getAccount.Default(GetAccountDefault())
+	mock.createAccount.Default(CreateAccountDefault())
+	mock.updateAccount.Default(UpdateAccountDefault())
+	mock.deleteAccount.Default(DeleteAccountDefault())
 	mock.listContactListMemberships.Default(ListContactListMembershipsDefault())
 	mock.subscribeContactToList.Default(SubscribeContactToListDefault())
 	mock.unsubscribeContactFromList.Default(UnsubscribeContactFromListDefault())
@@ -114,6 +129,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() activecampaign.Connection { return mock.connection }
+
+// ListAccounts returns the listAccounts script.
+func (mock *Mock) ListAccounts() *connectormock.Query[activecampaign.ListAccountsInput, activecampaign.AccountsPage] {
+	return mock.listAccounts
+}
+
+// GetAccount returns the getAccount script.
+func (mock *Mock) GetAccount() *connectormock.Query[activecampaign.GetAccountInput, activecampaign.AccountMetadata] {
+	return mock.getAccount
+}
+
+// CreateAccount returns the createAccount script.
+func (mock *Mock) CreateAccount() *connectormock.Mutation[activecampaign.CreateAccountInput, activecampaign.AccountMetadata] {
+	return mock.createAccount
+}
+
+// UpdateAccount returns the updateAccount script.
+func (mock *Mock) UpdateAccount() *connectormock.Mutation[activecampaign.UpdateAccountInput, activecampaign.AccountMetadata] {
+	return mock.updateAccount
+}
+
+// DeleteAccount returns the deleteAccount script.
+func (mock *Mock) DeleteAccount() *connectormock.Mutation[activecampaign.DeleteAccountInput, activecampaign.AccountDeletion] {
+	return mock.deleteAccount
+}
 
 // ListContactListMemberships returns the listContactListMemberships script.
 func (mock *Mock) ListContactListMemberships() *connectormock.Query[activecampaign.ListContactListMembershipsInput, activecampaign.ContactListMembershipsPage] {
@@ -247,6 +287,21 @@ func (mock *Mock) UpdateContact() *connectormock.Mutation[activecampaign.UpdateC
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListAccounts() sdkgo.Query[activecampaign.ListAccountsInput, activecampaign.AccountsPage] {
+	return operations.mock.listAccounts
+}
+func (operations mockOperations) GetAccount() sdkgo.Query[activecampaign.GetAccountInput, activecampaign.AccountMetadata] {
+	return operations.mock.getAccount
+}
+func (operations mockOperations) CreateAccount() sdkgo.Mutation[activecampaign.CreateAccountInput, activecampaign.AccountMetadata] {
+	return operations.mock.createAccount
+}
+func (operations mockOperations) UpdateAccount() sdkgo.Mutation[activecampaign.UpdateAccountInput, activecampaign.AccountMetadata] {
+	return operations.mock.updateAccount
+}
+func (operations mockOperations) DeleteAccount() sdkgo.Mutation[activecampaign.DeleteAccountInput, activecampaign.AccountDeletion] {
+	return operations.mock.deleteAccount
+}
 func (operations mockOperations) ListContactListMemberships() sdkgo.Query[activecampaign.ListContactListMembershipsInput, activecampaign.ContactListMembershipsPage] {
 	return operations.mock.listContactListMemberships
 }
@@ -324,6 +379,196 @@ func (operations mockOperations) SyncContact() sdkgo.Mutation[activecampaign.Syn
 }
 func (operations mockOperations) UpdateContact() sdkgo.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata] {
 	return operations.mock.updateContact
+}
+
+// ListAccountsListed selects the listed branch: ActiveCampaign completed the account operation.
+func ListAccountsListed(value activecampaign.AccountsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountsPage] {
+	return connectormock.Branch(activecampaign.ListAccountsBranchListed, value, failure)
+}
+
+// ListAccountsProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func ListAccountsProviderRejected(value activecampaign.AccountsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountsPage] {
+	return connectormock.Branch(activecampaign.ListAccountsBranchProviderRejected, value, failure)
+}
+
+// ListAccountsInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func ListAccountsInvalidResponse(value activecampaign.AccountsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountsPage] {
+	return connectormock.Branch(activecampaign.ListAccountsBranchInvalidResponse, value, failure)
+}
+
+// ListAccountsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListAccountsDefect(value activecampaign.AccountsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountsPage] {
+	return connectormock.Branch(activecampaign.ListAccountsBranchDefect, value, failure)
+}
+
+// ListAccountsRetry asks Dex to retry the listAccounts Step, after the delay when it is positive.
+func ListAccountsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.AccountsPage] {
+	return connectormock.Retry[activecampaign.AccountsPage](failure, after)
+}
+
+// ListAccountsListedDefault is the manifest mock listedDefault: Sample account operation result.
+func ListAccountsListedDefault() connectormock.Case[activecampaign.AccountsPage] {
+	value := connectormock.MustDecodeOutput[activecampaign.AccountsPage](`{"accounts":[{"id":"1","name":"Example Account","accountUrl":"https://example.com"}],"offset":0,"limit":20,"total":1}`)
+	return connectormock.Branch(activecampaign.ListAccountsBranchListed, value, nil)
+}
+
+// ListAccountsDefault is the manifest default, listedDefault, which New installs.
+func ListAccountsDefault() connectormock.Case[activecampaign.AccountsPage] {
+	return ListAccountsListedDefault()
+}
+
+// GetAccountFound selects the found branch: ActiveCampaign completed the account operation.
+func GetAccountFound(value activecampaign.AccountMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Branch(activecampaign.GetAccountBranchFound, value, failure)
+}
+
+// GetAccountNotFound selects the notFound branch: No account exists at the selected ID.
+func GetAccountNotFound(value activecampaign.AccountMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Branch(activecampaign.GetAccountBranchNotFound, value, failure)
+}
+
+// GetAccountProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func GetAccountProviderRejected(value activecampaign.AccountMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Branch(activecampaign.GetAccountBranchProviderRejected, value, failure)
+}
+
+// GetAccountInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func GetAccountInvalidResponse(value activecampaign.AccountMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Branch(activecampaign.GetAccountBranchInvalidResponse, value, failure)
+}
+
+// GetAccountDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetAccountDefect(value activecampaign.AccountMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Branch(activecampaign.GetAccountBranchDefect, value, failure)
+}
+
+// GetAccountRetry asks Dex to retry the getAccount Step, after the delay when it is positive.
+func GetAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Retry[activecampaign.AccountMetadata](failure, after)
+}
+
+// GetAccountFoundDefault is the manifest mock foundDefault: Sample account operation result.
+func GetAccountFoundDefault() connectormock.Case[activecampaign.AccountMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.AccountMetadata](`{"id":"1","name":"Example Account","accountUrl":"https://example.com"}`)
+	return connectormock.Branch(activecampaign.GetAccountBranchFound, value, nil)
+}
+
+// GetAccountDefault is the manifest default, foundDefault, which New installs.
+func GetAccountDefault() connectormock.Case[activecampaign.AccountMetadata] {
+	return GetAccountFoundDefault()
+}
+
+// CreateAccountCreated selects the created branch: ActiveCampaign completed the account operation.
+func CreateAccountCreated(value activecampaign.AccountMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Branch(activecampaign.CreateAccountBranchCreated, value, failure)
+}
+
+// CreateAccountUncertain returns an uncertain createAccount outcome.
+func CreateAccountUncertain(value activecampaign.AccountMetadata, failure sdkgo.Failure) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateAccountProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func CreateAccountProviderRejected(value activecampaign.AccountMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Branch(activecampaign.CreateAccountBranchProviderRejected, value, failure)
+}
+
+// CreateAccountDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateAccountDefect(value activecampaign.AccountMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Branch(activecampaign.CreateAccountBranchDefect, value, failure)
+}
+
+// CreateAccountRetry asks Dex to retry the createAccount Step, after the delay when it is positive.
+func CreateAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Retry[activecampaign.AccountMetadata](failure, after)
+}
+
+// CreateAccountCreatedDefault is the manifest mock createdDefault: Sample account operation result.
+func CreateAccountCreatedDefault() connectormock.Case[activecampaign.AccountMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.AccountMetadata](`{"id":"1","name":"Example Account","accountUrl":"https://example.com"}`)
+	return connectormock.Branch(activecampaign.CreateAccountBranchCreated, value, nil)
+}
+
+// CreateAccountDefault is the manifest default, createdDefault, which New installs.
+func CreateAccountDefault() connectormock.Case[activecampaign.AccountMetadata] {
+	return CreateAccountCreatedDefault()
+}
+
+// UpdateAccountUpdated selects the updated branch: ActiveCampaign completed the account operation.
+func UpdateAccountUpdated(value activecampaign.AccountMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Branch(activecampaign.UpdateAccountBranchUpdated, value, failure)
+}
+
+// UpdateAccountNotFound selects the notFound branch: No account exists at the selected ID.
+func UpdateAccountNotFound(value activecampaign.AccountMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Branch(activecampaign.UpdateAccountBranchNotFound, value, failure)
+}
+
+// UpdateAccountProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func UpdateAccountProviderRejected(value activecampaign.AccountMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Branch(activecampaign.UpdateAccountBranchProviderRejected, value, failure)
+}
+
+// UpdateAccountInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func UpdateAccountInvalidResponse(value activecampaign.AccountMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Branch(activecampaign.UpdateAccountBranchInvalidResponse, value, failure)
+}
+
+// UpdateAccountDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateAccountDefect(value activecampaign.AccountMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Branch(activecampaign.UpdateAccountBranchDefect, value, failure)
+}
+
+// UpdateAccountRetry asks Dex to retry the updateAccount Step, after the delay when it is positive.
+func UpdateAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.AccountMetadata] {
+	return connectormock.Retry[activecampaign.AccountMetadata](failure, after)
+}
+
+// UpdateAccountUpdatedDefault is the manifest mock updatedDefault: Sample account operation result.
+func UpdateAccountUpdatedDefault() connectormock.Case[activecampaign.AccountMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.AccountMetadata](`{"id":"1","name":"Example Account","accountUrl":"https://example.com"}`)
+	return connectormock.Branch(activecampaign.UpdateAccountBranchUpdated, value, nil)
+}
+
+// UpdateAccountDefault is the manifest default, updatedDefault, which New installs.
+func UpdateAccountDefault() connectormock.Case[activecampaign.AccountMetadata] {
+	return UpdateAccountUpdatedDefault()
+}
+
+// DeleteAccountDeleted selects the deleted branch: ActiveCampaign completed the account operation.
+func DeleteAccountDeleted(value activecampaign.AccountDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountDeletion] {
+	return connectormock.Branch(activecampaign.DeleteAccountBranchDeleted, value, failure)
+}
+
+// DeleteAccountProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func DeleteAccountProviderRejected(value activecampaign.AccountDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountDeletion] {
+	return connectormock.Branch(activecampaign.DeleteAccountBranchProviderRejected, value, failure)
+}
+
+// DeleteAccountInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func DeleteAccountInvalidResponse(value activecampaign.AccountDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountDeletion] {
+	return connectormock.Branch(activecampaign.DeleteAccountBranchInvalidResponse, value, failure)
+}
+
+// DeleteAccountDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteAccountDefect(value activecampaign.AccountDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.AccountDeletion] {
+	return connectormock.Branch(activecampaign.DeleteAccountBranchDefect, value, failure)
+}
+
+// DeleteAccountRetry asks Dex to retry the deleteAccount Step, after the delay when it is positive.
+func DeleteAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.AccountDeletion] {
+	return connectormock.Retry[activecampaign.AccountDeletion](failure, after)
+}
+
+// DeleteAccountDeletedDefault is the manifest mock deletedDefault: Sample account operation result.
+func DeleteAccountDeletedDefault() connectormock.Case[activecampaign.AccountDeletion] {
+	value := connectormock.MustDecodeOutput[activecampaign.AccountDeletion](`{"accountId":"1","deleted":true}`)
+	return connectormock.Branch(activecampaign.DeleteAccountBranchDeleted, value, nil)
+}
+
+// DeleteAccountDefault is the manifest default, deletedDefault, which New installs.
+func DeleteAccountDefault() connectormock.Case[activecampaign.AccountDeletion] {
+	return DeleteAccountDeletedDefault()
 }
 
 // ListContactListMembershipsListed selects the listed branch: ActiveCampaign completed the list-membership operation.

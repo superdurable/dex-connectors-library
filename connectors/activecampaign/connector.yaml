@@ -53,8 +53,110 @@ spec:
       steps:
         - Sign in to the ActiveCampaign account at https://www.activecampaign.com/login, click Settings (gear), then Developer.
         - Copy the account's full API URL into non-secret baseUrl; it ends in /api/3 and is unique to the account. Copy the current user's API Key into secret api_key and save the connection.
-        - Ensure this API user can view and edit the intended contacts and lists; list subscriptions need contact edit permission and resubscribing an unsubscribed contact needs resubscribe permission. Existing contact-tag assignment needs contact edit permission, tag-definition writes need tag management permission, and deal operations need Deals and pipeline management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - Ensure this API user can view and edit the intended contacts and lists; list subscriptions need contact edit permission and resubscribing an unsubscribed contact needs resubscribe permission. Existing contact-tag assignment needs contact edit permission, tag-definition writes need tag management permission, deal operations need Deals and pipeline management permission, and CRM account writes need account management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: listAccounts
+      goName: ListAccounts
+      inputType: ListAccountsInput
+      outputType: AccountsPage
+      kind: query
+      description: List one page of CRM accounts.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the account operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample account operation result.
+          output: {accounts: [{id: '1', name: Example Account, accountUrl: 'https://example.com'}], offset: 0, limit: 20, total: 1}
+    - name: getAccount
+      goName: GetAccount
+      inputType: GetAccountInput
+      outputType: AccountMetadata
+      kind: query
+      description: Read one CRM account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign completed the account operation.}
+        - {id: notFound, goName: NotFound, description: No account exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample account operation result.
+          output: {id: '1', name: Example Account, accountUrl: 'https://example.com'}
+    - name: createAccount
+      goName: CreateAccount
+      inputType: CreateAccountInput
+      outputType: AccountMetadata
+      kind: mutation
+      description: Create a CRM account with bounded sends and name read-back.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: ActiveCampaign completed the account operation.}
+        - {id: uncertain, goName: Uncertain, description: Bounded account creation could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample account operation result.
+          output: {id: '1', name: Example Account, accountUrl: 'https://example.com'}
+    - name: updateAccount
+      goName: UpdateAccount
+      inputType: UpdateAccountInput
+      outputType: AccountMetadata
+      kind: mutation
+      description: Replace a CRM account's selected fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign completed the account operation.}
+        - {id: notFound, goName: NotFound, description: No account exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample account operation result.
+          output: {id: '1', name: Example Account, accountUrl: 'https://example.com'}
+    - name: deleteAccount
+      goName: DeleteAccount
+      inputType: DeleteAccountInput
+      outputType: AccountDeletion
+      kind: mutation
+      description: Delete a CRM account by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: ActiveCampaign completed the account operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample account operation result.
+          output: {accountId: '1', deleted: true}
     - name: listContactListMemberships
       goName: ListContactListMemberships
       inputType: ListContactListMembershipsInput
