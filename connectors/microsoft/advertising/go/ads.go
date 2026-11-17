@@ -195,6 +195,9 @@ func (operation GetAdOperation) Invoke(call sdkgo.Call, input GetAdInput) sdkgo.
 	if response.status != http.StatusOK {
 		return keywordQueryBranch(GetAdBranchProviderRejected, AdSummary{}, "getAd", sdkgo.FailureProviderRejection, "Microsoft Advertising rejected HTTP "+strconv.Itoa(response.status))
 	}
+	if isSingleNullEntity(response.body, "Ads") {
+		return sdkgo.NewQueryBranch(GetAdBranchNotFound, AdSummary{}, nil, sdkgo.Receipt{})
+	}
 	page, err := decodeAds(response.body)
 	if response.err != nil || err != nil || len(page.Ads) > 1 {
 		return keywordQueryBranch(GetAdBranchInvalidResponse, AdSummary{}, "getAd", sdkgo.FailureProtocol, "Microsoft Advertising returned invalid ad JSON")
@@ -305,6 +308,18 @@ func validAdCopy(copy []string, minimum, maximum int) bool {
 func validAdURL(rawURL string) bool {
 	parsed, err := url.Parse(rawURL)
 	return err == nil && (parsed.Scheme == "https" || parsed.Scheme == "http") && parsed.Host != "" && len(rawURL) <= 2048
+}
+
+func isSingleNullEntity(body []byte, collectionName string) bool {
+	var envelope map[string]json.RawMessage
+	if json.Unmarshal(body, &envelope) != nil {
+		return false
+	}
+	var entities []json.RawMessage
+	if json.Unmarshal(envelope[collectionName], &entities) != nil || len(entities) != 1 {
+		return false
+	}
+	return string(entities[0]) == "null"
 }
 
 func decodeAds(body []byte) (AdsPage, error) {

@@ -194,6 +194,9 @@ func (operation GetKeywordOperation) Invoke(call sdkgo.Call, input GetKeywordInp
 	if response.status != http.StatusOK {
 		return keywordQueryBranch(GetKeywordBranchProviderRejected, KeywordSummary{}, "getKeyword", sdkgo.FailureProviderRejection, "Microsoft Advertising rejected HTTP "+strconv.Itoa(response.status))
 	}
+	if isSingleNullEntity(response.body, "Keywords") {
+		return sdkgo.NewQueryBranch(GetKeywordBranchNotFound, KeywordSummary{}, nil, sdkgo.Receipt{})
+	}
 	page, err := decodeKeywords(response.body)
 	if response.err != nil || err != nil || len(page.Keywords) > 1 {
 		return keywordQueryBranch(GetKeywordBranchInvalidResponse, KeywordSummary{}, "getKeyword", sdkgo.FailureProtocol, "Microsoft Advertising returned invalid keyword JSON")

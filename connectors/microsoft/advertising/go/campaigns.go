@@ -98,6 +98,9 @@ func (operation GetCampaignOperation) Invoke(call sdkgo.Call, input GetCampaignI
 	if response.err != nil {
 		return getCampaignBranch(GetCampaignBranchInvalidResponse, CampaignSummary{}, sdkgo.FailureProtocol, "Microsoft Advertising campaign response is unreadable")
 	}
+	if isSingleNullEntity(response.body, "Campaigns") {
+		return getCampaignBranch(GetCampaignBranchNotFound, CampaignSummary{}, sdkgo.FailureNotFound, "Microsoft Advertising did not find the campaign")
+	}
 	page, err := decodeCampaigns(response.body)
 	if err != nil || len(page.Campaigns) > 1 {
 		return getCampaignBranch(GetCampaignBranchInvalidResponse, CampaignSummary{}, sdkgo.FailureProtocol, "Microsoft Advertising returned invalid campaign JSON")

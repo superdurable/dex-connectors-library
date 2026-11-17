@@ -608,7 +608,7 @@
       "callId": "b07-get-2",
       "exchanges": [
         {
-          "body": "{\"Campaigns\":[]}",
+          "body": "{\"Campaigns\":[null]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2663,7 +2663,7 @@
       "callId": "b07-adgroup-getAdGroup-3",
       "exchanges": [
         {
-          "body": "{\"AdGroups\":[]}",
+          "body": "{\"AdGroups\":[null]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4647,7 +4647,7 @@
       "callId": "b07-keyword-getKeyword-3",
       "exchanges": [
         {
-          "body": "{\"Keywords\":[]}",
+          "body": "{\"Keywords\":[null]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7068,7 +7068,7 @@
       "callId": "b07-ad-getAd-not-found",
       "exchanges": [
         {
-          "body": "{\"Ads\":[]}",
+          "body": "{\"Ads\":[null]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

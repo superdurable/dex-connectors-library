@@ -188,6 +188,9 @@ func (operation GetAdGroupOperation) Invoke(call sdkgo.Call, input GetAdGroupInp
 	if response.status != http.StatusOK {
 		return adGroupQueryBranch(GetAdGroupBranchProviderRejected, AdGroupSummary{}, "getAdGroup", sdkgo.FailureProviderRejection, "Microsoft Advertising rejected HTTP "+strconv.Itoa(response.status))
 	}
+	if isSingleNullEntity(response.body, "AdGroups") {
+		return sdkgo.NewQueryBranch(GetAdGroupBranchNotFound, AdGroupSummary{}, nil, sdkgo.Receipt{})
+	}
 	page, err := decodeAdGroups(response.body)
 	if response.err != nil || err != nil || len(page.AdGroups) > 1 {
 		return adGroupQueryBranch(GetAdGroupBranchInvalidResponse, AdGroupSummary{}, "getAdGroup", sdkgo.FailureProtocol, "Microsoft Advertising returned invalid ad group JSON")
