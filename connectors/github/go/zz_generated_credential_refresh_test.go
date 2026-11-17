@@ -478,7 +478,7 @@ func manifestCredentialValues(credentials github.Credentials) map[string]string 
 }
 
 func manifestAuthMethodID(credentials github.Credentials) string {
-	return ""
+	return credentials.AuthMethodID
 }
 
 // manifestDeclaredErrorCodes are every terminal error code that connector.yaml declares.
@@ -487,9 +487,11 @@ var manifestDeclaredErrorCodes = []string{"bad_refresh_token", "incorrect_client
 func manifestGrants() []manifestGrant {
 	return []manifestGrant{
 		{
-			name: "spec.auth refresh",
+			name:     "github-oauth refresh",
+			methodID: "github-oauth",
 			credentials: func(privateKeyPEM string, overrides map[string]string) github.Credentials {
 				credentials := github.Credentials{
+					AuthMethodID:      "github-oauth",
 					OAuthClientID:     "manifest-client-id",
 					OAuthClientSecret: sdkgo.NewSecretString("manifest-client-secret"),
 					AccessToken:       sdkgo.NewSecretString("manifest-access-token"),
@@ -533,6 +535,60 @@ func manifestGrants() []manifestGrant {
 				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "read:user user:email", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "read:user user:email", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
+			},
+			updates:              map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"},
+			refreshToken:         "refresh_token",
+			terminalErrorCodes:   []string{"bad_refresh_token", "incorrect_client_credentials", "invalid_client", "invalid_grant"},
+			tokenExchangeTimeout: time.Duration(15000000000),
+		},
+		{
+			name:     "github-oauth-repository refresh",
+			methodID: "github-oauth-repository",
+			credentials: func(privateKeyPEM string, overrides map[string]string) github.Credentials {
+				credentials := github.Credentials{
+					AuthMethodID:      "github-oauth-repository",
+					OAuthClientID:     "manifest-client-id",
+					OAuthClientSecret: sdkgo.NewSecretString("manifest-client-secret"),
+					AccessToken:       sdkgo.NewSecretString("manifest-access-token"),
+					RefreshToken:      sdkgo.NewSecretString("manifest-refresh-token"),
+				}
+				if value, ok := overrides["oauth_client_id"]; ok {
+					credentials.OAuthClientID = value
+				}
+				if value, ok := overrides["oauth_client_secret"]; ok {
+					credentials.OAuthClientSecret = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["access_token"]; ok {
+					credentials.AccessToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["refresh_token"]; ok {
+					credentials.RefreshToken = sdkgo.NewSecretString(value)
+				}
+				return credentials
+			},
+			refreshRequiredCases: []manifestRefreshRequiredCase{
+				{name: "fresh token", credentials: map[string]string{}, expiresAt: "fresh", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "expired token", credentials: map[string]string{}, expiresAt: "expired", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "undated token", credentials: map[string]string{}, expiresAt: "missing", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "blank access token", credentials: map[string]string{"access_token": ""}, expiresAt: "fresh", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
+			},
+			endpoint:   "https://github.com/login/oauth/access_token",
+			encoding:   "form",
+			clientAuth: "client_secret_post",
+			clientID:   "manifest-client-id",
+			secret:     "manifest-client-secret",
+			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
+			response:   map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "repo", "token_type": "Bearer"},
+			variations: []manifestVariation{
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "repo", "token_type": "manifest-unaccepted-token-type"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "repo"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " with uppercase scope names", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "REPO", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " with comma-separated scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "repo,repo", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without required scope 1", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " with extra scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "repo manifest-extra-scope", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "repo", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "repo", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
 			updates:              map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"},
 			refreshToken:         "refresh_token",

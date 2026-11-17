@@ -82,6 +82,11 @@ def _scopes_match(response: _Response) -> bool:
     } == {"read:user", "user:email"}
 
 
+def _access_token(credential: Credentials) -> str:
+    """Return the revealed access token, or empty when the credential has none."""
+    return credential.access_token.reveal() if credential.access_token is not None else ""
+
+
 @dataclass(slots=True, repr=False)
 class _CredentialState:
     value: Credentials
@@ -162,7 +167,7 @@ class Client:
     ) -> tuple[_CredentialState | None, QueryAttempt[Any] | None]:
         try:
             credential = await self._credentials.resolve(call)
-            if not isinstance(credential, Credentials) or not credential.access_token.reveal():
+            if not isinstance(credential, Credentials) or not _access_token(credential):
                 raise ValueError("GitHub access token is required")
             return _CredentialState(credential), None
         except Exception:
@@ -184,7 +189,7 @@ class Client:
                 target,
                 headers={
                     "Accept": "application/vnd.github+json",
-                    "Authorization": "Bearer " + credential.value.access_token.reveal(),
+                    "Authorization": "Bearer " + _access_token(credential.value),
                     "User-Agent": "superdurable-dex-github-connector/0.1",
                     "X-GitHub-Api-Version": self.config.api_version,
                 },
@@ -206,7 +211,7 @@ class Client:
                 replacement = await self._credentials.resolve_after_rejection(call)
             except Exception:
                 return result
-            if not isinstance(replacement, Credentials) or not replacement.access_token.reveal():
+            if not isinstance(replacement, Credentials) or not _access_token(replacement):
                 return result
             credential.value = replacement
         raise AssertionError("request attempt exhausted")

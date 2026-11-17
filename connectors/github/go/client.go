@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package github provides bounded, authenticated GitHub profile and public repository queries.
+// Package github provides bounded, authenticated GitHub profile, public repository, and issue operations.
 package github
 
 import (
@@ -316,6 +316,31 @@ func (client *Client) ListReleases() ListReleasesOperation {
 	return ListReleasesOperation{client: client}
 }
 
+// ListIssues returns the bounded repository issue query operation.
+func (client *Client) ListIssues() ListIssuesOperation {
+	return ListIssuesOperation{client: client}
+}
+
+// CreateIssue returns the fenced issue creation Mutation bound to this client.
+func (client *Client) CreateIssue() CreateIssueOperation {
+	return CreateIssueOperation{client: client}
+}
+
+// SetIssueState returns the issue close and reopen Mutation bound to this client.
+func (client *Client) SetIssueState() SetIssueStateOperation {
+	return SetIssueStateOperation{client: client}
+}
+
+// ReplaceIssueLabels returns the issue label replacement Mutation bound to this client.
+func (client *Client) ReplaceIssueLabels() ReplaceIssueLabelsOperation {
+	return ReplaceIssueLabelsOperation{client: client}
+}
+
+// CreateIssueComment returns the fenced issue comment creation Mutation bound to this client.
+func (client *Client) CreateIssueComment() CreateIssueCommentOperation {
+	return CreateIssueCommentOperation{client: client}
+}
+
 // Definition returns the immutable connector operation definition.
 func (GetAuthenticatedProfileOperation) Definition() sdkgo.QueryDefinition {
 	return GetAuthenticatedProfileDefinition
@@ -489,17 +514,30 @@ func (client *Client) resolveCredential(call sdkgo.Call, operation string) (Cred
 }
 
 func (client *Client) get(call sdkgo.Call, credential *Credentials, path string, query url.Values) (providerResponse, error) {
+	return client.sendRequest(call, credential, http.MethodGet, path, query, nil)
+}
+
+// sendRequest sends one request and repeats it once with a refreshed token after a 401. Only reads and
+// repeat-safe writes use it.
+func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, method string, path string, query url.Values, payload []byte) (providerResponse, error) {
 	target := *client.baseURL
 	target.Path = strings.TrimRight(target.Path, "/") + path
 	target.RawPath = ""
 	target.RawQuery = query.Encode()
 	for attempt := 0; attempt < 2; attempt++ {
-		request, err := http.NewRequestWithContext(call.Context, http.MethodGet, target.String(), nil)
+		var requestBody io.Reader
+		if payload != nil {
+			requestBody = bytes.NewReader(payload)
+		}
+		request, err := http.NewRequestWithContext(call.Context, method, target.String(), requestBody)
 		if err != nil {
 			return providerResponse{}, err
 		}
 		request.Header.Set("Accept", "application/vnd.github+json")
 		request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
+		if payload != nil {
+			request.Header.Set("Content-Type", "application/json")
+		}
 		request.Header.Set("User-Agent", userAgent)
 		request.Header.Set("X-GitHub-Api-Version", client.apiVersion)
 		response, err := client.httpClient.Do(request)
@@ -629,13 +667,26 @@ func decodeJSON(body []byte, destination any) error {
 }
 
 func hasRequiredScopes(header http.Header) bool {
+	return hasExactGrantedScopes(header, githubPublicOAuthScopes)
+}
+
+// hasExactGrantedScopes reports whether GitHub's X-OAuth-Scopes header lists exactly the required scopes.
+func hasExactGrantedScopes(header http.Header, requiredScopes []string) bool {
 	scopes := map[string]bool{}
 	for _, scope := range strings.Split(header.Get("X-OAuth-Scopes"), ",") {
 		if scope = strings.TrimSpace(scope); scope != "" {
 			scopes[scope] = true
 		}
 	}
-	return len(scopes) == 2 && scopes["read:user"] && scopes["user:email"]
+	if len(scopes) != len(requiredScopes) {
+		return false
+	}
+	for _, scope := range requiredScopes {
+		if !scopes[scope] {
+			return false
+		}
+	}
+	return true
 }
 
 func primaryVerifiedEmail(emails []githubEmail) string {

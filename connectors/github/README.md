@@ -2,9 +2,9 @@
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/github`.
 
-The GitHub connector is an independent Go module for signup profile evidence
-and public repository change research. It exposes generated Dex Query Step
-factories for:
+The GitHub connector is an independent Go module for signup profile evidence,
+public repository change research, and repository issues. It exposes generated
+Dex Query Step factories for:
 
 - `GetAuthenticatedProfile`: authenticated account plus primary verified email;
 - `ListPublicRepositories`: recent-first, deduplicated, bounded public
@@ -15,9 +15,46 @@ factories for:
 - `ListReleases`: one page of release IDs, tags, publication dates, bounded notes,
   draft/prerelease flags and a next-page number;
 - `ListCommits`: one page of commits within a time window, optionally from one
-  ref and path.
+  ref and path;
+- `ListIssues`: one page of a repository's issues, newest created first,
+  filtered by state, labels, creator, and last update.
 
-The OAuth connection requests `read:user user:email offline_access`.
+It also exposes four issue Mutation Step factories: `CreateIssue`, which
+creates one issue in a public or private repository without filing a duplicate
+when a Step retries; `SetIssueState`, which closes or reopens one existing
+issue; `ReplaceIssueLabels`, which replaces an issue's labels; and
+`CreateIssueComment`, which comments on an issue without posting a duplicate
+when a Step retries. See [Repository issues](#repository-issues).
+
+## Authorization methods
+
+A connection selects one of two OAuth methods in Dex Web **Connections**:
+
+| Method | Requested scopes | Operations |
+| --- | --- | --- |
+| `github-oauth`, the default and recommended | `read:user user:email offline_access` | every Query; `listIssues` reads public repositories only |
+| `github-oauth-repository` | `repo offline_access` | `createIssue`, `setIssueState`, `replaceIssueLabels`, `createIssueComment`, and `listIssues` in public and private repositories |
+
+Each operation compares GitHub's `X-OAuth-Scopes` response header with the
+exact scopes of the connection's method and selects `insufficientScope` for any
+other grant. The profile, public repository, change, and release queries keep
+their public-only guarantee, so they select `insufficientScope` on a
+`github-oauth-repository` connection; an application that also needs them uses
+a second connection with the default method. The issue writes, `createIssue`,
+`setIssueState`, `replaceIssueLabels`, and `createIssueComment`, select
+`insufficientScope` on a `github-oauth` connection without calling GitHub.
+Credentials saved before this release have no method and use `github-oauth`,
+so existing connections keep working without reauthorization.
+
+GitHub OAuth Apps have no issue-only scope: `repo` reads and writes code,
+issues, and pull requests in every public and private repository the
+authorizing account can reach. Authorize the repository method with an account
+whose access is limited to the repositories the Flows file issues in. When an
+organization restricts OAuth App access, an organization owner approves the app
+before its private repositories are reachable; until then GitHub refuses
+requests for them.
+
+Both methods request `offline_access`.
 `offline_access` opts GitHub.com into an eight-hour access token and a rotating
 six-month refresh token without expanding repository access. Credentials stay in
 project storage and are read before every call. Within five minutes of the
@@ -27,16 +64,14 @@ connection as requiring reauthorization. GitHub Enterprise Server may
 ignore `offline_access` and issue a non-expiring access token without refresh
 material; the connector keeps using that token while no expiry is present.
 
-The connector never
-requests `repo`, `public_repo`, organization, or write scopes. Without `repo`,
-GitHub serves only public repository data. Every operation also checks
-GitHub's `X-OAuth-Scopes` response header and selects `insufficientScope` for a
-grant that differs from those two scopes, including a broader token, so the
-queries cannot return private repository data. Repository listing never
-returns private repositories, source, README, events, or issues. The change
-queries return bounded pull request metadata and bodies, changed-file patches,
-and commit messages, never raw GitHub responses, commit email addresses, or
-provider error bodies.
+The default method never requests `repo`, `public_repo`, organization, or
+write scopes. Without `repo`, GitHub serves only public repository data, and
+the queries select `insufficientScope` for a broader token, so they cannot
+return private repository data. Repository listing never returns private
+repositories, source, README, events, or issues. The change queries return
+bounded pull request metadata and bodies, changed-file patches, and commit
+messages, never raw GitHub responses, commit email addresses, or provider error
+bodies.
 
 GitHub documents [`read:user` and `user:email` as the profile and email OAuth
 scopes](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps).
@@ -141,6 +176,198 @@ empty with `PatchTruncated` false.
 The [repository changes example](go/examples/repository-changes/README.md) runs
 all three queries in one Flow from Dex Web **Start Flow**.
 
+## Repository issues
+
+`listIssues` calls GitHub's [List repository issues
+API](https://docs.github.com/en/rest/issues/issues#list-repository-issues)
+for one page, newest created first. It accepts `Owner`, `Repository`, `State`
+(`open` when empty, `closed`, or `all`), `Labels` (an issue must carry every
+listed label; a name cannot contain a comma), `Creator` (a login),
+`UpdatedSince`, `PageSize` (default 30, maximum 100), `Page` (default 1), and
+`MaxBodyCharacters` (default 4000, maximum 16384). The result contains `Issues`
+and `NextPage`, which follows the change queries' pagination rules. GitHub
+lists pull requests with issues; `listIssues` leaves them out, so a page can
+hold fewer than `PageSize` issues while `NextPage` is nonzero. Each `Issue`
+carries `Number`, `NodeID`, `Title`, a bounded `Body` with `BodyTruncated`,
+`State`, `StateReason`, `URL`, `AuthorLogin`, `Labels`, `Assignees`,
+`Comments`, `CreatedAt`, `UpdatedAt`, and `ClosedAt`. The issue list reads
+without the delay of GitHub's search index, so an issue created a moment ago is
+listed. To check whether an issue is already tracked, narrow the list with
+labels and match titles in the application, as the example does.
+
+`createIssue` calls GitHub's [Create an issue
+API](https://docs.github.com/en/rest/issues/issues#create-an-issue) on a
+`github-oauth-repository` connection. It accepts `Owner`, `Repository`,
+`Title` (1 to 256 characters on one line), a Markdown `Body`, up to 100
+`Labels` of 1 to 50 characters, and up to 10 `Assignees` logins. GitHub applies
+labels and assignees only for an account with push access and drops them
+silently otherwise. The `created` result, `CreatedIssue`, carries `Number`,
+`ID`, `NodeID`, `URL`, `State`, `CreatedAt`, and the `Labels` and `Assignees`
+GitHub applied; every other branch echoes `Owner`, `Repository`, and `Title`.
+
+```go
+		dex.DefineStep(github.NewCreateIssueStep(github.CreateIssueStepConfig[Input]{
+			StepType: createIssueStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "issue-creation", GroupLabel: "Issue creation", Explanation: "Create the issue once, reading back a retried send instead of filing a duplicate."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(input Input) github.CreateIssueInput {
+				return github.CreateIssueInput{
+					Owner: input.Owner, Repository: input.Repository, Title: input.Title, Body: input.Body, Labels: input.Labels,
+				}
+			},
+			Created: sdkgo.GoTo(completeIssueFiling{}),
+		})),
+```
+
+GitHub accepts no idempotency key for issues, so the connector appends a hidden
+HTML comment to the body: `<!-- dex-connector-call: ` followed by the SHA-256 of
+the Call ID and ` -->`. GitHub does not render it, but it stays in the issue's
+Markdown source. Every attempt of one Step execution has the same Call ID, so
+every send carries the same marker. The operation uses the shared
+single-dispatch fence with synchronous durability, `repeatOnUnknown: limited`,
+and `maxSends: 3`:
+
+- A `201` records the issue number in the Step heartbeat. When the Step result
+  is lost, for example because the Worker stops, the next attempt reads that
+  issue and selects `created` without sending again.
+- A `429`, a secondary rate limit, a `503`, a `401` after a successful token
+  refresh, and a request that provably never left the process mean GitHub did
+  not process the send. The Step retries after GitHub's delay and sends again
+  without counting the send.
+- Any other `5xx`, a timeout, or a connection lost after the request was sent
+  leaves the outcome unknown. The connector reads back first: it reads the
+  authenticated login, then lists the newest issues that login created in the
+  repository, up to 150 in five pages, and looks for the marker. A found issue
+  selects `created`, with the receipt metadata `foundByReadBack` set to `true`.
+- When read-back finds nothing, the Step retries. The next attempt reads back
+  again before it sends, and it sends only while the possible sends of the Call
+  ID stay below `maxSends`. At the cap, an unconfirmed issue selects
+  `uncertain`. A read-back that fails transiently retries without sending; a
+  read-back that GitHub refuses, such as for a repository the connection can no
+  longer read, selects `uncertain`.
+- A `2xx` with an unusable body is read back and never sent again.
+
+Set `CreateIssueStepConfig.MaxSends` to change one Step's cap; `1` never sends
+again after a possible send. An unwired `uncertain` branch fails the Flow and
+keeps the outcome visible; wire it only to a Step that reconciles, for example
+with `listIssues` and `Creator`. Read-back finds only an issue that the
+connection's account created and that still holds the marker, and it covers the
+newest 150 such issues in the repository, so removing the marker or creating
+more issues than that during one Step's retries can lead to a second send within
+the cap.
+
+A `401` without a refreshed token selects `authorizationRevoked`. Any other
+`403`, such as for an archived repository, missing issue access, or an
+organization's OAuth App restriction, selects `insufficientScope`, and `404`
+selects `notFound`. `410` for a repository with issues disabled, `422` for
+invalid input such as an unknown assignee, and other `4xx` select
+`providerRejected`. Failures name the status, never the provider body. Both
+issue operations allow unlimited Execute attempts within 65 minutes, like the
+change queries.
+
+`setIssueState` calls GitHub's [Update an issue
+API](https://docs.github.com/en/rest/issues/issues#update-an-issue) with one
+`PATCH` that sets only `state` and `state_reason`, on a
+`github-oauth-repository` connection. It accepts `Owner`, `Repository`, a
+positive `IssueNumber`, `State` (`open` or `closed`), and an optional
+`StateReason`: `completed` or `not_planned` with `closed`, or `reopened` with
+`open`. Any other combination selects `defect` before GitHub is called. An
+empty reason lets GitHub choose `completed` for a close and `reopened` for a
+reopen; setting the state an issue already has with another reason changes
+only the reason. The `updated` result, `UpdatedIssueState`, carries `Number`,
+`URL`, `State`, `StateReason`, and `UpdatedAt`; every other branch echoes only
+the requested `Number`.
+
+```go
+		dex.DefineStep(github.NewSetIssueStateStep(github.SetIssueStateStepConfig[CloseIssueRequest]{
+			StepType: closeIssueStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "issue-closing", GroupLabel: "Issue closing", Explanation: "Close the created issue with the requested reason; a repeat sets the same state again."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(request CloseIssueRequest) github.SetIssueStateInput {
+				return github.SetIssueStateInput{
+					Owner: request.Owner, Repository: request.Repository, IssueNumber: request.IssueNumber,
+					State: github.IssueStateClosed, StateReason: request.StateReason,
+				}
+			},
+			Updated: sdkgo.GoTo(recordClosedIssue{}),
+		})),
+```
+
+Setting an absolute state is safe to repeat, so the operation declares
+`repeatOnUnknown: safe` with asynchronous durability and needs no dispatch
+fence. A `429`, a secondary rate limit, a `5xx`, a timeout, and a transport
+failure retry the Step, which sends the same update again. A `401` refreshes
+the token once and sends again; without a new token it selects
+`authorizationRevoked`. Any other `403` selects `insufficientScope`, `404`
+selects `notFound`, and `410` for a deleted issue, `422`, and other `4xx`
+select `providerRejected`. A `2xx` whose issue is not the requested number in
+the requested state, such as a transferred issue whose redirect was read
+instead of updated, selects `invalidResponse`.
+
+`replaceIssueLabels` calls GitHub's [Set labels for an issue
+API](https://docs.github.com/en/rest/issues/labels#set-labels-for-an-issue)
+with one `PUT` of the complete label set, on a `github-oauth-repository`
+connection. It accepts `Owner`, `Repository`, a positive `IssueNumber`, and up
+to 100 `Labels` of 1 to 50 characters; an empty list removes every label, and
+GitHub creates a named label the repository lacks. The `replaced` result,
+`ReplacedIssueLabels`, carries `Number`, the `Labels` GitHub reports, and the
+issue's web `URL`, derived from the configured base URL for GitHub.com or a
+GitHub Enterprise Server `/api/v3` URL and empty for any other base URL. Every
+other branch echoes only `Number`. Replacing the full set is safe to repeat, so
+the operation declares `repeatOnUnknown: safe` and classifies answers like
+`setIssueState`; a `2xx` without a label list selects `invalidResponse`.
+
+`createIssueComment` calls GitHub's [Create an issue comment
+API](https://docs.github.com/en/rest/issues/comments#create-an-issue-comment)
+on a `github-oauth-repository` connection. It accepts `Owner`, `Repository`, a
+positive `IssueNumber`, and a nonblank Markdown `Body`. The `created` result,
+`CreatedIssueComment`, carries `CommentID`, `URL`, and `CreatedAt`; every
+branch echoes `IssueNumber`.
+
+```go
+		dex.DefineStep(github.NewCreateIssueCommentStep(github.CreateIssueCommentStepConfig[github.CreateIssueCommentInput]{
+			StepType: commentOnIssueStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "issue-follow-up", GroupLabel: "Issue follow-up", Explanation: "Comment on the created issue once, reading back a retried send instead of posting a duplicate."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(input github.CreateIssueCommentInput) github.CreateIssueCommentInput {
+				return input
+			},
+			Created: sdkgo.GoTo(recordIssueComment{}),
+		})),
+```
+
+A comment has no idempotency key either, so the operation follows
+`createIssue`: the body carries the same hidden Call ID marker, and the shared
+single-dispatch fence runs with synchronous durability,
+`repeatOnUnknown: limited`, and `maxSends: 3`. A `201` records the comment ID,
+which the next attempt reads after a lost Step result. A `429`, a secondary rate
+limit, a `503`, a `401` after a token refresh, and a request that provably never
+left retry without counting a send. Any other unknown outcome reads back first:
+GitHub lists an issue's comments oldest first, so the connector reads the first
+page of 100 and then the newest pages from the `last` link, five pages in all,
+and matches a comment by the connection's account that holds the marker. A miss
+retries and sends again only below the cap; at the cap the Step selects
+`uncertain`. Set `CreateIssueCommentStepConfig.MaxSends` to change one Step's
+cap. A `403`, such as for a locked issue, selects `insufficientScope`, `404`
+selects `notFound`, and `410`, `422`, and other `4xx` select
+`providerRejected`.
+
+The [issue filing example](go/examples/issue-filing/README.md) checks up to
+three pages of open issues with the requested labels for a matching title, then
+creates the issue, and, when the input asks, comments on it, replaces its
+labels, and closes it.
+
+The issue operations ran on a real Dex stack against a local stand-in for
+GitHub, not against GitHub. Unverified live behavior: authorization with the
+`github-oauth-repository` method, including the refresh response's reported
+`repo` scope and an organization's OAuth App approval; the `X-OAuth-Scopes`
+value GitHub sends for a `repo` grant; whether GitHub can store an issue before
+answering `5xx`; how soon a new issue appears in the issue list; and the
+`403`, `410`, and `422` answers for archived repositories, disabled issues, and
+invalid assignees; the `setIssueState`, `replaceIssueLabels`, and
+`createIssueComment` answers for a deleted, transferred, or locked issue; and
+how GitHub pages a long comment thread.
+
 ## Test with githubmock
 
 `githubmock` is the generated mock package for application tests.
@@ -164,7 +391,15 @@ scripts one Flow's search with a scaffolded failure mock:
 Each operation has a mock for every branch, such as
 `GetAuthenticatedProfileInsufficientScopeFailure` and
 `ListCommitsEmptyRepository`, and a `rateLimited` retry; `<Operation><Branch>`
-and `<Operation>Retry` build any other outcome. Scripting is described in
+and `<Operation>Retry` build any other outcome. `listIssues` serves three pages
+of open and closed issues, and the issue-filing example's
+[mock test](go/examples/issue-filing/flow/workflow_mock_integration_test.go)
+scripts an unknown create outcome:
+
+```go
+	mock.CreateIssue().ForFlow(uncertainFlowID).Respond(githubmock.CreateIssueCreateOutcomeUnknown())
+```
+ Scripting is described in
 [`sdkgo/connectormock`](../../sdkgo/README.md#connector-mocks).
 
 ## Install and verify
@@ -172,7 +407,7 @@ and `<Operation>Retry` build any other outcome. Scripting is described in
 Install the published module:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/github/go@v0.24.0
+go get github.com/superdurable/dex-connectors-library/connectors/github/go@v0.25.0
 ```
 
 Verify it independently:
@@ -191,7 +426,9 @@ GITHUB_CONNECTOR_TEST_TOKEN=... GOWORK=off go test -tags=live -run TestLive ./..
 The dedicated token must grant exactly the documented signup scopes. The live
 test reads at most five public repositories, and at most five merged pull
 requests, changed files, and commits from the last 30 days of
-`superdurable/dex`. It never logs the token.
+`superdurable/dex`. It never logs the token. The live test does not cover
+`listIssues`, `createIssue`, `setIssueState`, `replaceIssueLabels`,
+`createIssueComment`, or the `github-oauth-repository` method.
 
 Applications own the OAuth start/callback, state, PKCE verifier, token exchange,
 one-use token deletion, Result Attributes, and branch behavior. Provider calls
@@ -226,12 +463,13 @@ refresh and reauthorization do not require restarting the application.
 
 ## TypeScript package
 
-The TypeScript package `@superdurable/connector-github` implements all six Query operations at package version `v0.1.0`. Its generated operation-specific Step factories preserve Go branch identities, and its generated OAuth declaration drives token refresh and credential decoding. The runnable [repository releases Flow](typescript/examples/repository-releases/README.md) uses the static `github-repository-releases` connection and verifies a successful page and an unwired scope rejection through a real Dex Worker. The Go-recorded [provider conformance scenarios](../../conformance/connectors/github/scenarios.json) cover every operation branch, rate limits, availability retries, and transport failures. Live GitHub authorization and provider calls remain unverified.
+The TypeScript package `@superdurable/connector-github` implements every Go operation at package version `v0.2.0`, including `listIssues` and every issue write with both authorization methods, on `@superdurable/connectors-sdk` `0.11.0`. `newCreateIssueStep` uses the same hidden Call ID marker, single-dispatch fence, `limited` tier with at most 3 sends, saved issue number, and read-back over the newest 150 issues the account created as Go, and accepts a per-Step `maxSends`. `newSetIssueStateStep` and `newReplaceIssueLabelsStep` send the same absolute `PATCH` and `PUT` as Go and repeat them after an unknown outcome, and `newCreateIssueCommentStep` uses the same marker, fence, saved comment ID, and comment-page read-back as Go. Its generated operation-specific Step factories preserve Go branch identities, and its generated OAuth declaration drives token refresh and credential decoding. The runnable [repository releases Flow](typescript/examples/repository-releases/README.md) uses the static `github-repository-releases` connection and verifies a successful page and an unwired scope rejection through a real Dex Worker. The [issue filing Flow](typescript/examples/issue-filing/README.md) checks open issues for a matching title, creates the issue, and comments on, relabels, and closes it when the input asks; its real-Dex tests cover a retried create that reads back instead of filing a duplicate a retried close that sends the same state again, and a retried comment that reads back instead of posting a duplicate. The Go-recorded [provider conformance scenarios](../../conformance/connectors/github/scenarios.json) cover every operation branch, rate limits, availability retries, transport failures, read-back, and uncertainty. Live GitHub authorization and provider calls remain unverified.
 
 ## Python package
 
-The [Python package](python/README.md) implements all six GitHub Queries with
-operation-specific Step factories. It uses generated OAuth refresh and project
+The [Python package](python/README.md) implements the six profile, repository,
+change, and release Queries with operation-specific Step factories;
+`listIssues` and the issue writes are Go only. It uses generated OAuth refresh and project
 connection wiring, with provider calls in hand-written Query invocations. The
 [profile Flow example](python/examples/profile/README.md) has a Worker entrypoint
 and a real Dex integration test using an inert provider stand-in. Python
