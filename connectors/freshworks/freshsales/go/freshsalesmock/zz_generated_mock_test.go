@@ -100,6 +100,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[freshsales.DeletedCRMRecord](`{"id":501,"deleted":true}`)
 			return err
 		}},
+		{name: "getAppointment/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.AppointmentMetadata](`{"id":601,"title":"Expansion Appointment","fromDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "listAppointments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.AppointmentPage](`{"appointments":[{"id":601,"title":"Expansion Appointment","fromDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}],"total":1}`)
+			return err
+		}},
+		{name: "createAppointment/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.AppointmentMetadata](`{"id":601,"title":"Expansion Appointment","fromDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "updateAppointment/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.AppointmentMetadata](`{"id":601,"title":"Expansion Appointment","fromDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "deleteAppointment/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.DeletedCRMRecord](`{"id":601,"deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -172,5 +192,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteNote().Definition().Operation.OperationID != "deleteNote" {
 		t.Errorf("deleteNote mock has another definition")
+	}
+	if mock.GetAppointment().Definition().Operation.OperationID != "getAppointment" {
+		t.Errorf("getAppointment mock has another definition")
+	}
+	if mock.ListAppointments().Definition().Operation.OperationID != "listAppointments" {
+		t.Errorf("listAppointments mock has another definition")
+	}
+	if mock.CreateAppointment().Definition().Operation.OperationID != "createAppointment" {
+		t.Errorf("createAppointment mock has another definition")
+	}
+	if mock.UpdateAppointment().Definition().Operation.OperationID != "updateAppointment" {
+		t.Errorf("updateAppointment mock has another definition")
+	}
+	if mock.DeleteAppointment().Definition().Operation.OperationID != "deleteAppointment" {
+		t.Errorf("deleteAppointment mock has another definition")
 	}
 }

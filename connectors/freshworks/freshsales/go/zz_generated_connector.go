@@ -61,6 +61,11 @@ type Operations interface {
 	CreateNote() sdkgo.Mutation[CreateNoteInput, NoteMetadata]
 	UpdateNote() sdkgo.Mutation[UpdateNoteInput, NoteMetadata]
 	DeleteNote() sdkgo.Mutation[DeleteNoteInput, DeletedCRMRecord]
+	GetAppointment() sdkgo.Query[GetAppointmentInput, AppointmentMetadata]
+	ListAppointments() sdkgo.Query[ListAppointmentsInput, AppointmentPage]
+	CreateAppointment() sdkgo.Mutation[CreateAppointmentInput, AppointmentMetadata]
+	UpdateAppointment() sdkgo.Mutation[UpdateAppointmentInput, AppointmentMetadata]
+	DeleteAppointment() sdkgo.Mutation[DeleteAppointmentInput, DeletedCRMRecord]
 }
 
 type clientOperations struct{ client *Client }
@@ -127,6 +132,21 @@ func (operations clientOperations) UpdateNote() sdkgo.Mutation[UpdateNoteInput, 
 }
 func (operations clientOperations) DeleteNote() sdkgo.Mutation[DeleteNoteInput, DeletedCRMRecord] {
 	return operations.client.DeleteNote()
+}
+func (operations clientOperations) GetAppointment() sdkgo.Query[GetAppointmentInput, AppointmentMetadata] {
+	return operations.client.GetAppointment()
+}
+func (operations clientOperations) ListAppointments() sdkgo.Query[ListAppointmentsInput, AppointmentPage] {
+	return operations.client.ListAppointments()
+}
+func (operations clientOperations) CreateAppointment() sdkgo.Mutation[CreateAppointmentInput, AppointmentMetadata] {
+	return operations.client.CreateAppointment()
+}
+func (operations clientOperations) UpdateAppointment() sdkgo.Mutation[UpdateAppointmentInput, AppointmentMetadata] {
+	return operations.client.UpdateAppointment()
+}
+func (operations clientOperations) DeleteAppointment() sdkgo.Mutation[DeleteAppointmentInput, DeletedCRMRecord] {
+	return operations.client.DeleteAppointment()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1806,6 +1826,368 @@ func NewDeleteNoteStep[IN any](config DeleteNoteStepConfig[IN]) sdkgo.MutationSt
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteNoteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetAppointmentBranchFound sdkgo.BranchID = "found"
+const GetAppointmentBranchNotFound sdkgo.BranchID = "notFound"
+const GetAppointmentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetAppointmentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetAppointmentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetAppointmentDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAppointment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetAppointmentBranchFound, Description: "Freshsales confirmed the getAppointment outcome."},
+		{ID: GetAppointmentBranchNotFound, Description: "The appointment is absent.", Optional: true},
+		{ID: GetAppointmentBranchProviderRejected, Description: "Freshsales rejected the request.", Optional: true},
+		{ID: GetAppointmentBranchInvalidResponse, Description: "Freshsales returned invalid appointment data.", Optional: true},
+		{ID: GetAppointmentBranchDefect, Description: "The request input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetAppointmentResult = sdkgo.QueryResult[AppointmentMetadata]
+
+type GetAppointmentStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=freshsales"`
+	operationID                    struct{}                                               `connector:"operationId=getAppointment"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetAppointmentInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetAppointmentResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetAppointmentResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetAppointmentResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetAppointmentResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetAppointmentResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AppointmentMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewGetAppointmentStep[IN any](config GetAppointmentStepConfig[IN]) sdkgo.QueryStep[IN, GetAppointmentInput, AppointmentMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("freshsales connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetAppointmentInput, AppointmentMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetAppointment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetAppointmentResult] {
+			branches := make([]sdkgo.BranchTarget[GetAppointmentResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetAppointmentBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetAppointmentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetAppointmentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetAppointmentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetAppointmentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListAppointmentsBranchListed sdkgo.BranchID = "listed"
+const ListAppointmentsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAppointmentsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAppointmentsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAppointmentsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAppointments"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAppointmentsBranchListed, Description: "Freshsales confirmed the listAppointments outcome."},
+		{ID: ListAppointmentsBranchProviderRejected, Description: "Freshsales rejected the request.", Optional: true},
+		{ID: ListAppointmentsBranchInvalidResponse, Description: "Freshsales returned invalid appointment data.", Optional: true},
+		{ID: ListAppointmentsBranchDefect, Description: "The request input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAppointmentsResult = sdkgo.QueryResult[AppointmentPage]
+
+type ListAppointmentsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=freshsales"`
+	operationID                    struct{}                                           `connector:"operationId=listAppointments"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListAppointmentsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAppointmentsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListAppointmentsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAppointmentsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAppointmentsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AppointmentPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListAppointmentsStep[IN any](config ListAppointmentsStepConfig[IN]) sdkgo.QueryStep[IN, ListAppointmentsInput, AppointmentPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("freshsales connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListAppointmentsInput, AppointmentPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAppointments(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAppointmentsResult] {
+			branches := make([]sdkgo.BranchTarget[ListAppointmentsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAppointmentsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAppointmentsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAppointmentsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAppointmentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateAppointmentBranchCreated sdkgo.BranchID = "created"
+const CreateAppointmentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateAppointmentBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateAppointmentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateAppointmentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createAppointment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateAppointmentBranchCreated, Description: "Freshsales confirmed the createAppointment outcome."},
+		{ID: CreateAppointmentBranchProviderRejected, Description: "Freshsales rejected the request.", Optional: true},
+		{ID: CreateAppointmentBranchUncertain, Description: "The appointment may exist without confirmation.", Optional: true},
+		{ID: CreateAppointmentBranchDefect, Description: "The request input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateAppointmentResult = sdkgo.MutationResult[AppointmentMetadata]
+
+type CreateAppointmentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=freshsales"`
+	operationID                       struct{}                                                  `connector:"operationId=createAppointment"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateAppointmentInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateAppointmentResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateAppointmentResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateAppointmentResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateAppointmentResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AppointmentMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateAppointmentStep[IN any](config CreateAppointmentStepConfig[IN]) sdkgo.MutationStep[IN, CreateAppointmentInput, AppointmentMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("freshsales connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateAppointmentInput, AppointmentMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateAppointment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateAppointmentResult] {
+			branches := make([]sdkgo.BranchTarget[CreateAppointmentResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateAppointmentBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateAppointmentBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateAppointmentBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateAppointmentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateAppointmentBranchUpdated sdkgo.BranchID = "updated"
+const UpdateAppointmentBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateAppointmentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateAppointmentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateAppointmentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateAppointment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateAppointmentBranchUpdated, Description: "Freshsales confirmed the updateAppointment outcome."},
+		{ID: UpdateAppointmentBranchNotFound, Description: "The appointment is absent.", Optional: true},
+		{ID: UpdateAppointmentBranchProviderRejected, Description: "Freshsales rejected the request.", Optional: true},
+		{ID: UpdateAppointmentBranchDefect, Description: "The request input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateAppointmentResult = sdkgo.MutationResult[AppointmentMetadata]
+
+type UpdateAppointmentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=freshsales"`
+	operationID                       struct{}                                                  `connector:"operationId=updateAppointment"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateAppointmentInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateAppointmentResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateAppointmentResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateAppointmentResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateAppointmentResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AppointmentMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateAppointmentStep[IN any](config UpdateAppointmentStepConfig[IN]) sdkgo.MutationStep[IN, UpdateAppointmentInput, AppointmentMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("freshsales connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateAppointmentInput, AppointmentMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateAppointment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateAppointmentResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateAppointmentResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateAppointmentBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateAppointmentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateAppointmentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateAppointmentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteAppointmentBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteAppointmentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteAppointmentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteAppointmentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteAppointment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteAppointmentBranchDeleted, Description: "Freshsales confirmed the deleteAppointment outcome."},
+		{ID: DeleteAppointmentBranchProviderRejected, Description: "Freshsales rejected the request.", Optional: true},
+		{ID: DeleteAppointmentBranchDefect, Description: "The request input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteAppointmentResult = sdkgo.MutationResult[DeletedCRMRecord]
+
+type DeleteAppointmentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=freshsales"`
+	operationID                       struct{}                                               `connector:"operationId=deleteAppointment"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteAppointmentInput                        `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteAppointmentResult]                  `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteAppointmentResult]                  `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteAppointmentResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedCRMRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteAppointmentStep[IN any](config DeleteAppointmentStepConfig[IN]) sdkgo.MutationStep[IN, DeleteAppointmentInput, DeletedCRMRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("freshsales connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteAppointmentInput, DeletedCRMRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteAppointment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteAppointmentResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteAppointmentResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteAppointmentBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteAppointmentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteAppointmentBranchDefect))
 			}
 			return branches
 		}(),

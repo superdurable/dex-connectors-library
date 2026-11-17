@@ -8248,6 +8248,2116 @@
       },
       "name": "deleteNote-defect",
       "operation": "deleteNote"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"appointment\":{\"id\":601,\"title\":\"Expansion Appointment\",\"from_date\":\"2026-11-20T10:00:00Z\",\"end_date\":\"2026-11-20T11:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "endDate": "2026-11-20T11:00:00Z",
+          "fromDate": "2026-11-20T10:00:00Z",
+          "id": 601,
+          "title": "Expansion Appointment"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "getAppointment-success",
+      "operation": "getAppointment"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "endDate": "",
+          "fromDate": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "getAppointment-notFound",
+      "operation": "getAppointment"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "endDate": "",
+          "fromDate": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "getAppointment-providerRejected",
+      "operation": "getAppointment"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "endDate": "",
+          "fromDate": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "getAppointment-invalidResponse",
+      "operation": "getAppointment"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "getAppointment-rateLimited",
+      "operation": "getAppointment"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "getAppointment-serverUnavailable",
+      "operation": "getAppointment"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "getAppointment-serviceUnavailable",
+      "operation": "getAppointment"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "getAppointment-transportFailure",
+      "operation": "getAppointment"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "endDate": "",
+          "fromDate": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "appointmentId": "bad"
+      },
+      "name": "getAppointment-defect",
+      "operation": "getAppointment"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"appointments\":[{\"id\":601,\"title\":\"Expansion Appointment\",\"from_date\":\"2026-11-20T10:00:00Z\",\"end_date\":\"2026-11-20T11:00:00Z\"}],\"meta\":{\"total\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments",
+          "query": {
+            "filter": [
+              "open"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "appointments": [
+            {
+              "endDate": "2026-11-20T11:00:00Z",
+              "fromDate": "2026-11-20T10:00:00Z",
+              "id": 601,
+              "title": "Expansion Appointment"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "filter": "open",
+        "page": 1
+      },
+      "name": "listAppointments-success",
+      "operation": "listAppointments"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments",
+          "query": {
+            "filter": [
+              "open"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "appointments": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "filter": "open",
+        "page": 1
+      },
+      "name": "listAppointments-providerRejected",
+      "operation": "listAppointments"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments",
+          "query": {
+            "filter": [
+              "open"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "appointments": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "filter": "open",
+        "page": 1
+      },
+      "name": "listAppointments-invalidResponse",
+      "operation": "listAppointments"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments",
+          "query": {
+            "filter": [
+              "open"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "filter": "open",
+        "page": 1
+      },
+      "name": "listAppointments-rateLimited",
+      "operation": "listAppointments"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments",
+          "query": {
+            "filter": [
+              "open"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "filter": "open",
+        "page": 1
+      },
+      "name": "listAppointments-serverUnavailable",
+      "operation": "listAppointments"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments",
+          "query": {
+            "filter": [
+              "open"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "filter": "open",
+        "page": 1
+      },
+      "name": "listAppointments-serviceUnavailable",
+      "operation": "listAppointments"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments",
+          "query": {
+            "filter": [
+              "open"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "filter": "open",
+        "page": 1
+      },
+      "name": "listAppointments-transportFailure",
+      "operation": "listAppointments"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appointments": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "filter": "bad",
+        "page": 1
+      },
+      "name": "listAppointments-defect",
+      "operation": "listAppointments"
+    },
+    {
+      "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "exchanges": [
+        {
+          "body": "{\"appointment\":{\"id\":601,\"title\":\"Expansion Appointment\",\"from_date\":\"2026-11-20T10:00:00Z\",\"end_date\":\"2026-11-20T11:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/appointments",
+          "requestBody": {
+            "appointment": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "from_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+          "providerId": "601",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "endDate": "2026-11-20T11:00:00Z",
+          "fromDate": "2026-11-20T10:00:00Z",
+          "id": 601,
+          "title": "Expansion Appointment"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "input": {
+        "endDate": "2026-11-20T11:00:00Z",
+        "fromDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Appointment"
+      },
+      "name": "createAppointment-success",
+      "operation": "createAppointment"
+    },
+    {
+      "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/appointments",
+          "requestBody": {
+            "appointment": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "from_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "endDate": "",
+          "fromDate": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "input": {
+        "endDate": "2026-11-20T11:00:00Z",
+        "fromDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Appointment"
+      },
+      "name": "createAppointment-providerRejected",
+      "operation": "createAppointment"
+    },
+    {
+      "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/appointments",
+          "requestBody": {
+            "appointment": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "from_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "endDate": "",
+          "fromDate": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "input": {
+        "endDate": "2026-11-20T11:00:00Z",
+        "fromDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Appointment"
+      },
+      "name": "createAppointment-acceptedMalformed",
+      "operation": "createAppointment"
+    },
+    {
+      "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/appointments",
+          "requestBody": {
+            "appointment": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "from_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "input": {
+        "endDate": "2026-11-20T11:00:00Z",
+        "fromDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Appointment"
+      },
+      "name": "createAppointment-rateLimited",
+      "operation": "createAppointment"
+    },
+    {
+      "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/appointments",
+          "requestBody": {
+            "appointment": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "from_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "input": {
+        "endDate": "2026-11-20T11:00:00Z",
+        "fromDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Appointment"
+      },
+      "name": "createAppointment-serverUnavailable",
+      "operation": "createAppointment"
+    },
+    {
+      "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/appointments",
+          "requestBody": {
+            "appointment": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "from_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "input": {
+        "endDate": "2026-11-20T11:00:00Z",
+        "fromDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Appointment"
+      },
+      "name": "createAppointment-serviceUnavailable",
+      "operation": "createAppointment"
+    },
+    {
+      "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/appointments",
+          "requestBody": {
+            "appointment": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "from_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "input": {
+        "endDate": "2026-11-20T11:00:00Z",
+        "fromDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Appointment"
+      },
+      "name": "createAppointment-transportFailure",
+      "operation": "createAppointment"
+    },
+    {
+      "attempts": 3,
+      "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/appointments",
+          "requestBody": {
+            "appointment": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "from_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/appointments",
+          "requestBody": {
+            "appointment": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "from_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/appointments",
+          "requestBody": {
+            "appointment": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "from_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "endDate": "",
+          "fromDate": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "input": {
+        "endDate": "2026-11-20T11:00:00Z",
+        "fromDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Appointment"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createAppointment-sendCap",
+      "operation": "createAppointment"
+    },
+    {
+      "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "endDate": "",
+          "fromDate": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "input": {
+        "endDate": "bad",
+        "fromDate": "bad",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": ""
+      },
+      "name": "createAppointment-defect",
+      "operation": "createAppointment"
+    },
+    {
+      "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "exchanges": [
+        {
+          "body": "{\"appointment\":{\"id\":601,\"title\":\"Expansion Appointment\",\"from_date\":\"2026-11-20T10:00:00Z\",\"end_date\":\"2026-11-20T11:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "endDate": "2026-11-20T11:00:00Z",
+          "fromDate": "2026-11-20T10:00:00Z",
+          "id": 601,
+          "title": "Expansion Appointment"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+      "input": {
+        "endDate": "2026-11-20T11:00:00Z",
+        "fromDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Appointment"
+      },
+      "name": "createAppointment-readBack",
+      "operation": "createAppointment",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
+          "providerId": "601",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "exchanges": [
+        {
+          "body": "{\"appointment\":{\"id\":601,\"title\":\"Updated Appointment\",\"from_date\":\"2026-11-20T10:00:00Z\",\"end_date\":\"2026-11-20T11:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/appointments/601",
+          "requestBody": {
+            "appointment": {
+              "title": "Updated Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"appointment\":{\"id\":601,\"title\":\"Updated Appointment\",\"from_date\":\"2026-11-20T10:00:00Z\",\"end_date\":\"2026-11-20T11:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "endDate": "2026-11-20T11:00:00Z",
+          "fromDate": "2026-11-20T10:00:00Z",
+          "id": 601,
+          "title": "Updated Appointment"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "input": {
+        "appointmentId": "601",
+        "title": "Updated Appointment"
+      },
+      "name": "updateAppointment-success",
+      "operation": "updateAppointment"
+    },
+    {
+      "callId": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/appointments/601",
+          "requestBody": {
+            "appointment": {
+              "title": "Updated Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "endDate": "",
+          "fromDate": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "input": {
+        "appointmentId": "601",
+        "title": "Updated Appointment"
+      },
+      "name": "updateAppointment-notFound",
+      "operation": "updateAppointment"
+    },
+    {
+      "callId": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/appointments/601",
+          "requestBody": {
+            "appointment": {
+              "title": "Updated Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "endDate": "",
+          "fromDate": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "input": {
+        "appointmentId": "601",
+        "title": "Updated Appointment"
+      },
+      "name": "updateAppointment-providerRejected",
+      "operation": "updateAppointment"
+    },
+    {
+      "callId": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/appointments/601",
+          "requestBody": {
+            "appointment": {
+              "title": "Updated Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "input": {
+        "appointmentId": "601",
+        "title": "Updated Appointment"
+      },
+      "name": "updateAppointment-invalidResponse",
+      "operation": "updateAppointment"
+    },
+    {
+      "callId": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/appointments/601",
+          "requestBody": {
+            "appointment": {
+              "title": "Updated Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "input": {
+        "appointmentId": "601",
+        "title": "Updated Appointment"
+      },
+      "name": "updateAppointment-rateLimited",
+      "operation": "updateAppointment"
+    },
+    {
+      "callId": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/appointments/601",
+          "requestBody": {
+            "appointment": {
+              "title": "Updated Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "input": {
+        "appointmentId": "601",
+        "title": "Updated Appointment"
+      },
+      "name": "updateAppointment-serverUnavailable",
+      "operation": "updateAppointment"
+    },
+    {
+      "callId": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/appointments/601",
+          "requestBody": {
+            "appointment": {
+              "title": "Updated Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "input": {
+        "appointmentId": "601",
+        "title": "Updated Appointment"
+      },
+      "name": "updateAppointment-serviceUnavailable",
+      "operation": "updateAppointment"
+    },
+    {
+      "callId": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/appointments/601",
+          "requestBody": {
+            "appointment": {
+              "title": "Updated Appointment"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "input": {
+        "appointmentId": "601",
+        "title": "Updated Appointment"
+      },
+      "name": "updateAppointment-transportFailure",
+      "operation": "updateAppointment"
+    },
+    {
+      "callId": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "endDate": "",
+          "fromDate": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb70ce5c-0f8f-56a6-9275-a796f9969aec",
+      "input": {
+        "appointmentId": "bad",
+        "title": "Updated Appointment"
+      },
+      "name": "updateAppointment-defect",
+      "operation": "updateAppointment"
+    },
+    {
+      "callId": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "exchanges": [
+        {
+          "body": "true",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": 601
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "deleteAppointment-success",
+      "operation": "deleteAppointment"
+    },
+    {
+      "callId": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": 601
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "deleteAppointment-alreadyMissing",
+      "operation": "deleteAppointment"
+    },
+    {
+      "callId": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "deleteAppointment-providerRejected",
+      "operation": "deleteAppointment"
+    },
+    {
+      "callId": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "deleteAppointment-rateLimited",
+      "operation": "deleteAppointment"
+    },
+    {
+      "callId": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "deleteAppointment-serverUnavailable",
+      "operation": "deleteAppointment"
+    },
+    {
+      "callId": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "deleteAppointment-serviceUnavailable",
+      "operation": "deleteAppointment"
+    },
+    {
+      "callId": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/appointments/601",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "input": {
+        "appointmentId": "601"
+      },
+      "name": "deleteAppointment-transportFailure",
+      "operation": "deleteAppointment"
+    },
+    {
+      "callId": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ace856b8-dd66-50d8-b06d-4c2c46cc656d",
+      "input": {
+        "appointmentId": "bad"
+      },
+      "name": "deleteAppointment-defect",
+      "operation": "deleteAppointment"
     }
   ],
   "schemaVersion": 1

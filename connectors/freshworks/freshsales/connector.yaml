@@ -403,3 +403,83 @@ spec:
         - {id: defect, goName: Defect, description: The note input or connection is invalid., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: Example deleted note., output: {id: 501, deleted: true}}
+    - name: getAppointment
+      goName: GetAppointment
+      inputType: GetAppointmentInput
+      outputType: AppointmentMetadata
+      kind: query
+      description: Read one appointment by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Freshsales confirmed the getAppointment outcome.}
+        - {id: notFound, goName: NotFound, description: The appointment is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales returned invalid appointment data., optional: true}
+        - {id: defect, goName: Defect, description: The request input or connection is invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example getAppointment result., output: {id: 601, title: Expansion Appointment, fromDate: '2026-11-20T10:00:00Z', endDate: '2026-11-20T11:00:00Z'}}
+    - name: listAppointments
+      goName: ListAppointments
+      inputType: ListAppointmentsInput
+      outputType: AppointmentPage
+      kind: query
+      description: List appointments with the required provider filter.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Freshsales confirmed the listAppointments outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales returned invalid appointment data., optional: true}
+        - {id: defect, goName: Defect, description: The request input or connection is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example listAppointments result., output: {appointments: [{id: 601, title: Expansion Appointment, fromDate: '2026-11-20T10:00:00Z', endDate: '2026-11-20T11:00:00Z'}], total: 1}}
+    - name: createAppointment
+      goName: CreateAppointment
+      inputType: CreateAppointmentInput
+      outputType: AppointmentMetadata
+      kind: mutation
+      description: Create an appointment with bounded duplicate sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Freshsales confirmed the createAppointment outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales rejected the request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The appointment may exist without confirmation., optional: true}
+        - {id: defect, goName: Defect, description: The request input or connection is invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example createAppointment result., output: {id: 601, title: Expansion Appointment, fromDate: '2026-11-20T10:00:00Z', endDate: '2026-11-20T11:00:00Z'}}
+    - name: updateAppointment
+      goName: UpdateAppointment
+      inputType: UpdateAppointmentInput
+      outputType: AppointmentMetadata
+      kind: mutation
+      description: Replace an appointment title.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Freshsales confirmed the updateAppointment outcome.}
+        - {id: notFound, goName: NotFound, description: The appointment is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: The request input or connection is invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example updateAppointment result., output: {id: 601, title: Expansion Appointment, fromDate: '2026-11-20T10:00:00Z', endDate: '2026-11-20T11:00:00Z'}}
+    - name: deleteAppointment
+      goName: DeleteAppointment
+      inputType: DeleteAppointmentInput
+      outputType: DeletedCRMRecord
+      kind: mutation
+      description: Delete an appointment by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Freshsales confirmed the deleteAppointment outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: The request input or connection is invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Example deleteAppointment result., output: {id: 601, deleted: true}}

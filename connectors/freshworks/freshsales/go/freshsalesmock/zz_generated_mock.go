@@ -17,28 +17,33 @@ import (
 
 // Mock is a scripted freshsales connection. Script each operation through its accessor.
 type Mock struct {
-	connection       freshsales.Connection
-	listContactViews *connectormock.Query[freshsales.ListContactViewsInput, freshsales.ContactViews]
-	getContact       *connectormock.Query[freshsales.GetContactInput, freshsales.ContactMetadata]
-	listContacts     *connectormock.Query[freshsales.ListContactsInput, freshsales.ContactsPage]
-	createContact    *connectormock.Mutation[freshsales.CreateContactInput, freshsales.ContactMetadata]
-	updateContact    *connectormock.Mutation[freshsales.UpdateContactInput, freshsales.ContactMetadata]
-	deleteContact    *connectormock.Mutation[freshsales.DeleteContactInput, freshsales.DeletedContact]
-	listAccountViews *connectormock.Query[freshsales.ListAccountViewsInput, freshsales.CRMViews]
-	getAccount       *connectormock.Query[freshsales.GetAccountInput, freshsales.CRMRecordMetadata]
-	listAccounts     *connectormock.Query[freshsales.ListAccountsInput, freshsales.CRMRecordsPage]
-	createAccount    *connectormock.Mutation[freshsales.CreateAccountInput, freshsales.CRMRecordMetadata]
-	updateAccount    *connectormock.Mutation[freshsales.UpdateAccountInput, freshsales.CRMRecordMetadata]
-	deleteAccount    *connectormock.Mutation[freshsales.DeleteAccountInput, freshsales.DeletedCRMRecord]
-	listDealViews    *connectormock.Query[freshsales.ListDealViewsInput, freshsales.CRMViews]
-	getDeal          *connectormock.Query[freshsales.GetDealInput, freshsales.CRMRecordMetadata]
-	listDeals        *connectormock.Query[freshsales.ListDealsInput, freshsales.CRMRecordsPage]
-	createDeal       *connectormock.Mutation[freshsales.CreateDealInput, freshsales.CRMRecordMetadata]
-	updateDeal       *connectormock.Mutation[freshsales.UpdateDealInput, freshsales.CRMRecordMetadata]
-	deleteDeal       *connectormock.Mutation[freshsales.DeleteDealInput, freshsales.DeletedCRMRecord]
-	createNote       *connectormock.Mutation[freshsales.CreateNoteInput, freshsales.NoteMetadata]
-	updateNote       *connectormock.Mutation[freshsales.UpdateNoteInput, freshsales.NoteMetadata]
-	deleteNote       *connectormock.Mutation[freshsales.DeleteNoteInput, freshsales.DeletedCRMRecord]
+	connection        freshsales.Connection
+	listContactViews  *connectormock.Query[freshsales.ListContactViewsInput, freshsales.ContactViews]
+	getContact        *connectormock.Query[freshsales.GetContactInput, freshsales.ContactMetadata]
+	listContacts      *connectormock.Query[freshsales.ListContactsInput, freshsales.ContactsPage]
+	createContact     *connectormock.Mutation[freshsales.CreateContactInput, freshsales.ContactMetadata]
+	updateContact     *connectormock.Mutation[freshsales.UpdateContactInput, freshsales.ContactMetadata]
+	deleteContact     *connectormock.Mutation[freshsales.DeleteContactInput, freshsales.DeletedContact]
+	listAccountViews  *connectormock.Query[freshsales.ListAccountViewsInput, freshsales.CRMViews]
+	getAccount        *connectormock.Query[freshsales.GetAccountInput, freshsales.CRMRecordMetadata]
+	listAccounts      *connectormock.Query[freshsales.ListAccountsInput, freshsales.CRMRecordsPage]
+	createAccount     *connectormock.Mutation[freshsales.CreateAccountInput, freshsales.CRMRecordMetadata]
+	updateAccount     *connectormock.Mutation[freshsales.UpdateAccountInput, freshsales.CRMRecordMetadata]
+	deleteAccount     *connectormock.Mutation[freshsales.DeleteAccountInput, freshsales.DeletedCRMRecord]
+	listDealViews     *connectormock.Query[freshsales.ListDealViewsInput, freshsales.CRMViews]
+	getDeal           *connectormock.Query[freshsales.GetDealInput, freshsales.CRMRecordMetadata]
+	listDeals         *connectormock.Query[freshsales.ListDealsInput, freshsales.CRMRecordsPage]
+	createDeal        *connectormock.Mutation[freshsales.CreateDealInput, freshsales.CRMRecordMetadata]
+	updateDeal        *connectormock.Mutation[freshsales.UpdateDealInput, freshsales.CRMRecordMetadata]
+	deleteDeal        *connectormock.Mutation[freshsales.DeleteDealInput, freshsales.DeletedCRMRecord]
+	createNote        *connectormock.Mutation[freshsales.CreateNoteInput, freshsales.NoteMetadata]
+	updateNote        *connectormock.Mutation[freshsales.UpdateNoteInput, freshsales.NoteMetadata]
+	deleteNote        *connectormock.Mutation[freshsales.DeleteNoteInput, freshsales.DeletedCRMRecord]
+	getAppointment    *connectormock.Query[freshsales.GetAppointmentInput, freshsales.AppointmentMetadata]
+	listAppointments  *connectormock.Query[freshsales.ListAppointmentsInput, freshsales.AppointmentPage]
+	createAppointment *connectormock.Mutation[freshsales.CreateAppointmentInput, freshsales.AppointmentMetadata]
+	updateAppointment *connectormock.Mutation[freshsales.UpdateAppointmentInput, freshsales.AppointmentMetadata]
+	deleteAppointment *connectormock.Mutation[freshsales.DeleteAppointmentInput, freshsales.DeletedCRMRecord]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -46,27 +51,32 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listContactViews: connectormock.NewQuery[freshsales.ListContactViewsInput, freshsales.ContactViews](t, freshsales.ListContactViewsDefinition),
-		getContact:       connectormock.NewQuery[freshsales.GetContactInput, freshsales.ContactMetadata](t, freshsales.GetContactDefinition),
-		listContacts:     connectormock.NewQuery[freshsales.ListContactsInput, freshsales.ContactsPage](t, freshsales.ListContactsDefinition),
-		createContact:    connectormock.NewMutation[freshsales.CreateContactInput, freshsales.ContactMetadata](t, freshsales.CreateContactDefinition),
-		updateContact:    connectormock.NewMutation[freshsales.UpdateContactInput, freshsales.ContactMetadata](t, freshsales.UpdateContactDefinition),
-		deleteContact:    connectormock.NewMutation[freshsales.DeleteContactInput, freshsales.DeletedContact](t, freshsales.DeleteContactDefinition),
-		listAccountViews: connectormock.NewQuery[freshsales.ListAccountViewsInput, freshsales.CRMViews](t, freshsales.ListAccountViewsDefinition),
-		getAccount:       connectormock.NewQuery[freshsales.GetAccountInput, freshsales.CRMRecordMetadata](t, freshsales.GetAccountDefinition),
-		listAccounts:     connectormock.NewQuery[freshsales.ListAccountsInput, freshsales.CRMRecordsPage](t, freshsales.ListAccountsDefinition),
-		createAccount:    connectormock.NewMutation[freshsales.CreateAccountInput, freshsales.CRMRecordMetadata](t, freshsales.CreateAccountDefinition),
-		updateAccount:    connectormock.NewMutation[freshsales.UpdateAccountInput, freshsales.CRMRecordMetadata](t, freshsales.UpdateAccountDefinition),
-		deleteAccount:    connectormock.NewMutation[freshsales.DeleteAccountInput, freshsales.DeletedCRMRecord](t, freshsales.DeleteAccountDefinition),
-		listDealViews:    connectormock.NewQuery[freshsales.ListDealViewsInput, freshsales.CRMViews](t, freshsales.ListDealViewsDefinition),
-		getDeal:          connectormock.NewQuery[freshsales.GetDealInput, freshsales.CRMRecordMetadata](t, freshsales.GetDealDefinition),
-		listDeals:        connectormock.NewQuery[freshsales.ListDealsInput, freshsales.CRMRecordsPage](t, freshsales.ListDealsDefinition),
-		createDeal:       connectormock.NewMutation[freshsales.CreateDealInput, freshsales.CRMRecordMetadata](t, freshsales.CreateDealDefinition),
-		updateDeal:       connectormock.NewMutation[freshsales.UpdateDealInput, freshsales.CRMRecordMetadata](t, freshsales.UpdateDealDefinition),
-		deleteDeal:       connectormock.NewMutation[freshsales.DeleteDealInput, freshsales.DeletedCRMRecord](t, freshsales.DeleteDealDefinition),
-		createNote:       connectormock.NewMutation[freshsales.CreateNoteInput, freshsales.NoteMetadata](t, freshsales.CreateNoteDefinition),
-		updateNote:       connectormock.NewMutation[freshsales.UpdateNoteInput, freshsales.NoteMetadata](t, freshsales.UpdateNoteDefinition),
-		deleteNote:       connectormock.NewMutation[freshsales.DeleteNoteInput, freshsales.DeletedCRMRecord](t, freshsales.DeleteNoteDefinition),
+		listContactViews:  connectormock.NewQuery[freshsales.ListContactViewsInput, freshsales.ContactViews](t, freshsales.ListContactViewsDefinition),
+		getContact:        connectormock.NewQuery[freshsales.GetContactInput, freshsales.ContactMetadata](t, freshsales.GetContactDefinition),
+		listContacts:      connectormock.NewQuery[freshsales.ListContactsInput, freshsales.ContactsPage](t, freshsales.ListContactsDefinition),
+		createContact:     connectormock.NewMutation[freshsales.CreateContactInput, freshsales.ContactMetadata](t, freshsales.CreateContactDefinition),
+		updateContact:     connectormock.NewMutation[freshsales.UpdateContactInput, freshsales.ContactMetadata](t, freshsales.UpdateContactDefinition),
+		deleteContact:     connectormock.NewMutation[freshsales.DeleteContactInput, freshsales.DeletedContact](t, freshsales.DeleteContactDefinition),
+		listAccountViews:  connectormock.NewQuery[freshsales.ListAccountViewsInput, freshsales.CRMViews](t, freshsales.ListAccountViewsDefinition),
+		getAccount:        connectormock.NewQuery[freshsales.GetAccountInput, freshsales.CRMRecordMetadata](t, freshsales.GetAccountDefinition),
+		listAccounts:      connectormock.NewQuery[freshsales.ListAccountsInput, freshsales.CRMRecordsPage](t, freshsales.ListAccountsDefinition),
+		createAccount:     connectormock.NewMutation[freshsales.CreateAccountInput, freshsales.CRMRecordMetadata](t, freshsales.CreateAccountDefinition),
+		updateAccount:     connectormock.NewMutation[freshsales.UpdateAccountInput, freshsales.CRMRecordMetadata](t, freshsales.UpdateAccountDefinition),
+		deleteAccount:     connectormock.NewMutation[freshsales.DeleteAccountInput, freshsales.DeletedCRMRecord](t, freshsales.DeleteAccountDefinition),
+		listDealViews:     connectormock.NewQuery[freshsales.ListDealViewsInput, freshsales.CRMViews](t, freshsales.ListDealViewsDefinition),
+		getDeal:           connectormock.NewQuery[freshsales.GetDealInput, freshsales.CRMRecordMetadata](t, freshsales.GetDealDefinition),
+		listDeals:         connectormock.NewQuery[freshsales.ListDealsInput, freshsales.CRMRecordsPage](t, freshsales.ListDealsDefinition),
+		createDeal:        connectormock.NewMutation[freshsales.CreateDealInput, freshsales.CRMRecordMetadata](t, freshsales.CreateDealDefinition),
+		updateDeal:        connectormock.NewMutation[freshsales.UpdateDealInput, freshsales.CRMRecordMetadata](t, freshsales.UpdateDealDefinition),
+		deleteDeal:        connectormock.NewMutation[freshsales.DeleteDealInput, freshsales.DeletedCRMRecord](t, freshsales.DeleteDealDefinition),
+		createNote:        connectormock.NewMutation[freshsales.CreateNoteInput, freshsales.NoteMetadata](t, freshsales.CreateNoteDefinition),
+		updateNote:        connectormock.NewMutation[freshsales.UpdateNoteInput, freshsales.NoteMetadata](t, freshsales.UpdateNoteDefinition),
+		deleteNote:        connectormock.NewMutation[freshsales.DeleteNoteInput, freshsales.DeletedCRMRecord](t, freshsales.DeleteNoteDefinition),
+		getAppointment:    connectormock.NewQuery[freshsales.GetAppointmentInput, freshsales.AppointmentMetadata](t, freshsales.GetAppointmentDefinition),
+		listAppointments:  connectormock.NewQuery[freshsales.ListAppointmentsInput, freshsales.AppointmentPage](t, freshsales.ListAppointmentsDefinition),
+		createAppointment: connectormock.NewMutation[freshsales.CreateAppointmentInput, freshsales.AppointmentMetadata](t, freshsales.CreateAppointmentDefinition),
+		updateAppointment: connectormock.NewMutation[freshsales.UpdateAppointmentInput, freshsales.AppointmentMetadata](t, freshsales.UpdateAppointmentDefinition),
+		deleteAppointment: connectormock.NewMutation[freshsales.DeleteAppointmentInput, freshsales.DeletedCRMRecord](t, freshsales.DeleteAppointmentDefinition),
 	}
 	mock.listContactViews.Default(ListContactViewsDefault())
 	mock.getContact.Default(GetContactDefault())
@@ -89,6 +99,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createNote.Default(CreateNoteDefault())
 	mock.updateNote.Default(UpdateNoteDefault())
 	mock.deleteNote.Default(DeleteNoteDefault())
+	mock.getAppointment.Default(GetAppointmentDefault())
+	mock.listAppointments.Default(ListAppointmentsDefault())
+	mock.createAppointment.Default(CreateAppointmentDefault())
+	mock.updateAppointment.Default(UpdateAppointmentDefault())
+	mock.deleteAppointment.Default(DeleteAppointmentDefault())
 	connection, err := freshsales.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "freshsales", Name: connectionName})
 	if err != nil {
 		t.Fatalf("freshsales mock connection: %v", err)
@@ -205,6 +220,31 @@ func (mock *Mock) DeleteNote() *connectormock.Mutation[freshsales.DeleteNoteInpu
 	return mock.deleteNote
 }
 
+// GetAppointment returns the getAppointment script.
+func (mock *Mock) GetAppointment() *connectormock.Query[freshsales.GetAppointmentInput, freshsales.AppointmentMetadata] {
+	return mock.getAppointment
+}
+
+// ListAppointments returns the listAppointments script.
+func (mock *Mock) ListAppointments() *connectormock.Query[freshsales.ListAppointmentsInput, freshsales.AppointmentPage] {
+	return mock.listAppointments
+}
+
+// CreateAppointment returns the createAppointment script.
+func (mock *Mock) CreateAppointment() *connectormock.Mutation[freshsales.CreateAppointmentInput, freshsales.AppointmentMetadata] {
+	return mock.createAppointment
+}
+
+// UpdateAppointment returns the updateAppointment script.
+func (mock *Mock) UpdateAppointment() *connectormock.Mutation[freshsales.UpdateAppointmentInput, freshsales.AppointmentMetadata] {
+	return mock.updateAppointment
+}
+
+// DeleteAppointment returns the deleteAppointment script.
+func (mock *Mock) DeleteAppointment() *connectormock.Mutation[freshsales.DeleteAppointmentInput, freshsales.DeletedCRMRecord] {
+	return mock.deleteAppointment
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListContactViews() sdkgo.Query[freshsales.ListContactViewsInput, freshsales.ContactViews] {
@@ -269,6 +309,21 @@ func (operations mockOperations) UpdateNote() sdkgo.Mutation[freshsales.UpdateNo
 }
 func (operations mockOperations) DeleteNote() sdkgo.Mutation[freshsales.DeleteNoteInput, freshsales.DeletedCRMRecord] {
 	return operations.mock.deleteNote
+}
+func (operations mockOperations) GetAppointment() sdkgo.Query[freshsales.GetAppointmentInput, freshsales.AppointmentMetadata] {
+	return operations.mock.getAppointment
+}
+func (operations mockOperations) ListAppointments() sdkgo.Query[freshsales.ListAppointmentsInput, freshsales.AppointmentPage] {
+	return operations.mock.listAppointments
+}
+func (operations mockOperations) CreateAppointment() sdkgo.Mutation[freshsales.CreateAppointmentInput, freshsales.AppointmentMetadata] {
+	return operations.mock.createAppointment
+}
+func (operations mockOperations) UpdateAppointment() sdkgo.Mutation[freshsales.UpdateAppointmentInput, freshsales.AppointmentMetadata] {
+	return operations.mock.updateAppointment
+}
+func (operations mockOperations) DeleteAppointment() sdkgo.Mutation[freshsales.DeleteAppointmentInput, freshsales.DeletedCRMRecord] {
+	return operations.mock.deleteAppointment
 }
 
 // ListContactViewsListed selects the listed branch: Freshsales returned the available contact views.
@@ -1048,4 +1103,184 @@ func DeleteNoteDeletedDefault() connectormock.Case[freshsales.DeletedCRMRecord] 
 // DeleteNoteDefault is the manifest default, deletedDefault, which New installs.
 func DeleteNoteDefault() connectormock.Case[freshsales.DeletedCRMRecord] {
 	return DeleteNoteDeletedDefault()
+}
+
+// GetAppointmentFound selects the found branch: Freshsales confirmed the getAppointment outcome.
+func GetAppointmentFound(value freshsales.AppointmentMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Branch(freshsales.GetAppointmentBranchFound, value, failure)
+}
+
+// GetAppointmentNotFound selects the notFound branch: The appointment is absent.
+func GetAppointmentNotFound(value freshsales.AppointmentMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Branch(freshsales.GetAppointmentBranchNotFound, value, failure)
+}
+
+// GetAppointmentProviderRejected selects the providerRejected branch: Freshsales rejected the request.
+func GetAppointmentProviderRejected(value freshsales.AppointmentMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Branch(freshsales.GetAppointmentBranchProviderRejected, value, failure)
+}
+
+// GetAppointmentInvalidResponse selects the invalidResponse branch: Freshsales returned invalid appointment data.
+func GetAppointmentInvalidResponse(value freshsales.AppointmentMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Branch(freshsales.GetAppointmentBranchInvalidResponse, value, failure)
+}
+
+// GetAppointmentDefect selects the defect branch: The request input or connection is invalid.
+func GetAppointmentDefect(value freshsales.AppointmentMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Branch(freshsales.GetAppointmentBranchDefect, value, failure)
+}
+
+// GetAppointmentRetry asks Dex to retry the getAppointment Step, after the delay when it is positive.
+func GetAppointmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Retry[freshsales.AppointmentMetadata](failure, after)
+}
+
+// GetAppointmentFoundDefault is the manifest mock foundDefault: Example getAppointment result.
+func GetAppointmentFoundDefault() connectormock.Case[freshsales.AppointmentMetadata] {
+	value := connectormock.MustDecodeOutput[freshsales.AppointmentMetadata](`{"id":601,"title":"Expansion Appointment","fromDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+	return connectormock.Branch(freshsales.GetAppointmentBranchFound, value, nil)
+}
+
+// GetAppointmentDefault is the manifest default, foundDefault, which New installs.
+func GetAppointmentDefault() connectormock.Case[freshsales.AppointmentMetadata] {
+	return GetAppointmentFoundDefault()
+}
+
+// ListAppointmentsListed selects the listed branch: Freshsales confirmed the listAppointments outcome.
+func ListAppointmentsListed(value freshsales.AppointmentPage, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentPage] {
+	return connectormock.Branch(freshsales.ListAppointmentsBranchListed, value, failure)
+}
+
+// ListAppointmentsProviderRejected selects the providerRejected branch: Freshsales rejected the request.
+func ListAppointmentsProviderRejected(value freshsales.AppointmentPage, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentPage] {
+	return connectormock.Branch(freshsales.ListAppointmentsBranchProviderRejected, value, failure)
+}
+
+// ListAppointmentsInvalidResponse selects the invalidResponse branch: Freshsales returned invalid appointment data.
+func ListAppointmentsInvalidResponse(value freshsales.AppointmentPage, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentPage] {
+	return connectormock.Branch(freshsales.ListAppointmentsBranchInvalidResponse, value, failure)
+}
+
+// ListAppointmentsDefect selects the defect branch: The request input or connection is invalid.
+func ListAppointmentsDefect(value freshsales.AppointmentPage, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentPage] {
+	return connectormock.Branch(freshsales.ListAppointmentsBranchDefect, value, failure)
+}
+
+// ListAppointmentsRetry asks Dex to retry the listAppointments Step, after the delay when it is positive.
+func ListAppointmentsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[freshsales.AppointmentPage] {
+	return connectormock.Retry[freshsales.AppointmentPage](failure, after)
+}
+
+// ListAppointmentsListedDefault is the manifest mock listedDefault: Example listAppointments result.
+func ListAppointmentsListedDefault() connectormock.Case[freshsales.AppointmentPage] {
+	value := connectormock.MustDecodeOutput[freshsales.AppointmentPage](`{"appointments":[{"id":601,"title":"Expansion Appointment","fromDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}],"total":1}`)
+	return connectormock.Branch(freshsales.ListAppointmentsBranchListed, value, nil)
+}
+
+// ListAppointmentsDefault is the manifest default, listedDefault, which New installs.
+func ListAppointmentsDefault() connectormock.Case[freshsales.AppointmentPage] {
+	return ListAppointmentsListedDefault()
+}
+
+// CreateAppointmentCreated selects the created branch: Freshsales confirmed the createAppointment outcome.
+func CreateAppointmentCreated(value freshsales.AppointmentMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Branch(freshsales.CreateAppointmentBranchCreated, value, failure)
+}
+
+// CreateAppointmentProviderRejected selects the providerRejected branch: Freshsales rejected the request.
+func CreateAppointmentProviderRejected(value freshsales.AppointmentMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Branch(freshsales.CreateAppointmentBranchProviderRejected, value, failure)
+}
+
+// CreateAppointmentUncertain returns an uncertain createAppointment outcome.
+func CreateAppointmentUncertain(value freshsales.AppointmentMetadata, failure sdkgo.Failure) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateAppointmentDefect selects the defect branch: The request input or connection is invalid.
+func CreateAppointmentDefect(value freshsales.AppointmentMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Branch(freshsales.CreateAppointmentBranchDefect, value, failure)
+}
+
+// CreateAppointmentRetry asks Dex to retry the createAppointment Step, after the delay when it is positive.
+func CreateAppointmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Retry[freshsales.AppointmentMetadata](failure, after)
+}
+
+// CreateAppointmentCreatedDefault is the manifest mock createdDefault: Example createAppointment result.
+func CreateAppointmentCreatedDefault() connectormock.Case[freshsales.AppointmentMetadata] {
+	value := connectormock.MustDecodeOutput[freshsales.AppointmentMetadata](`{"id":601,"title":"Expansion Appointment","fromDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+	return connectormock.Branch(freshsales.CreateAppointmentBranchCreated, value, nil)
+}
+
+// CreateAppointmentDefault is the manifest default, createdDefault, which New installs.
+func CreateAppointmentDefault() connectormock.Case[freshsales.AppointmentMetadata] {
+	return CreateAppointmentCreatedDefault()
+}
+
+// UpdateAppointmentUpdated selects the updated branch: Freshsales confirmed the updateAppointment outcome.
+func UpdateAppointmentUpdated(value freshsales.AppointmentMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Branch(freshsales.UpdateAppointmentBranchUpdated, value, failure)
+}
+
+// UpdateAppointmentNotFound selects the notFound branch: The appointment is absent.
+func UpdateAppointmentNotFound(value freshsales.AppointmentMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Branch(freshsales.UpdateAppointmentBranchNotFound, value, failure)
+}
+
+// UpdateAppointmentProviderRejected selects the providerRejected branch: Freshsales rejected the request.
+func UpdateAppointmentProviderRejected(value freshsales.AppointmentMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Branch(freshsales.UpdateAppointmentBranchProviderRejected, value, failure)
+}
+
+// UpdateAppointmentDefect selects the defect branch: The request input or connection is invalid.
+func UpdateAppointmentDefect(value freshsales.AppointmentMetadata, failure *sdkgo.Failure) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Branch(freshsales.UpdateAppointmentBranchDefect, value, failure)
+}
+
+// UpdateAppointmentRetry asks Dex to retry the updateAppointment Step, after the delay when it is positive.
+func UpdateAppointmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[freshsales.AppointmentMetadata] {
+	return connectormock.Retry[freshsales.AppointmentMetadata](failure, after)
+}
+
+// UpdateAppointmentUpdatedDefault is the manifest mock updatedDefault: Example updateAppointment result.
+func UpdateAppointmentUpdatedDefault() connectormock.Case[freshsales.AppointmentMetadata] {
+	value := connectormock.MustDecodeOutput[freshsales.AppointmentMetadata](`{"id":601,"title":"Expansion Appointment","fromDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+	return connectormock.Branch(freshsales.UpdateAppointmentBranchUpdated, value, nil)
+}
+
+// UpdateAppointmentDefault is the manifest default, updatedDefault, which New installs.
+func UpdateAppointmentDefault() connectormock.Case[freshsales.AppointmentMetadata] {
+	return UpdateAppointmentUpdatedDefault()
+}
+
+// DeleteAppointmentDeleted selects the deleted branch: Freshsales confirmed the deleteAppointment outcome.
+func DeleteAppointmentDeleted(value freshsales.DeletedCRMRecord, failure *sdkgo.Failure) connectormock.Case[freshsales.DeletedCRMRecord] {
+	return connectormock.Branch(freshsales.DeleteAppointmentBranchDeleted, value, failure)
+}
+
+// DeleteAppointmentProviderRejected selects the providerRejected branch: Freshsales rejected the request.
+func DeleteAppointmentProviderRejected(value freshsales.DeletedCRMRecord, failure *sdkgo.Failure) connectormock.Case[freshsales.DeletedCRMRecord] {
+	return connectormock.Branch(freshsales.DeleteAppointmentBranchProviderRejected, value, failure)
+}
+
+// DeleteAppointmentDefect selects the defect branch: The request input or connection is invalid.
+func DeleteAppointmentDefect(value freshsales.DeletedCRMRecord, failure *sdkgo.Failure) connectormock.Case[freshsales.DeletedCRMRecord] {
+	return connectormock.Branch(freshsales.DeleteAppointmentBranchDefect, value, failure)
+}
+
+// DeleteAppointmentRetry asks Dex to retry the deleteAppointment Step, after the delay when it is positive.
+func DeleteAppointmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[freshsales.DeletedCRMRecord] {
+	return connectormock.Retry[freshsales.DeletedCRMRecord](failure, after)
+}
+
+// DeleteAppointmentDeletedDefault is the manifest mock deletedDefault: Example deleteAppointment result.
+func DeleteAppointmentDeletedDefault() connectormock.Case[freshsales.DeletedCRMRecord] {
+	value := connectormock.MustDecodeOutput[freshsales.DeletedCRMRecord](`{"id":601,"deleted":true}`)
+	return connectormock.Branch(freshsales.DeleteAppointmentBranchDeleted, value, nil)
+}
+
+// DeleteAppointmentDefault is the manifest default, deletedDefault, which New installs.
+func DeleteAppointmentDefault() connectormock.Case[freshsales.DeletedCRMRecord] {
+	return DeleteAppointmentDeletedDefault()
 }
