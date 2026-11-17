@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package woocommerce provides read-only WooCommerce Query operations for Dex Flows.
+// Package woocommerce provides WooCommerce Query and Mutation operations for Dex Flows.
 package woocommerce
 
 import (

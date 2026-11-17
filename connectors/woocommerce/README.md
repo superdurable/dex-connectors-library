@@ -4,7 +4,7 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/woocommerce`.
 
-Dex Query and Mutation Steps for WooCommerce orders. The module is `github.com/superdurable/dex-connectors-library/connectors/woocommerce/go`. See the [runnable resource-read and order-update Flows](go/examples/resource-read/README.md).
+Dex Query and Mutation Steps for WooCommerce orders, customers, and products. The module is `github.com/superdurable/dex-connectors-library/connectors/woocommerce/go`. See the [runnable resource-read and order-update Flows](go/examples/resource-read/README.md).
 
 The Python package is [`dex-connector-woocommerce`](python/README.md), imported as
 `dex_connectors.woocommerce`.
@@ -20,8 +20,18 @@ The TypeScript package is [`@superdurable/connector-woocommerce`](typescript/REA
 | `CreateOrder` | `CreateOrderInput` | `Order` | `created` |
 | `UpdateOrder` | `UpdateOrderInput` | `Order` | `updated` |
 | `DeleteOrder` | `DeleteOrderInput` | `Order` | `deleted` |
+| `ListCustomers` | `ListCustomersInput` | `CustomerPage` | `listed` |
+| `GetCustomer` | `GetCustomerInput` | `Customer` | `found` |
+| `CreateCustomer` | `CreateCustomerInput` | `Customer` | `created` |
+| `UpdateCustomer` | `UpdateCustomerInput` | `Customer` | `updated` |
+| `DeleteCustomer` | `DeleteCustomerInput` | `Customer` | `deleted` |
+| `ListProducts` | `ListProductsInput` | `ProductPage` | `listed` |
+| `GetProduct` | `GetProductInput` | `Product` | `found` |
+| `CreateProduct` | `CreateProductInput` | `Product` | `created` |
+| `UpdateProduct` | `UpdateProductInput` | `Product` | `updated` |
+| `DeleteProduct` | `DeleteProductInput` | `Product` | `deleted` |
 
-Each operation has optional error branches. Unwired optional branches fail the Flow. Reads use safe retries. `CreateOrder` uses a three-send cap and an optional `uncertain` branch when the outcome cannot be confirmed; `UpdateOrder` and `DeleteOrder` use safe retries because they replace one status or delete one stable ID.
+Each operation has optional error branches. Unwired optional branches fail the Flow. Reads use safe retries. `CreateOrder`, `CreateCustomer`, and `CreateProduct` use a three-send cap and an optional `uncertain` branch when the outcome cannot be confirmed; absolute updates and deletes use safe retries.
 
 ## Authentication and configuration
 

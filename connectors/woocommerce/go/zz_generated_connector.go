@@ -45,6 +45,16 @@ type Operations interface {
 	GetOrder() sdkgo.Query[GetOrderInput, Order]
 	CreateOrder() sdkgo.Mutation[CreateOrderInput, Order]
 	UpdateOrder() sdkgo.Mutation[UpdateOrderInput, Order]
+	ListCustomers() sdkgo.Query[ListCustomersInput, CustomerPage]
+	GetCustomer() sdkgo.Query[GetCustomerInput, Customer]
+	CreateCustomer() sdkgo.Mutation[CreateCustomerInput, Customer]
+	UpdateCustomer() sdkgo.Mutation[UpdateCustomerInput, Customer]
+	DeleteCustomer() sdkgo.Mutation[DeleteCustomerInput, Customer]
+	ListProducts() sdkgo.Query[ListProductsInput, ProductPage]
+	GetProduct() sdkgo.Query[GetProductInput, Product]
+	CreateProduct() sdkgo.Mutation[CreateProductInput, Product]
+	UpdateProduct() sdkgo.Mutation[UpdateProductInput, Product]
+	DeleteProduct() sdkgo.Mutation[DeleteProductInput, Product]
 	DeleteOrder() sdkgo.Mutation[DeleteOrderInput, Order]
 }
 
@@ -61,6 +71,36 @@ func (operations clientOperations) CreateOrder() sdkgo.Mutation[CreateOrderInput
 }
 func (operations clientOperations) UpdateOrder() sdkgo.Mutation[UpdateOrderInput, Order] {
 	return operations.client.UpdateOrder()
+}
+func (operations clientOperations) ListCustomers() sdkgo.Query[ListCustomersInput, CustomerPage] {
+	return operations.client.ListCustomers()
+}
+func (operations clientOperations) GetCustomer() sdkgo.Query[GetCustomerInput, Customer] {
+	return operations.client.GetCustomer()
+}
+func (operations clientOperations) CreateCustomer() sdkgo.Mutation[CreateCustomerInput, Customer] {
+	return operations.client.CreateCustomer()
+}
+func (operations clientOperations) UpdateCustomer() sdkgo.Mutation[UpdateCustomerInput, Customer] {
+	return operations.client.UpdateCustomer()
+}
+func (operations clientOperations) DeleteCustomer() sdkgo.Mutation[DeleteCustomerInput, Customer] {
+	return operations.client.DeleteCustomer()
+}
+func (operations clientOperations) ListProducts() sdkgo.Query[ListProductsInput, ProductPage] {
+	return operations.client.ListProducts()
+}
+func (operations clientOperations) GetProduct() sdkgo.Query[GetProductInput, Product] {
+	return operations.client.GetProduct()
+}
+func (operations clientOperations) CreateProduct() sdkgo.Mutation[CreateProductInput, Product] {
+	return operations.client.CreateProduct()
+}
+func (operations clientOperations) UpdateProduct() sdkgo.Mutation[UpdateProductInput, Product] {
+	return operations.client.UpdateProduct()
+}
+func (operations clientOperations) DeleteProduct() sdkgo.Mutation[DeleteProductInput, Product] {
+	return operations.client.DeleteProduct()
 }
 func (operations clientOperations) DeleteOrder() sdkgo.Mutation[DeleteOrderInput, Order] {
 	return operations.client.DeleteOrder()
@@ -513,6 +553,802 @@ func NewUpdateOrderStep[IN any](config UpdateOrderStepConfig[IN]) sdkgo.Mutation
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(UpdateOrderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCustomersBranchListed sdkgo.BranchID = "listed"
+const ListCustomersBranchNotFound sdkgo.BranchID = "notFound"
+const ListCustomersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCustomersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCustomersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCustomersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCustomers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCustomersBranchListed, Description: "The customer listed successfully."},
+		{ID: ListCustomersBranchNotFound, Description: "The customer was not found.", Optional: true},
+		{ID: ListCustomersBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: ListCustomersBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: ListCustomersBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCustomersResult = sdkgo.QueryResult[CustomerPage]
+
+type ListCustomersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=woocommerce"`
+	operationID                    struct{}                                        `connector:"operationId=listCustomers"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCustomersInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCustomersResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListCustomersResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListCustomersResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCustomersResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCustomersResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CustomerPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListCustomersStep[IN any](config ListCustomersStepConfig[IN]) sdkgo.QueryStep[IN, ListCustomersInput, CustomerPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("woocommerce connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCustomersInput, CustomerPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCustomers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCustomersResult] {
+			branches := make([]sdkgo.BranchTarget[ListCustomersResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCustomersBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListCustomersBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCustomersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCustomersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCustomersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCustomerBranchFound sdkgo.BranchID = "found"
+const GetCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const GetCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCustomerDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCustomerBranchFound, Description: "The customer found successfully."},
+		{ID: GetCustomerBranchNotFound, Description: "The customer was not found.", Optional: true},
+		{ID: GetCustomerBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: GetCustomerBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: GetCustomerBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCustomerResult = sdkgo.QueryResult[Customer]
+
+type GetCustomerStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=woocommerce"`
+	operationID                    struct{}                                    `connector:"operationId=getCustomer"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCustomerInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCustomerResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCustomerResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCustomerResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCustomerResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCustomerResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Customer]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewGetCustomerStep[IN any](config GetCustomerStepConfig[IN]) sdkgo.QueryStep[IN, GetCustomerInput, Customer] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("woocommerce connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCustomerInput, Customer]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[GetCustomerResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCustomerBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCustomerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateCustomerBranchCreated sdkgo.BranchID = "created"
+const CreateCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const CreateCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateCustomerBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateCustomerBranchCreated, Description: "The customer created successfully."},
+		{ID: CreateCustomerBranchNotFound, Description: "The customer was not found.", Optional: true},
+		{ID: CreateCustomerBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: CreateCustomerBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: CreateCustomerBranchUncertain, Description: "The capped create outcome could not be confirmed.", Optional: true},
+		{ID: CreateCustomerBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateCustomerResult = sdkgo.MutationResult[Customer]
+
+type CreateCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                       `connector:"connectorId=woocommerce"`
+	operationID                       struct{}                                       `connector:"operationId=createCustomer"`
+	StepType                          string                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                        Connection                                     `connector:"connection"`
+	ConnectionName                    string                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateCustomerInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateCustomerResult]             `connector:"branch=created"`
+	NotFound                          sdkgo.Target[CreateCustomerResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CreateCustomerResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateCustomerResult]             `connector:"branch=invalidResponse,optional"`
+	Uncertain                         sdkgo.Target[CreateCustomerResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateCustomerResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Customer]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateCustomerStep[IN any](config CreateCustomerStepConfig[IN]) sdkgo.MutationStep[IN, CreateCustomerInput, Customer] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("woocommerce connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCustomerInput, Customer]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[CreateCustomerResult], 0, 6)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateCustomerBranchCreated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CreateCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateCustomerBranchInvalidResponse))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateCustomerBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCustomerBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCustomerBranchUpdated, Description: "The customer updated successfully."},
+		{ID: UpdateCustomerBranchNotFound, Description: "The customer was not found.", Optional: true},
+		{ID: UpdateCustomerBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: UpdateCustomerBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateCustomerBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateCustomerResult = sdkgo.MutationResult[Customer]
+
+type UpdateCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                       `connector:"connectorId=woocommerce"`
+	operationID                       struct{}                                       `connector:"operationId=updateCustomer"`
+	StepType                          string                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                        Connection                                     `connector:"connection"`
+	ConnectionName                    string                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCustomerInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCustomerResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateCustomerResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateCustomerResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateCustomerResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateCustomerResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Customer]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateCustomerStep[IN any](config UpdateCustomerStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCustomerInput, Customer] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("woocommerce connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCustomerInput, Customer]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCustomerResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCustomerBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateCustomerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteCustomerBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteCustomerBranchDeleted, Description: "The customer deleted successfully."},
+		{ID: DeleteCustomerBranchNotFound, Description: "The customer was not found.", Optional: true},
+		{ID: DeleteCustomerBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: DeleteCustomerBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteCustomerBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteCustomerResult = sdkgo.MutationResult[Customer]
+
+type DeleteCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                       `connector:"connectorId=woocommerce"`
+	operationID                       struct{}                                       `connector:"operationId=deleteCustomer"`
+	StepType                          string                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                        Connection                                     `connector:"connection"`
+	ConnectionName                    string                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteCustomerInput                   `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteCustomerResult]             `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteCustomerResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteCustomerResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteCustomerResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteCustomerResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Customer]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteCustomerStep[IN any](config DeleteCustomerStepConfig[IN]) sdkgo.MutationStep[IN, DeleteCustomerInput, Customer] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("woocommerce connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteCustomerInput, Customer]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteCustomerResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteCustomerBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteCustomerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListProductsBranchListed sdkgo.BranchID = "listed"
+const ListProductsBranchNotFound sdkgo.BranchID = "notFound"
+const ListProductsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListProductsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListProductsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListProductsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listProducts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListProductsBranchListed, Description: "The product listed successfully."},
+		{ID: ListProductsBranchNotFound, Description: "The product was not found.", Optional: true},
+		{ID: ListProductsBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: ListProductsBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: ListProductsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListProductsResult = sdkgo.QueryResult[ProductPage]
+
+type ListProductsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=woocommerce"`
+	operationID                    struct{}                                       `connector:"operationId=listProducts"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListProductsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListProductsResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListProductsResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListProductsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListProductsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListProductsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ProductPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListProductsStep[IN any](config ListProductsStepConfig[IN]) sdkgo.QueryStep[IN, ListProductsInput, ProductPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("woocommerce connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListProductsInput, ProductPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListProducts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListProductsResult] {
+			branches := make([]sdkgo.BranchTarget[ListProductsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListProductsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListProductsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListProductsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListProductsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListProductsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetProductBranchFound sdkgo.BranchID = "found"
+const GetProductBranchNotFound sdkgo.BranchID = "notFound"
+const GetProductBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetProductBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetProductBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetProductDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getProduct"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetProductBranchFound, Description: "The product found successfully."},
+		{ID: GetProductBranchNotFound, Description: "The product was not found.", Optional: true},
+		{ID: GetProductBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: GetProductBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: GetProductBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetProductResult = sdkgo.QueryResult[Product]
+
+type GetProductStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=woocommerce"`
+	operationID                    struct{}                                   `connector:"operationId=getProduct"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetProductInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetProductResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetProductResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetProductResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetProductResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetProductResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Product]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetProductStep[IN any](config GetProductStepConfig[IN]) sdkgo.QueryStep[IN, GetProductInput, Product] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("woocommerce connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetProductInput, Product]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetProduct(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetProductResult] {
+			branches := make([]sdkgo.BranchTarget[GetProductResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetProductBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetProductBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetProductBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetProductBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetProductBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateProductBranchCreated sdkgo.BranchID = "created"
+const CreateProductBranchNotFound sdkgo.BranchID = "notFound"
+const CreateProductBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateProductBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateProductBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateProductBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateProductDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createProduct"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateProductBranchCreated, Description: "The product created successfully."},
+		{ID: CreateProductBranchNotFound, Description: "The product was not found.", Optional: true},
+		{ID: CreateProductBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: CreateProductBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: CreateProductBranchUncertain, Description: "The capped create outcome could not be confirmed.", Optional: true},
+		{ID: CreateProductBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateProductResult = sdkgo.MutationResult[Product]
+
+type CreateProductStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=woocommerce"`
+	operationID                       struct{}                                      `connector:"operationId=createProduct"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateProductInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateProductResult]             `connector:"branch=created"`
+	NotFound                          sdkgo.Target[CreateProductResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CreateProductResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateProductResult]             `connector:"branch=invalidResponse,optional"`
+	Uncertain                         sdkgo.Target[CreateProductResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateProductResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Product]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateProductStep[IN any](config CreateProductStepConfig[IN]) sdkgo.MutationStep[IN, CreateProductInput, Product] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("woocommerce connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateProductInput, Product]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateProduct(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateProductResult] {
+			branches := make([]sdkgo.BranchTarget[CreateProductResult], 0, 6)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateProductBranchCreated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CreateProductBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateProductBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateProductBranchInvalidResponse))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateProductBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateProductBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateProductBranchUpdated sdkgo.BranchID = "updated"
+const UpdateProductBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateProductBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateProductBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateProductBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateProductDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateProduct"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateProductBranchUpdated, Description: "The product updated successfully."},
+		{ID: UpdateProductBranchNotFound, Description: "The product was not found.", Optional: true},
+		{ID: UpdateProductBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: UpdateProductBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateProductBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateProductResult = sdkgo.MutationResult[Product]
+
+type UpdateProductStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=woocommerce"`
+	operationID                       struct{}                                      `connector:"operationId=updateProduct"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateProductInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateProductResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateProductResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateProductResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateProductResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateProductResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Product]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateProductStep[IN any](config UpdateProductStepConfig[IN]) sdkgo.MutationStep[IN, UpdateProductInput, Product] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("woocommerce connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateProductInput, Product]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateProduct(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateProductResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateProductResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateProductBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateProductBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateProductBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateProductBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateProductBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteProductBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteProductBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteProductBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteProductBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteProductBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteProductDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteProduct"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteProductBranchDeleted, Description: "The product deleted successfully."},
+		{ID: DeleteProductBranchNotFound, Description: "The product was not found.", Optional: true},
+		{ID: DeleteProductBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: DeleteProductBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteProductBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteProductResult = sdkgo.MutationResult[Product]
+
+type DeleteProductStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=woocommerce"`
+	operationID                       struct{}                                      `connector:"operationId=deleteProduct"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteProductInput                   `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteProductResult]             `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteProductResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteProductResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteProductResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteProductResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Product]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteProductStep[IN any](config DeleteProductStepConfig[IN]) sdkgo.MutationStep[IN, DeleteProductInput, Product] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("woocommerce connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteProductInput, Product]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteProduct(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteProductResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteProductResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteProductBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteProductBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteProductBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteProductBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteProductBranchDefect))
 			}
 			return branches
 		}(),

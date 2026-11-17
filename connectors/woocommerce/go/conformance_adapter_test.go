@@ -40,6 +40,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createOrder": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreateOrder(), connection, scenario.CallID),
 		"updateOrder": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.UpdateOrder(), connection, scenario.CallID),
 		"deleteOrder": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.DeleteOrder(), connection, scenario.CallID),
+		"listCustomers": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCustomers(), connection),
+		"getCustomer": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCustomer(), connection),
+		"createCustomer": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreateCustomer(), connection, scenario.CallID),
+		"updateCustomer": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.UpdateCustomer(), connection, scenario.CallID),
+		"deleteCustomer": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.DeleteCustomer(), connection, scenario.CallID),
+		"listProducts": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListProducts(), connection),
+		"getProduct": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetProduct(), connection),
+		"createProduct": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreateProduct(), connection, scenario.CallID),
+		"updateProduct": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.UpdateProduct(), connection, scenario.CallID),
+		"deleteProduct": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.DeleteProduct(), connection, scenario.CallID),
 	}}
 }
 
