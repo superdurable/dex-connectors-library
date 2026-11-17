@@ -5,6 +5,8 @@
 package dropboxsign
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -68,6 +70,14 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.send(call, http.MethodGet, path, nil, "")
+}
+
+func (client *Client) send(call sdkgo.Call, method, path string, body []byte, contentType string) providerResponse {
+	return client.sendWithContext(call, call.Context, method, path, body, contentType)
+}
+
+func (client *Client) sendWithContext(call sdkgo.Call, requestContext context.Context, method, path string, body []byte, contentType string) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -76,11 +86,14 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(apiKey) || strings.Contains(apiKey, ":") {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(requestContext, method, client.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
+	if contentType != "" {
+		request.Header.Set("Content-Type", contentType)
+	}
 	request.SetBasicAuth(apiKey, "")
 	response, err := client.httpClient.Do(request)
 	if err != nil {
@@ -88,6 +101,6 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	return providerResponse{body: responseBody, status: response.StatusCode, retryAfter: retryAfter, err: err}
 }

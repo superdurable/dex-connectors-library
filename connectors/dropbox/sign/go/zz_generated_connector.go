@@ -41,12 +41,48 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	GetSignatureRequest() sdkgo.Query[GetSignatureRequestInput, SignatureRequestStatus]
+	ListSignatureRequests() sdkgo.Query[ListSignatureRequestsInput, SignatureRequestPage]
+	SendSignatureRequest() sdkgo.Mutation[SendSignatureRequestInput, SignatureRequestStatus]
+	SendSignatureRequestWithTemplate() sdkgo.Mutation[SendSignatureRequestWithTemplateInput, SignatureRequestStatus]
+	CancelIncompleteSignatureRequest() sdkgo.Mutation[GetSignatureRequestInput, CancellationQueued]
+	RemindSignatureRequest() sdkgo.Mutation[RemindSignatureRequestInput, SignatureRequestStatus]
+	UpdateSignerName() sdkgo.Mutation[UpdateSignerNameInput, UpdatedSignerName]
+	ListTemplates() sdkgo.Query[ListTemplatesInput, TemplatesPage]
+	GetTemplate() sdkgo.Query[TemplateIdentityInput, TemplateMetadata]
+	DeleteTemplate() sdkgo.Mutation[TemplateIdentityInput, DeletedTemplate]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) GetSignatureRequest() sdkgo.Query[GetSignatureRequestInput, SignatureRequestStatus] {
 	return operations.client.GetSignatureRequest()
+}
+func (operations clientOperations) ListSignatureRequests() sdkgo.Query[ListSignatureRequestsInput, SignatureRequestPage] {
+	return operations.client.ListSignatureRequests()
+}
+func (operations clientOperations) SendSignatureRequest() sdkgo.Mutation[SendSignatureRequestInput, SignatureRequestStatus] {
+	return operations.client.SendSignatureRequest()
+}
+func (operations clientOperations) SendSignatureRequestWithTemplate() sdkgo.Mutation[SendSignatureRequestWithTemplateInput, SignatureRequestStatus] {
+	return operations.client.SendSignatureRequestWithTemplate()
+}
+func (operations clientOperations) CancelIncompleteSignatureRequest() sdkgo.Mutation[GetSignatureRequestInput, CancellationQueued] {
+	return operations.client.CancelIncompleteSignatureRequest()
+}
+func (operations clientOperations) RemindSignatureRequest() sdkgo.Mutation[RemindSignatureRequestInput, SignatureRequestStatus] {
+	return operations.client.RemindSignatureRequest()
+}
+func (operations clientOperations) UpdateSignerName() sdkgo.Mutation[UpdateSignerNameInput, UpdatedSignerName] {
+	return operations.client.UpdateSignerName()
+}
+func (operations clientOperations) ListTemplates() sdkgo.Query[ListTemplatesInput, TemplatesPage] {
+	return operations.client.ListTemplates()
+}
+func (operations clientOperations) GetTemplate() sdkgo.Query[TemplateIdentityInput, TemplateMetadata] {
+	return operations.client.GetTemplate()
+}
+func (operations clientOperations) DeleteTemplate() sdkgo.Mutation[TemplateIdentityInput, DeletedTemplate] {
+	return operations.client.DeleteTemplate()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -255,6 +291,669 @@ func NewGetSignatureRequestStep[IN any](config GetSignatureRequestStepConfig[IN]
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetSignatureRequestBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSignatureRequestsBranchListed sdkgo.BranchID = "listed"
+const ListSignatureRequestsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSignatureRequestsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSignatureRequestsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSignatureRequestsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSignatureRequests"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSignatureRequestsBranchListed, Description: "Dropbox Sign returned a signature request page."},
+		{ID: ListSignatureRequestsBranchProviderRejected, Description: "Dropbox Sign conclusively rejected the list request.", Optional: true},
+		{ID: ListSignatureRequestsBranchInvalidResponse, Description: "Dropbox Sign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListSignatureRequestsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSignatureRequestsResult = sdkgo.QueryResult[SignatureRequestPage]
+
+type ListSignatureRequestsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=dropbox-sign"`
+	operationID                    struct{}                                                `connector:"operationId=listSignatureRequests"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSignatureRequestsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSignatureRequestsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSignatureRequestsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSignatureRequestsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSignatureRequestsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SignatureRequestPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewListSignatureRequestsStep[IN any](config ListSignatureRequestsStepConfig[IN]) sdkgo.QueryStep[IN, ListSignatureRequestsInput, SignatureRequestPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSignatureRequestsInput, SignatureRequestPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSignatureRequests(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSignatureRequestsResult] {
+			branches := make([]sdkgo.BranchTarget[ListSignatureRequestsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSignatureRequestsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSignatureRequestsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSignatureRequestsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSignatureRequestsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SendSignatureRequestBranchSent sdkgo.BranchID = "sent"
+const SendSignatureRequestBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendSignatureRequestBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const SendSignatureRequestBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var SendSignatureRequestDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendSignatureRequest"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendSignatureRequestBranchSent, Description: "Dropbox Sign returned the sent request."},
+		{ID: SendSignatureRequestBranchProviderRejected, Description: "Dropbox Sign conclusively rejected the send.", Optional: true},
+		{ID: SendSignatureRequestBranchDefect, Description: "Document URL and signer input or credentials are invalid.", Optional: true},
+		{ID: SendSignatureRequestBranchUncertain, Description: "The bounded send count ended without a confirmed request.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendSignatureRequestResult = sdkgo.MutationResult[SignatureRequestStatus]
+
+type SendSignatureRequestStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                     `connector:"connectorId=dropbox-sign"`
+	operationID                       struct{}                                                     `connector:"operationId=sendSignatureRequest"`
+	StepType                          string                                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                        Connection                                                   `connector:"connection"`
+	ConnectionName                    string                                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendSignatureRequestInput                           `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendSignatureRequestResult]                     `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendSignatureRequestResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[SendSignatureRequestResult]                     `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[SendSignatureRequestResult]                     `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SignatureRequestStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendSignatureRequestStep[IN any](config SendSignatureRequestStepConfig[IN]) sdkgo.MutationStep[IN, SendSignatureRequestInput, SignatureRequestStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendSignatureRequestInput, SignatureRequestStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendSignatureRequest(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendSignatureRequestResult] {
+			branches := make([]sdkgo.BranchTarget[SendSignatureRequestResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendSignatureRequestBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendSignatureRequestBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendSignatureRequestBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendSignatureRequestBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendSignatureRequestWithTemplateBranchSent sdkgo.BranchID = "sent"
+const SendSignatureRequestWithTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendSignatureRequestWithTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const SendSignatureRequestWithTemplateBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var SendSignatureRequestWithTemplateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendSignatureRequestWithTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendSignatureRequestWithTemplateBranchSent, Description: "Dropbox Sign returned the templated request."},
+		{ID: SendSignatureRequestWithTemplateBranchProviderRejected, Description: "Dropbox Sign conclusively rejected the templated send.", Optional: true},
+		{ID: SendSignatureRequestWithTemplateBranchDefect, Description: "Template or signer input or credentials are invalid.", Optional: true},
+		{ID: SendSignatureRequestWithTemplateBranchUncertain, Description: "The bounded send count ended without a confirmed request.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendSignatureRequestWithTemplateResult = sdkgo.MutationResult[SignatureRequestStatus]
+
+type SendSignatureRequestWithTemplateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                     `connector:"connectorId=dropbox-sign"`
+	operationID                       struct{}                                                     `connector:"operationId=sendSignatureRequestWithTemplate"`
+	StepType                          string                                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                        Connection                                                   `connector:"connection"`
+	ConnectionName                    string                                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendSignatureRequestWithTemplateInput               `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendSignatureRequestWithTemplateResult]         `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendSignatureRequestWithTemplateResult]         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[SendSignatureRequestWithTemplateResult]         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[SendSignatureRequestWithTemplateResult]         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SignatureRequestStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendSignatureRequestWithTemplateStep[IN any](config SendSignatureRequestWithTemplateStepConfig[IN]) sdkgo.MutationStep[IN, SendSignatureRequestWithTemplateInput, SignatureRequestStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendSignatureRequestWithTemplateInput, SignatureRequestStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendSignatureRequestWithTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendSignatureRequestWithTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[SendSignatureRequestWithTemplateResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendSignatureRequestWithTemplateBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendSignatureRequestWithTemplateBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendSignatureRequestWithTemplateBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendSignatureRequestWithTemplateBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const CancelIncompleteSignatureRequestBranchQueued sdkgo.BranchID = "queued"
+const CancelIncompleteSignatureRequestBranchNotFound sdkgo.BranchID = "notFound"
+const CancelIncompleteSignatureRequestBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelIncompleteSignatureRequestBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelIncompleteSignatureRequestDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelIncompleteSignatureRequest"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelIncompleteSignatureRequestBranchQueued, Description: "Dropbox Sign queued cancellation."},
+		{ID: CancelIncompleteSignatureRequestBranchNotFound, Description: "The request is unavailable.", Optional: true},
+		{ID: CancelIncompleteSignatureRequestBranchProviderRejected, Description: "Dropbox Sign rejected cancellation.", Optional: true},
+		{ID: CancelIncompleteSignatureRequestBranchDefect, Description: "Request ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CancelIncompleteSignatureRequestResult = sdkgo.MutationResult[CancellationQueued]
+
+type CancelIncompleteSignatureRequestStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=dropbox-sign"`
+	operationID                       struct{}                                                 `connector:"operationId=cancelIncompleteSignatureRequest"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetSignatureRequestInput                        `connector:"mapToOperationInput"`
+	Queued                            sdkgo.Target[CancelIncompleteSignatureRequestResult]     `connector:"branch=queued"`
+	NotFound                          sdkgo.Target[CancelIncompleteSignatureRequestResult]     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CancelIncompleteSignatureRequestResult]     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CancelIncompleteSignatureRequestResult]     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CancellationQueued]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewCancelIncompleteSignatureRequestStep[IN any](config CancelIncompleteSignatureRequestStepConfig[IN]) sdkgo.MutationStep[IN, GetSignatureRequestInput, CancellationQueued] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetSignatureRequestInput, CancellationQueued]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelIncompleteSignatureRequest(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelIncompleteSignatureRequestResult] {
+			branches := make([]sdkgo.BranchTarget[CancelIncompleteSignatureRequestResult], 0, 4)
+			if config.Queued.HasStep() {
+				branches = append(branches, config.Queued.BranchTarget(CancelIncompleteSignatureRequestBranchQueued))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CancelIncompleteSignatureRequestBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelIncompleteSignatureRequestBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelIncompleteSignatureRequestBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RemindSignatureRequestBranchReminded sdkgo.BranchID = "reminded"
+const RemindSignatureRequestBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RemindSignatureRequestBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const RemindSignatureRequestBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var RemindSignatureRequestDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "remindSignatureRequest"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RemindSignatureRequestBranchReminded, Description: "Dropbox Sign returned the request after sending the reminder."},
+		{ID: RemindSignatureRequestBranchProviderRejected, Description: "Dropbox Sign conclusively rejected the reminder.", Optional: true},
+		{ID: RemindSignatureRequestBranchDefect, Description: "Request ID and signer email or credentials are invalid.", Optional: true},
+		{ID: RemindSignatureRequestBranchUncertain, Description: "The bounded send count ended without reminder confirmation.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type RemindSignatureRequestResult = sdkgo.MutationResult[SignatureRequestStatus]
+
+type RemindSignatureRequestStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                     `connector:"connectorId=dropbox-sign"`
+	operationID                       struct{}                                                     `connector:"operationId=remindSignatureRequest"`
+	StepType                          string                                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                        Connection                                                   `connector:"connection"`
+	ConnectionName                    string                                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) RemindSignatureRequestInput                         `connector:"mapToOperationInput"`
+	Reminded                          sdkgo.Target[RemindSignatureRequestResult]                   `connector:"branch=reminded"`
+	ProviderRejected                  sdkgo.Target[RemindSignatureRequestResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[RemindSignatureRequestResult]                   `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[RemindSignatureRequestResult]                   `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SignatureRequestStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewRemindSignatureRequestStep[IN any](config RemindSignatureRequestStepConfig[IN]) sdkgo.MutationStep[IN, RemindSignatureRequestInput, SignatureRequestStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RemindSignatureRequestInput, SignatureRequestStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RemindSignatureRequest(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RemindSignatureRequestResult] {
+			branches := make([]sdkgo.BranchTarget[RemindSignatureRequestResult], 0, 4)
+			if config.Reminded.HasStep() {
+				branches = append(branches, config.Reminded.BranchTarget(RemindSignatureRequestBranchReminded))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RemindSignatureRequestBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RemindSignatureRequestBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(RemindSignatureRequestBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateSignerNameBranchUpdated sdkgo.BranchID = "updated"
+const UpdateSignerNameBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateSignerNameBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateSignerNameBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateSignerNameBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateSignerNameDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateSignerName"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateSignerNameBranchUpdated, Description: "Dropbox Sign accepted the signer name update."},
+		{ID: UpdateSignerNameBranchNotFound, Description: "Dropbox Sign did not expose the signature request.", Optional: true},
+		{ID: UpdateSignerNameBranchProviderRejected, Description: "Dropbox Sign conclusively rejected the update.", Optional: true},
+		{ID: UpdateSignerNameBranchInvalidResponse, Description: "Dropbox Sign returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateSignerNameBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateSignerNameResult = sdkgo.MutationResult[UpdatedSignerName]
+
+type UpdateSignerNameStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=dropbox-sign"`
+	operationID                       struct{}                                                `connector:"operationId=updateSignerName"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateSignerNameInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateSignerNameResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateSignerNameResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateSignerNameResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateSignerNameResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateSignerNameResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedSignerName]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateSignerNameStep[IN any](config UpdateSignerNameStepConfig[IN]) sdkgo.MutationStep[IN, UpdateSignerNameInput, UpdatedSignerName] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateSignerNameInput, UpdatedSignerName]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateSignerName(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateSignerNameResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateSignerNameResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateSignerNameBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateSignerNameBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateSignerNameBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateSignerNameBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateSignerNameBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTemplatesBranchListed sdkgo.BranchID = "listed"
+const ListTemplatesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTemplatesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTemplatesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTemplatesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTemplates"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTemplatesBranchListed, Description: "Dropbox Sign returned a template page."},
+		{ID: ListTemplatesBranchProviderRejected, Description: "Dropbox Sign rejected template listing.", Optional: true},
+		{ID: ListTemplatesBranchInvalidResponse, Description: "Dropbox Sign returned invalid template data.", Optional: true},
+		{ID: ListTemplatesBranchDefect, Description: "Template page options or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTemplatesResult = sdkgo.QueryResult[TemplatesPage]
+
+type ListTemplatesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=dropbox-sign"`
+	operationID                    struct{}                                         `connector:"operationId=listTemplates"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTemplatesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTemplatesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTemplatesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTemplatesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTemplatesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TemplatesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListTemplatesStep[IN any](config ListTemplatesStepConfig[IN]) sdkgo.QueryStep[IN, ListTemplatesInput, TemplatesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTemplatesInput, TemplatesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTemplates(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTemplatesResult] {
+			branches := make([]sdkgo.BranchTarget[ListTemplatesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTemplatesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTemplatesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTemplatesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTemplatesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTemplateBranchFound sdkgo.BranchID = "found"
+const GetTemplateBranchNotFound sdkgo.BranchID = "notFound"
+const GetTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTemplateBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTemplateDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTemplateBranchFound, Description: "Dropbox Sign returned the selected template."},
+		{ID: GetTemplateBranchNotFound, Description: "The template is unavailable.", Optional: true},
+		{ID: GetTemplateBranchProviderRejected, Description: "Dropbox Sign rejected template retrieval.", Optional: true},
+		{ID: GetTemplateBranchInvalidResponse, Description: "Dropbox Sign returned invalid template data.", Optional: true},
+		{ID: GetTemplateBranchDefect, Description: "Template ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTemplateResult = sdkgo.QueryResult[TemplateMetadata]
+
+type GetTemplateStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=dropbox-sign"`
+	operationID                    struct{}                                            `connector:"operationId=getTemplate"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) TemplateIdentityInput                      `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTemplateResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTemplateResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTemplateResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTemplateResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTemplateResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TemplateMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewGetTemplateStep[IN any](config GetTemplateStepConfig[IN]) sdkgo.QueryStep[IN, TemplateIdentityInput, TemplateMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, TemplateIdentityInput, TemplateMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[GetTemplateResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTemplateBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTemplateBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTemplateBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTemplateBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTemplateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteTemplateBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteTemplateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteTemplateBranchDeleted, Description: "The template is absent."},
+		{ID: DeleteTemplateBranchProviderRejected, Description: "Dropbox Sign rejected template deletion.", Optional: true},
+		{ID: DeleteTemplateBranchDefect, Description: "Template ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteTemplateResult = sdkgo.MutationResult[DeletedTemplate]
+
+type DeleteTemplateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=dropbox-sign"`
+	operationID                       struct{}                                              `connector:"operationId=deleteTemplate"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) TemplateIdentityInput                        `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteTemplateResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteTemplateResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteTemplateResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedTemplate]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteTemplateStep[IN any](config DeleteTemplateStepConfig[IN]) sdkgo.MutationStep[IN, TemplateIdentityInput, DeletedTemplate] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TemplateIdentityInput, DeletedTemplate]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteTemplateResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteTemplateBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteTemplateBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteTemplateBranchDefect))
 			}
 			return branches
 		}(),

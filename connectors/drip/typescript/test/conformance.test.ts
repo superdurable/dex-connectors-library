@@ -8,7 +8,8 @@ import { DripClient } from '../src/client.js';
 import { GetSubscriberInputSchema, ListAccountsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/drip/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/drip/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'listAccounts' || scenario.operation === 'getSubscriber');
 const connection = { provider: 'drip', name: 'drip' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeDrip, '/v2'));
 

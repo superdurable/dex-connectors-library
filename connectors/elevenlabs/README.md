@@ -1,19 +1,33 @@
 # ElevenLabs connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/elevenlabs/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/elevenlabs/go@v0.3.0` after release.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/elevenlabs`.
 
-List voices and generate bounded audio through ElevenLabs. The manifest is the source of generated Config, Credentials, Connection, operation factories, and mocks. See the [runnable demo](go/examples/demo/README.md) for Worker and strict FDG 2.0 generation commands.
+List and inspect voices, replace voice settings, and generate bounded audio through ElevenLabs. The manifest is the source of generated Config, Credentials, Connection, operation factories, and mocks. See the [runnable demo](go/examples/demo/README.md) for Worker and strict FDG 2.0 generation commands.
 
 ## Operations and provider references
 
 | Operation | Dex kind | Official API reference |
 | --- | --- | --- |
 | `listVoices` | Query | https://elevenlabs.io/docs/api-reference/voices/search |
+| `listModels` | Query, safe | https://elevenlabs.io/docs/api-reference/models/list |
+| `listHistoryItems` | Query, safe | https://elevenlabs.io/docs/api-reference/history/list |
+| `getHistoryItem` | Query, safe | https://elevenlabs.io/docs/api-reference/history/get |
+| `deleteHistoryItem` | Mutation, safe repeat | https://elevenlabs.io/docs/api-reference/history/delete |
+| `getVoice` | Query | https://elevenlabs.io/docs/api-reference/voices/get |
+| `editVoiceMetadata` | Mutation, safe repeat | https://elevenlabs.io/docs/api-reference/voices/update |
+| `deleteVoice` | Mutation, safe repeat | https://elevenlabs.io/docs/api-reference/voices/delete |
+| `updateVoiceSettings` | Mutation, safe repeat | https://elevenlabs.io/docs/api-reference/voices/settings/update |
 | `createSpeech` | Query | https://elevenlabs.io/docs/api-reference/text-to-speech/convert |
 
-The demo uses `elevenlabs.NewListVoicesStep` with the static `elevenlabs` connection. Each operation is an operation-specific Query Step. Generation operations use synchronous Execute durability and a three-attempt billed retry budget; read operations use the default one-hour retry policy.
+The demo uses operation-specific `elevenlabs.NewListVoicesStep` and `elevenlabs.NewUpdateVoiceSettingsStep` factories with the static `elevenlabs` connection. `updateVoiceSettings` sends five absolute values, so retrying the same input preserves the chosen settings. Generation uses synchronous Execute durability and a three-attempt billed retry budget; reads and settings replacement use the default one-hour retry policy.
+
+`listModels` returns IDs, names, text-to-speech support, and per-request text limits for models available to the connection. Its runnable model catalog Flow uses `NewListModelsStep` and the same static connection.
+
+`listHistoryItems` pages generated item IDs and operational metadata, with optional voice, model, source, and continuation filters. `getHistoryItem` reads one item; `deleteHistoryItem` permanently removes one item and treats confirmed absence as deleted. Returned history omits generated text, audio, and request contents from Flow results and Attributes. The runnable history Flow lists metadata through the static connection.
+
+`editVoiceMetadata` replaces an owned voice's display name and optional description using the provider's multipart edit endpoint. It does not upload audio samples. `deleteVoice` permanently removes a voice and treats confirmed absence as deleted. Both operations safely repeat the same request after an unknown outcome. The runnable voice metadata Flow exercises the edit operation through the static connection.
 
 The Python package is [`dex-connector-elevenlabs`](python/README.md), imported as
 `dex_connectors.elevenlabs`.
@@ -24,7 +38,7 @@ the generated TypeScript Step factories and both provider operations.
 
 ## Authorization and configuration
 
-At [ElevenLabs > Developers > API Keys > Create API Key](https://elevenlabs.io/app/developers/api-keys), create or select an API key for these operations, copy its provider-issued value, and store it in the secret `api_key` field in Dex Web Connections. A blank key is invalid. The manifest supplies the public base URL, HTTP timeout, and response-size limit; leave their fields blank unless a compatible gateway, slow request, or known larger response requires an override.
+At [ElevenLabs > Developers > API Keys > Create API Key](https://elevenlabs.io/app/developers/api-keys), create or select an API key with voice read, voice write, and speech generation permissions for the operations used, copy its provider-issued value, and store it in the secret `api_key` field in Dex Web Connections. A blank key is invalid. The manifest supplies the public base URL, HTTP timeout, and response-size limit; leave their fields blank unless a compatible gateway, slow request, or known larger response requires an override.
 
 ## Failure behavior
 
@@ -38,11 +52,19 @@ At [ElevenLabs > Developers > API Keys > Create API Key](https://elevenlabs.io/a
 
 Provider error bodies and secrets are never copied into failures, receipts, or output. Optional branches are unwired in the demo and fail the Flow when selected.
 
+`getVoice` additionally selects `notFound` for a missing voice. `updateVoiceSettings` selects `updated`, `notFound`, `providerRejected`, or `defect`; an interrupted or unusable success confirmation retries the same absolute settings.
+
+`editVoiceMetadata` selects `edited`, `notFound`, `providerRejected`, `invalidResponse`, or `defect`. `deleteVoice` selects `deleted`, `providerRejected`, `invalidResponse`, or `defect`. A 404 delete response confirms the desired absent state.
+
 ## Mocks
 
 The generated `elevenlabsmock` package uses one consistent default answer per operation:
 
 - `listVoices` default `listedDefault`: `{"voices":[{"voiceId":"voice_meridian","name":"Meridian Narrator"}],"hasMore":false}`
+- `getVoice` default `foundDefault`: `{"voiceId":"voice_meridian","name":"Meridian Narrator"}`
+- `updateVoiceSettings` default `updatedDefault`: `{"voiceId":"voice_meridian"}`
+- `editVoiceMetadata` default `metadataEdited`: `{"voiceId":"voice_meridian","name":"Meridian Narrator"}`
+- `deleteVoice` default `voiceDeleted`: `{"voiceId":"voice_meridian","deleted":true}`
 - `createSpeech` default `createdDefault`: `{"audioBase64":"SUQz","contentType":"audio/mpeg"}`
 
 `examples/demo/flow/workflow_mock_integration_test.go` starts a real Dex Flow through the mock connection in CI. Provider unit tests use local HTTP servers for the documented request shape and a rate-limit response.

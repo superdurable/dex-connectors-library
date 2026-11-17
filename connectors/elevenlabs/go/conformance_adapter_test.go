@@ -15,12 +15,24 @@ const conformanceEndpointPath = ""
 const conformanceFixturePathPrefix = ""
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
-	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
+	credentials := sdkgo.StaticCredentialProvider[Credentials]{
 		testConnection: {APIKey: sdkgo.NewSecretString(testAPIKey)},
-	}, WithHTTPClient(transport))
+	}
+	if scenario.Name == "listModels-defect" {
+		credentials = sdkgo.StaticCredentialProvider[Credentials]{}
+	}
+	client, err := New(Config{BaseURL: endpoint}, credentials, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listVoices":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListVoices(), testConnection),
-		"createSpeech": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.CreateSpeech(), testConnection),
+		"editVoiceMetadata":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.EditVoiceMetadata(), testConnection, scenario.CallID),
+		"deleteVoice":         newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteVoice(), testConnection, scenario.CallID),
+		"listHistoryItems":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListHistoryItems(), testConnection),
+		"getHistoryItem":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetHistoryItem(), testConnection),
+		"deleteHistoryItem":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteHistoryItem(), testConnection, scenario.CallID),
+		"listModels":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListModels(), testConnection),
+		"getVoice":            newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetVoice(), testConnection),
+		"updateVoiceSettings": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateVoiceSettings(), testConnection, scenario.CallID),
+		"listVoices":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListVoices(), testConnection),
+		"createSpeech":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.CreateSpeech(), testConnection),
 	}}
 }
