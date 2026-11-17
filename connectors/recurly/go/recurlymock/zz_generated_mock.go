@@ -18,6 +18,8 @@ import (
 // Mock is a scripted recurly connection. Script each operation through its accessor.
 type Mock struct {
 	connection             recurly.Connection
+	listInvoices           *connectormock.Query[recurly.ListInvoicesInput, recurly.InvoicePage]
+	getInvoice             *connectormock.Query[recurly.GetInvoiceInput, recurly.InvoiceSummary]
 	listPlans              *connectormock.Query[recurly.ListPlansInput, recurly.PlanPage]
 	getPlan                *connectormock.Query[recurly.GetPlanInput, recurly.PlanSummary]
 	createPlan             *connectormock.Mutation[recurly.CreatePlanInput, recurly.PlanSummary]
@@ -37,6 +39,8 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listInvoices:           connectormock.NewQuery[recurly.ListInvoicesInput, recurly.InvoicePage](t, recurly.ListInvoicesDefinition),
+		getInvoice:             connectormock.NewQuery[recurly.GetInvoiceInput, recurly.InvoiceSummary](t, recurly.GetInvoiceDefinition),
 		listPlans:              connectormock.NewQuery[recurly.ListPlansInput, recurly.PlanPage](t, recurly.ListPlansDefinition),
 		getPlan:                connectormock.NewQuery[recurly.GetPlanInput, recurly.PlanSummary](t, recurly.GetPlanDefinition),
 		createPlan:             connectormock.NewMutation[recurly.CreatePlanInput, recurly.PlanSummary](t, recurly.CreatePlanDefinition),
@@ -50,6 +54,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		createAccount:          connectormock.NewMutation[recurly.CreateAccountInput, recurly.AccountIdentity](t, recurly.CreateAccountDefinition),
 		getAccount:             connectormock.NewQuery[recurly.GetAccountInput, recurly.AccountIdentity](t, recurly.GetAccountDefinition),
 	}
+	mock.listInvoices.Default(ListInvoicesDefault())
+	mock.getInvoice.Default(GetInvoiceDefault())
 	mock.listPlans.Default(ListPlansDefault())
 	mock.getPlan.Default(GetPlanDefault())
 	mock.createPlan.Default(CreatePlanDefault())
@@ -72,6 +78,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() recurly.Connection { return mock.connection }
+
+// ListInvoices returns the listInvoices script.
+func (mock *Mock) ListInvoices() *connectormock.Query[recurly.ListInvoicesInput, recurly.InvoicePage] {
+	return mock.listInvoices
+}
+
+// GetInvoice returns the getInvoice script.
+func (mock *Mock) GetInvoice() *connectormock.Query[recurly.GetInvoiceInput, recurly.InvoiceSummary] {
+	return mock.getInvoice
+}
 
 // ListPlans returns the listPlans script.
 func (mock *Mock) ListPlans() *connectormock.Query[recurly.ListPlansInput, recurly.PlanPage] {
@@ -135,6 +151,12 @@ func (mock *Mock) GetAccount() *connectormock.Query[recurly.GetAccountInput, rec
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListInvoices() sdkgo.Query[recurly.ListInvoicesInput, recurly.InvoicePage] {
+	return operations.mock.listInvoices
+}
+func (operations mockOperations) GetInvoice() sdkgo.Query[recurly.GetInvoiceInput, recurly.InvoiceSummary] {
+	return operations.mock.getInvoice
+}
 func (operations mockOperations) ListPlans() sdkgo.Query[recurly.ListPlansInput, recurly.PlanPage] {
 	return operations.mock.listPlans
 }
@@ -171,6 +193,81 @@ func (operations mockOperations) CreateAccount() sdkgo.Mutation[recurly.CreateAc
 func (operations mockOperations) GetAccount() sdkgo.Query[recurly.GetAccountInput, recurly.AccountIdentity] {
 	return operations.mock.getAccount
 }
+
+// ListInvoicesListed selects the listed branch: Recurly returned a page of invoices.
+func ListInvoicesListed(value recurly.InvoicePage, failure *sdkgo.Failure) connectormock.Case[recurly.InvoicePage] {
+	return connectormock.Branch(recurly.ListInvoicesBranchListed, value, failure)
+}
+
+// ListInvoicesProviderRejected selects the providerRejected branch: Recurly rejected invoice listing.
+func ListInvoicesProviderRejected(value recurly.InvoicePage, failure *sdkgo.Failure) connectormock.Case[recurly.InvoicePage] {
+	return connectormock.Branch(recurly.ListInvoicesBranchProviderRejected, value, failure)
+}
+
+// ListInvoicesInvalidResponse selects the invalidResponse branch: Recurly returned unusable invoice list data.
+func ListInvoicesInvalidResponse(value recurly.InvoicePage, failure *sdkgo.Failure) connectormock.Case[recurly.InvoicePage] {
+	return connectormock.Branch(recurly.ListInvoicesBranchInvalidResponse, value, failure)
+}
+
+// ListInvoicesDefect selects the defect branch: Invalid page size or credentials.
+func ListInvoicesDefect(value recurly.InvoicePage, failure *sdkgo.Failure) connectormock.Case[recurly.InvoicePage] {
+	return connectormock.Branch(recurly.ListInvoicesBranchDefect, value, failure)
+}
+
+// ListInvoicesRetry asks Dex to retry the listInvoices Step, after the delay when it is positive.
+func ListInvoicesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.InvoicePage] {
+	return connectormock.Retry[recurly.InvoicePage](failure, after)
+}
+
+// ListInvoicesListedDefault is the manifest mock listedDefault: A sample invoice page is returned.
+func ListInvoicesListedDefault() connectormock.Case[recurly.InvoicePage] {
+	value := connectormock.MustDecodeOutput[recurly.InvoicePage](`{"invoices":[{"id":"e28zov4fw0v2","state":"open"}],"hasMore":false}`)
+	return connectormock.Branch(recurly.ListInvoicesBranchListed, value, nil)
+}
+
+// ListInvoicesDefault is the manifest default, listedDefault, which New installs.
+func ListInvoicesDefault() connectormock.Case[recurly.InvoicePage] {
+	return ListInvoicesListedDefault()
+}
+
+// GetInvoiceFound selects the found branch: Recurly returned the invoice.
+func GetInvoiceFound(value recurly.InvoiceSummary, failure *sdkgo.Failure) connectormock.Case[recurly.InvoiceSummary] {
+	return connectormock.Branch(recurly.GetInvoiceBranchFound, value, failure)
+}
+
+// GetInvoiceNotFound selects the notFound branch: The invoice was not found.
+func GetInvoiceNotFound(value recurly.InvoiceSummary, failure *sdkgo.Failure) connectormock.Case[recurly.InvoiceSummary] {
+	return connectormock.Branch(recurly.GetInvoiceBranchNotFound, value, failure)
+}
+
+// GetInvoiceProviderRejected selects the providerRejected branch: Recurly rejected invoice lookup.
+func GetInvoiceProviderRejected(value recurly.InvoiceSummary, failure *sdkgo.Failure) connectormock.Case[recurly.InvoiceSummary] {
+	return connectormock.Branch(recurly.GetInvoiceBranchProviderRejected, value, failure)
+}
+
+// GetInvoiceInvalidResponse selects the invalidResponse branch: Recurly returned unusable invoice data.
+func GetInvoiceInvalidResponse(value recurly.InvoiceSummary, failure *sdkgo.Failure) connectormock.Case[recurly.InvoiceSummary] {
+	return connectormock.Branch(recurly.GetInvoiceBranchInvalidResponse, value, failure)
+}
+
+// GetInvoiceDefect selects the defect branch: Invalid ID or credentials.
+func GetInvoiceDefect(value recurly.InvoiceSummary, failure *sdkgo.Failure) connectormock.Case[recurly.InvoiceSummary] {
+	return connectormock.Branch(recurly.GetInvoiceBranchDefect, value, failure)
+}
+
+// GetInvoiceRetry asks Dex to retry the getInvoice Step, after the delay when it is positive.
+func GetInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.InvoiceSummary] {
+	return connectormock.Retry[recurly.InvoiceSummary](failure, after)
+}
+
+// GetInvoiceFoundDefault is the manifest mock foundDefault: A sample invoice is returned.
+func GetInvoiceFoundDefault() connectormock.Case[recurly.InvoiceSummary] {
+	value := connectormock.MustDecodeOutput[recurly.InvoiceSummary](`{"id":"e28zov4fw0v2","state":"open"}`)
+	return connectormock.Branch(recurly.GetInvoiceBranchFound, value, nil)
+}
+
+// GetInvoiceDefault is the manifest default, foundDefault, which New installs.
+func GetInvoiceDefault() connectormock.Case[recurly.InvoiceSummary] { return GetInvoiceFoundDefault() }
 
 // ListPlansListed selects the listed branch: Recurly returned a page of plans.
 func ListPlansListed(value recurly.PlanPage, failure *sdkgo.Failure) connectormock.Case[recurly.PlanPage] {

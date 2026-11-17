@@ -40,5 +40,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createPlan":             newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreatePlan(), reference, scenario.CallID),
 		"renamePlan":             newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.RenamePlan(), reference, scenario.CallID),
 		"deletePlan":             newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.DeletePlan(), reference, scenario.CallID),
+		"listInvoices":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListInvoices(), reference),
+		"getInvoice":             newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetInvoice(), reference),
 	}}
 }

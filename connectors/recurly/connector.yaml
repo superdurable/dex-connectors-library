@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: recurly
   displayName: Recurly
-  description: Read and manage Recurly accounts, subscriptions, and plans through the Subscriptions API.
+  description: Read and manage Recurly accounts, subscriptions, plans, and invoices through the Subscriptions API.
   company: Recurly
   categories: [finance-payments]
   version: v0.2.0
@@ -55,6 +55,47 @@ spec:
         - Sign in to the Recurly site with Integration permission. Open Integrations > API Credentials, scroll to Add Private API Key, name the integration and click Save Changes. Copy the complete unencoded secret key into Dex Web secret api_key; blank is invalid. Regenerate or revoke it later under Developers > API Keys. Do not paste the Base64 example shown under Need help using the API Key.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret account ID in Recurly account details or the API account response and enter it as accountId; blank is invalid. Account codes require a code- prefix, for example code-acme. IDs and codes each have at most 50 characters.
   operations:
+    - name: listInvoices
+      goName: ListInvoices
+      inputType: ListInvoicesInput
+      outputType: InvoicePage
+      kind: query
+      description: List one bounded page of invoice states.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Recurly returned a page of invoices.}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected invoice listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Recurly returned unusable invoice list data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid page size or credentials., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample invoice page is returned.
+          output: {invoices: [{id: e28zov4fw0v2, state: open}], hasMore: false}
+    - name: getInvoice
+      goName: GetInvoice
+      inputType: GetInvoiceInput
+      outputType: InvoiceSummary
+      kind: query
+      description: Read one invoice state by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Recurly returned the invoice.}
+        - {id: notFound, goName: NotFound, description: The invoice was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected invoice lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Recurly returned unusable invoice data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid ID or credentials., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample invoice is returned.
+          output: {id: e28zov4fw0v2, state: open}
     - name: listPlans
       goName: ListPlans
       inputType: ListPlansInput

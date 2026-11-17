@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listInvoices/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.InvoicePage](`{"invoices":[{"id":"e28zov4fw0v2","state":"open"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getInvoice/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.InvoiceSummary](`{"id":"e28zov4fw0v2","state":"open"}`)
+			return err
+		}},
 		{name: "listPlans/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[recurly.PlanPage](`{"plans":[{"id":"e28zov4fw0v2","code":"standard","name":"Standard"}],"hasMore":false}`)
 			return err
@@ -74,6 +82,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListInvoices().Definition().Operation.OperationID != "listInvoices" {
+		t.Errorf("listInvoices mock has another definition")
+	}
+	if mock.GetInvoice().Definition().Operation.OperationID != "getInvoice" {
+		t.Errorf("getInvoice mock has another definition")
+	}
 	if mock.ListPlans().Definition().Operation.OperationID != "listPlans" {
 		t.Errorf("listPlans mock has another definition")
 	}
