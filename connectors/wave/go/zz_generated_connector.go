@@ -50,6 +50,13 @@ type Operations interface {
 	CreateProduct() sdkgo.Mutation[CreateProductInput, ProductProfile]
 	UpdateProduct() sdkgo.Mutation[UpdateProductInput, ProductProfile]
 	ArchiveProduct() sdkgo.Mutation[ArchiveProductInput, ProductProfile]
+	ListInvoices() sdkgo.Query[ListInvoicesInput, InvoicePage]
+	GetInvoice() sdkgo.Query[GetInvoiceInput, InvoiceProfile]
+	CreateInvoice() sdkgo.Mutation[CreateInvoiceInput, InvoiceProfile]
+	UpdateInvoice() sdkgo.Mutation[UpdateInvoiceInput, InvoiceProfile]
+	ApproveInvoice() sdkgo.Mutation[ApproveInvoiceInput, InvoiceProfile]
+	DeleteInvoice() sdkgo.Mutation[DeleteInvoiceInput, DeletedInvoice]
+	SendInvoice() sdkgo.Mutation[SendInvoiceInput, SentInvoice]
 }
 
 type clientOperations struct{ client *Client }
@@ -83,6 +90,27 @@ func (operations clientOperations) UpdateProduct() sdkgo.Mutation[UpdateProductI
 }
 func (operations clientOperations) ArchiveProduct() sdkgo.Mutation[ArchiveProductInput, ProductProfile] {
 	return operations.client.ArchiveProduct()
+}
+func (operations clientOperations) ListInvoices() sdkgo.Query[ListInvoicesInput, InvoicePage] {
+	return operations.client.ListInvoices()
+}
+func (operations clientOperations) GetInvoice() sdkgo.Query[GetInvoiceInput, InvoiceProfile] {
+	return operations.client.GetInvoice()
+}
+func (operations clientOperations) CreateInvoice() sdkgo.Mutation[CreateInvoiceInput, InvoiceProfile] {
+	return operations.client.CreateInvoice()
+}
+func (operations clientOperations) UpdateInvoice() sdkgo.Mutation[UpdateInvoiceInput, InvoiceProfile] {
+	return operations.client.UpdateInvoice()
+}
+func (operations clientOperations) ApproveInvoice() sdkgo.Mutation[ApproveInvoiceInput, InvoiceProfile] {
+	return operations.client.ApproveInvoice()
+}
+func (operations clientOperations) DeleteInvoice() sdkgo.Mutation[DeleteInvoiceInput, DeletedInvoice] {
+	return operations.client.DeleteInvoice()
+}
+func (operations clientOperations) SendInvoice() sdkgo.Mutation[SendInvoiceInput, SentInvoice] {
+	return operations.client.SendInvoice()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -967,5 +995,527 @@ func NewArchiveProductStep[IN any](config ArchiveProductStepConfig[IN]) sdkgo.Mu
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListInvoicesBranchListed sdkgo.BranchID = "listed"
+const ListInvoicesBranchNotFound sdkgo.BranchID = "notFound"
+const ListInvoicesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListInvoicesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListInvoicesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListInvoicesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listInvoices"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListInvoicesBranchListed, Description: "Wave returned a page of invoices."},
+		{ID: ListInvoicesBranchNotFound, Description: "The business was not found.", Optional: true},
+		{ID: ListInvoicesBranchProviderRejected, Description: "Wave rejected the query.", Optional: true},
+		{ID: ListInvoicesBranchInvalidResponse, Description: "Wave returned malformed or oversized JSON.", Optional: true},
+		{ID: ListInvoicesBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListInvoicesResult = sdkgo.QueryResult[InvoicePage]
+
+type ListInvoicesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=wave"`
+	operationID                    struct{}                                       `connector:"operationId=listInvoices"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListInvoicesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListInvoicesResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListInvoicesResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListInvoicesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListInvoicesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListInvoicesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InvoicePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListInvoicesStep[IN any](config ListInvoicesStepConfig[IN]) sdkgo.QueryStep[IN, ListInvoicesInput, InvoicePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wave connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListInvoicesInput, InvoicePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListInvoices(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListInvoicesResult] {
+			branches := make([]sdkgo.BranchTarget[ListInvoicesResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListInvoicesBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListInvoicesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListInvoicesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListInvoicesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListInvoicesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetInvoiceBranchFound sdkgo.BranchID = "found"
+const GetInvoiceBranchNotFound sdkgo.BranchID = "notFound"
+const GetInvoiceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetInvoiceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetInvoiceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetInvoiceDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getInvoice"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetInvoiceBranchFound, Description: "Wave returned the invoice."},
+		{ID: GetInvoiceBranchNotFound, Description: "The business or invoice was not found.", Optional: true},
+		{ID: GetInvoiceBranchProviderRejected, Description: "Wave rejected the query.", Optional: true},
+		{ID: GetInvoiceBranchInvalidResponse, Description: "Wave returned malformed or oversized JSON.", Optional: true},
+		{ID: GetInvoiceBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetInvoiceResult = sdkgo.QueryResult[InvoiceProfile]
+
+type GetInvoiceStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=wave"`
+	operationID                    struct{}                                          `connector:"operationId=getInvoice"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetInvoiceInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetInvoiceResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetInvoiceResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetInvoiceResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetInvoiceResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetInvoiceResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InvoiceProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetInvoiceStep[IN any](config GetInvoiceStepConfig[IN]) sdkgo.QueryStep[IN, GetInvoiceInput, InvoiceProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wave connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetInvoiceInput, InvoiceProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetInvoice(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetInvoiceResult] {
+			branches := make([]sdkgo.BranchTarget[GetInvoiceResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetInvoiceBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetInvoiceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetInvoiceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetInvoiceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetInvoiceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateInvoiceBranchCreated sdkgo.BranchID = "created"
+const CreateInvoiceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateInvoiceBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateInvoiceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateInvoiceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createInvoice"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateInvoiceBranchCreated, Description: "Wave created the invoice."},
+		{ID: CreateInvoiceBranchProviderRejected, Description: "Wave rejected the invoice input.", Optional: true},
+		{ID: CreateInvoiceBranchUncertain, Description: "Creation may have succeeded but could not be confirmed.", Optional: true},
+		{ID: CreateInvoiceBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateInvoiceResult = sdkgo.MutationResult[InvoiceProfile]
+
+type CreateInvoiceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=wave"`
+	operationID                       struct{}                                             `connector:"operationId=createInvoice"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateInvoiceInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateInvoiceResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateInvoiceResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateInvoiceResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateInvoiceResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InvoiceProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateInvoiceStep[IN any](config CreateInvoiceStepConfig[IN]) sdkgo.MutationStep[IN, CreateInvoiceInput, InvoiceProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wave connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateInvoiceInput, InvoiceProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateInvoice(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateInvoiceResult] {
+			branches := make([]sdkgo.BranchTarget[CreateInvoiceResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateInvoiceBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateInvoiceBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateInvoiceBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateInvoiceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateInvoiceBranchUpdated sdkgo.BranchID = "updated"
+const UpdateInvoiceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateInvoiceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateInvoiceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateInvoiceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateInvoice"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateInvoiceBranchUpdated, Description: "Wave updated the invoice."},
+		{ID: UpdateInvoiceBranchProviderRejected, Description: "Wave rejected the update.", Optional: true},
+		{ID: UpdateInvoiceBranchInvalidResponse, Description: "Wave returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateInvoiceBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateInvoiceResult = sdkgo.MutationResult[InvoiceProfile]
+
+type UpdateInvoiceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=wave"`
+	operationID                       struct{}                                             `connector:"operationId=updateInvoice"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateInvoiceInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateInvoiceResult]                    `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[UpdateInvoiceResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateInvoiceResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateInvoiceResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InvoiceProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateInvoiceStep[IN any](config UpdateInvoiceStepConfig[IN]) sdkgo.MutationStep[IN, UpdateInvoiceInput, InvoiceProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wave connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateInvoiceInput, InvoiceProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateInvoice(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateInvoiceResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateInvoiceResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateInvoiceBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateInvoiceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateInvoiceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateInvoiceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ApproveInvoiceBranchApproved sdkgo.BranchID = "approved"
+const ApproveInvoiceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ApproveInvoiceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ApproveInvoiceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ApproveInvoiceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "approveInvoice"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ApproveInvoiceBranchApproved, Description: "Wave approved the invoice."},
+		{ID: ApproveInvoiceBranchProviderRejected, Description: "Wave rejected approval.", Optional: true},
+		{ID: ApproveInvoiceBranchInvalidResponse, Description: "Wave returned malformed or oversized JSON.", Optional: true},
+		{ID: ApproveInvoiceBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ApproveInvoiceResult = sdkgo.MutationResult[InvoiceProfile]
+
+type ApproveInvoiceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=wave"`
+	operationID                       struct{}                                             `connector:"operationId=approveInvoice"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) ApproveInvoiceInput                         `connector:"mapToOperationInput"`
+	Approved                          sdkgo.Target[ApproveInvoiceResult]                   `connector:"branch=approved"`
+	ProviderRejected                  sdkgo.Target[ApproveInvoiceResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ApproveInvoiceResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ApproveInvoiceResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InvoiceProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewApproveInvoiceStep[IN any](config ApproveInvoiceStepConfig[IN]) sdkgo.MutationStep[IN, ApproveInvoiceInput, InvoiceProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wave connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ApproveInvoiceInput, InvoiceProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ApproveInvoice(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ApproveInvoiceResult] {
+			branches := make([]sdkgo.BranchTarget[ApproveInvoiceResult], 0, 4)
+			if config.Approved.HasStep() {
+				branches = append(branches, config.Approved.BranchTarget(ApproveInvoiceBranchApproved))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ApproveInvoiceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ApproveInvoiceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ApproveInvoiceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteInvoiceBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteInvoiceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteInvoiceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteInvoiceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteInvoiceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteInvoice"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteInvoiceBranchDeleted, Description: "Wave deleted the invoice."},
+		{ID: DeleteInvoiceBranchProviderRejected, Description: "Wave rejected deletion.", Optional: true},
+		{ID: DeleteInvoiceBranchInvalidResponse, Description: "Wave returned malformed JSON.", Optional: true},
+		{ID: DeleteInvoiceBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteInvoiceResult = sdkgo.MutationResult[DeletedInvoice]
+
+type DeleteInvoiceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=wave"`
+	operationID                       struct{}                                             `connector:"operationId=deleteInvoice"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteInvoiceInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteInvoiceResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteInvoiceResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteInvoiceResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteInvoiceResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedInvoice]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteInvoiceStep[IN any](config DeleteInvoiceStepConfig[IN]) sdkgo.MutationStep[IN, DeleteInvoiceInput, DeletedInvoice] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wave connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteInvoiceInput, DeletedInvoice]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteInvoice(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteInvoiceResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteInvoiceResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteInvoiceBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteInvoiceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteInvoiceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteInvoiceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SendInvoiceBranchSent sdkgo.BranchID = "sent"
+const SendInvoiceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendInvoiceBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendInvoiceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendInvoiceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendInvoice"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendInvoiceBranchSent, Description: "Wave queued the invoice email."},
+		{ID: SendInvoiceBranchProviderRejected, Description: "Wave rejected the send request.", Optional: true},
+		{ID: SendInvoiceBranchUncertain, Description: "The email may have been queued but could not be confirmed.", Optional: true},
+		{ID: SendInvoiceBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendInvoiceResult = sdkgo.MutationResult[SentInvoice]
+
+type SendInvoiceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=wave"`
+	operationID                       struct{}                                          `connector:"operationId=sendInvoice"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendInvoiceInput                         `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendInvoiceResult]                   `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendInvoiceResult]                   `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendInvoiceResult]                   `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendInvoiceResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentInvoice]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendInvoiceStep[IN any](config SendInvoiceStepConfig[IN]) sdkgo.MutationStep[IN, SendInvoiceInput, SentInvoice] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wave connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendInvoiceInput, SentInvoice]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendInvoice(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendInvoiceResult] {
+			branches := make([]sdkgo.BranchTarget[SendInvoiceResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendInvoiceBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendInvoiceBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendInvoiceBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendInvoiceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

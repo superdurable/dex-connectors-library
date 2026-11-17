@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{customerread.NewFlow(connection), customerread.NewCreateCustomerFlow(connection), customerread.NewCreateProductFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{customerread.NewFlow(connection), customerread.NewCreateCustomerFlow(connection), customerread.NewCreateProductFlow(connection), customerread.NewCreateInvoiceFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Wave worker inspection Flow: %w", err)
 	}

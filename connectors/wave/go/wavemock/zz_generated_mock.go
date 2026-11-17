@@ -28,6 +28,13 @@ type Mock struct {
 	createProduct  *connectormock.Mutation[wave.CreateProductInput, wave.ProductProfile]
 	updateProduct  *connectormock.Mutation[wave.UpdateProductInput, wave.ProductProfile]
 	archiveProduct *connectormock.Mutation[wave.ArchiveProductInput, wave.ProductProfile]
+	listInvoices   *connectormock.Query[wave.ListInvoicesInput, wave.InvoicePage]
+	getInvoice     *connectormock.Query[wave.GetInvoiceInput, wave.InvoiceProfile]
+	createInvoice  *connectormock.Mutation[wave.CreateInvoiceInput, wave.InvoiceProfile]
+	updateInvoice  *connectormock.Mutation[wave.UpdateInvoiceInput, wave.InvoiceProfile]
+	approveInvoice *connectormock.Mutation[wave.ApproveInvoiceInput, wave.InvoiceProfile]
+	deleteInvoice  *connectormock.Mutation[wave.DeleteInvoiceInput, wave.DeletedInvoice]
+	sendInvoice    *connectormock.Mutation[wave.SendInvoiceInput, wave.SentInvoice]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -45,6 +52,13 @@ func New(t testing.TB, connectionName string) *Mock {
 		createProduct:  connectormock.NewMutation[wave.CreateProductInput, wave.ProductProfile](t, wave.CreateProductDefinition),
 		updateProduct:  connectormock.NewMutation[wave.UpdateProductInput, wave.ProductProfile](t, wave.UpdateProductDefinition),
 		archiveProduct: connectormock.NewMutation[wave.ArchiveProductInput, wave.ProductProfile](t, wave.ArchiveProductDefinition),
+		listInvoices:   connectormock.NewQuery[wave.ListInvoicesInput, wave.InvoicePage](t, wave.ListInvoicesDefinition),
+		getInvoice:     connectormock.NewQuery[wave.GetInvoiceInput, wave.InvoiceProfile](t, wave.GetInvoiceDefinition),
+		createInvoice:  connectormock.NewMutation[wave.CreateInvoiceInput, wave.InvoiceProfile](t, wave.CreateInvoiceDefinition),
+		updateInvoice:  connectormock.NewMutation[wave.UpdateInvoiceInput, wave.InvoiceProfile](t, wave.UpdateInvoiceDefinition),
+		approveInvoice: connectormock.NewMutation[wave.ApproveInvoiceInput, wave.InvoiceProfile](t, wave.ApproveInvoiceDefinition),
+		deleteInvoice:  connectormock.NewMutation[wave.DeleteInvoiceInput, wave.DeletedInvoice](t, wave.DeleteInvoiceDefinition),
+		sendInvoice:    connectormock.NewMutation[wave.SendInvoiceInput, wave.SentInvoice](t, wave.SendInvoiceDefinition),
 	}
 	mock.getCustomer.Default(GetCustomerDefault())
 	mock.listCustomers.Default(ListCustomersDefault())
@@ -56,6 +70,13 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createProduct.Default(CreateProductDefault())
 	mock.updateProduct.Default(UpdateProductDefault())
 	mock.archiveProduct.Default(ArchiveProductDefault())
+	mock.listInvoices.Default(ListInvoicesDefault())
+	mock.getInvoice.Default(GetInvoiceDefault())
+	mock.createInvoice.Default(CreateInvoiceDefault())
+	mock.updateInvoice.Default(UpdateInvoiceDefault())
+	mock.approveInvoice.Default(ApproveInvoiceDefault())
+	mock.deleteInvoice.Default(DeleteInvoiceDefault())
+	mock.sendInvoice.Default(SendInvoiceDefault())
 	connection, err := wave.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "wave", Name: connectionName})
 	if err != nil {
 		t.Fatalf("wave mock connection: %v", err)
@@ -117,6 +138,41 @@ func (mock *Mock) ArchiveProduct() *connectormock.Mutation[wave.ArchiveProductIn
 	return mock.archiveProduct
 }
 
+// ListInvoices returns the listInvoices script.
+func (mock *Mock) ListInvoices() *connectormock.Query[wave.ListInvoicesInput, wave.InvoicePage] {
+	return mock.listInvoices
+}
+
+// GetInvoice returns the getInvoice script.
+func (mock *Mock) GetInvoice() *connectormock.Query[wave.GetInvoiceInput, wave.InvoiceProfile] {
+	return mock.getInvoice
+}
+
+// CreateInvoice returns the createInvoice script.
+func (mock *Mock) CreateInvoice() *connectormock.Mutation[wave.CreateInvoiceInput, wave.InvoiceProfile] {
+	return mock.createInvoice
+}
+
+// UpdateInvoice returns the updateInvoice script.
+func (mock *Mock) UpdateInvoice() *connectormock.Mutation[wave.UpdateInvoiceInput, wave.InvoiceProfile] {
+	return mock.updateInvoice
+}
+
+// ApproveInvoice returns the approveInvoice script.
+func (mock *Mock) ApproveInvoice() *connectormock.Mutation[wave.ApproveInvoiceInput, wave.InvoiceProfile] {
+	return mock.approveInvoice
+}
+
+// DeleteInvoice returns the deleteInvoice script.
+func (mock *Mock) DeleteInvoice() *connectormock.Mutation[wave.DeleteInvoiceInput, wave.DeletedInvoice] {
+	return mock.deleteInvoice
+}
+
+// SendInvoice returns the sendInvoice script.
+func (mock *Mock) SendInvoice() *connectormock.Mutation[wave.SendInvoiceInput, wave.SentInvoice] {
+	return mock.sendInvoice
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetCustomer() sdkgo.Query[wave.GetCustomerInput, wave.CustomerProfile] {
@@ -148,6 +204,27 @@ func (operations mockOperations) UpdateProduct() sdkgo.Mutation[wave.UpdateProdu
 }
 func (operations mockOperations) ArchiveProduct() sdkgo.Mutation[wave.ArchiveProductInput, wave.ProductProfile] {
 	return operations.mock.archiveProduct
+}
+func (operations mockOperations) ListInvoices() sdkgo.Query[wave.ListInvoicesInput, wave.InvoicePage] {
+	return operations.mock.listInvoices
+}
+func (operations mockOperations) GetInvoice() sdkgo.Query[wave.GetInvoiceInput, wave.InvoiceProfile] {
+	return operations.mock.getInvoice
+}
+func (operations mockOperations) CreateInvoice() sdkgo.Mutation[wave.CreateInvoiceInput, wave.InvoiceProfile] {
+	return operations.mock.createInvoice
+}
+func (operations mockOperations) UpdateInvoice() sdkgo.Mutation[wave.UpdateInvoiceInput, wave.InvoiceProfile] {
+	return operations.mock.updateInvoice
+}
+func (operations mockOperations) ApproveInvoice() sdkgo.Mutation[wave.ApproveInvoiceInput, wave.InvoiceProfile] {
+	return operations.mock.approveInvoice
+}
+func (operations mockOperations) DeleteInvoice() sdkgo.Mutation[wave.DeleteInvoiceInput, wave.DeletedInvoice] {
+	return operations.mock.deleteInvoice
+}
+func (operations mockOperations) SendInvoice() sdkgo.Mutation[wave.SendInvoiceInput, wave.SentInvoice] {
+	return operations.mock.sendInvoice
 }
 
 // GetCustomerFound selects the found branch: Wave returned the customer.
@@ -523,3 +600,259 @@ func ArchiveProductArchivedDefault() connectormock.Case[wave.ProductProfile] {
 func ArchiveProductDefault() connectormock.Case[wave.ProductProfile] {
 	return ArchiveProductArchivedDefault()
 }
+
+// ListInvoicesListed selects the listed branch: Wave returned a page of invoices.
+func ListInvoicesListed(value wave.InvoicePage, failure *sdkgo.Failure) connectormock.Case[wave.InvoicePage] {
+	return connectormock.Branch(wave.ListInvoicesBranchListed, value, failure)
+}
+
+// ListInvoicesNotFound selects the notFound branch: The business was not found.
+func ListInvoicesNotFound(value wave.InvoicePage, failure *sdkgo.Failure) connectormock.Case[wave.InvoicePage] {
+	return connectormock.Branch(wave.ListInvoicesBranchNotFound, value, failure)
+}
+
+// ListInvoicesProviderRejected selects the providerRejected branch: Wave rejected the query.
+func ListInvoicesProviderRejected(value wave.InvoicePage, failure *sdkgo.Failure) connectormock.Case[wave.InvoicePage] {
+	return connectormock.Branch(wave.ListInvoicesBranchProviderRejected, value, failure)
+}
+
+// ListInvoicesInvalidResponse selects the invalidResponse branch: Wave returned malformed or oversized JSON.
+func ListInvoicesInvalidResponse(value wave.InvoicePage, failure *sdkgo.Failure) connectormock.Case[wave.InvoicePage] {
+	return connectormock.Branch(wave.ListInvoicesBranchInvalidResponse, value, failure)
+}
+
+// ListInvoicesDefect selects the defect branch: Input or credentials are invalid.
+func ListInvoicesDefect(value wave.InvoicePage, failure *sdkgo.Failure) connectormock.Case[wave.InvoicePage] {
+	return connectormock.Branch(wave.ListInvoicesBranchDefect, value, failure)
+}
+
+// ListInvoicesRetry asks Dex to retry the listInvoices Step, after the delay when it is positive.
+func ListInvoicesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.InvoicePage] {
+	return connectormock.Retry[wave.InvoicePage](failure, after)
+}
+
+// ListInvoicesListedDefault is the manifest mock listedDefault: One example invoice was listed.
+func ListInvoicesListedDefault() connectormock.Case[wave.InvoicePage] {
+	value := connectormock.MustDecodeOutput[wave.InvoicePage](`{"businessId":"business-1","invoices":[{"businessId":"business-1","id":"invoice-1","customerId":"customer-1","status":"DRAFT","title":"Example Invoice","invoiceNumber":"1001"}],"currentPage":1,"totalPages":1,"totalCount":1}`)
+	return connectormock.Branch(wave.ListInvoicesBranchListed, value, nil)
+}
+
+// ListInvoicesDefault is the manifest default, listedDefault, which New installs.
+func ListInvoicesDefault() connectormock.Case[wave.InvoicePage] { return ListInvoicesListedDefault() }
+
+// GetInvoiceFound selects the found branch: Wave returned the invoice.
+func GetInvoiceFound(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.GetInvoiceBranchFound, value, failure)
+}
+
+// GetInvoiceNotFound selects the notFound branch: The business or invoice was not found.
+func GetInvoiceNotFound(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.GetInvoiceBranchNotFound, value, failure)
+}
+
+// GetInvoiceProviderRejected selects the providerRejected branch: Wave rejected the query.
+func GetInvoiceProviderRejected(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.GetInvoiceBranchProviderRejected, value, failure)
+}
+
+// GetInvoiceInvalidResponse selects the invalidResponse branch: Wave returned malformed or oversized JSON.
+func GetInvoiceInvalidResponse(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.GetInvoiceBranchInvalidResponse, value, failure)
+}
+
+// GetInvoiceDefect selects the defect branch: Input or credentials are invalid.
+func GetInvoiceDefect(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.GetInvoiceBranchDefect, value, failure)
+}
+
+// GetInvoiceRetry asks Dex to retry the getInvoice Step, after the delay when it is positive.
+func GetInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Retry[wave.InvoiceProfile](failure, after)
+}
+
+// GetInvoiceFoundDefault is the manifest mock foundDefault: One example invoice was found.
+func GetInvoiceFoundDefault() connectormock.Case[wave.InvoiceProfile] {
+	value := connectormock.MustDecodeOutput[wave.InvoiceProfile](`{"businessId":"business-1","id":"invoice-1","customerId":"customer-1","status":"DRAFT","title":"Example Invoice","invoiceNumber":"1001"}`)
+	return connectormock.Branch(wave.GetInvoiceBranchFound, value, nil)
+}
+
+// GetInvoiceDefault is the manifest default, foundDefault, which New installs.
+func GetInvoiceDefault() connectormock.Case[wave.InvoiceProfile] { return GetInvoiceFoundDefault() }
+
+// CreateInvoiceCreated selects the created branch: Wave created the invoice.
+func CreateInvoiceCreated(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.CreateInvoiceBranchCreated, value, failure)
+}
+
+// CreateInvoiceProviderRejected selects the providerRejected branch: Wave rejected the invoice input.
+func CreateInvoiceProviderRejected(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.CreateInvoiceBranchProviderRejected, value, failure)
+}
+
+// CreateInvoiceUncertain returns an uncertain createInvoice outcome.
+func CreateInvoiceUncertain(value wave.InvoiceProfile, failure sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateInvoiceDefect selects the defect branch: Input or credentials are invalid.
+func CreateInvoiceDefect(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.CreateInvoiceBranchDefect, value, failure)
+}
+
+// CreateInvoiceRetry asks Dex to retry the createInvoice Step, after the delay when it is positive.
+func CreateInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Retry[wave.InvoiceProfile](failure, after)
+}
+
+// CreateInvoiceCreatedDefault is the manifest mock createdDefault: One example invoice was created.
+func CreateInvoiceCreatedDefault() connectormock.Case[wave.InvoiceProfile] {
+	value := connectormock.MustDecodeOutput[wave.InvoiceProfile](`{"businessId":"business-1","id":"invoice-1","customerId":"customer-1","status":"DRAFT","title":"Example Invoice","invoiceNumber":"1001"}`)
+	return connectormock.Branch(wave.CreateInvoiceBranchCreated, value, nil)
+}
+
+// CreateInvoiceDefault is the manifest default, createdDefault, which New installs.
+func CreateInvoiceDefault() connectormock.Case[wave.InvoiceProfile] {
+	return CreateInvoiceCreatedDefault()
+}
+
+// UpdateInvoiceUpdated selects the updated branch: Wave updated the invoice.
+func UpdateInvoiceUpdated(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.UpdateInvoiceBranchUpdated, value, failure)
+}
+
+// UpdateInvoiceProviderRejected selects the providerRejected branch: Wave rejected the update.
+func UpdateInvoiceProviderRejected(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.UpdateInvoiceBranchProviderRejected, value, failure)
+}
+
+// UpdateInvoiceInvalidResponse selects the invalidResponse branch: Wave returned malformed or oversized JSON.
+func UpdateInvoiceInvalidResponse(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.UpdateInvoiceBranchInvalidResponse, value, failure)
+}
+
+// UpdateInvoiceDefect selects the defect branch: Input or credentials are invalid.
+func UpdateInvoiceDefect(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.UpdateInvoiceBranchDefect, value, failure)
+}
+
+// UpdateInvoiceRetry asks Dex to retry the updateInvoice Step, after the delay when it is positive.
+func UpdateInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Retry[wave.InvoiceProfile](failure, after)
+}
+
+// UpdateInvoiceUpdatedDefault is the manifest mock updatedDefault: One example invoice was renamed.
+func UpdateInvoiceUpdatedDefault() connectormock.Case[wave.InvoiceProfile] {
+	value := connectormock.MustDecodeOutput[wave.InvoiceProfile](`{"businessId":"business-1","id":"invoice-1","customerId":"customer-1","status":"DRAFT","title":"Updated Invoice","invoiceNumber":"1001"}`)
+	return connectormock.Branch(wave.UpdateInvoiceBranchUpdated, value, nil)
+}
+
+// UpdateInvoiceDefault is the manifest default, updatedDefault, which New installs.
+func UpdateInvoiceDefault() connectormock.Case[wave.InvoiceProfile] {
+	return UpdateInvoiceUpdatedDefault()
+}
+
+// ApproveInvoiceApproved selects the approved branch: Wave approved the invoice.
+func ApproveInvoiceApproved(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.ApproveInvoiceBranchApproved, value, failure)
+}
+
+// ApproveInvoiceProviderRejected selects the providerRejected branch: Wave rejected approval.
+func ApproveInvoiceProviderRejected(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.ApproveInvoiceBranchProviderRejected, value, failure)
+}
+
+// ApproveInvoiceInvalidResponse selects the invalidResponse branch: Wave returned malformed or oversized JSON.
+func ApproveInvoiceInvalidResponse(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.ApproveInvoiceBranchInvalidResponse, value, failure)
+}
+
+// ApproveInvoiceDefect selects the defect branch: Input or credentials are invalid.
+func ApproveInvoiceDefect(value wave.InvoiceProfile, failure *sdkgo.Failure) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Branch(wave.ApproveInvoiceBranchDefect, value, failure)
+}
+
+// ApproveInvoiceRetry asks Dex to retry the approveInvoice Step, after the delay when it is positive.
+func ApproveInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.InvoiceProfile] {
+	return connectormock.Retry[wave.InvoiceProfile](failure, after)
+}
+
+// ApproveInvoiceApprovedDefault is the manifest mock approvedDefault: One example invoice was approved.
+func ApproveInvoiceApprovedDefault() connectormock.Case[wave.InvoiceProfile] {
+	value := connectormock.MustDecodeOutput[wave.InvoiceProfile](`{"businessId":"business-1","id":"invoice-1","customerId":"customer-1","status":"SAVED","title":"Example Invoice","invoiceNumber":"1001"}`)
+	return connectormock.Branch(wave.ApproveInvoiceBranchApproved, value, nil)
+}
+
+// ApproveInvoiceDefault is the manifest default, approvedDefault, which New installs.
+func ApproveInvoiceDefault() connectormock.Case[wave.InvoiceProfile] {
+	return ApproveInvoiceApprovedDefault()
+}
+
+// DeleteInvoiceDeleted selects the deleted branch: Wave deleted the invoice.
+func DeleteInvoiceDeleted(value wave.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[wave.DeletedInvoice] {
+	return connectormock.Branch(wave.DeleteInvoiceBranchDeleted, value, failure)
+}
+
+// DeleteInvoiceProviderRejected selects the providerRejected branch: Wave rejected deletion.
+func DeleteInvoiceProviderRejected(value wave.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[wave.DeletedInvoice] {
+	return connectormock.Branch(wave.DeleteInvoiceBranchProviderRejected, value, failure)
+}
+
+// DeleteInvoiceInvalidResponse selects the invalidResponse branch: Wave returned malformed JSON.
+func DeleteInvoiceInvalidResponse(value wave.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[wave.DeletedInvoice] {
+	return connectormock.Branch(wave.DeleteInvoiceBranchInvalidResponse, value, failure)
+}
+
+// DeleteInvoiceDefect selects the defect branch: Input or credentials are invalid.
+func DeleteInvoiceDefect(value wave.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[wave.DeletedInvoice] {
+	return connectormock.Branch(wave.DeleteInvoiceBranchDefect, value, failure)
+}
+
+// DeleteInvoiceRetry asks Dex to retry the deleteInvoice Step, after the delay when it is positive.
+func DeleteInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.DeletedInvoice] {
+	return connectormock.Retry[wave.DeletedInvoice](failure, after)
+}
+
+// DeleteInvoiceDeletedDefault is the manifest mock deletedDefault: One example invoice was deleted.
+func DeleteInvoiceDeletedDefault() connectormock.Case[wave.DeletedInvoice] {
+	value := connectormock.MustDecodeOutput[wave.DeletedInvoice](`{"id":"invoice-1"}`)
+	return connectormock.Branch(wave.DeleteInvoiceBranchDeleted, value, nil)
+}
+
+// DeleteInvoiceDefault is the manifest default, deletedDefault, which New installs.
+func DeleteInvoiceDefault() connectormock.Case[wave.DeletedInvoice] {
+	return DeleteInvoiceDeletedDefault()
+}
+
+// SendInvoiceSent selects the sent branch: Wave queued the invoice email.
+func SendInvoiceSent(value wave.SentInvoice, failure *sdkgo.Failure) connectormock.Case[wave.SentInvoice] {
+	return connectormock.Branch(wave.SendInvoiceBranchSent, value, failure)
+}
+
+// SendInvoiceProviderRejected selects the providerRejected branch: Wave rejected the send request.
+func SendInvoiceProviderRejected(value wave.SentInvoice, failure *sdkgo.Failure) connectormock.Case[wave.SentInvoice] {
+	return connectormock.Branch(wave.SendInvoiceBranchProviderRejected, value, failure)
+}
+
+// SendInvoiceUncertain returns an uncertain sendInvoice outcome.
+func SendInvoiceUncertain(value wave.SentInvoice, failure sdkgo.Failure) connectormock.Case[wave.SentInvoice] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendInvoiceDefect selects the defect branch: Input or credentials are invalid.
+func SendInvoiceDefect(value wave.SentInvoice, failure *sdkgo.Failure) connectormock.Case[wave.SentInvoice] {
+	return connectormock.Branch(wave.SendInvoiceBranchDefect, value, failure)
+}
+
+// SendInvoiceRetry asks Dex to retry the sendInvoice Step, after the delay when it is positive.
+func SendInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.SentInvoice] {
+	return connectormock.Retry[wave.SentInvoice](failure, after)
+}
+
+// SendInvoiceSentDefault is the manifest mock sentDefault: One example invoice email was queued.
+func SendInvoiceSentDefault() connectormock.Case[wave.SentInvoice] {
+	value := connectormock.MustDecodeOutput[wave.SentInvoice](`{"id":"invoice-1"}`)
+	return connectormock.Branch(wave.SendInvoiceBranchSent, value, nil)
+}
+
+// SendInvoiceDefault is the manifest default, sentDefault, which New installs.
+func SendInvoiceDefault() connectormock.Case[wave.SentInvoice] { return SendInvoiceSentDefault() }

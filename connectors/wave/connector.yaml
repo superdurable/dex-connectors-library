@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: wave
   displayName: Wave
-  description: Read and manage Wave customers and products within a business.
+  description: Read and manage Wave customers, products, and invoices within a business.
   company: Wave
   categories: [finance-payments]
   version: v0.2.0
@@ -223,3 +223,117 @@ spec:
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - {name: archivedDefault, branch: archived, default: true, description: One example product was archived., output: {businessId: business-1, id: product-1, name: Example Product, unitPrice: '2.50', isArchived: true}}
+    - name: listInvoices
+      goName: ListInvoices
+      inputType: ListInvoicesInput
+      outputType: InvoicePage
+      kind: query
+      description: List one page of invoices for a business.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Wave returned a page of invoices.}
+        - {id: notFound, goName: NotFound, description: The business was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wave returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One example invoice was listed., output: {businessId: business-1, invoices: [{businessId: business-1, id: invoice-1, customerId: customer-1, status: DRAFT, title: Example Invoice, invoiceNumber: '1001'}], currentPage: 1, totalPages: 1, totalCount: 1}}
+    - name: getInvoice
+      goName: GetInvoice
+      inputType: GetInvoiceInput
+      outputType: InvoiceProfile
+      kind: query
+      description: Read an invoice by business and invoice IDs.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Wave returned the invoice.}
+        - {id: notFound, goName: NotFound, description: The business or invoice was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wave returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One example invoice was found., output: {businessId: business-1, id: invoice-1, customerId: customer-1, status: DRAFT, title: Example Invoice, invoiceNumber: '1001'}}
+    - name: createInvoice
+      goName: CreateInvoice
+      inputType: CreateInvoiceInput
+      outputType: InvoiceProfile
+      kind: mutation
+      description: Create an invoice for one customer and one product.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Wave created the invoice.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected the invoice input., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: One example invoice was created., output: {businessId: business-1, id: invoice-1, customerId: customer-1, status: DRAFT, title: Example Invoice, invoiceNumber: '1001'}}
+    - name: updateInvoice
+      goName: UpdateInvoice
+      inputType: UpdateInvoiceInput
+      outputType: InvoiceProfile
+      kind: mutation
+      description: Replace an invoice title by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Wave updated the invoice.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wave returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: One example invoice was renamed., output: {businessId: business-1, id: invoice-1, customerId: customer-1, status: DRAFT, title: Updated Invoice, invoiceNumber: '1001'}}
+    - name: approveInvoice
+      goName: ApproveInvoice
+      inputType: ApproveInvoiceInput
+      outputType: InvoiceProfile
+      kind: mutation
+      description: Approve an invoice by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: approved, goName: Approved, description: Wave approved the invoice.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected approval., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wave returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: approvedDefault, branch: approved, default: true, description: One example invoice was approved., output: {businessId: business-1, id: invoice-1, customerId: customer-1, status: SAVED, title: Example Invoice, invoiceNumber: '1001'}}
+    - name: deleteInvoice
+      goName: DeleteInvoice
+      inputType: DeleteInvoiceInput
+      outputType: DeletedInvoice
+      kind: mutation
+      description: Delete an invoice by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Wave deleted the invoice.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wave returned malformed JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: One example invoice was deleted., output: {id: invoice-1}}
+    - name: sendInvoice
+      goName: SendInvoice
+      inputType: SendInvoiceInput
+      outputType: SentInvoice
+      kind: mutation
+      description: Email an approved invoice to a recipient.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Wave queued the invoice email.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected the send request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The email may have been queued but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: sentDefault, branch: sent, default: true, description: One example invoice email was queued., output: {id: invoice-1}}

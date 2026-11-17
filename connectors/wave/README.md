@@ -18,8 +18,15 @@ The Go, Python, and TypeScript `getCustomer` Query reads one customer from a Wav
 | `NewCreateProductStep` | Create a sold product with a price and income account | limited, maximum three possible sends |
 | `NewUpdateProductStep` | Replace a product's name and unit price | safe |
 | `NewArchiveProductStep` | Archive a product by ID | safe |
+| `NewListInvoicesStep` | List one 1-based page of invoices by business ID | safe |
+| `NewGetInvoiceStep` | Read one invoice by business and invoice IDs | safe |
+| `NewCreateInvoiceStep` | Create an invoice for one customer and product | limited, maximum three possible sends |
+| `NewUpdateInvoiceStep` | Replace an invoice title | safe |
+| `NewApproveInvoiceStep` | Approve an invoice by ID | safe |
+| `NewDeleteInvoiceStep` | Delete an invoice by ID | safe |
+| `NewSendInvoiceStep` | Email an approved invoice to recipients | limited, maximum three possible sends |
 
-Wave's `customerCreate` and `productCreate` GraphQL mutations have no documented request idempotency token. After an unknown outcome, either create Step resends within its configured cap and selects `uncertain` when the cap is reached; a user-chosen name alone cannot confirm which request created a record. For a sold product, obtain `incomeAccountId` from the Wave API Playground's business accounts query; `unitPrice` is a decimal amount in the business's major currency unit with at most five fractional digits.
+Wave's `customerCreate`, `productCreate`, `invoiceCreate`, and `invoiceSend` GraphQL mutations have no documented request idempotency token. After an unknown outcome, these Steps resend within their configured cap and select `uncertain` when the cap is reached; a user-chosen name alone cannot confirm which request created a record. For a sold product, obtain `incomeAccountId` from the Wave API Playground's business accounts query; `unitPrice` is a decimal amount in the business's major currency unit with at most five fractional digits. `sendInvoice` requires an approved invoice and a business with email sending enabled.
 
 ## Connection and configuration
 
