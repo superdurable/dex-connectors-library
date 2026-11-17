@@ -167,9 +167,11 @@ uses that header for Sent Mail read-back:
   earlier attempt that may have sent. At that cap, a miss returns Retry without
   another POST, and the Flow fails when the retry budget runs out; the
   operations have no `uncertain` branch. A definite 4xx on a send with no
-  earlier possible send selects `providerRejected` and is never resent; it
-  first records `canResend`, so Dex Agents report a failure, not an unknown
-  outcome. A 409 does not prove nothing was sent, so it keeps the claim. After an
+  earlier possible send selects `providerRejected` and is never resent. When the
+  status is 400, 401, 403, 404, 411, 413, 414, 415, or 422, which prove Gmail
+  refused the POST before processing it, it first records `canResend`, so Dex
+  Agents report a failure, not an unknown outcome. Any other 4xx, such as 408
+  or 409, keeps the claim. After an
   earlier possible send, a definite 4xx on the resend, or a reply source read
   that is rejected or unusable, returns Retry instead, because the earlier send
   may still be delivered; the claim stays, so later attempts read back and the

@@ -76,6 +76,8 @@ class _SendOutcome:
 
 _SEND = _SendOutcome("sendMessage", "send", "Gmail rejected the message")
 _REPLY = _SendOutcome("replyToMessage", "reply", "Gmail rejected the reply")
+# Statuses that prove Gmail refused the POST before processing it.
+_REFUSED_BEFORE_PROCESSING_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 
 
 class _SendBudget:
@@ -472,10 +474,11 @@ class SendService:
         """Classify a definite Gmail refusal of this attempt's POST.
 
         With no earlier possible send, canResend proves nothing was sent, so
-        agent hosts report failure instead of an unknown outcome. A 409 does
-        not prove Gmail sent nothing, so it keeps the claim.
+        agent hosts report failure instead of an unknown outcome. Only a
+        status in ``_REFUSED_BEFORE_PROCESSING_STATUSES`` proves that; any
+        other, such as 408 or 409, keeps the claim.
         """
-        if status != 409 and execution.fence is not None and (
+        if status in _REFUSED_BEFORE_PROCESSING_STATUSES and execution.fence is not None and (
             await execution.fence.decide()
         ).prior_send_upper_bound == 0:
             try:

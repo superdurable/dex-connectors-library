@@ -381,13 +381,16 @@ function rejectUnlessEarlierSendIsUnconfirmed(fence: Fence, branch: string, rece
   return newMutationBranch(branch, emptySend(), receipt, rejection);
 }
 
+// Statuses that prove Gmail refused the POST before processing it.
+const refusedBeforeProcessingStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
 /**
  * Classify a definite Gmail refusal of this attempt's POST. With no earlier possible send, canResend
- * proves nothing was sent, so agent hosts report failure instead of an unknown outcome. A 409 does not
- * prove Gmail sent nothing, so it keeps the claim.
+ * proves nothing was sent, so agent hosts report failure instead of an unknown outcome. Only a status in
+ * `refusedBeforeProcessingStatuses` proves that; any other, such as 408 or 409, keeps the claim.
  */
 async function rejectRefusedSend(fence: Fence, status: number, branch: string, receipt: ReceiptDraft, rejection: Failure): Promise<MutationAttempt<SendMessageOutput>> {
-  if (status !== 409 && (fence.decide().priorSendUpperBound ?? 0) === 0) await recordSafeResend(fence);
+  if (refusedBeforeProcessingStatuses.has(status) && (fence.decide().priorSendUpperBound ?? 0) === 0) await recordSafeResend(fence);
   return rejectUnlessEarlierSendIsUnconfirmed(fence, branch, receipt, rejection);
 }
 

@@ -323,12 +323,13 @@ async def test_rejected_first_send_is_provider_rejected(operation_id: str) -> No
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
-async def test_conflict_on_first_send_keeps_the_claim(operation_id: str) -> None:
-    """A 409 does not prove Gmail sent nothing, so the claim stays."""
+@pytest.mark.parametrize("status", [408, 409, 418])
+async def test_unproven_refusal_on_first_send_keeps_the_claim(operation_id: str, status: int) -> None:
+    """A 4xx outside the refusal allowlist does not prove Gmail sent nothing, so the claim stays."""
     context = HeartbeatContext()
     attempt, _ = await _invoke(
         _call(context, operation_id=operation_id),
-        httpx.MockTransport(_gmail(httpx.Response(200, json={"messages": []}), httpx.Response(409))),
+        httpx.MockTransport(_gmail(httpx.Response(200, json={"messages": []}), httpx.Response(status))),
     )
     assert attempt.branch == "providerRejected"
     assert context.heartbeats[-1].state == State.CLAIMED

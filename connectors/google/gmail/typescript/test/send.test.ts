@@ -325,10 +325,10 @@ describe('Gmail send and reply classification', () => {
     expect(replyCheckpoint.value).toMatchObject({ state: 'canResend', attempt: 1 });
   });
 
-  it('keeps the claim after a 409 on a first send', async () => {
+  it.each([408, 409, 418])('keeps the claim after a %i on a first send', async status => {
     const operation = sender(async request => {
       if (request.url.includes('/source-1?')) return response(200, { id: 'source-1', threadId: 'thread-1', internalDate: '1767312000000', payload: { headers: [{ name: 'From', value: 'ada@example.com' }, { name: 'Message-ID', value: '<source-1@example.com>' }] } });
-      return request.method === 'GET' ? response(200, { messages: [] }) : response(409, {});
+      return request.method === 'GET' ? response(200, { messages: [] }) : response(status, {});
     });
     const sendCheckpoint: { value?: unknown } = {};
     expect(await operation.sendMessage(operationCall('sendMessage', 1, sendCheckpoint), sendInput, new Date(Date.now() + 30_000)))

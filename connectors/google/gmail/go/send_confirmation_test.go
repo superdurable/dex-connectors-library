@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -639,21 +640,25 @@ func TestGmailRejectedFirstSendIsProviderRejected(t *testing.T) {
 	})
 }
 
-// TestGmailConflictOnFirstSendKeepsTheClaim leaves a 409 unknown because it does not prove nothing was sent.
-func TestGmailConflictOnFirstSendKeepsTheClaim(t *testing.T) {
-	forSendAndReply(t, func(t *testing.T, isReply bool) {
-		fake := newGmailSendFake(t, sendFakeBehavior{answerSend: writeGmailSendStatus(http.StatusConflict)})
-		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
-		result := runGmailSendAttempt(stepContext, newGmailClient(t, fake.URL), isReply)
-		require.NoError(t, result.err)
-		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchProviderRejected, gmail.ReplyToMessageBranchProviderRejected), result.branch)
-		stepContext.AdvanceAttempt()
-		var marker singledispatch.Marker
-		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-		require.NoError(t, err)
-		require.True(t, hasMarker)
-		require.Equal(t, singledispatch.StateClaimed, marker.State)
-	})
+// TestGmailUnprovenRefusalOnFirstSendKeepsTheClaim leaves a 4xx outside the allowlist unknown.
+func TestGmailUnprovenRefusalOnFirstSendKeepsTheClaim(t *testing.T) {
+	for _, statusCode := range []int{http.StatusRequestTimeout, http.StatusConflict, http.StatusTeapot} {
+		t.Run(strconv.Itoa(statusCode), func(t *testing.T) {
+			forSendAndReply(t, func(t *testing.T, isReply bool) {
+				fake := newGmailSendFake(t, sendFakeBehavior{answerSend: writeGmailSendStatus(statusCode)})
+				stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+				result := runGmailSendAttempt(stepContext, newGmailClient(t, fake.URL), isReply)
+				require.NoError(t, result.err)
+				require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchProviderRejected, gmail.ReplyToMessageBranchProviderRejected), result.branch)
+				stepContext.AdvanceAttempt()
+				var marker singledispatch.Marker
+				hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
+				require.NoError(t, err)
+				require.True(t, hasMarker)
+				require.Equal(t, singledispatch.StateClaimed, marker.State)
+			})
+		})
+	}
 }
 
 // TestGmailRejectedSendAfterRateLimitRecordsCanResend treats a refused POST after a proven unsent one as clean.
