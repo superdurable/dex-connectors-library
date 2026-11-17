@@ -67,6 +67,8 @@ var insightsObjectID = regexp.MustCompile(`^(act_)?[0-9]{1,40}$`)
 var insightsDatePreset = regexp.MustCompile(`^[a-z0-9_]{1,40}$`)
 var insightsCursor = regexp.MustCompile(`^[A-Za-z0-9_+=/-]{1,1000}$`)
 var insightsDate = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}$`)
+var insightsCount = regexp.MustCompile(`^[0-9]+$`)
+var insightsAmount = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?$`)
 
 // Invoke requests basic metrics without exposing the access token in the URL or result.
 func (operation GetInsightsOperation) Invoke(call sdkgo.Call, input GetInsightsInput) sdkgo.QueryAttempt[InsightsPage] {
@@ -114,8 +116,9 @@ func (operation GetInsightsOperation) Invoke(call sdkgo.Call, input GetInsightsI
 	rows := make([]InsightMetrics, 0, len(envelope.Data))
 	for _, row := range envelope.Data {
 		if row.AccountID == "" || !insightsDate.MatchString(row.DateStart) || !insightsDate.MatchString(row.DateStop) ||
-			row.Impressions == "" || row.Clicks == "" || row.Spend == "" {
-			return insightsBranch(GetInsightsBranchInvalidResponse, sdkgo.FailureProtocol, "Meta returned incomplete insights metrics")
+			!insightsCount.MatchString(row.Impressions) || !insightsCount.MatchString(row.Clicks) ||
+			!insightsAmount.MatchString(row.Spend) {
+			return insightsBranch(GetInsightsBranchInvalidResponse, sdkgo.FailureProtocol, "Meta returned invalid insights metrics")
 		}
 		rows = append(rows, InsightMetrics{AccountID: row.AccountID, CampaignID: row.CampaignID, AdSetID: row.AdSetID, AdID: row.AdID,
 			DateStart: row.DateStart, DateStop: row.DateStop, Impressions: row.Impressions, Clicks: row.Clicks, Spend: row.Spend})

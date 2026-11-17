@@ -63,3 +63,32 @@ func TestGetInsightsRejectsInvalidObjectID(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, GetInsightsBranchDefect, result.Branch)
 }
+
+func TestGetInsightsRejectsInvalidMetrics(t *testing.T) {
+	for _, testCase := range []struct {
+		name        string
+		impressions string
+		clicks      string
+		spend       string
+	}{
+		{"nonnumeric impressions", "many", "3", "1.25"},
+		{"negative impressions", "-1", "3", "1.25"},
+		{"nonnumeric clicks", "4", "three", "1.25"},
+		{"negative clicks", "4", "-3", "1.25"},
+		{"nonnumeric spend", "4", "3", "USD 1.25"},
+		{"negative spend", "4", "3", "-1.25"},
+		{"incomplete decimal spend", "4", "3", "1."},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+				response := `{"data":[{"account_id":"123","date_start":"2026-11-01","date_stop":"2026-11-07","impressions":"` + testCase.impressions + `","clicks":"` + testCase.clicks + `","spend":"` + testCase.spend + `"}]}`
+				_, err := writer.Write([]byte(response))
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			result, err := sdkgo.RunQuery(queryContext{}, newTestClient(t, server.URL).GetInsights(), testConnection, GetInsightsInput{ObjectID: "987654321012345"})
+			require.NoError(t, err)
+			require.Equal(t, GetInsightsBranchInvalidResponse, result.Branch)
+		})
+	}
+}

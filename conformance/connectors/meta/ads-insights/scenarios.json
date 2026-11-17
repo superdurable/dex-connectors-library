@@ -1428,6 +1428,64 @@
       "operation": "getInsights"
     },
     {
+      "callId": "44444444-4444-4444-8444-444444444449",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"account_id\":\"123\",\"date_start\":\"2026-11-01\",\"date_stop\":\"2026-11-07\",\"impressions\":\"many\",\"clicks\":\"3\",\"spend\":\"1.25\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/987654321012345/insights",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "date_preset": [
+              "last_7d"
+            ],
+            "fields": [
+              "account_id,campaign_id,adset_id,ad_id,date_start,date_stop,impressions,clicks,spend"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursorABC",
+        "datePreset": "last_7d",
+        "limit": 25,
+        "objectId": "987654321012345"
+      },
+      "name": "getInsights-nonnumericMetrics",
+      "operation": "getInsights"
+    },
+    {
       "callId": "44444444-4444-4444-8444-444444444445",
       "exchanges": [],
       "expected": {
