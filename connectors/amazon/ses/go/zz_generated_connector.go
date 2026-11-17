@@ -43,6 +43,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateEmailIdentity() sdkgo.Mutation[CreateEmailIdentityInput, CreatedEmailIdentity]
 	GetEmailIdentity() sdkgo.Query[GetEmailIdentityInput, EmailIdentityDetails]
 	ListEmailIdentities() sdkgo.Query[ListEmailIdentitiesInput, EmailIdentityPage]
 	DeleteEmailIdentity() sdkgo.Mutation[DeleteEmailIdentityInput, DeletedEmailIdentity]
@@ -51,6 +52,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateEmailIdentity() sdkgo.Mutation[CreateEmailIdentityInput, CreatedEmailIdentity] {
+	return operations.client.CreateEmailIdentity()
+}
 func (operations clientOperations) GetEmailIdentity() sdkgo.Query[GetEmailIdentityInput, EmailIdentityDetails] {
 	return operations.client.GetEmailIdentity()
 }
@@ -206,6 +210,82 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential secret_access_key is required")
 	}
 	return nil
+}
+
+const CreateEmailIdentityBranchCreated sdkgo.BranchID = "created"
+const CreateEmailIdentityBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateEmailIdentityBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateEmailIdentityBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateEmailIdentityDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createEmailIdentity"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateEmailIdentityBranchCreated, Description: "SES accepted the identity for verification."},
+		{ID: CreateEmailIdentityBranchProviderRejected, Description: "SES conclusively rejected the identity creation.", Optional: true},
+		{ID: CreateEmailIdentityBranchUncertain, Description: "SES may have created the identity but read-back could not confirm it.", Optional: true},
+		{ID: CreateEmailIdentityBranchDefect, Description: "The identity or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateEmailIdentityResult = sdkgo.MutationResult[CreatedEmailIdentity]
+
+type CreateEmailIdentityStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=amazon-ses"`
+	operationID                       struct{}                                                   `connector:"operationId=createEmailIdentity"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateEmailIdentityInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateEmailIdentityResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateEmailIdentityResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateEmailIdentityResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateEmailIdentityResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedEmailIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateEmailIdentityStep[IN any](config CreateEmailIdentityStepConfig[IN]) sdkgo.MutationStep[IN, CreateEmailIdentityInput, CreatedEmailIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-ses connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateEmailIdentityInput, CreatedEmailIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateEmailIdentity(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateEmailIdentityResult] {
+			branches := make([]sdkgo.BranchTarget[CreateEmailIdentityResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateEmailIdentityBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateEmailIdentityBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateEmailIdentityBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateEmailIdentityBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
 }
 
 const GetEmailIdentityBranchFound sdkgo.BranchID = "found"

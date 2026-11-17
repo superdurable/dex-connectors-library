@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package ses exposes Amazon SES email identity reads to Dex Flows.
+// Package ses exposes Amazon SES email identity operations and sending to Dex Flows.
 package ses
 
 import (

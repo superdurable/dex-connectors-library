@@ -2,6 +2,499 @@
   "connector": "amazon-ses",
   "scenarios": [
     {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{\"IdentityType\":\"DOMAIN\",\"VerifiedForSendingStatus\":false,\"DkimAttributes\":{\"Tokens\":[\"token-a\",\"token-b\",\"token-c\"]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "dkimTokens": [
+            "token-a",
+            "token-b",
+            "token-c"
+          ],
+          "identityType": "DOMAIN",
+          "name": "example.com",
+          "verifiedForSending": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-created",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"bad request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "identityType": "",
+          "name": "",
+          "verifiedForSending": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-rejected",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "identityType": "",
+          "name": "",
+          "verifiedForSending": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": ""
+      },
+      "name": "createIdentity-defect",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-malformed",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"throttled\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-rate-limit",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-service-unavailable",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"failure\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-server-failure",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-transport",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "attempts": 2,
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unknown\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"IdentityType\":\"DOMAIN\",\"VerifiedForSendingStatus\":false,\"DkimAttributes\":{\"Tokens\":[\"token-a\",\"token-b\",\"token-c\"]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/identities/example.com",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=72b8213b8e0c3d494186c31bff4345e11185ecfdfcecc6cef9fd3aab824f9514"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "dkimTokens": [
+            "token-a",
+            "token-b",
+            "token-c"
+          ],
+          "identityType": "DOMAIN",
+          "name": "example.com",
+          "verifiedForSending": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createIdentity-readback",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/identities/example.com",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=72b8213b8e0c3d494186c31bff4345e11185ecfdfcecc6cef9fd3aab824f9514"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "identityType": "",
+          "name": "",
+          "verifiedForSending": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-uncertain-cap",
+      "operation": "createEmailIdentity",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
       "callId": "f0e4657a-c5de-5456-b5e7-066d411fdc17",
       "exchanges": [
         {

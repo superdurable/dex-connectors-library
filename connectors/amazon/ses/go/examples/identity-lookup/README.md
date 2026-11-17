@@ -1,4 +1,4 @@
-# Go identity lookup and email send Flows
+# Go identity lookup, creation, and email send Flows
 
 The `AmazonSESIdentityLookup` Flow lists one page of identities, then calls `getEmailIdentity` through the static `amazon-ses` connection. It stores the selected `EmailIdentityDetails` in an Attribute and exposes it through read-only Dex Web RPCs. `AmazonSESSimpleEmailSend` sends one plain text message through the same connection and completes with the SES message ID. Optional branches are unwired and fail the Flow when selected.
 
@@ -9,6 +9,7 @@ From `connectors/amazon/ses/go`, run:
 ```bash
 dexcli visualize ./examples/identity-lookup/flow/workflow.go --schema-version 2.0 --json --out /tmp/amazon-ses-identity-lookup-fdg
 dexcli visualize ./examples/identity-lookup/flow/send_email_flow.go --schema-version 2.0 --json --out /tmp/amazon-ses-email-send-fdg
+dexcli visualize ./examples/identity-lookup/flow/create_email_identity_flow.go --schema-version 2.0 --lint app --json --out /tmp/amazon-ses-identity-create-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.
@@ -25,6 +26,8 @@ GOWORK=off go run ./examples/identity-lookup
 
 Start `AmazonSESIdentityLookup` with a unique Flow ID and input `{"emailIdentity":"example.com"}`. The Worker connects to Dex Server without an inbound listener.
 
-To send, start `AmazonSESSimpleEmailSend` with a unique Flow ID and input `{"fromEmailAddress":"sender@example.com","toEmailAddress":"reader@example.net","subject":"Report ready","textBody":"The report is ready."}`. The sender must be verified in the configured Region; sandbox accounts also restrict recipients. The mock-backed real-Dex test starts both Flows.
+To send, start `AmazonSESSimpleEmailSend` with a unique Flow ID and input `{"fromEmailAddress":"sender@example.com","toEmailAddress":"reader@example.net","subject":"Report ready","textBody":"The report is ready."}`. The sender must be verified in the configured Region; sandbox accounts also restrict recipients.
+
+To start verification, start `AmazonSESCreateEmailIdentity` with a unique Flow ID and input `{"emailIdentity":"example.com"}`. For a domain, publish the returned DKIM tokens as CNAME records according to SES Console. An email address receives a verification link. The mock-backed real-Dex test starts all three Flows.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`.

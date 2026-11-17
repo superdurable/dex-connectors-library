@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: amazon-ses
   displayName: Amazon SES
-  description: List, inspect, and delete SES email identities and send simple email with AWS Signature Version 4.
+  description: Create, list, inspect, and delete SES email identities and send simple email with AWS Signature Version 4.
   company: Amazon
   categories: [communication, developer-tools]
   version: v0.2.0
@@ -65,11 +65,31 @@ spec:
     guide:
       startURL: https://console.aws.amazon.com/iam
       steps:
-        - Open IAM > Users > Create user for Dex. Grant ses:GetEmailIdentity and ses:DeleteEmailIdentity for selected identity ARNs, ses:ListEmailIdentities for listing, and ses:SendEmail for a verified sender identity if sending; do not use the root user. Identities are visible at https://console.aws.amazon.com/ses > Verified identities.
+        - Open IAM > Users > Create user for Dex. Grant ses:GetEmailIdentity, ses:CreateEmailIdentity, and ses:DeleteEmailIdentity for selected identity ARNs, ses:ListEmailIdentities for listing, and ses:SendEmail for a verified sender identity if sending; do not use the root user. Identities are visible at https://console.aws.amazon.com/ses > Verified identities.
         - Open the IAM user > Security credentials > Access keys > Create access key > Other. Copy the Access key ID to secret access_key_id and the one-time Secret access key Value to secret_access_key. Leave session_token blank for long-term keys; include it for temporary ASIA keys.
         - Open https://console.aws.amazon.com/ses > Verified identities, choose the Region in the console selector, and set region to that Region code. Leave endpoint blank for AWS. Supply the selected domain or email address to getEmailIdentity; blank is invalid.
         - Rotate the key under IAM > Users > selected user > Security credentials > Access keys by creating a second key, updating this connection, verifying a Flow, then deactivating and deleting the old key.
   operations:
+    - name: createEmailIdentity
+      goName: CreateEmailIdentity
+      inputType: CreateEmailIdentityInput
+      outputType: CreatedEmailIdentity
+      kind: mutation
+      description: Start verification of an email address or domain; retries may send another verification email, so cap possible creates at three and read back before resending.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
+      branches:
+        - {id: created, goName: Created, description: SES accepted the identity for verification.}
+        - {id: providerRejected, goName: ProviderRejected, description: SES conclusively rejected the identity creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: SES may have created the identity but read-back could not confirm it., optional: true}
+        - {id: defect, goName: Defect, description: The identity or connection is invalid., optional: true}
+      mocks:
+        - name: createdIdentity
+          branch: created
+          default: true
+          description: SES started domain verification.
+          output: {name: example.com, identityType: DOMAIN, verifiedForSending: false, dkimTokens: [token-a, token-b, token-c]}
     - name: getEmailIdentity
       goName: GetEmailIdentity
       inputType: GetEmailIdentityInput

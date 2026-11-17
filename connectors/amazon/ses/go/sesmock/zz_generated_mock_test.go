@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createEmailIdentity/createdIdentity/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.CreatedEmailIdentity](`{"name":"example.com","identityType":"DOMAIN","verifiedForSending":false,"dkimTokens":["token-a","token-b","token-c"]}`)
+			return err
+		}},
 		{name: "getEmailIdentity/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[ses.EmailIdentityDetails](`{"name":"example.com","verificationStatus":"SUCCESS"}`)
 			return err
@@ -50,6 +54,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateEmailIdentity().Definition().Operation.OperationID != "createEmailIdentity" {
+		t.Errorf("createEmailIdentity mock has another definition")
+	}
 	if mock.GetEmailIdentity().Definition().Operation.OperationID != "getEmailIdentity" {
 		t.Errorf("getEmailIdentity mock has another definition")
 	}

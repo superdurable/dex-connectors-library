@@ -18,6 +18,7 @@ import (
 // Mock is a scripted amazon-ses connection. Script each operation through its accessor.
 type Mock struct {
 	connection          ses.Connection
+	createEmailIdentity *connectormock.Mutation[ses.CreateEmailIdentityInput, ses.CreatedEmailIdentity]
 	getEmailIdentity    *connectormock.Query[ses.GetEmailIdentityInput, ses.EmailIdentityDetails]
 	listEmailIdentities *connectormock.Query[ses.ListEmailIdentitiesInput, ses.EmailIdentityPage]
 	deleteEmailIdentity *connectormock.Mutation[ses.DeleteEmailIdentityInput, ses.DeletedEmailIdentity]
@@ -29,11 +30,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createEmailIdentity: connectormock.NewMutation[ses.CreateEmailIdentityInput, ses.CreatedEmailIdentity](t, ses.CreateEmailIdentityDefinition),
 		getEmailIdentity:    connectormock.NewQuery[ses.GetEmailIdentityInput, ses.EmailIdentityDetails](t, ses.GetEmailIdentityDefinition),
 		listEmailIdentities: connectormock.NewQuery[ses.ListEmailIdentitiesInput, ses.EmailIdentityPage](t, ses.ListEmailIdentitiesDefinition),
 		deleteEmailIdentity: connectormock.NewMutation[ses.DeleteEmailIdentityInput, ses.DeletedEmailIdentity](t, ses.DeleteEmailIdentityDefinition),
 		sendEmail:           connectormock.NewMutation[ses.SendEmailInput, ses.SentEmail](t, ses.SendEmailDefinition),
 	}
+	mock.createEmailIdentity.Default(CreateEmailIdentityDefault())
 	mock.getEmailIdentity.Default(GetEmailIdentityDefault())
 	mock.listEmailIdentities.Default(ListEmailIdentitiesDefault())
 	mock.deleteEmailIdentity.Default(DeleteEmailIdentityDefault())
@@ -48,6 +51,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() ses.Connection { return mock.connection }
+
+// CreateEmailIdentity returns the createEmailIdentity script.
+func (mock *Mock) CreateEmailIdentity() *connectormock.Mutation[ses.CreateEmailIdentityInput, ses.CreatedEmailIdentity] {
+	return mock.createEmailIdentity
+}
 
 // GetEmailIdentity returns the getEmailIdentity script.
 func (mock *Mock) GetEmailIdentity() *connectormock.Query[ses.GetEmailIdentityInput, ses.EmailIdentityDetails] {
@@ -71,6 +79,9 @@ func (mock *Mock) SendEmail() *connectormock.Mutation[ses.SendEmailInput, ses.Se
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateEmailIdentity() sdkgo.Mutation[ses.CreateEmailIdentityInput, ses.CreatedEmailIdentity] {
+	return operations.mock.createEmailIdentity
+}
 func (operations mockOperations) GetEmailIdentity() sdkgo.Query[ses.GetEmailIdentityInput, ses.EmailIdentityDetails] {
 	return operations.mock.getEmailIdentity
 }
@@ -82,6 +93,42 @@ func (operations mockOperations) DeleteEmailIdentity() sdkgo.Mutation[ses.Delete
 }
 func (operations mockOperations) SendEmail() sdkgo.Mutation[ses.SendEmailInput, ses.SentEmail] {
 	return operations.mock.sendEmail
+}
+
+// CreateEmailIdentityCreated selects the created branch: SES accepted the identity for verification.
+func CreateEmailIdentityCreated(value ses.CreatedEmailIdentity, failure *sdkgo.Failure) connectormock.Case[ses.CreatedEmailIdentity] {
+	return connectormock.Branch(ses.CreateEmailIdentityBranchCreated, value, failure)
+}
+
+// CreateEmailIdentityProviderRejected selects the providerRejected branch: SES conclusively rejected the identity creation.
+func CreateEmailIdentityProviderRejected(value ses.CreatedEmailIdentity, failure *sdkgo.Failure) connectormock.Case[ses.CreatedEmailIdentity] {
+	return connectormock.Branch(ses.CreateEmailIdentityBranchProviderRejected, value, failure)
+}
+
+// CreateEmailIdentityUncertain returns an uncertain createEmailIdentity outcome.
+func CreateEmailIdentityUncertain(value ses.CreatedEmailIdentity, failure sdkgo.Failure) connectormock.Case[ses.CreatedEmailIdentity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateEmailIdentityDefect selects the defect branch: The identity or connection is invalid.
+func CreateEmailIdentityDefect(value ses.CreatedEmailIdentity, failure *sdkgo.Failure) connectormock.Case[ses.CreatedEmailIdentity] {
+	return connectormock.Branch(ses.CreateEmailIdentityBranchDefect, value, failure)
+}
+
+// CreateEmailIdentityRetry asks Dex to retry the createEmailIdentity Step, after the delay when it is positive.
+func CreateEmailIdentityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.CreatedEmailIdentity] {
+	return connectormock.Retry[ses.CreatedEmailIdentity](failure, after)
+}
+
+// CreateEmailIdentityCreatedIdentity is the manifest mock createdIdentity: SES started domain verification.
+func CreateEmailIdentityCreatedIdentity() connectormock.Case[ses.CreatedEmailIdentity] {
+	value := connectormock.MustDecodeOutput[ses.CreatedEmailIdentity](`{"name":"example.com","identityType":"DOMAIN","verifiedForSending":false,"dkimTokens":["token-a","token-b","token-c"]}`)
+	return connectormock.Branch(ses.CreateEmailIdentityBranchCreated, value, nil)
+}
+
+// CreateEmailIdentityDefault is the manifest default, createdIdentity, which New installs.
+func CreateEmailIdentityDefault() connectormock.Case[ses.CreatedEmailIdentity] {
+	return CreateEmailIdentityCreatedIdentity()
 }
 
 // GetEmailIdentityFound selects the found branch: AWS returned the identity verification status.
