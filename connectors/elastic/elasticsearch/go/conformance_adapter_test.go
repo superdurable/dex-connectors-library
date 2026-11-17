@@ -21,6 +21,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"createIndex":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateIndex(), testConnection, scenario.CallID),
+		"deleteIndex":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteIndex(), testConnection, scenario.CallID),
+		"getIndex":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetIndex(), testConnection),
+		"listIndices":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListIndices(), testConnection),
 		"getDocument":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetDocument(), testConnection),
 		"indexDocument":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.IndexDocument(), testConnection, scenario.CallID),
 		"deleteDocument":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteDocument(), testConnection, scenario.CallID),

@@ -1509,6 +1509,1159 @@
       },
       "name": "getDocument-defect",
       "operation": "getDocument"
+    },
+    {
+      "callId": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "exchanges": [
+        {
+          "body": "{\"acknowledged\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "present",
+        "failureKind": "",
+        "output": {
+          "index": "products"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "input": {
+        "index": "products"
+      },
+      "name": "createIndex-present",
+      "operation": "createIndex"
+    },
+    {
+      "callId": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"resource_already_exists_exception\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "present",
+        "failureKind": "",
+        "output": {
+          "index": "products"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "input": {
+        "index": "products"
+      },
+      "name": "createIndex-already-present",
+      "operation": "createIndex"
+    },
+    {
+      "callId": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "index": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "input": {
+        "index": "products"
+      },
+      "name": "createIndex-rejected",
+      "operation": "createIndex"
+    },
+    {
+      "callId": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "index": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "input": {
+        "index": "Bad Index"
+      },
+      "name": "createIndex-defect",
+      "operation": "createIndex"
+    },
+    {
+      "callId": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "input": {
+        "index": "products"
+      },
+      "name": "createIndex-rate-limit",
+      "operation": "createIndex"
+    },
+    {
+      "callId": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "input": {
+        "index": "products"
+      },
+      "name": "createIndex-unavailable",
+      "operation": "createIndex"
+    },
+    {
+      "callId": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "input": {
+        "index": "products"
+      },
+      "name": "createIndex-server-error",
+      "operation": "createIndex"
+    },
+    {
+      "callId": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "378ab862-b3f2-53f7-ab2e-6aa3197ddd37",
+      "input": {
+        "index": "products"
+      },
+      "name": "createIndex-transport",
+      "operation": "createIndex"
+    },
+    {
+      "callId": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "exchanges": [
+        {
+          "body": "{\"acknowledged\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "absent",
+        "failureKind": "",
+        "output": {
+          "index": "products"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "input": {
+        "index": "products"
+      },
+      "name": "deleteIndex-absent",
+      "operation": "deleteIndex"
+    },
+    {
+      "callId": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"index_not_found_exception\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "absent",
+        "failureKind": "",
+        "output": {
+          "index": "products"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "input": {
+        "index": "products"
+      },
+      "name": "deleteIndex-already-absent",
+      "operation": "deleteIndex"
+    },
+    {
+      "callId": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "index": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "input": {
+        "index": "products"
+      },
+      "name": "deleteIndex-rejected",
+      "operation": "deleteIndex"
+    },
+    {
+      "callId": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "index": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "input": {
+        "index": "Bad Index"
+      },
+      "name": "deleteIndex-defect",
+      "operation": "deleteIndex"
+    },
+    {
+      "callId": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "input": {
+        "index": "products"
+      },
+      "name": "deleteIndex-rate-limit",
+      "operation": "deleteIndex"
+    },
+    {
+      "callId": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "input": {
+        "index": "products"
+      },
+      "name": "deleteIndex-unavailable",
+      "operation": "deleteIndex"
+    },
+    {
+      "callId": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "input": {
+        "index": "products"
+      },
+      "name": "deleteIndex-server-error",
+      "operation": "deleteIndex"
+    },
+    {
+      "callId": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "08a5bb28-92c7-5519-b633-0c7ab4dc5b6e",
+      "input": {
+        "index": "products"
+      },
+      "name": "deleteIndex-transport",
+      "operation": "deleteIndex"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "body": "{\"products\":{\"settings\":{},\"mappings\":{},\"aliases\":{}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "index": "products",
+          "metadata": {
+            "aliases": {},
+            "mappings": {},
+            "settings": {}
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "index": "products"
+      },
+      "name": "getIndex-found",
+      "operation": "getIndex"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "index": "",
+          "metadata": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "index": "products"
+      },
+      "name": "getIndex-not-found",
+      "operation": "getIndex"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "index": "",
+          "metadata": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "index": "products"
+      },
+      "name": "getIndex-rejected",
+      "operation": "getIndex"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "index": "",
+          "metadata": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "index": "products"
+      },
+      "name": "getIndex-invalid-response",
+      "operation": "getIndex"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "index": "",
+          "metadata": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "index": "Bad Index"
+      },
+      "name": "getIndex-defect",
+      "operation": "getIndex"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "index": "products"
+      },
+      "name": "getIndex-rate-limit",
+      "operation": "getIndex"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "index": "products"
+      },
+      "name": "getIndex-unavailable",
+      "operation": "getIndex"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "index": "products"
+      },
+      "name": "getIndex-server-error",
+      "operation": "getIndex"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "index": "products"
+      },
+      "name": "getIndex-transport",
+      "operation": "getIndex"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "body": "{\"products\":{\"settings\":{},\"mappings\":{},\"aliases\":{}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/*",
+          "query": {
+            "allow_no_indices": [
+              "true"
+            ],
+            "expand_wildcards": [
+              "open,closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "indices": [
+            {
+              "index": "products",
+              "metadata": {
+                "aliases": {},
+                "mappings": {},
+                "settings": {}
+              }
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listIndices-found",
+      "operation": "listIndices"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/*",
+          "query": {
+            "allow_no_indices": [
+              "true"
+            ],
+            "expand_wildcards": [
+              "open,closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "indices": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listIndices-rejected",
+      "operation": "listIndices"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/*",
+          "query": {
+            "allow_no_indices": [
+              "true"
+            ],
+            "expand_wildcards": [
+              "open,closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "indices": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listIndices-invalid-response",
+      "operation": "listIndices"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/*",
+          "query": {
+            "allow_no_indices": [
+              "true"
+            ],
+            "expand_wildcards": [
+              "open,closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listIndices-rate-limit",
+      "operation": "listIndices"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/*",
+          "query": {
+            "allow_no_indices": [
+              "true"
+            ],
+            "expand_wildcards": [
+              "open,closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listIndices-unavailable",
+      "operation": "listIndices"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/*",
+          "query": {
+            "allow_no_indices": [
+              "true"
+            ],
+            "expand_wildcards": [
+              "open,closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listIndices-server-error",
+      "operation": "listIndices"
+    },
+    {
+      "callId": "6a9bdb02-f41c-5fdc-a78b-8a5fe18d56a3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/*",
+          "query": {
+            "allow_no_indices": [
+              "true"
+            ],
+            "expand_wildcards": [
+              "open,closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listIndices-transport",
+      "operation": "listIndices"
     }
   ],
   "schemaVersion": 1

@@ -4,6 +4,8 @@ This runnable Flow calls `searchDocuments` with the static `elasticsearch` conne
 
 The same Worker registers `ElasticsearchDocumentGet`. Start it with `{"index":"products","documentId":"sku-42"}` to retrieve one complete source by ID. `TestDocumentGetUsesDefaultMockWithRealDex` exercises this Flow against a real local Dex with the connector mock.
 
+The Worker also registers `ElasticsearchIndexGet`. Start it with `{"index":"products"}` to read index settings, mappings, and aliases. `TestIndexGetUsesDefaultMockWithRealDex` exercises that path against real Dex and the connector mock. Grant `view_index_metadata` for the target index pattern through Kibana **Stack Management > Security > Roles**.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/elastic/elasticsearch/go`, run:
@@ -12,6 +14,7 @@ From `connectors/elastic/elasticsearch/go`, run:
 mkdir -p build
 dexcli visualize ./examples/document-search/flow/workflow.go --schema-version 2.0 --json --out ./build/document-search
 dexcli visualize ./examples/document-search/flow/get_flow.go --schema-version 2.0 --json --out ./build/document-get
+dexcli visualize ./examples/document-search/flow/index_flow.go --schema-version 2.0 --json --out ./build/index-get
 ```
 
 The command must report `valid: true`. An unpublished connector can report `connector_release_required` until its release artifact exists.

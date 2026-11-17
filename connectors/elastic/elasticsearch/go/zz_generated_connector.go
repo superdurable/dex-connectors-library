@@ -42,6 +42,10 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateIndex() sdkgo.Mutation[IndexNameInput, IndexResult]
+	DeleteIndex() sdkgo.Mutation[IndexNameInput, IndexResult]
+	GetIndex() sdkgo.Query[IndexNameInput, IndexDetails]
+	ListIndices() sdkgo.Query[ListIndicesInput, IndexList]
 	GetDocument() sdkgo.Query[GetDocumentInput, RetrievedDocument]
 	IndexDocument() sdkgo.Mutation[IndexDocumentInput, IndexedDocument]
 	DeleteDocument() sdkgo.Mutation[DeleteDocumentInput, DeletedDocument]
@@ -50,6 +54,18 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateIndex() sdkgo.Mutation[IndexNameInput, IndexResult] {
+	return operations.client.CreateIndex()
+}
+func (operations clientOperations) DeleteIndex() sdkgo.Mutation[IndexNameInput, IndexResult] {
+	return operations.client.DeleteIndex()
+}
+func (operations clientOperations) GetIndex() sdkgo.Query[IndexNameInput, IndexDetails] {
+	return operations.client.GetIndex()
+}
+func (operations clientOperations) ListIndices() sdkgo.Query[ListIndicesInput, IndexList] {
+	return operations.client.ListIndices()
+}
 func (operations clientOperations) GetDocument() sdkgo.Query[GetDocumentInput, RetrievedDocument] {
 	return operations.client.GetDocument()
 }
@@ -209,6 +225,284 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential password is required")
 	}
 	return nil
+}
+
+const CreateIndexBranchPresent sdkgo.BranchID = "present"
+const CreateIndexBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateIndexBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateIndexDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createIndex"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateIndexBranchPresent, Description: "The named index exists."},
+		{ID: CreateIndexBranchProviderRejected, Description: "Elasticsearch conclusively denied index creation.", Optional: true},
+		{ID: CreateIndexBranchDefect, Description: "The index name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CreateIndexResult = sdkgo.MutationResult[IndexResult]
+
+type CreateIndexStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=elasticsearch"`
+	operationID                       struct{}                                          `connector:"operationId=createIndex"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) IndexNameInput                           `connector:"mapToOperationInput"`
+	Present                           sdkgo.Target[CreateIndexResult]                   `connector:"branch=present"`
+	ProviderRejected                  sdkgo.Target[CreateIndexResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateIndexResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[IndexResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewCreateIndexStep[IN any](config CreateIndexStepConfig[IN]) sdkgo.MutationStep[IN, IndexNameInput, IndexResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elasticsearch connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, IndexNameInput, IndexResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateIndex(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateIndexResult] {
+			branches := make([]sdkgo.BranchTarget[CreateIndexResult], 0, 3)
+			if config.Present.HasStep() {
+				branches = append(branches, config.Present.BranchTarget(CreateIndexBranchPresent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateIndexBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateIndexBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteIndexBranchAbsent sdkgo.BranchID = "absent"
+const DeleteIndexBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteIndexBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteIndexDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteIndex"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteIndexBranchAbsent, Description: "The named index is absent."},
+		{ID: DeleteIndexBranchProviderRejected, Description: "Elasticsearch conclusively denied index deletion.", Optional: true},
+		{ID: DeleteIndexBranchDefect, Description: "The index name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteIndexResult = sdkgo.MutationResult[IndexResult]
+
+type DeleteIndexStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=elasticsearch"`
+	operationID                       struct{}                                          `connector:"operationId=deleteIndex"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) IndexNameInput                           `connector:"mapToOperationInput"`
+	Absent                            sdkgo.Target[DeleteIndexResult]                   `connector:"branch=absent"`
+	ProviderRejected                  sdkgo.Target[DeleteIndexResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteIndexResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[IndexResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteIndexStep[IN any](config DeleteIndexStepConfig[IN]) sdkgo.MutationStep[IN, IndexNameInput, IndexResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elasticsearch connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, IndexNameInput, IndexResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteIndex(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteIndexResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteIndexResult], 0, 3)
+			if config.Absent.HasStep() {
+				branches = append(branches, config.Absent.BranchTarget(DeleteIndexBranchAbsent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteIndexBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteIndexBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetIndexBranchFound sdkgo.BranchID = "found"
+const GetIndexBranchNotFound sdkgo.BranchID = "notFound"
+const GetIndexBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetIndexBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetIndexBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetIndexDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getIndex"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetIndexBranchFound, Description: "Elasticsearch returned index metadata."},
+		{ID: GetIndexBranchNotFound, Description: "The named index does not exist.", Optional: true},
+		{ID: GetIndexBranchProviderRejected, Description: "Elasticsearch conclusively denied the read.", Optional: true},
+		{ID: GetIndexBranchInvalidResponse, Description: "Elasticsearch returned malformed or oversized index metadata.", Optional: true},
+		{ID: GetIndexBranchDefect, Description: "The index name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetIndexResult = sdkgo.QueryResult[IndexDetails]
+
+type GetIndexStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=elasticsearch"`
+	operationID                    struct{}                                        `connector:"operationId=getIndex"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) IndexNameInput                         `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetIndexResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetIndexResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetIndexResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetIndexResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetIndexResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[IndexDetails]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetIndexStep[IN any](config GetIndexStepConfig[IN]) sdkgo.QueryStep[IN, IndexNameInput, IndexDetails] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elasticsearch connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, IndexNameInput, IndexDetails]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetIndex(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetIndexResult] {
+			branches := make([]sdkgo.BranchTarget[GetIndexResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetIndexBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetIndexBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetIndexBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetIndexBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetIndexBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListIndicesBranchFound sdkgo.BranchID = "found"
+const ListIndicesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListIndicesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListIndicesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListIndicesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listIndices"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListIndicesBranchFound, Description: "Elasticsearch returned accessible indices."},
+		{ID: ListIndicesBranchProviderRejected, Description: "Elasticsearch conclusively denied index listing.", Optional: true},
+		{ID: ListIndicesBranchInvalidResponse, Description: "Elasticsearch returned malformed or oversized index metadata.", Optional: true},
+		{ID: ListIndicesBranchDefect, Description: "Connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListIndicesResult = sdkgo.QueryResult[IndexList]
+
+type ListIndicesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=elasticsearch"`
+	operationID                    struct{}                                     `connector:"operationId=listIndices"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListIndicesInput                    `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[ListIndicesResult]              `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[ListIndicesResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListIndicesResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListIndicesResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[IndexList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListIndicesStep[IN any](config ListIndicesStepConfig[IN]) sdkgo.QueryStep[IN, ListIndicesInput, IndexList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elasticsearch connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListIndicesInput, IndexList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListIndices(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListIndicesResult] {
+			branches := make([]sdkgo.BranchTarget[ListIndicesResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(ListIndicesBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListIndicesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListIndicesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListIndicesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetDocumentBranchFound sdkgo.BranchID = "found"

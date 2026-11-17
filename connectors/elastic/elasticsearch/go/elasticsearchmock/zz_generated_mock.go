@@ -18,6 +18,10 @@ import (
 // Mock is a scripted elasticsearch connection. Script each operation through its accessor.
 type Mock struct {
 	connection      elasticsearch.Connection
+	createIndex     *connectormock.Mutation[elasticsearch.IndexNameInput, elasticsearch.IndexResult]
+	deleteIndex     *connectormock.Mutation[elasticsearch.IndexNameInput, elasticsearch.IndexResult]
+	getIndex        *connectormock.Query[elasticsearch.IndexNameInput, elasticsearch.IndexDetails]
+	listIndices     *connectormock.Query[elasticsearch.ListIndicesInput, elasticsearch.IndexList]
 	getDocument     *connectormock.Query[elasticsearch.GetDocumentInput, elasticsearch.RetrievedDocument]
 	indexDocument   *connectormock.Mutation[elasticsearch.IndexDocumentInput, elasticsearch.IndexedDocument]
 	deleteDocument  *connectormock.Mutation[elasticsearch.DeleteDocumentInput, elasticsearch.DeletedDocument]
@@ -29,11 +33,19 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createIndex:     connectormock.NewMutation[elasticsearch.IndexNameInput, elasticsearch.IndexResult](t, elasticsearch.CreateIndexDefinition),
+		deleteIndex:     connectormock.NewMutation[elasticsearch.IndexNameInput, elasticsearch.IndexResult](t, elasticsearch.DeleteIndexDefinition),
+		getIndex:        connectormock.NewQuery[elasticsearch.IndexNameInput, elasticsearch.IndexDetails](t, elasticsearch.GetIndexDefinition),
+		listIndices:     connectormock.NewQuery[elasticsearch.ListIndicesInput, elasticsearch.IndexList](t, elasticsearch.ListIndicesDefinition),
 		getDocument:     connectormock.NewQuery[elasticsearch.GetDocumentInput, elasticsearch.RetrievedDocument](t, elasticsearch.GetDocumentDefinition),
 		indexDocument:   connectormock.NewMutation[elasticsearch.IndexDocumentInput, elasticsearch.IndexedDocument](t, elasticsearch.IndexDocumentDefinition),
 		deleteDocument:  connectormock.NewMutation[elasticsearch.DeleteDocumentInput, elasticsearch.DeletedDocument](t, elasticsearch.DeleteDocumentDefinition),
 		searchDocuments: connectormock.NewQuery[elasticsearch.SearchDocumentsInput, elasticsearch.SearchPage](t, elasticsearch.SearchDocumentsDefinition),
 	}
+	mock.createIndex.Default(CreateIndexDefault())
+	mock.deleteIndex.Default(DeleteIndexDefault())
+	mock.getIndex.Default(GetIndexDefault())
+	mock.listIndices.Default(ListIndicesDefault())
 	mock.getDocument.Default(GetDocumentDefault())
 	mock.indexDocument.Default(IndexDocumentDefault())
 	mock.deleteDocument.Default(DeleteDocumentDefault())
@@ -48,6 +60,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() elasticsearch.Connection { return mock.connection }
+
+// CreateIndex returns the createIndex script.
+func (mock *Mock) CreateIndex() *connectormock.Mutation[elasticsearch.IndexNameInput, elasticsearch.IndexResult] {
+	return mock.createIndex
+}
+
+// DeleteIndex returns the deleteIndex script.
+func (mock *Mock) DeleteIndex() *connectormock.Mutation[elasticsearch.IndexNameInput, elasticsearch.IndexResult] {
+	return mock.deleteIndex
+}
+
+// GetIndex returns the getIndex script.
+func (mock *Mock) GetIndex() *connectormock.Query[elasticsearch.IndexNameInput, elasticsearch.IndexDetails] {
+	return mock.getIndex
+}
+
+// ListIndices returns the listIndices script.
+func (mock *Mock) ListIndices() *connectormock.Query[elasticsearch.ListIndicesInput, elasticsearch.IndexList] {
+	return mock.listIndices
+}
 
 // GetDocument returns the getDocument script.
 func (mock *Mock) GetDocument() *connectormock.Query[elasticsearch.GetDocumentInput, elasticsearch.RetrievedDocument] {
@@ -71,6 +103,18 @@ func (mock *Mock) SearchDocuments() *connectormock.Query[elasticsearch.SearchDoc
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateIndex() sdkgo.Mutation[elasticsearch.IndexNameInput, elasticsearch.IndexResult] {
+	return operations.mock.createIndex
+}
+func (operations mockOperations) DeleteIndex() sdkgo.Mutation[elasticsearch.IndexNameInput, elasticsearch.IndexResult] {
+	return operations.mock.deleteIndex
+}
+func (operations mockOperations) GetIndex() sdkgo.Query[elasticsearch.IndexNameInput, elasticsearch.IndexDetails] {
+	return operations.mock.getIndex
+}
+func (operations mockOperations) ListIndices() sdkgo.Query[elasticsearch.ListIndicesInput, elasticsearch.IndexList] {
+	return operations.mock.listIndices
+}
 func (operations mockOperations) GetDocument() sdkgo.Query[elasticsearch.GetDocumentInput, elasticsearch.RetrievedDocument] {
 	return operations.mock.getDocument
 }
@@ -82,6 +126,143 @@ func (operations mockOperations) DeleteDocument() sdkgo.Mutation[elasticsearch.D
 }
 func (operations mockOperations) SearchDocuments() sdkgo.Query[elasticsearch.SearchDocumentsInput, elasticsearch.SearchPage] {
 	return operations.mock.searchDocuments
+}
+
+// CreateIndexPresent selects the present branch: The named index exists.
+func CreateIndexPresent(value elasticsearch.IndexResult, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexResult] {
+	return connectormock.Branch(elasticsearch.CreateIndexBranchPresent, value, failure)
+}
+
+// CreateIndexProviderRejected selects the providerRejected branch: Elasticsearch conclusively denied index creation.
+func CreateIndexProviderRejected(value elasticsearch.IndexResult, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexResult] {
+	return connectormock.Branch(elasticsearch.CreateIndexBranchProviderRejected, value, failure)
+}
+
+// CreateIndexDefect selects the defect branch: The index name or credentials are invalid.
+func CreateIndexDefect(value elasticsearch.IndexResult, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexResult] {
+	return connectormock.Branch(elasticsearch.CreateIndexBranchDefect, value, failure)
+}
+
+// CreateIndexRetry asks Dex to retry the createIndex Step, after the delay when it is positive.
+func CreateIndexRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elasticsearch.IndexResult] {
+	return connectormock.Retry[elasticsearch.IndexResult](failure, after)
+}
+
+// CreateIndexCreatedProducts is the manifest mock createdProducts: The products index exists.
+func CreateIndexCreatedProducts() connectormock.Case[elasticsearch.IndexResult] {
+	value := connectormock.MustDecodeOutput[elasticsearch.IndexResult](`{"index":"products"}`)
+	return connectormock.Branch(elasticsearch.CreateIndexBranchPresent, value, nil)
+}
+
+// CreateIndexDefault is the manifest default, createdProducts, which New installs.
+func CreateIndexDefault() connectormock.Case[elasticsearch.IndexResult] {
+	return CreateIndexCreatedProducts()
+}
+
+// DeleteIndexAbsent selects the absent branch: The named index is absent.
+func DeleteIndexAbsent(value elasticsearch.IndexResult, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexResult] {
+	return connectormock.Branch(elasticsearch.DeleteIndexBranchAbsent, value, failure)
+}
+
+// DeleteIndexProviderRejected selects the providerRejected branch: Elasticsearch conclusively denied index deletion.
+func DeleteIndexProviderRejected(value elasticsearch.IndexResult, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexResult] {
+	return connectormock.Branch(elasticsearch.DeleteIndexBranchProviderRejected, value, failure)
+}
+
+// DeleteIndexDefect selects the defect branch: The index name or credentials are invalid.
+func DeleteIndexDefect(value elasticsearch.IndexResult, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexResult] {
+	return connectormock.Branch(elasticsearch.DeleteIndexBranchDefect, value, failure)
+}
+
+// DeleteIndexRetry asks Dex to retry the deleteIndex Step, after the delay when it is positive.
+func DeleteIndexRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elasticsearch.IndexResult] {
+	return connectormock.Retry[elasticsearch.IndexResult](failure, after)
+}
+
+// DeleteIndexDeletedProducts is the manifest mock deletedProducts: The products index is absent.
+func DeleteIndexDeletedProducts() connectormock.Case[elasticsearch.IndexResult] {
+	value := connectormock.MustDecodeOutput[elasticsearch.IndexResult](`{"index":"products"}`)
+	return connectormock.Branch(elasticsearch.DeleteIndexBranchAbsent, value, nil)
+}
+
+// DeleteIndexDefault is the manifest default, deletedProducts, which New installs.
+func DeleteIndexDefault() connectormock.Case[elasticsearch.IndexResult] {
+	return DeleteIndexDeletedProducts()
+}
+
+// GetIndexFound selects the found branch: Elasticsearch returned index metadata.
+func GetIndexFound(value elasticsearch.IndexDetails, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexDetails] {
+	return connectormock.Branch(elasticsearch.GetIndexBranchFound, value, failure)
+}
+
+// GetIndexNotFound selects the notFound branch: The named index does not exist.
+func GetIndexNotFound(value elasticsearch.IndexDetails, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexDetails] {
+	return connectormock.Branch(elasticsearch.GetIndexBranchNotFound, value, failure)
+}
+
+// GetIndexProviderRejected selects the providerRejected branch: Elasticsearch conclusively denied the read.
+func GetIndexProviderRejected(value elasticsearch.IndexDetails, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexDetails] {
+	return connectormock.Branch(elasticsearch.GetIndexBranchProviderRejected, value, failure)
+}
+
+// GetIndexInvalidResponse selects the invalidResponse branch: Elasticsearch returned malformed or oversized index metadata.
+func GetIndexInvalidResponse(value elasticsearch.IndexDetails, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexDetails] {
+	return connectormock.Branch(elasticsearch.GetIndexBranchInvalidResponse, value, failure)
+}
+
+// GetIndexDefect selects the defect branch: The index name or credentials are invalid.
+func GetIndexDefect(value elasticsearch.IndexDetails, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexDetails] {
+	return connectormock.Branch(elasticsearch.GetIndexBranchDefect, value, failure)
+}
+
+// GetIndexRetry asks Dex to retry the getIndex Step, after the delay when it is positive.
+func GetIndexRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elasticsearch.IndexDetails] {
+	return connectormock.Retry[elasticsearch.IndexDetails](failure, after)
+}
+
+// GetIndexProductsIndex is the manifest mock productsIndex: The products index metadata was returned.
+func GetIndexProductsIndex() connectormock.Case[elasticsearch.IndexDetails] {
+	value := connectormock.MustDecodeOutput[elasticsearch.IndexDetails](`{"index":"products","metadata":{"settings":{},"mappings":{},"aliases":{}}}`)
+	return connectormock.Branch(elasticsearch.GetIndexBranchFound, value, nil)
+}
+
+// GetIndexDefault is the manifest default, productsIndex, which New installs.
+func GetIndexDefault() connectormock.Case[elasticsearch.IndexDetails] { return GetIndexProductsIndex() }
+
+// ListIndicesFound selects the found branch: Elasticsearch returned accessible indices.
+func ListIndicesFound(value elasticsearch.IndexList, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexList] {
+	return connectormock.Branch(elasticsearch.ListIndicesBranchFound, value, failure)
+}
+
+// ListIndicesProviderRejected selects the providerRejected branch: Elasticsearch conclusively denied index listing.
+func ListIndicesProviderRejected(value elasticsearch.IndexList, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexList] {
+	return connectormock.Branch(elasticsearch.ListIndicesBranchProviderRejected, value, failure)
+}
+
+// ListIndicesInvalidResponse selects the invalidResponse branch: Elasticsearch returned malformed or oversized index metadata.
+func ListIndicesInvalidResponse(value elasticsearch.IndexList, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexList] {
+	return connectormock.Branch(elasticsearch.ListIndicesBranchInvalidResponse, value, failure)
+}
+
+// ListIndicesDefect selects the defect branch: Connection credentials are invalid.
+func ListIndicesDefect(value elasticsearch.IndexList, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexList] {
+	return connectormock.Branch(elasticsearch.ListIndicesBranchDefect, value, failure)
+}
+
+// ListIndicesRetry asks Dex to retry the listIndices Step, after the delay when it is positive.
+func ListIndicesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elasticsearch.IndexList] {
+	return connectormock.Retry[elasticsearch.IndexList](failure, after)
+}
+
+// ListIndicesProductIndices is the manifest mock productIndices: The accessible products index was returned.
+func ListIndicesProductIndices() connectormock.Case[elasticsearch.IndexList] {
+	value := connectormock.MustDecodeOutput[elasticsearch.IndexList](`{"indices":[{"index":"products","metadata":{"settings":{},"mappings":{},"aliases":{}}}]}`)
+	return connectormock.Branch(elasticsearch.ListIndicesBranchFound, value, nil)
+}
+
+// ListIndicesDefault is the manifest default, productIndices, which New installs.
+func ListIndicesDefault() connectormock.Case[elasticsearch.IndexList] {
+	return ListIndicesProductIndices()
 }
 
 // GetDocumentFound selects the found branch: Elasticsearch returned the document source.

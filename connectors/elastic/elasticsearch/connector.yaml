@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: elasticsearch
   displayName: Elasticsearch
-  description: Get, search, replace, and delete documents in an Elasticsearch index.
+  description: Get, search, replace, and delete documents and manage Elasticsearch indices.
   company: Elastic
   categories: [databases-storage, data-search]
   version: v0.2.0
@@ -63,10 +63,73 @@ spec:
       startURL: https://cloud.elastic.co/
       steps:
         - Open https://cloud.elastic.co/, choose the Elastic Stack deployment, and open Kibana. For a self-managed Stack cluster, open its Kibana URL directly. This Basic-auth connection does not support Elastic Cloud Serverless.
-        - In Kibana choose Stack Management > Security > Roles > Create role and grant read for searches, index for document replacement, and delete for deletion on the target index pattern. Save the role.
+        - In Kibana choose Stack Management > Security > Roles > Create role and grant read for searches, index for document replacement, delete for document deletion, view_index_metadata for index reads, create_index for index creation, and delete_index for index deletion on the target index pattern. Save the role.
         - Choose Stack Management > Security > Users > Create user, set a username and password, assign the new role, and save username plus secret password in Dex. Rotate the password on the same Users page.
         - In https://cloud.elastic.co/ choose deployment > Manage > Application endpoints > Elasticsearch > Direct endpoint, then save its HTTPS URL as clusterUrl without an index path. For self-managed clusters use the HTTPS HTTP endpoint. Leave timeout, maxResponseBytes, and maxDocumentBytes blank for their displayed defaults.
   operations:
+    - name: createIndex
+      goName: CreateIndex
+      inputType: IndexNameInput
+      outputType: IndexResult
+      kind: mutation
+      description: Ensure a concrete index exists using Elasticsearch defaults; an already existing index is success.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: present, goName: Present, description: The named index exists.}
+        - {id: providerRejected, goName: ProviderRejected, description: Elasticsearch conclusively denied index creation., optional: true}
+        - {id: defect, goName: Defect, description: The index name or credentials are invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - {name: createdProducts, branch: present, description: The products index exists., default: true, output: {index: products}}
+    - name: deleteIndex
+      goName: DeleteIndex
+      inputType: IndexNameInput
+      outputType: IndexResult
+      kind: mutation
+      description: Ensure a concrete index and all its documents are absent.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: absent, goName: Absent, description: The named index is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Elasticsearch conclusively denied index deletion., optional: true}
+        - {id: defect, goName: Defect, description: The index name or credentials are invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - {name: deletedProducts, branch: absent, description: The products index is absent., default: true, output: {index: products}}
+    - name: getIndex
+      goName: GetIndex
+      inputType: IndexNameInput
+      outputType: IndexDetails
+      kind: query
+      description: Read settings, mappings, and aliases for one concrete index.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Elasticsearch returned index metadata.}
+        - {id: notFound, goName: NotFound, description: The named index does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Elasticsearch conclusively denied the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Elasticsearch returned malformed or oversized index metadata., optional: true}
+        - {id: defect, goName: Defect, description: The index name or credentials are invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - {name: productsIndex, branch: found, description: The products index metadata was returned., default: true, output: {index: products, metadata: {settings: {}, mappings: {}, aliases: {}}}}
+    - name: listIndices
+      goName: ListIndices
+      inputType: ListIndicesInput
+      outputType: IndexList
+      kind: query
+      description: List accessible concrete indices and their metadata using the index API.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Elasticsearch returned accessible indices.}
+        - {id: providerRejected, goName: ProviderRejected, description: Elasticsearch conclusively denied index listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Elasticsearch returned malformed or oversized index metadata., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials are invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - {name: productIndices, branch: found, description: The accessible products index was returned., default: true, output: {indices: [{index: products, metadata: {settings: {}, mappings: {}, aliases: {}}}]}}
     - name: getDocument
       goName: GetDocument
       inputType: GetDocumentInput
