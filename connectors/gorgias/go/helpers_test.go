@@ -189,8 +189,8 @@ func newGorgiasDexContext(step string) *gorgiasDexContext {
 	return &gorgiasDexContext{Context: context.Background(), step: step, attempt: 1}
 }
 
-// newMarkedDexContext is a later attempt whose earlier attempt recorded the dispatch marker.
-func newMarkedDexContext(step string, attempt int32) *gorgiasDexContext {
+// newPreviousReleaseMarkerContext is a later attempt after v0.24.0 recorded its connector-owned dispatch marker.
+func newPreviousReleaseMarkerContext(step string, attempt int32) *gorgiasDexContext {
 	return &gorgiasDexContext{
 		Context: context.Background(), step: step, attempt: attempt, previousHeartbeat: json.RawMessage(`{"gorgiasDispatchedCallId":"earlier"}`),
 	}

@@ -24,8 +24,10 @@ every Freshdesk operation to triage a new customer issue:
    note naming the priority as Freshdesk's label and integer, such as
    `High (3)`, and `CompleteTriage` completes with the outcome.
 
-Only happy-path branches are wired. An uncertain create or note fails the Flow
-with the connector's safe reason and is never resent automatically. Other
+Only happy-path branches are wired. A create or note whose outcome is unknown
+is resent while the send cap allows, which can add a duplicate ticket or note
+because Freshdesk has no read-back by Call ID. At the cap the Step selects
+`uncertain`, which fails the Flow with the connector's safe reason. Other
 optional branches, such as a rejected ticket, a missing ticket, an invalid
 response, or a local defect, fail the Flow.
 
@@ -57,7 +59,7 @@ mkdir -p /tmp/freshdesk-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/freshworks/freshdesk/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk/go \
-  --version v0.24.0 --tag connectors/freshworks/freshdesk/go/v0.24.0 \
+  --version v0.24.1 --tag connectors/freshworks/freshdesk/go/v0.24.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/freshdesk-release/connector-release.json \
   --digest-output /tmp/freshdesk-release/connector-release.json.sha256
@@ -131,12 +133,14 @@ Freshdesk, has no idempotency key and omits tags from search results:
 - an update interrupted by Worker loss is read by the replacement Worker,
   which sends no second write and leaves the tag unchanged;
 - a lost update response is retried and finds the values applied;
-- a lost create or note response fails the Flow and is never resent;
+- a lost create or note response is resent once and the Flow completes;
+- a create that loses every response is sent three times, the default send
+  cap, and then fails the Flow through `uncertain`;
 - a rate-limited create waits for `Retry-After` and creates one ticket;
 - a 503 create retries once, sends the same ticket request, and creates one ticket;
 - a mock-backed Flow searches two pages, reads and updates the ticket, and records one note with exact inputs;
 - a Worker lost while Freshdesk holds the create is replaced, and the new
-  attempt finds the dispatch checkpoint and sends nothing;
+  attempt counts the stored claim as one possible send and resends once;
 - a rejected ticket fails the Flow through the unwired `providerRejected`
   branch without Freshdesk's message text;
 - an invalid priority fails the Flow before any Freshdesk request.

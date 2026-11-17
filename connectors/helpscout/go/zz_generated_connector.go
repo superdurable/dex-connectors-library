@@ -471,7 +471,7 @@ var ReplyToConversationDefinition = sdkgo.MutationDefinition{
 		{ID: ReplyToConversationBranchReplied, Description: "Help Scout created the reply or note and returned its thread ID."},
 		{ID: ReplyToConversationBranchNotFound, Description: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user; nothing was added.", Optional: true},
 		{ID: ReplyToConversationBranchProviderRejected, Description: "Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added.", Optional: true},
-		{ID: ReplyToConversationBranchUncertain, Description: "The thread was sent but Help Scout's answer was lost, a server error, or unreadable, so it may exist; the connector never sends it again.", Optional: true},
+		{ID: ReplyToConversationBranchUncertain, Description: "The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, an unlisted status, or a 2xx without a thread ID, or an accepted thread could not be confirmed by read-back. Without a thread ID, an unknown outcome is resent while the cap allows.", Optional: true},
 		{ID: ReplyToConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -479,6 +479,8 @@ var ReplyToConversationDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type ReplyToConversationResult = sdkgo.MutationResult[ConversationReply]
@@ -500,6 +502,8 @@ type ReplyToConversationStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ReplyToConversationResult]                 `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ConversationReply]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewReplyToConversationStep[IN any](config ReplyToConversationStepConfig[IN]) sdkgo.MutationStep[IN, ReplyToConversationInput, ConversationReply] {
@@ -535,6 +539,7 @@ func NewReplyToConversationStep[IN any](config ReplyToConversationStepConfig[IN]
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -550,7 +555,7 @@ var UpdateConversationDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateConversationBranchUpdated, Description: "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt."},
 		{ID: UpdateConversationBranchNotFound, Description: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user.", Optional: true},
 		{ID: UpdateConversationBranchProviderRejected, Description: "Help Scout conclusively rejected the change, such as an assignee who is not a user or team of the account.", Optional: true},
-		{ID: UpdateConversationBranchInvalidResponse, Description: "Help Scout returned a malformed or oversized conversation, so part of the change may have been applied.", Optional: true},
+		{ID: UpdateConversationBranchInvalidResponse, Description: "Help Scout returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.", Optional: true},
 		{ID: UpdateConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -558,6 +563,7 @@ var UpdateConversationDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateConversationResult = sdkgo.MutationResult[UpdateConversationOutput]

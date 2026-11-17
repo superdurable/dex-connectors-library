@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { newFence, type Decision, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { CreateTicketDefinition, GetTicketDefinition, SearchTicketsDefinition, UpdateTicketDefinition } from './generated/definitions.js';
 import type { CreateTicketInput, CreateTicketOutput, GetTicketInput, SearchTicketsInput, SearchTicketsOutput, Ticket, TicketComment, TicketDetails, TicketUser, UpdateTicketInput, UpdateTicketOutput } from './generated/models.js';
 import { zendeskFailure, isBareEmailAddress, type ZendeskClient, type ZendeskExchange, header } from './client.js';
@@ -92,7 +93,11 @@ export class CreateTicketOperation implements Mutation<CreateTicketInput, Create
     try { validateCreate(input); } catch (error) { return mutationDefect('createTicket', zeroCreate, error); }
     if (!call.idempotencyKey) return mutationDefect('createTicket', zeroCreate, 'connector call has no idempotency key', 'LOCAL_DEFECT');
     const credentials = await this.client.resolveCredentials(call);
-    if (!credentials) return mutationDefect('createTicket', zeroCreate, 'connection credentials are unavailable', 'AUTHENTICATION');
+    if (!credentials) {
+      // defect would hide a ticket an earlier attempt may have created.
+      if (call.context.attempt > 1) return newMutationRetry(zendeskFailure('createTicket', 'AUTHENTICATION', 'connection credentials are unavailable'));
+      return mutationDefect('createTicket', zeroCreate, 'connection credentials are unavailable', 'AUTHENTICATION');
+    }
     const ticket = { subject: input.subject, comment: { body: input.comment.body, public: !input.comment.isInternalNote },
       ...(input.requester ? { requester: { email: input.requester.email, ...(input.requester.name ? { name: input.requester.name } : {}) } } : {}),
       ...(input.priority ? { priority: input.priority } : {}), ...(input.type ? { type: input.type } : {}),
@@ -101,15 +106,19 @@ export class CreateTicketOperation implements Mutation<CreateTicketInput, Create
       ...(input.externalId ? { external_id: input.externalId } : {}), metadata: { dex_idempotency_key: call.idempotencyKey } };
     const result = await this.client.exchange(call, credentials, 'createTicket', 'POST', '/tickets', undefined, { ticket }, call.idempotencyKey);
     const receipt = this.client.receipt(call, result.response);
-    const terminal = mutationExchange(result, receipt, zeroCreate);
-    if (terminal) return terminal;
+    if (result.outcome !== 'success') {
+      if (result.outcome === 'defect') return newMutationBranch('defect', zeroCreate, receipt, result.failure);
+      if ((result.outcome === 'rejected' || result.outcome === 'notFound') && definiteRefusalStatuses.has(result.response.status)) return newMutationBranch('providerRejected', zeroCreate, receipt, result.failure);
+      // The keyed request is safe to repeat, and its outcome is unknown.
+      return newMutationRetry(result.failure, result.retryAfterMs);
+    }
     try {
       const decoded = decodeTicketEnvelope(result.response.body, this.client.agentTicketURL).ticket;
       const lookup = header(result.response.headers, 'x-idempotency-lookup').toLowerCase();
       const completedReceipt = this.client.receipt(call, result.response, decoded.id);
       if (lookup) completedReceipt.metadata = { idempotencyLookup: lookup };
       return newMutationBranch('created', { ticket: decoded, ...(lookup === 'hit' ? { wasIdempotentReplay: true } : {}) }, completedReceipt);
-    } catch (error) { return mutationInvalid('createTicket', zeroCreate, receipt, 'Zendesk returned an invalid created ticket', error); }
+    } catch (error) { return newMutationRetry(zendeskFailure('createTicket', 'PROTOCOL', `Zendesk returned an invalid created ticket: ${error instanceof Error ? error.message : String(error)}`)); }
   }
 }
 
@@ -122,29 +131,52 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
   async invoke(call: Call, input: UpdateTicketInput): Promise<MutationAttempt<UpdateTicketOutput>> {
     try { validateUpdate(input); } catch (error) { return mutationDefect('updateTicket', zeroUpdate, error); }
     if (!call.idempotencyKey) return mutationDefect('updateTicket', zeroUpdate, 'connector call has no idempotency key', 'LOCAL_DEFECT');
+    let fence: Fence;
+    try { fence = newFence(call, 30_000, { maxSends: definitionMaxSends(UpdateTicketDefinition) }); }
+    catch { return mutationDefect('updateTicket', zeroUpdate, 'single-dispatch fence could not start', 'LOCAL_DEFECT'); }
+    const decision = fence.decide();
+    // FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+    if (decision.kind === 'failClosed') return newMutationRetry(zendeskFailure('updateTicket', 'AVAILABILITY', 'the single-dispatch checkpoint could not be read; nothing was sent in this attempt'));
+    const permit = new TicketWritePermit(fence, decision, effectiveMaxSends(call, definitionMaxSends(UpdateTicketDefinition)));
     const credentials = await this.client.resolveCredentials(call);
-    if (!credentials) return mutationDefect('updateTicket', zeroUpdate, 'connection credentials are unavailable', 'AUTHENTICATION');
+    if (!credentials) {
+      const unavailable = zendeskFailure('updateTicket', 'AUTHENTICATION', 'connection credentials are unavailable');
+      if (!permit.isFirstSend) return newMutationUncertain(zeroUpdate, unavailable, zeroReceipt());
+      try { await fence.recordNotSent(); } catch { return newMutationRetry(zendeskFailure('updateTicket', 'AVAILABILITY', 'Dex did not record the not-sent checkpoint')); }
+      return newMutationBranch('defect', zeroUpdate, zeroReceipt(), unavailable);
+    }
     const path = `/tickets/${input.ticketId}`;
     const read = await this.client.exchange(call, credentials, 'updateTicket', 'GET', path);
     let receipt = this.client.receipt(call, read.response, input.ticketId);
-    const readTerminal = mutationExchange(read, receipt, zeroUpdate);
+    const readTerminal = await permit.readAttempt(read, receipt, zeroUpdate);
     if (readTerminal) return readTerminal;
     let current: { ticket: Ticket; updatedStamp: string };
     try { current = decodeTicketEnvelope(read.response.body, this.client.agentTicketURL); if (current.ticket.id !== input.ticketId) throw new Error('ticket response is for another ticket'); }
-    catch (error) { return mutationInvalid('updateTicket', zeroUpdate, receipt, 'Zendesk returned an invalid ticket', error); }
+    catch (error) {
+      if (!permit.isFirstSend) return permit.unconfirmedRead(zeroUpdate, invalidFailure('updateTicket', 'Zendesk returned an invalid ticket', error), receipt);
+      return mutationInvalid('updateTicket', zeroUpdate, receipt, 'Zendesk returned an invalid ticket', error);
+    }
     const currentOutput = { ticket: current.ticket };
     if (input.comment || input.expectedUpdatedAt) {
       const audits = await this.client.exchange(call, credentials, 'updateTicket', 'GET', `${path}/audits`, { sort_order: 'desc' });
       receipt = this.client.receipt(call, audits.response, input.ticketId);
-      const auditTerminal = mutationExchange(audits, receipt, currentOutput);
+      const auditTerminal = await permit.readAttempt(audits, receipt, currentOutput);
       if (auditTerminal) return auditTerminal;
       try {
         const page = objectJSON(audits.response.body);
         const hasEarlierChange = array(page.audits).some(raw => { const audit = object(raw); const metadata = audit.metadata == null ? {} : object(audit.metadata); const custom = metadata.custom == null ? {} : object(metadata.custom); return custom.dex_idempotency_key === call.idempotencyKey; });
         if (hasEarlierChange) return newMutationBranch('updated', { ticket: current.ticket, wasAlreadyApplied: true }, receipt);
-      } catch (error) { return mutationInvalid('updateTicket', currentOutput, receipt, 'Zendesk returned an invalid audit page', error); }
+      } catch (error) {
+        if (!permit.isFirstSend) return permit.unconfirmedRead(currentOutput, invalidFailure('updateTicket', 'Zendesk returned an invalid audit page', error), receipt);
+        return mutationInvalid('updateTicket', currentOutput, receipt, 'Zendesk returned an invalid audit page', error);
+      }
     }
-    if (input.expectedUpdatedAt && parseRFC3339(input.expectedUpdatedAt).getTime() !== parseRFC3339(current.ticket.updatedAt).getTime()) return newMutationBranch('conflict', currentOutput, receipt, zendeskFailure('updateTicket', 'CONFLICT', `ticket was updated at ${current.ticket.updatedAt}, after expectedUpdatedAt`));
+    if (input.expectedUpdatedAt && parseRFC3339(input.expectedUpdatedAt).getTime() !== parseRFC3339(current.ticket.updatedAt).getTime()) {
+      const conflict = zendeskFailure('updateTicket', 'CONFLICT', `ticket was updated at ${current.ticket.updatedAt}, after expectedUpdatedAt`);
+      // An earlier send of this Step may have moved updated_at without an audit on the latest page.
+      if (!permit.isFirstSend) return permit.unconfirmedRead(currentOutput, conflict, receipt);
+      return newMutationBranch('conflict', currentOutput, receipt, conflict);
+    }
     const change: Record<string, unknown> = { metadata: { dex_idempotency_key: call.idempotencyKey }, safe_update: true, updated_stamp: current.updatedStamp };
     if (input.status && input.status !== current.ticket.status) change.status = input.status;
     if (input.priority && input.priority !== current.ticket.priority) change.priority = input.priority;
@@ -155,12 +187,83 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     if (JSON.stringify(tags) !== JSON.stringify(current.ticket.tags ?? [])) change.tags = tags;
     if (input.comment) change.comment = { body: input.comment.body, public: !input.comment.isInternalNote };
     if (Object.keys(change).length === 3) return newMutationBranch('updated', { ticket: current.ticket, wasAlreadyApplied: true }, receipt);
-    const write = await this.client.exchange(call, credentials, 'updateTicket', 'PUT', path, undefined, { ticket: change });
+    if (permit.isAtSendCap) return newMutationUncertain(currentOutput, zendeskFailure('updateTicket', 'TRANSPORT', 'earlier attempts may have written the change and the send cap is reached, and the latest audit page shows no change by this Step'), receipt);
+    let write: ZendeskExchange;
+    try { write = await fence.dispatch(signal => this.client.exchange(call, credentials, 'updateTicket', 'PUT', path, undefined, { ticket: change }, undefined, { signal, isFencedWrite: true })); }
+    // Dispatch refused before sending, so nothing reached Zendesk in this attempt.
+    catch { return newMutationRetry(zendeskFailure('updateTicket', 'AVAILABILITY', 'Zendesk write was not sent before the attempt deadline or checkpoint')); }
     receipt = this.client.receipt(call, write.response, input.ticketId);
-    const writeTerminal = mutationExchange(write, receipt, currentOutput);
+    const writeTerminal = await permit.writeAttempt(write, receipt, currentOutput);
     if (writeTerminal) return writeTerminal;
     try { const decoded = decodeTicketEnvelope(write.response.body, this.client.agentTicketURL).ticket; if (decoded.id !== input.ticketId) throw new Error('ticket response is for another ticket'); return newMutationBranch('updated', { ticket: decoded }, receipt); }
-    catch (error) { return mutationInvalid('updateTicket', currentOutput, receipt, 'Zendesk returned an invalid updated ticket', error); }
+    catch (error) { return permit.resendOrUncertain(currentOutput, invalidFailure('updateTicket', 'Zendesk returned an invalid updated ticket', error), 0, receipt); }
+  }
+}
+
+/** Only these statuses prove Zendesk applied nothing; any other non-2xx answer may have been applied. */
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
+function effectiveMaxSends(call: Call, operationMaxSends: number): number {
+  return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+}
+
+/** Maps updateTicket reads and its fenced PUT under the fence decision's send-cap facts. */
+class TicketWritePermit {
+  /** No earlier attempt of this call may have sent. */ readonly isFirstSend: boolean;
+  /** Earlier sends reached the cap, so this attempt only reads back. */ readonly isAtSendCap: boolean;
+  /** This attempt's send leaves room under the cap for one more. */ readonly canResendUnknownOutcome: boolean;
+
+  constructor(private readonly fence: Fence, decision: Decision, maxSends: number) {
+    const priorSends = decision.priorSendUpperBound ?? 0;
+    this.isFirstSend = priorSends === 0;
+    this.isAtSendCap = decision.kind === 'readBackRequired';
+    this.canResendUnknownOutcome = priorSends + 1 < maxSends;
+  }
+
+  /** Record notSent only on a first send; otherwise the claim stays counted. */
+  async retryBeforeDispatch<T>(cause: Failure, retryAfterMs?: number): Promise<MutationAttempt<T>> {
+    if (this.isFirstSend) {
+      try { await this.fence.recordNotSent(); } catch { return newMutationRetry(zendeskFailure('updateTicket', 'AVAILABILITY', 'Dex did not record the not-sent checkpoint'), retryAfterMs); }
+    }
+    return newMutationRetry(cause, retryAfterMs);
+  }
+
+  /** Retry an inconclusive read after a possible earlier send, or select uncertain at the cap. */
+  unconfirmedRead<T>(value: T, cause: Failure, receipt: ReceiptDraft): MutationAttempt<T> {
+    return this.isAtSendCap ? newMutationUncertain(value, cause, receipt) : newMutationRetry(cause);
+  }
+
+  /** Map a read before the write; a definite answer after a possible send is uncertain. */
+  async readAttempt<T>(result: ZendeskExchange, receipt: ReceiptDraft, value: T): Promise<MutationAttempt<T> | undefined> {
+    if (result.outcome === 'success') return undefined;
+    if (result.outcome === 'retry' || result.outcome === 'notSent') return this.retryBeforeDispatch(result.failure, result.retryAfterMs);
+    if (!this.isFirstSend) return result.outcome === 'invalid' || result.outcome === 'defect' ? this.unconfirmedRead(value, result.failure, receipt) : newMutationUncertain(value, result.failure, receipt);
+    return mutationExchange(result, receipt, value);
+  }
+
+  /** Map the PUT; only a definite refusal of a first send selects a refusal branch. */
+  async writeAttempt<T>(result: ZendeskExchange, receipt: ReceiptDraft, value: T): Promise<MutationAttempt<T> | undefined> {
+    if (result.outcome === 'success') return undefined;
+    const status = result.response.status;
+    if (result.outcome === 'notSent' || status === 429 || status === 503) {
+      // A lost checkpoint leaves the claim, so the next attempt counts this send toward the cap.
+      try { await this.fence.recordCanResend(); } catch { /* counted as a possible send */ }
+      return newMutationRetry(result.failure, result.retryAfterMs);
+    }
+    if ((result.outcome === 'defect' && this.isFirstSend) || ((result.outcome === 'rejected' || result.outcome === 'notFound') && definiteRefusalStatuses.has(status))) {
+      if (!this.isFirstSend) return newMutationUncertain(value, result.failure, receipt);
+      try { await this.fence.recordCanResend(); } catch { return newMutationRetry(zendeskFailure('updateTicket', 'AVAILABILITY', 'Dex did not record the refusal checkpoint')); }
+      return mutationExchange(result, receipt, value);
+    }
+    // A 3xx, 408, 409, 410, other 5xx, unlisted status, lost answer, or unusable 2xx may follow an applied write.
+    return this.resendOrUncertain(value, result.failure, result.retryAfterMs ?? 0, receipt);
+  }
+
+  /** Retry an unknown write outcome while the send cap allows another send. */
+  resendOrUncertain<T>(value: T, cause: Failure, retryAfterMs: number, receipt: ReceiptDraft): MutationAttempt<T> {
+    // The claim stays the last marker, so the next attempt reads back before it resends.
+    return this.canResendUnknownOutcome ? newMutationRetry(cause, retryAfterMs) : newMutationUncertain(value, cause, receipt);
   }
 }
 
@@ -255,4 +358,5 @@ function mutationExchange<T>(result: ZendeskExchange, receipt: ReceiptDraft, zer
 function queryDefect<T>(operation: string, zero: T, error: unknown, kind: Failure['kind'] = 'VALIDATION'): QueryAttempt<T> { return newQueryBranch('defect', zero, zeroReceipt(), zendeskFailure(operation, kind, String(error instanceof Error ? error.message : error))); }
 function mutationDefect<T>(operation: string, zero: T, error: unknown, kind: Failure['kind'] = 'VALIDATION'): MutationAttempt<T> { return newMutationBranch('defect', zero, zeroReceipt(), zendeskFailure(operation, kind, String(error instanceof Error ? error.message : error))); }
 function queryInvalid<T>(operation: string, zero: T, receipt: ReceiptDraft, message: string, error: unknown): QueryAttempt<T> { return newQueryBranch('invalidResponse', zero, receipt, zendeskFailure(operation, 'PROTOCOL', `${message}: ${error instanceof Error ? error.message : String(error)}`)); }
-function mutationInvalid<T>(operation: string, zero: T, receipt: ReceiptDraft, message: string, error: unknown): MutationAttempt<T> { return newMutationBranch('invalidResponse', zero, receipt, zendeskFailure(operation, 'PROTOCOL', `${message}: ${error instanceof Error ? error.message : String(error)}`)); }
+function mutationInvalid<T>(operation: string, zero: T, receipt: ReceiptDraft, message: string, error: unknown): MutationAttempt<T> { return newMutationBranch('invalidResponse', zero, receipt, invalidFailure(operation, message, error)); }
+function invalidFailure(operation: string, message: string, error: unknown): Failure { return zendeskFailure(operation, 'PROTOCOL', `${message}: ${error instanceof Error ? error.message : String(error)}`); }

@@ -244,18 +244,26 @@ it.each([
   if (exchange.outcome === "rateLimited") expect(exchange.retryAfterMs).toBe(expectedMs);
 });
 
-it("keeps a possibly-sent reply checkpoint until read-back confirms the part", async () => {
-  let heartbeat: unknown;
-  const paths: string[] = [];
+/** A Dex attempt context whose heartbeat persists across attempts of one Step execution. */
+function fencedReplyCall() {
+  const state: { heartbeat: unknown; writes: unknown[]; attempt: number } = { heartbeat: undefined, writes: [], attempt: 1 };
   const replyCall = {
     ...call,
     context: {
       ...call.context,
-      hasLastHeartbeatValue: () => heartbeat !== undefined && heartbeat !== null,
-      getLastHeartbeatValue: () => heartbeat,
-      recordHeartbeat: async (value: unknown) => { heartbeat = value; },
+      firstAttemptAt: new Date(1_000),
+      get attempt() { return state.attempt; },
+      hasLastHeartbeatValue: () => state.heartbeat !== undefined && state.heartbeat !== null,
+      getLastHeartbeatValue: () => state.heartbeat,
+      recordHeartbeat: async (value: unknown) => { state.heartbeat = value; state.writes.push(value); },
     },
-  } as Call;
+  } as unknown as Call;
+  return { replyCall, state };
+}
+
+it("reads a possibly-sent reply back before any resend", async () => {
+  const paths: string[] = [];
+  const { replyCall, state } = fencedReplyCall();
   const client = new IntercomClient({}, validCredentials, {
     endpoint: "http://127.0.0.1:0",
     now: () => new Date("2026-10-30T00:00:00Z"),
@@ -272,7 +280,8 @@ it("keeps a possibly-sent reply checkpoint until read-back confirms the part", a
   const input = { conversationId: "2002", adminId: "77", messageType: "comment" as const, body: "Hello" };
   const first = await client.replyToConversation().invoke(replyCall, input);
   expect(first.kind).toBe("retry");
-  expect(heartbeat).toBeTruthy();
+  expect(state.heartbeat).toMatchObject({ callId: call.id, attempt: 1, state: "claimed" });
+  state.attempt = 2;
   const second = await client.replyToConversation().invoke(replyCall, input);
   expect(second.kind).toBe("branch");
   if (second.kind === "branch") {
@@ -282,18 +291,8 @@ it("keeps a possibly-sent reply checkpoint until read-back confirms the part", a
   expect(paths).toEqual(["/conversations/2002/reply", "/conversations/2002"]);
 });
 
-it("treats address refusal as unsent and clears the reply checkpoint", async () => {
-  let heartbeat: unknown;
-  const heartbeatWrites: unknown[] = [];
-  const replyCall = {
-    ...call,
-    context: {
-      ...call.context,
-      hasLastHeartbeatValue: () => heartbeat !== undefined && heartbeat !== null,
-      getLastHeartbeatValue: () => heartbeat,
-      recordHeartbeat: async (value: unknown) => { heartbeat = value; heartbeatWrites.push(value); },
-    },
-  } as Call;
+it("treats address refusal as unsent and records that the reply can be resent", async () => {
+  const { replyCall, state } = fencedReplyCall();
   const client = new IntercomClient({}, validCredentials, {
     endpoint: "http://127.0.0.1:0",
     send: async () => { throw new AddressRefusal("blocked address"); },
@@ -302,17 +301,14 @@ it("treats address refusal as unsent and clears the reply checkpoint", async () 
     conversationId: "2002", adminId: "77", messageType: "comment", body: "Hello",
   });
   expect(attempt.kind).toBe("retry");
-  expect(heartbeatWrites).toHaveLength(2);
-  expect(heartbeatWrites[0]).toMatchObject({ intercomReplyDispatchedCallId: call.id });
-  expect(heartbeat).toBeUndefined();
+  expect(state.writes).toHaveLength(2);
+  expect(state.writes[0]).toMatchObject({ callId: call.id, state: "claimed" });
+  expect(state.heartbeat).toMatchObject({ callId: call.id, state: "canResend" });
 });
 
 it("uses Go whitespace for reply body validation and HTML", async () => {
   let sentBody = "";
-  const replyCall = {
-    ...call,
-    context: { ...call.context, hasLastHeartbeatValue: () => false, recordHeartbeat: async () => {} },
-  } as Call;
+  const { replyCall } = fencedReplyCall();
   const client = new IntercomClient({}, validCredentials, {
     endpoint: "http://127.0.0.1:0",
     send: async (request) => {

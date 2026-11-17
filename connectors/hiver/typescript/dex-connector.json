@@ -1,10 +1,10 @@
 {
   "connectorId": "hiver",
-  "releaseTag": "connectors/hiver/go/v0.24.0",
+  "releaseTag": "connectors/hiver/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-hiver",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -269,7 +269,7 @@
       "kind": "mutation",
       "operationId": "addNote",
       "inputType": "AddNoteInput",
-      "description": "Add one internal note, visible only to Hiver users, to a conversation. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or note read-back, so ambiguous sends remain uncertain.",
+      "description": "Add one internal note, visible only to Hiver users, to a conversation. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or note read-back, so an unknown outcome resends the note while the send cap allows and selects uncertain at the cap.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -333,7 +333,7 @@
       "kind": "mutation",
       "operationId": "createSharedDraft",
       "inputType": "CreateSharedDraftInput",
-      "description": "Create one shared reply draft for a Hiver user to review and send. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or draft read-back, so ambiguous sends remain uncertain.",
+      "description": "Create one shared reply draft for a Hiver user to review and send. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or draft read-back, so an unknown outcome resends the draft while the send cap allows and selects uncertain at the cap.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

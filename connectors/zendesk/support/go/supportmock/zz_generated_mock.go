@@ -189,14 +189,9 @@ func CreateTicketCreated(value support.CreateTicketOutput, failure *sdkgo.Failur
 	return connectormock.Branch(support.CreateTicketBranchCreated, value, failure)
 }
 
-// CreateTicketProviderRejected selects the providerRejected branch: Zendesk conclusively rejected the ticket, such as an invalid requester, group, or assignee; no ticket was created.
+// CreateTicketProviderRejected selects the providerRejected branch: Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.
 func CreateTicketProviderRejected(value support.CreateTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.CreateTicketOutput] {
 	return connectormock.Branch(support.CreateTicketBranchProviderRejected, value, failure)
-}
-
-// CreateTicketInvalidResponse selects the invalidResponse branch: Zendesk accepted the request but returned an invalid or oversized ticket, so the ticket may exist.
-func CreateTicketInvalidResponse(value support.CreateTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.CreateTicketOutput] {
-	return connectormock.Branch(support.CreateTicketBranchInvalidResponse, value, failure)
 }
 
 // CreateTicketDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
@@ -231,24 +226,29 @@ func UpdateTicketUpdated(value support.UpdateTicketOutput, failure *sdkgo.Failur
 	return connectormock.Branch(support.UpdateTicketBranchUpdated, value, failure)
 }
 
-// UpdateTicketNotFound selects the notFound branch: The ticket does not exist or is not visible to the connection's agent.
+// UpdateTicketNotFound selects the notFound branch: The ticket does not exist or is not visible to the connection's agent, and no earlier attempt of this Step may have written it.
 func UpdateTicketNotFound(value support.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.UpdateTicketOutput] {
 	return connectormock.Branch(support.UpdateTicketBranchNotFound, value, failure)
 }
 
-// UpdateTicketConflict selects the conflict branch: The ticket changed after expectedUpdatedAt, so nothing was written.
+// UpdateTicketConflict selects the conflict branch: The ticket read before the first write changed after expectedUpdatedAt, so nothing was written.
 func UpdateTicketConflict(value support.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.UpdateTicketOutput] {
 	return connectormock.Branch(support.UpdateTicketBranchConflict, value, failure)
 }
 
-// UpdateTicketProviderRejected selects the providerRejected branch: Zendesk conclusively rejected the change, such as updating a closed ticket or assigning an unknown agent.
+// UpdateTicketProviderRejected selects the providerRejected branch: Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as updating a closed ticket or assigning an unknown agent; nothing was written.
 func UpdateTicketProviderRejected(value support.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.UpdateTicketOutput] {
 	return connectormock.Branch(support.UpdateTicketBranchProviderRejected, value, failure)
 }
 
-// UpdateTicketInvalidResponse selects the invalidResponse branch: Zendesk returned an invalid or oversized ticket or audit response, so the change may have been applied.
+// UpdateTicketInvalidResponse selects the invalidResponse branch: Zendesk returned an invalid or oversized ticket or audit page on the read before the first write, so nothing was written.
 func UpdateTicketInvalidResponse(value support.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.UpdateTicketOutput] {
 	return connectormock.Branch(support.UpdateTicketBranchInvalidResponse, value, failure)
+}
+
+// UpdateTicketUncertain returns an uncertain updateTicket outcome.
+func UpdateTicketUncertain(value support.UpdateTicketOutput, failure sdkgo.Failure) connectormock.Case[support.UpdateTicketOutput] {
+	return connectormock.Uncertain(value, failure)
 }
 
 // UpdateTicketDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.

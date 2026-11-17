@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -70,7 +71,7 @@ REPLY_TO_CONVERSATION_DEFINITION = MutationDefinition(
         BranchDefinition(REPLIED, "Front accepted the reply for delivery or created the comment.", False),
         BranchDefinition(NOT_FOUND, "The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.", True),
         BranchDefinition(PROVIDER_REJECTED, "Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent.", True),
-        BranchDefinition(UNCERTAIN, "The reply or comment may exist after a lost answer, ambiguous server error, late answer, 409 conflict, or terminal credential failure during accepted-write read-back; an accepted comment may have been deleted before read-back. The connector never resends without proof of non-application.", True),
+        BranchDefinition(UNCERTAIN, "The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a 2xx without a provider ID, or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows.", True),
         BranchDefinition(DEFECT, "Local input, connection credentials that require reauthorization or are unusable before sending, or the connector definition is invalid; transient credential failures Retry.", True),
     ),
     StepDefaults(
@@ -78,6 +79,8 @@ REPLY_TO_CONVERSATION_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 5, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 UPDATE_CONVERSATION_DEFINITION = MutationDefinition(
@@ -86,7 +89,7 @@ UPDATE_CONVERSATION_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt.", False),
         BranchDefinition(NOT_FOUND, "The conversation does not exist, was merged, or is not visible to the API token.", True),
         BranchDefinition(PROVIDER_REJECTED, "Front conclusively rejected a change, such as an unknown teammate, tag, or ticket status; changes sent before it stay applied.", True),
-        BranchDefinition(INVALID_RESPONSE, "Front returned a malformed or oversized conversation, so the change may have been applied.", True),
+        BranchDefinition(INVALID_RESPONSE, "Front returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -94,6 +97,7 @@ UPDATE_CONVERSATION_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 FIND_CONTACT_BY_EMAIL_DEFINITION = QueryDefinition(

@@ -1188,35 +1188,16 @@
       "callId": "082d8867-fe2c-5847-a6ff-828aa4995bf8",
       "exchanges": [
         {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "PATCH",
-          "path": "/inboxes/105902/conversations/573741352",
-          "requestBody": {
-            "status": {
-              "name": "open"
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer hiverTestKey0123456789"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        },
-        {
           "body": "{\"data\":\"broken\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/inboxes/105902/conversations/573741352",
+          "path": "/inboxes/105902/users/search",
+          "query": {
+            "email": [
+              "phoebe@acme.example.com"
+            ]
+          },
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1239,16 +1220,16 @@
             "tagIds": []
           }
         },
-        "requestCount": 2,
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
       "idempotencyKey": "082d8867-fe2c-5847-a6ff-828aa4995bf8",
       "input": {
+        "assigneeEmail": "phoebe@acme.example.com",
         "conversationId": "573741352",
-        "inboxId": "105902",
-        "status": "open"
+        "inboxId": "105902"
       },
       "name": "updateConversation-invalid-response",
       "operation": "updateConversation"
@@ -1433,6 +1414,7 @@
           "attempt": 1,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
           "providerId": "35042650",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -1502,7 +1484,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "note": {
@@ -1594,7 +1576,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "note": {
@@ -1617,8 +1599,77 @@
       "operation": "addNote"
     },
     {
+      "attempts": 3,
       "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
       "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "VHJpYWdlZCBieSBQaG9lYmUu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "VHJpYWdlZCBieSBQaG9lYmUu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 502
+        },
         {
           "body": "{}",
           "headers": {},
@@ -1658,8 +1709,9 @@
         "branch": "uncertain",
         "failureKind": "CONFLICT",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -1668,7 +1720,7 @@
             "id": ""
           }
         },
-        "requestCount": 1,
+        "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -1679,6 +1731,30 @@
         "conversationId": "573741352",
         "inboxId": "105902"
       },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "CONFLICT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
       "name": "addNote-uncertain-conflict",
       "operation": "addNote"
     },
@@ -1721,23 +1797,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "note": {
-            "createdAt": "0001-01-01T00:00:00Z",
-            "id": ""
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
       "input": {
@@ -1981,6 +2052,7 @@
           "attempt": 1,
           "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
           "providerId": "901",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -2054,7 +2126,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": ""
@@ -2147,7 +2219,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": ""
@@ -2167,8 +2239,93 @@
       "operation": "createSharedDraft"
     },
     {
+      "attempts": 3,
       "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
       "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/shared-drafts",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "V2UgYXJlIGludmVzdGlnYXRpbmcu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"body\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ODM0NDY2MDQ4",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"hiver_message_id\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/shared-drafts",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "V2UgYXJlIGludmVzdGlnYXRpbmcu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"body\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ODM0NDY2MDQ4",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"hiver_message_id\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd"
+            ]
+          },
+          "status": 502
+        },
         {
           "body": "{}",
           "headers": {},
@@ -2216,14 +2373,15 @@
         "branch": "uncertain",
         "failureKind": "CONFLICT",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
           "id": ""
         },
-        "requestCount": 1,
+        "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -2234,6 +2392,30 @@
         "hiverMessageId": "834466048",
         "inboxId": "105902"
       },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "CONFLICT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
       "name": "createSharedDraft-uncertain-conflict",
       "operation": "createSharedDraft"
     },
@@ -2284,20 +2466,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
       "input": {
@@ -2715,6 +2895,7 @@
           "attempt": 1,
           "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
           "providerId": "901",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -3800,23 +3981,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "note": {
-            "createdAt": "0001-01-01T00:00:00Z",
-            "id": ""
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
       "input": {
@@ -3907,6 +4083,7 @@
           "attempt": 2,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
           "providerId": "35042650",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -3970,8 +4147,9 @@
       "name": "addNote-prior-claimed",
       "operation": "addNote",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+        "sendCount": 3,
         "state": "claimed"
       }
     },
@@ -4020,20 +4198,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
       "input": {
@@ -4140,6 +4316,7 @@
           "attempt": 2,
           "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
           "providerId": "901",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -4196,8 +4373,9 @@
       "name": "createSharedDraft-prior-claimed",
       "operation": "createSharedDraft",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+        "sendCount": 3,
         "state": "claimed"
       }
     },
@@ -4240,23 +4418,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "note": {
-            "createdAt": "0001-01-01T00:00:00Z",
-            "id": ""
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
       "input": {
@@ -4306,23 +4479,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "note": {
-            "createdAt": "0001-01-01T00:00:00Z",
-            "id": ""
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
       "input": {
@@ -4378,6 +4546,7 @@
           "attempt": 2,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
           "providerId": "35042650",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -4453,6 +4622,7 @@
           "attempt": 2,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
           "providerId": "35042650",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -4487,8 +4657,8 @@
       "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
       "exchanges": [],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "branch": "defect",
+        "failureKind": "VALIDATION",
         "output": {
           "note": {
             "createdAt": "0001-01-01T00:00:00Z",
@@ -4498,7 +4668,7 @@
         "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
       "input": {
@@ -4558,6 +4728,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+          "providerId": "35042650",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -4624,6 +4796,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+          "providerId": "35042650",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -4685,23 +4859,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "note": {
-            "createdAt": "0001-01-01T00:00:00Z",
-            "id": ""
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
       "input": {
@@ -4757,6 +4926,7 @@
           "attempt": 1,
           "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
           "providerId": "35042650",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -4855,20 +5025,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
       "input": {
@@ -4926,20 +5094,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
       "input": {
@@ -5003,6 +5169,7 @@
           "attempt": 2,
           "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
           "providerId": "901",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -5082,6 +5249,7 @@
           "attempt": 2,
           "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
           "providerId": "901",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -5112,15 +5280,15 @@
       "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
       "exchanges": [],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "branch": "defect",
+        "failureKind": "VALIDATION",
         "output": {
           "id": ""
         },
         "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
       "input": {
@@ -5134,6 +5302,292 @@
         "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
         "state": "claimed"
       }
+    },
+    {
+      "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "input": {
+        "content": "Triaged by Phoebe.",
+        "conversationId": "573741352",
+        "inboxId": "105902"
+      },
+      "name": "addNote-untrusted-checkpoint-retry",
+      "operation": "addNote",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+        "sendCount": 2,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+      "input": {
+        "body": "We are investigating.",
+        "hiverMessageId": "834466048",
+        "inboxId": "105902"
+      },
+      "name": "createSharedDraft-untrusted-checkpoint-retry",
+      "operation": "createSharedDraft",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+        "sendCount": 2,
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "VHJpYWdlZCBieSBQaG9lYmUu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":{\"id\":35042650,\"conversation_id\":573741352,\"author\":{\"id\":456342,\"email\":\"phoebe@acme.example.com\"},\"created_at\":\"2026-07-21T14:24:22Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "VHJpYWdlZCBieSBQaG9lYmUu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+          "providerId": "35042650",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "note": {
+            "authorEmail": "phoebe@acme.example.com",
+            "authorId": "456342",
+            "conversationId": "573741352",
+            "createdAt": "2026-07-21T14:24:22Z",
+            "id": "35042650"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "input": {
+        "content": "Triaged by Phoebe.",
+        "conversationId": "573741352",
+        "inboxId": "105902"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addNote-resend-after-unknown-500",
+      "operation": "addNote"
+    },
+    {
+      "attempts": 2,
+      "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "VHJpYWdlZCBieSBQaG9lYmUu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "VHJpYWdlZCBieSBQaG9lYmUu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "note": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": ""
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "input": {
+        "content": "Triaged by Phoebe.",
+        "conversationId": "573741352",
+        "inboxId": "105902"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addNote-refusal-after-unknown-uncertain",
+      "operation": "addNote"
     }
   ],
   "schemaVersion": 1

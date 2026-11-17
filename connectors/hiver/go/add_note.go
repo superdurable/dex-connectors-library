@@ -75,35 +75,36 @@ func (AddNoteOperation) IdempotencyKey(callID sdkgo.CallID, _ AddNoteInput) sdkg
 }
 
 // Invoke sends POST /v1/inboxes/{inbox_id}/conversations/{conversation_id}/notes as
-// multipart/form-data through the shared fence. A prior possibly sent attempt selects
-// uncertain because Hiver has no note list for read-back. Definite 429, 503, and proven
-// unsent outcomes permit one retry after a stored checkpoint.
+// multipart/form-data through the shared fence. Hiver has no note list for read-back, so an
+// unknown outcome resends while the send cap allows and selects uncertain at the cap.
+// Definite 429, 503, and proven unsent outcomes retry after a stored checkpoint.
 func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sdkgo.MutationAttempt[AddNoteOutput] {
-	fence, pacerDeadline, priorAttempt := beginSingleDispatch[AddNoteOutput](call, operation.client, addNoteOperation, AddNoteBranchDefect)
-	if priorAttempt != nil {
-		return *priorAttempt
-	}
 	if err := validateAddNoteInput(input); err != nil {
 		return sdkgo.NewMutationBranch(AddNoteBranchDefect, AddNoteOutput{}, hiverFailurePointer(sdkgo.FailureValidation, addNoteOperation, err.Error()), sdkgo.Receipt{})
 	}
+	permit, priorAttempt := beginSingleDispatch[AddNoteOutput](call, operation.client, addNoteOperation, AddNoteBranchDefect)
+	if priorAttempt != nil {
+		return *priorAttempt
+	}
 	credentials, failure := operation.client.resolveCredentials(call, addNoteOperation)
 	if failure != nil {
-		return retryBeforeSingleDispatch[AddNoteOutput](fence, *failure)
+		return retryBeforeSingleDispatch[AddNoteOutput](permit, *failure)
 	}
 	result, attempt := sendOnce[AddNoteOutput](call, operation.client, credentials, addNoteOperation, hiverRequest{
 		method: http.MethodPost, path: conversationPath(input.InboxID, input.ConversationID) + "/notes",
 		formFields: []hiverFormField{{name: "content", value: input.Content}},
-	}, singleDispatchBranches{notFound: AddNoteBranchNotFound, providerRejected: AddNoteBranchProviderRejected, defect: AddNoteBranchDefect}, fence, pacerDeadline)
+	}, singleDispatchBranches{notFound: AddNoteBranchNotFound, providerRejected: AddNoteBranchProviderRejected, defect: AddNoteBranchDefect}, permit)
 	if attempt != nil {
 		return *attempt
 	}
 	note, err := decodeNote(result.response.body)
 	if err != nil {
-		return sdkgo.NewMutationUncertain(AddNoteOutput{}, hiverFailure(sdkgo.FailureProtocol, addNoteOperation,
-			"Hiver accepted the note but returned an invalid note: "+err.Error()), operation.client.receipt(call, result.response, ""))
+		providerID := acceptedProviderID(result.response.body, "id")
+		return acceptedWriteAttempt[AddNoteOutput](permit, providerID, hiverFailure(sdkgo.FailureProtocol, addNoteOperation,
+			"Hiver accepted the note but returned an invalid note: "+err.Error()), operation.client.receipt(call, result.response, providerID))
 	}
 	// The accepted result is known even if the extra identity checkpoint is lost.
-	_ = fence.RecordProviderID(note.ID)
+	_ = permit.fence.RecordProviderID(note.ID)
 	return sdkgo.NewMutationBranch(AddNoteBranchAdded, AddNoteOutput{Note: note}, nil, operation.client.receipt(call, result.response, note.ID))
 }
 

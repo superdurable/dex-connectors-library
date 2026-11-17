@@ -46,7 +46,7 @@ func TestCreateConversationSendsTheDispatchKeyOnceAfterRecordingTheMarker(t *tes
 		"data":{"dex_dispatch_key":"`+dispatchKeyOf(result.Receipt.CallID)+`"},
 		"message":{"body":"I was charged **twice**.\nOrder 88213.","suppress_notifications":true},
 		"user":{"name":"Jane Smith","email":"jane@acme.example.com"}}}`, request.body)
-	require.JSONEq(t, `{"callId":"`+string(result.Receipt.CallID)+`","attempt":1,"state":"claimed","providerId":"double-charge-on-order-88213"}`, string(ctx.recordedHeartbeat))
+	require.JSONEq(t, `{"callId":"`+string(result.Receipt.CallID)+`","attempt":1,"state":"claimed","providerId":"double-charge-on-order-88213","sendCount":1}`, string(ctx.recordedHeartbeat))
 }
 
 func TestCreateConversationOmitsUnsetFieldsAndSendsOpenStatusZero(t *testing.T) {
@@ -121,13 +121,14 @@ func TestCreateConversationReconcilesAnUnconfirmedAttemptWithoutResending(t *tes
 			})
 			client := newReamazeClient(t, provider.URL)
 			first := newReamazeDexContext("create-reconcile")
-			_, err := sdkgo.RunMutation(first, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+			// A send cap of one makes the next attempt read back without resending.
+			_, err := sdkgo.RunMutation(first, client.CreateConversation(), reamazeConnection, validCreateConversationInput(), sendCapOfOne)
 			require.Error(t, err, "an unconfirmed send is retried as a reconciliation")
 			var marker singledispatch.Marker
 			require.NoError(t, json.Unmarshal(first.recordedHeartbeat, &marker))
 			callID = marker.CallID
 
-			result, err := sdkgo.RunMutation(first.nextAttempt(), client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+			result, err := sdkgo.RunMutation(first.nextAttempt(), client.CreateConversation(), reamazeConnection, validCreateConversationInput(), sendCapOfOne)
 			require.NoError(t, err)
 			require.Equal(t, test.wantBranch, result.Branch)
 			require.Equal(t, test.wantAlready, result.Value.WasAlreadyApplied)
@@ -201,12 +202,12 @@ func TestCreateConversationNeverSelectsDefectForCredentialsAfterAnEarlierDispatc
 			})
 			client, credentials := newSwitchingReamazeClient(t, provider.URL)
 			first := newReamazeDexContext("create-credentials")
-			_, err := sdkgo.RunMutation(first, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+			_, err := sdkgo.RunMutation(first, client.CreateConversation(), reamazeConnection, validCreateConversationInput(), sendCapOfOne)
 			require.Error(t, err, "a 502 keeps the marker and retries")
 
 			credentials.resolveErr = test.resolveErr
 			second := first.nextAttempt()
-			result, err := sdkgo.RunMutation(second, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+			result, err := sdkgo.RunMutation(second, client.CreateConversation(), reamazeConnection, validCreateConversationInput(), sendCapOfOne)
 			require.Equal(t, 1, provider.requestCount(), "nothing is sent without credentials")
 			if !test.isRetryable {
 				require.NoError(t, err)
@@ -222,7 +223,7 @@ func TestCreateConversationNeverSelectsDefectForCredentialsAfterAnEarlierDispatc
 			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 
 			credentials.resolveErr = nil
-			result, err = sdkgo.RunMutation(second.nextAttempt(), client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+			result, err = sdkgo.RunMutation(second.nextAttempt(), client.CreateConversation(), reamazeConnection, validCreateConversationInput(), sendCapOfOne)
 			require.NoError(t, err)
 			require.Equal(t, reamaze.CreateConversationBranchUncertain, result.Branch)
 			require.Equal(t, 2, provider.requestCount())
@@ -289,9 +290,63 @@ func TestCreateConversationTerminalOutcomes(t *testing.T) {
 	require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind)
 	require.NotContains(t, result.Failure.Message, "SENTINEL")
 
-	result, err = sdkgo.RunMutation(newReamazeDexContext("create-malformed"), client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+	_, err = sdkgo.RunMutation(newReamazeDexContext("create-malformed"), client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unconfirmed accepted write with no key match resends below the cap")
+
+	result, err = sdkgo.RunMutation(newReamazeDexContext("create-malformed-at-cap"), client.CreateConversation(), reamazeConnection, validCreateConversationInput(), sendCapOfOne)
 	require.NoError(t, err)
-	require.Equal(t, reamaze.CreateConversationBranchUncertain, result.Branch, "an unconfirmed accepted write resolves in this attempt")
+	require.Equal(t, reamaze.CreateConversationBranchUncertain, result.Branch, "at the cap, an unconfirmed accepted write resolves in this attempt")
+}
+
+func TestCreateConversationReadsBackThenResendsBelowTheCapAndSelectsUncertainAtTheCap(t *testing.T) {
+	provider := newRecordingReamaze(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPost {
+			writeJSON(t, response, http.StatusBadGateway, `{"error":"SENTINEL"}`)
+			return
+		}
+		writeValue(t, response, http.StatusOK, pageJSON("conversations", []any{}, 0))
+	})
+	client := newReamazeClient(t, provider.URL)
+	attempt := newReamazeDexContext("create-send-cap")
+	for sendCount := 1; sendCount <= 3; sendCount++ {
+		_, err := sdkgo.RunMutation(attempt, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+		require.Error(t, err, "send %d is followed by a read-back on the next attempt", sendCount)
+		attempt = attempt.nextAttempt()
+	}
+	result, err := sdkgo.RunMutation(attempt, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+	require.NoError(t, err)
+	require.Equal(t, reamaze.CreateConversationBranchUncertain, result.Branch, "the read-back after the third send finds nothing")
+	var posts, reads int
+	for index := range provider.requestCount() {
+		if provider.request(index).method == http.MethodPost {
+			posts++
+		} else {
+			reads++
+		}
+	}
+	require.Equal(t, 3, posts, "the fence refuses a fourth send")
+	require.Equal(t, 3, reads, "every attempt after a send reads back first")
+}
+
+func TestCreateConversationRefusalAfterAPossibleSendIsUncertain(t *testing.T) {
+	provider := newRecordingReamaze(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		switch {
+		case request.Method == http.MethodGet:
+			writeValue(t, response, http.StatusOK, pageJSON("conversations", []any{}, 0))
+		case index == 0:
+			writeJSON(t, response, http.StatusInternalServerError, `{}`)
+		default:
+			writeJSON(t, response, http.StatusUnprocessableEntity, `{}`)
+		}
+	})
+	client := newReamazeClient(t, provider.URL)
+	first := newReamazeDexContext("create-refusal-after-send")
+	_, err := sdkgo.RunMutation(first, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+	require.Error(t, err)
+	result, err := sdkgo.RunMutation(first.nextAttempt(), client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+	require.NoError(t, err)
+	require.Equal(t, reamaze.CreateConversationBranchUncertain, result.Branch, "the first send may have created the conversation")
 }
 
 func TestCreateConversationSendsNothingWithoutAMarkerOrValidInput(t *testing.T) {

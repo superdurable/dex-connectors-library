@@ -6,18 +6,18 @@ metadata:
   description: "Search, read, reply to, and update Help Scout Inbox conversations, find customers by email, and receive signed conversation webhooks, keeping Help Scout's own active, pending, closed, and spam statuses."
   company: Help Scout
   categories: [customer-support]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: helpscout
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-helpscout
       timestampFormat: rfc3339Nano
       operations: [searchConversations, getConversation, replyToConversation, updateConversation, findCustomerByEmail]
       triggers: [conversationEvent]
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: '@superdurable/connector-helpscout'
       operations: [searchConversations, getConversation, replyToConversation, updateConversation, findCustomerByEmail]
       triggers: [conversationEvent]
@@ -197,7 +197,7 @@ spec:
         - {id: replied, goName: Replied, description: "Help Scout created the reply or note and returned its thread ID."}
         - {id: notFound, goName: NotFound, description: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The thread was sent but Help Scout's answer was lost, a server error, or unreadable, so it may exist; the connector never sends it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, an unlisted status, or a 2xx without a thread ID, or an accepted thread could not be confirmed by read-back. Without a thread ID, an unknown outcome is resent while the cap allows.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -228,11 +228,13 @@ spec:
         - {id: updated, goName: Updated, description: "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt."}
         - {id: notFound, goName: NotFound, description: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Help Scout conclusively rejected the change, such as an assignee who is not a user or team of the account.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Help Scout returned a malformed or oversized conversation, so part of the change may have been applied.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Help Scout returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Every write sets a final status, assignee, or complete tag list, so a repeat leaves one result.
+        repeatOnUnknown: safe
       mocks:
         - name: updatedDefaultAnswer
           branch: updated
@@ -251,8 +253,8 @@ spec:
           failure: {kind: PROVIDER_REJECTION, message: "Help Scout refused to change the locked conversation (HTTP 412)."}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "Matches an oversized read-back after a status update."
-          failure: {kind: RESPONSE_TOO_LARGE, message: "Help Scout returned an oversized conversation read-back."}
+          description: "Matches an oversized conversation read before a status update."
+          failure: {kind: RESPONSE_TOO_LARGE, message: "Help Scout returned an oversized conversation before the change."}
     - name: findCustomerByEmail
       goName: FindCustomerByEmail
       inputType: FindCustomerByEmailInput

@@ -202,7 +202,7 @@ def update_conversation_provider_rejected_failure() -> Case[UpdateConversationOu
 setattr(update_conversation_provider_rejected_failure, '__module__', "dex_connectors.helpscout.helpscoutmock")
 
 def update_conversation_invalid_response_failure() -> Case[UpdateConversationOutput]:
-    return Case.branch_result(INVALID_RESPONSE, UpdateConversationOutput(conversation=Conversation(status='')), Failure(FailureKind.RESPONSE_TOO_LARGE, CONNECTOR_ID, "updateConversation", "Help Scout returned an oversized conversation read-back."))
+    return Case.branch_result(INVALID_RESPONSE, UpdateConversationOutput(conversation=Conversation(status='')), Failure(FailureKind.RESPONSE_TOO_LARGE, CONNECTOR_ID, "updateConversation", "Help Scout returned an oversized conversation before the change."))
 
 setattr(update_conversation_invalid_response_failure, '__module__', "dex_connectors.helpscout.helpscoutmock")
 

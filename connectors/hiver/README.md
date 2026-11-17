@@ -1,8 +1,8 @@
 # Hiver Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hiver/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hiver/go@v0.24.1`.
 
-The Python package is `dex-connector-hiver==0.2.0`. It implements all six operations with generated Step factories and the `conversationReceived` Trigger at behavior parity with Go, sharing its cursor documents byte for byte. Its [runnable conversation claim Flow](python/examples/claim_conversation/flow.py), [new conversation intake Flow](python/examples/new_conversation_intake/flow.py) with its [Worker entrypoint](python/examples/new_conversation_intake/main.py), and [package guide](python/README.md) show the static `hiver-support` connection and local Dex verification. Python replay uses the Go-recorded [conformance scenarios](../../conformance/connectors/hiver/scenarios.json), including multipart note and shared draft requests, and a recording of the Go Trigger fetcher. Live Hiver authorization and API behavior remain unverified.
+The Python package is `dex-connector-hiver==0.2.1`. It implements all six operations with generated Step factories and the `conversationReceived` Trigger at behavior parity with Go, sharing its cursor documents byte for byte. Its [runnable conversation claim Flow](python/examples/claim_conversation/flow.py), [new conversation intake Flow](python/examples/new_conversation_intake/flow.py) with its [Worker entrypoint](python/examples/new_conversation_intake/main.py), and [package guide](python/README.md) show the static `hiver-support` connection and local Dex verification. Python replay uses the Go-recorded [conformance scenarios](../../conformance/connectors/hiver/scenarios.json), including multipart note and shared draft requests, and a recording of the Go Trigger fetcher. Live Hiver authorization and API behavior remain unverified.
 
 For `addNote`, Python preserves Hiver's `created_at` through microseconds. A returned timestamp with nonzero sub-microsecond digits selects `uncertain` with a `created_at` protocol failure because the accepted note cannot be safely resent. The [Python package guide](python/README.md) describes this limit.
 
@@ -151,9 +151,11 @@ Sets any of `status`, `assigneeEmail`, `applyTagNames`, and `removeTagNames`:
    with only the requested parts.
 4. `GET` reads the conversation back. When it does not yet show the status,
    the resolved assignee, or the tag changes, the attempt is retried, which
-   sends the same change again. A read-back that Hiver rejects, such as a 401
-   after the API key was deleted, selects `invalidResponse`, because Hiver
-   already accepted the change.
+   sends the same change again. A read-back that fails or is malformed, such
+   as a 401 after the API key was deleted, also retries, because Hiver already
+   accepted the absolute change. `invalidResponse` means only that a user
+   search or tag page read before the change was malformed, so this attempt
+   sent no change.
 
 `providerRejected` means this attempt changed nothing. An earlier attempt that
 ended unconfirmed, such as one whose read-back hit a 5xx, may still have
@@ -293,12 +295,19 @@ so the operations take these positions:
   or a read-back that does not show the change yet, is retried.
 - **addNote** and **createSharedDraft** use the shared
   [single-dispatch fence](../../sdkgo/README.md#single-dispatch-fence) with sync
-  durability. The fence reads the prior checkpoint before credentials. A
-  missing, foreign, stale, or claimed marker on a later attempt forbids a
-  second send. Only a `notSent` or `canResend` marker from the immediately
-  preceding attempt permits another send. Credential failure and a pacer wait
-  that cannot fit record `notSent` before Retry; definite 429, 503, and traced
-  pre-connection failure record `canResend` before Retry.
+  durability and the manifest send cap (`maxSends`, 3 by default). The fence
+  reads the prior checkpoint before credentials and counts every possible
+  send of the Call ID. Hiver has no note or draft read-back, so an unknown
+  outcome returns Retry and the next attempt resends while fewer sends than
+  the cap may have taken effect; the send that reaches the cap selects
+  `uncertain`, and the fence refuses any further send. An unreadable or
+  untrusted checkpoint returns Retry without sending. A 2xx whose note or
+  draft ID decodes is never resent, even when another field is invalid.
+  Credential failure and a pacer wait that cannot fit record `notSent` before
+  Retry on a first send; definite 429, 503, and traced pre-connection failure
+  record `canResend` before Retry. A definite refusal of a first send records
+  `canResend` and selects its branch; after a possible earlier send it
+  selects `uncertain`.
 - The pacer wait ends by half the initial attempt budget, before the fence's
   write deadline. With no note or draft read-back, the fence gives the write
   at most five sixths of that budget and reserves at least one tenth as
@@ -306,9 +315,10 @@ so the operations take these positions:
 - Hiver [documents 429 and 500 errors](https://developer.hiverhq.com/hiver-api)
   but says nothing about whether a 503 could follow an applied write. The
   connector retries 503 under the connector retry contract; duplicate effects
-  after a 503 remain **unverified** with Hiver. A 408, other 5xx, 409, lost
-  response, or unreadable, invalid, or oversized 2xx selects `uncertain` and
-  is never resent. Hiver's published [shared draft](https://developer.hiverhq.com/hiver-api/conversations/update-conversation-in-the-inbox-copy)
+  after a 503 remain **unverified** with Hiver. A 408, other 5xx, 409, any
+  status other than 400, 401, 403, 404, 411, 413, 414, 415, and 422, a lost
+  response, or an unreadable, invalid, or oversized 2xx without a decodable ID
+  is resent within the send cap, which can add a duplicate note or draft. Hiver's published [shared draft](https://developer.hiverhq.com/hiver-api/conversations/update-conversation-in-the-inbox-copy)
   and [conversation read](https://developer.hiverhq.com/hiver-api/conversations/get-a-conversation-in-the-inbox)
   APIs offer no Call ID lookup for a draft or note.
 - Both writes send `X-Dex-Call-ID` as a stable correlation value across retries.
@@ -318,14 +328,14 @@ so the operations take these positions:
 Keep these two Steps sync so results are committed promptly.
 
 Dex does not acknowledge heartbeat persistence when the Worker writes the
-checkpoint. A later attempt with no stored marker therefore fails closed and
-never resends, even if the first request did not leave. A lost `canResend`
-marker can likewise produce `uncertain` for a request Hiver never applied.
-Checkpoints written by v0.21.x and earlier are invalid to the shared fence:
-an in-flight `addNote` or `createSharedDraft` retrying after a 429 selects
-`uncertain` after the upgrade, even if Hiver never applied it. Reconcile those
-calls before upgrading.
-`TestSharedFenceRejectsStaleCanResendAfterLostClaim` covers the stale-marker
+checkpoint. A later attempt with no stored marker therefore counts one
+possible send for every earlier attempt, even if the first request did not
+leave. A lost `canResend` marker can likewise use up the cap for a request
+Hiver never applied. Checkpoints written by v0.21.x and earlier are invalid
+to the shared fence: an in-flight `addNote` or `createSharedDraft` retries
+without sending after the upgrade until its retry budget runs out.
+Reconcile those calls before upgrading.
+`TestSharedFenceCountsALostClaimTowardTheSendCap` covers the stale-marker
 case, and `TestSharedFencePacerWaitEndsBeforeStepDeadline` covers the pre-send
 checkpoint.
 
@@ -339,16 +349,18 @@ the HTTP status, such as `Hiver rejected the request (HTTP 400)`.
 | --- | --- | --- |
 | 400, 422 | `providerRejected`, `VALIDATION` | `providerRejected`, `VALIDATION` |
 | 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same |
-| 3xx or 4xx other than 404 and 429 on the read-back after an accepted `PATCH` | `invalidResponse`, keeping the status's kind | not applicable |
-| 404 | `notFound` where declared, otherwise `providerRejected` | `notFound` |
-| 409, other 4xx | `providerRejected` | `uncertain` for 409; `providerRejected` for other 4xx |
-| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | same |
+| any failure on the read-back after an accepted `PATCH` | Retry, repeating the absolute change | not applicable |
+| 404 | `notFound` where declared, otherwise `providerRejected` | `notFound` on a first send, otherwise `uncertain` |
+| 411, 413, 414, 415 | `providerRejected` | `providerRejected` on a first send, otherwise `uncertain` |
+| 409, other 4xx | `providerRejected` for reads; Retry for the `PATCH` | resend within the send cap, then `uncertain` |
+| 3xx | `providerRejected`, `PROTOCOL`, for reads; Retry for the `PATCH`; redirects are never followed | resend within the send cap, then `uncertain` |
 | 429 | Retry after `Retry-After` when present, and hold the client's later requests | same |
 | traced DNS, connect, or TLS failure before a connection | Retry | Retry with `canResend` checkpoint |
 | cancelled wait for a slot | Retry | Retry with `notSent` checkpoint |
 | 503 | Retry, after `Retry-After` when present | Retry with `canResend` checkpoint |
-| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain` |
+| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | resend within the send cap, then `uncertain` |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for reads before the `PATCH`; Retry after it | `uncertain` when the note or draft ID decodes; otherwise resend within the send cap, then `uncertain` |
+| unreadable or untrusted fence checkpoint | not applicable | Retry without sending |
 | invalid input | `defect`, with no request | `defect`, with no request |
 | unavailable connection credentials | `defect`, with no request | `notSent` checkpoint, then Retry |
 
@@ -467,4 +479,4 @@ reads.
 
 ## TypeScript package
 
-The TypeScript package at [`typescript/`](typescript/README.md) implements all six operations and the `conversationReceived` Trigger in `@superdurable/connector-hiver` version `0.2.0`. Its checked-in list-inboxes Flow and [new-conversation-intake example](typescript/examples/new-conversation-intake/README.md) use the static `hiver-support` connection and run through a real Dex Worker and Client in the integration tests. The Go-recorded cross-language scenarios cover every operation branch, 429 and 503 Retry, transport failure, multipart note and draft writes, and uncertain outcomes; the Trigger's cursor documents match the Go connector byte for byte, checked against a recording of the Go fetcher. Live Hiver provider behavior is still unverified.
+The TypeScript package at [`typescript/`](typescript/README.md) implements all six operations and the `conversationReceived` Trigger in `@superdurable/connector-hiver` version `0.2.1`. Its checked-in list-inboxes Flow and [new-conversation-intake example](typescript/examples/new-conversation-intake/README.md) use the static `hiver-support` connection and run through a real Dex Worker and Client in the integration tests. The Go-recorded cross-language scenarios cover every operation branch, 429 and 503 Retry, transport failure, multipart note and draft writes, and uncertain outcomes; the Trigger's cursor documents match the Go connector byte for byte, checked against a recording of the Go fetcher. Live Hiver provider behavior is still unverified.

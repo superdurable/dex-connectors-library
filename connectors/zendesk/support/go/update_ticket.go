@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const updateTicketOperation = "updateTicket"
@@ -80,10 +81,11 @@ func (UpdateTicketOperation) IdempotencyKey(callID sdkgo.CallID, _ UpdateTicketI
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke reads the ticket, looks for an audit carrying this call's key when a comment or
-// expectedUpdatedAt makes a repeat observable, and otherwise writes the change as a Zendesk
-// safe update against the updated_at it read. A concurrent write, including a second dispatch
-// of this Step, returns 409, and the retried attempt rereads before writing again.
+// Invoke fences the write and, on every attempt, reads the ticket and looks for an audit carrying
+// this call's key when a comment or expectedUpdatedAt makes a repeat observable. It writes only
+// fields that differ, as a Zendesk safe update against the updated_at it read. An unknown write
+// outcome, including a 409, returns Retry while the send cap allows another send, so the next
+// attempt reads back before it resends; at the cap an unconfirmed write selects uncertain.
 func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicketInput) sdkgo.MutationAttempt[UpdateTicketOutput] {
 	if err := validateUpdateTicketInput(input); err != nil {
 		return sdkgo.NewMutationBranch(UpdateTicketBranchDefect, UpdateTicketOutput{}, zendeskFailurePointer(sdkgo.FailureValidation, updateTicketOperation, err.Error()), sdkgo.Receipt{})
@@ -91,13 +93,30 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	if call.IdempotencyKey == "" {
 		return sdkgo.NewMutationBranch(UpdateTicketBranchDefect, UpdateTicketOutput{}, zendeskFailurePointer(sdkgo.FailureLocalDefect, updateTicketOperation, "connector call has no idempotency key"), sdkgo.Receipt{})
 	}
+	fence, err := singledispatch.NewFence(call, UpdateTicketDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
+	if err != nil {
+		return sdkgo.NewMutationBranch(UpdateTicketBranchDefect, UpdateTicketOutput{}, zendeskFailurePointer(sdkgo.FailureLocalDefect, updateTicketOperation, "single-dispatch fence could not start"), sdkgo.Receipt{})
+	}
+	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		// FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+		return sdkgo.NewMutationRetry[UpdateTicketOutput](zendeskFailure(sdkgo.FailureAvailability, updateTicketOperation,
+			"the single-dispatch checkpoint could not be read; nothing was sent in this attempt"), 0)
+	}
+	permit := newTicketWritePermit(call, fence, decision)
 	credentials, failure := operation.client.resolveCredentials(call, updateTicketOperation)
 	if failure != nil {
+		if !permit.isFirstSend {
+			return sdkgo.NewMutationUncertain(UpdateTicketOutput{}, *failure, sdkgo.Receipt{})
+		}
+		if err := fence.RecordNotSent(); err != nil {
+			return sdkgo.NewMutationRetry[UpdateTicketOutput](zendeskFailure(sdkgo.FailureAvailability, updateTicketOperation, "Dex did not record the not-sent checkpoint"), 0)
+		}
 		return sdkgo.NewMutationBranch(UpdateTicketBranchDefect, UpdateTicketOutput{}, failure, sdkgo.Receipt{})
 	}
 	readResult := operation.client.exchange(call, credentials, updateTicketOperation, zendeskRequest{method: http.MethodGet, path: ticketPath(input.TicketID)})
 	receipt := operation.client.receipt(call, readResult.response, input.TicketID)
-	if attempt, isTerminal := updateTicketAttemptForExchange(readResult, receipt, UpdateTicketOutput{}); isTerminal {
+	if attempt, isTerminal := permit.readAttempt(readResult, receipt, UpdateTicketOutput{}); isTerminal {
 		return attempt
 	}
 	current, err := decodeTicketEnvelope(readResult.response.body, operation.client.agentTicketURL)
@@ -105,7 +124,11 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 		err = errors.New("ticket response is for another ticket")
 	}
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateTicketBranchInvalidResponse, UpdateTicketOutput{}, zendeskFailurePointer(sdkgo.FailureProtocol, updateTicketOperation, "Zendesk returned an invalid ticket: "+err.Error()), receipt)
+		invalid := zendeskFailure(sdkgo.FailureProtocol, updateTicketOperation, "Zendesk returned an invalid ticket: "+err.Error())
+		if !permit.isFirstSend {
+			return permit.unconfirmedRead(UpdateTicketOutput{}, invalid, receipt)
+		}
+		return sdkgo.NewMutationBranch(UpdateTicketBranchInvalidResponse, UpdateTicketOutput{}, &invalid, receipt)
 	}
 	currentOutput := UpdateTicketOutput{Ticket: current.ticket}
 	if input.Comment != nil || input.ExpectedUpdatedAt != "" {
@@ -113,12 +136,16 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 			method: http.MethodGet, path: ticketPath(input.TicketID) + "/audits", query: url.Values{"sort_order": {"desc"}},
 		})
 		receipt = operation.client.receipt(call, auditResult.response, input.TicketID)
-		if attempt, isTerminal := updateTicketAttemptForExchange(auditResult, receipt, currentOutput); isTerminal {
+		if attempt, isTerminal := permit.readAttempt(auditResult, receipt, currentOutput); isTerminal {
 			return attempt
 		}
 		hasEarlierChange, err := hasAuditWithIdempotencyKey(auditResult.response.body, call.IdempotencyKey)
 		if err != nil {
-			return sdkgo.NewMutationBranch(UpdateTicketBranchInvalidResponse, currentOutput, zendeskFailurePointer(sdkgo.FailureProtocol, updateTicketOperation, "Zendesk returned an invalid audit page: "+err.Error()), receipt)
+			invalid := zendeskFailure(sdkgo.FailureProtocol, updateTicketOperation, "Zendesk returned an invalid audit page: "+err.Error())
+			if !permit.isFirstSend {
+				return permit.unconfirmedRead(currentOutput, invalid, receipt)
+			}
+			return sdkgo.NewMutationBranch(UpdateTicketBranchInvalidResponse, currentOutput, &invalid, receipt)
 		}
 		if hasEarlierChange {
 			return sdkgo.NewMutationBranch(UpdateTicketBranchUpdated, UpdateTicketOutput{Ticket: current.ticket, WasAlreadyApplied: true}, nil, receipt)
@@ -128,19 +155,32 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 		// validateUpdateTicketInput already rejected an unparsable value.
 		expectedUpdatedAt, _ := time.Parse(time.RFC3339, input.ExpectedUpdatedAt)
 		if !expectedUpdatedAt.Equal(current.ticket.UpdatedAt) {
-			return sdkgo.NewMutationBranch(UpdateTicketBranchConflict, currentOutput, zendeskFailurePointer(sdkgo.FailureConflict, updateTicketOperation,
-				"ticket was updated at "+current.ticket.UpdatedAt.Format(time.RFC3339)+", after expectedUpdatedAt"), receipt)
+			conflict := zendeskFailure(sdkgo.FailureConflict, updateTicketOperation,
+				"ticket was updated at "+current.ticket.UpdatedAt.Format(time.RFC3339)+", after expectedUpdatedAt")
+			if !permit.isFirstSend {
+				// An earlier send of this Step may have moved updated_at without an audit on the latest page.
+				return permit.unconfirmedRead(currentOutput, conflict, receipt)
+			}
+			return sdkgo.NewMutationBranch(UpdateTicketBranchConflict, currentOutput, &conflict, receipt)
 		}
 	}
 	change, hasEffect := planTicketChange(input, current, call.IdempotencyKey)
 	if !hasEffect {
 		return sdkgo.NewMutationBranch(UpdateTicketBranchUpdated, UpdateTicketOutput{Ticket: current.ticket, WasAlreadyApplied: true}, nil, receipt)
 	}
-	writeResult := operation.client.exchange(call, credentials, updateTicketOperation, zendeskRequest{
-		method: http.MethodPut, path: ticketPath(input.TicketID), payload: updateTicketRequestWire{Ticket: change},
-	})
+	if permit.isAtSendCap {
+		return sdkgo.NewMutationUncertain(currentOutput, zendeskFailure(sdkgo.FailureTransport, updateTicketOperation,
+			"earlier attempts may have written the change and the send cap is reached, and the latest audit page shows no change by this Step"), receipt)
+	}
+	write := &fencedTicketWrite{client: operation.client, call: call, credentials: credentials,
+		request: zendeskRequest{method: http.MethodPut, path: ticketPath(input.TicketID), payload: updateTicketRequestWire{Ticket: change}}}
+	if err := fence.Dispatch(write.dispatch); err != nil {
+		// Dispatch refused before sending, so nothing reached Zendesk in this attempt.
+		return sdkgo.NewMutationRetry[UpdateTicketOutput](zendeskFailure(sdkgo.FailureAvailability, updateTicketOperation, "Zendesk write was not sent before the attempt deadline or checkpoint"), 0)
+	}
+	writeResult := write.result
 	receipt = operation.client.receipt(call, writeResult.response, input.TicketID)
-	if attempt, isTerminal := updateTicketAttemptForExchange(writeResult, receipt, currentOutput); isTerminal {
+	if attempt, isTerminal := permit.writeAttempt(writeResult, receipt, currentOutput); isTerminal {
 		return attempt
 	}
 	updated, err := decodeTicketEnvelope(writeResult.response.body, operation.client.agentTicketURL)
@@ -148,26 +188,22 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 		err = errors.New("ticket response is for another ticket")
 	}
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateTicketBranchInvalidResponse, currentOutput, zendeskFailurePointer(sdkgo.FailureProtocol, updateTicketOperation, "Zendesk returned an invalid updated ticket: "+err.Error()), receipt)
+		return permit.resendOrSelectUncertain(currentOutput, zendeskFailure(sdkgo.FailureProtocol, updateTicketOperation, "Zendesk returned an invalid updated ticket: "+err.Error()), 0, receipt)
 	}
 	return sdkgo.NewMutationBranch(UpdateTicketBranchUpdated, UpdateTicketOutput{Ticket: updated.ticket}, nil, receipt)
 }
 
-// updateTicketAttemptForExchange returns the terminal attempt for every outcome except success.
-func updateTicketAttemptForExchange(result zendeskExchange, receipt sdkgo.Receipt, value UpdateTicketOutput) (sdkgo.MutationAttempt[UpdateTicketOutput], bool) {
+// updateTicketBranchForExchange returns the branch of a non-success outcome that no earlier send can have caused.
+func updateTicketBranchForExchange(result zendeskExchange, receipt sdkgo.Receipt, value UpdateTicketOutput) sdkgo.MutationAttempt[UpdateTicketOutput] {
 	switch result.outcome {
-	case exchangeSucceeded:
-		return sdkgo.MutationAttempt[UpdateTicketOutput]{}, false
-	case exchangeRetryable:
-		return sdkgo.NewMutationRetry[UpdateTicketOutput](result.failure, result.retryAfter), true
 	case exchangeNotFound:
-		return sdkgo.NewMutationBranch(UpdateTicketBranchNotFound, value, &result.failure, receipt), true
+		return sdkgo.NewMutationBranch(UpdateTicketBranchNotFound, value, &result.failure, receipt)
 	case exchangeInvalid:
-		return sdkgo.NewMutationBranch(UpdateTicketBranchInvalidResponse, value, &result.failure, receipt), true
+		return sdkgo.NewMutationBranch(UpdateTicketBranchInvalidResponse, value, &result.failure, receipt)
 	case exchangeDefect:
-		return sdkgo.NewMutationBranch(UpdateTicketBranchDefect, value, &result.failure, receipt), true
+		return sdkgo.NewMutationBranch(UpdateTicketBranchDefect, value, &result.failure, receipt)
 	default:
-		return sdkgo.NewMutationBranch(UpdateTicketBranchProviderRejected, value, &result.failure, receipt), true
+		return sdkgo.NewMutationBranch(UpdateTicketBranchProviderRejected, value, &result.failure, receipt)
 	}
 }
 

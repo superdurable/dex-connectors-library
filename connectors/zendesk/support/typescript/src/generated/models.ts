@@ -44,7 +44,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** Non-secret Zendesk account subdomain: the acme in https://acme.zendesk.com. Sign in at https://www.zendesk.com/login/ and copy the part before .zendesk.com from the Agent Workspace address bar, or from Admin Center > Account > Brand management > Brands for the default brand. Enter lowercase letters, digits, and hyphens only, without https:// or .zendesk.com; a host-mapped domain such as support.example.com does not work. Required: every API request is sent to this account. */
   subdomain: string;
-  /** Maximum complete Zendesk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions are unusually large. An oversized response selects invalidResponse. */
+  /** Maximum complete Zendesk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions are unusually large. An oversized read response selects invalidResponse; an oversized answer to a write is an unknown outcome that the write repeats. */
   maxResponseBytes?: number;
   /** Delay between ticketChanged Trigger polls of Zendesk's incremental ticket export, as a Go duration of at least 5s such as 30s or 5m. Leave blank to keep the displayed interval; a shorter interval delivers changes sooner but shares the export's 10 requests per minute per account with other bindings and integrations. Takes effect when the Worker restarts. Runtime value in milliseconds. */
   pollIntervalMs?: number;

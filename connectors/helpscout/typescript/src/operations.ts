@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { isIP } from 'node:net';
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { newFence, CheckpointError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { newFence, CheckpointError, DispatchNotAllowedError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
 import type { ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { HelpScoutClient, HelpScoutExchange, CredentialResolution } from './client.js';
 import { isProvablyUnsent } from './client.js';
@@ -112,24 +112,34 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
   async invoke(call: Call, input: UpdateConversationInput): Promise<MutationAttempt<UpdateConversationOutput>> {
     try { validateUpdateInput(input); }
     catch (error) { return mutationFailure('updateConversation', 'defect', 'VALIDATION', zeroUpdate, {}, error); }
-    const read = async (value: UpdateConversationOutput): Promise<Conversation | MutationAttempt<UpdateConversationOutput>> => {
+    // After a write, the final values are safe to repeat, so a refused or unusable read-back retries.
+    const read = async (value: UpdateConversationOutput, isAfterWrite: boolean): Promise<Conversation | MutationAttempt<UpdateConversationOutput>> => {
       const exchange = await this.client.exchange(call, 'GET', conversationPath(input.conversationId));
+      if (isAfterWrite) {
+        const terminal = classifyMutation(this.client, call, 'updateConversation', exchange, value, input.conversationId, 'providerRejected');
+        if (terminal) return terminal.kind === 'retry' ? terminal : newMutationRetry(failure('updateConversation', 'AVAILABILITY', 'Help Scout accepted the change but its read-back failed'));
+      }
       if ('response' in exchange && exchange.response.status === 301) return mutationFailure('updateConversation', 'notFound', 'NOT_FOUND', value, this.client.receipt(call, input.conversationId));
       const terminal = classifyMutation(this.client, call, 'updateConversation', exchange, value, input.conversationId, 'providerRejected', 'notFound');
       if (terminal) return terminal;
       try { return decodeConversation(parseObject(responseOf(exchange).body), input.conversationId); }
-      catch (error) { return mutationFailure('updateConversation', 'invalidResponse', 'PROTOCOL', value, this.client.receipt(call, input.conversationId), error); }
+      catch (error) {
+        if (isAfterWrite) return newMutationRetry(failure('updateConversation', 'PROTOCOL', `Help Scout accepted the change but returned an invalid conversation: ${error instanceof Error ? error.message : 'malformed response'}`));
+        return mutationFailure('updateConversation', 'invalidResponse', 'PROTOCOL', value, this.client.receipt(call, input.conversationId), error);
+      }
     };
-    const current = await read(zeroUpdate);
+    const current = await read(zeroUpdate, false);
     if (!('id' in current)) return current;
     const writes = planUpdates(input, current);
     if (!writes.length) return newMutationBranch('updated', { conversation: current, wasAlreadyApplied: true }, this.client.receipt(call, input.conversationId));
     for (const write of writes) {
       const exchange = await this.client.exchange(call, write.method, write.path, undefined, write.body);
+      // Every write sets a final value, so an unknown outcome repeats it.
+      if (isUnknownWriteOutcome(exchange)) return newMutationRetry(failure('updateConversation', 'AVAILABILITY', `the Help Scout write outcome is unknown (HTTP ${'response' in exchange ? exchange.response.status : 0})`));
       const terminal = classifyMutation(this.client, call, 'updateConversation', exchange, { conversation: current }, input.conversationId, 'providerRejected', 'notFound');
       if (terminal) return terminal;
     }
-    const updated = await read({ conversation: current });
+    const updated = await read({ conversation: current }, true);
     if (!('id' in updated)) return updated;
     return newMutationBranch('updated', { conversation: updated }, this.client.receipt(call, input.conversationId));
   }
@@ -147,24 +157,39 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
     try { validateReplyInput(input); }
     catch (error) { return mutationFailure('replyToConversation', 'defect', 'VALIDATION', output, {}, error); }
     const receipt = this.client.receipt(call, input.conversationId);
+    const operationMaxSends = definitionMaxSends(ReplyToConversationDefinition);
     let fence: ReturnType<typeof newFence>;
-    try { fence = newFence(call, 30_000); }
+    try { fence = newFence(call, 30_000, { maxSends: operationMaxSends }); }
     catch (error) { return mutationFailure('replyToConversation', 'defect', 'LOCAL_DEFECT', output, {}, error); }
     const decision = fence.decide();
-    if (decision.kind === 'failClosed') return newMutationUncertain(output, failure('replyToConversation', 'TRANSPORT', 'the dispatch checkpoint is unavailable, so the thread is not sent again'), receipt);
-    if (decision.kind === 'readBackRequired') return this.readBack(call, output, decision.marker);
+    // FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+    if (decision.kind === 'failClosed') return newMutationRetry(failure('replyToConversation', 'AVAILABILITY', 'the dispatch checkpoint could not be read; nothing was sent in this attempt'));
+    // Help Scout returns a thread ID only for a created thread, so a saved one is read back and never resent.
+    if (decision.kind === 'readBackRequired' || (decision.kind === 'readBackThenResendAllowed' && decision.marker?.providerId)) return this.readBack(call, output, decision.marker);
+    const priorSends = decision.priorSendUpperBound ?? 0;
+    const isFirstSend = priorSends === 0;
+    const canResend = priorSends + 1 < effectiveMaxSends(call, operationMaxSends);
+    const uncertainBeforeResend = (message: string) => newMutationUncertain(output, failure('replyToConversation', 'TRANSPORT', `an earlier attempt may have sent the thread, and ${message}`), receipt);
     const credentials = await this.client.resolveCredentials(call);
     if (credentials.kind !== 'resolved') {
-      if (credentials.kind === 'terminal') return mutationFailure('replyToConversation', 'defect', 'AUTHENTICATION', output, {}, new Error(credentials.message));
-      try { await fence.recordNotSent(); }
-      catch { /* A failed checkpoint cannot authorize another send. */ }
+      if (credentials.kind === 'terminal') {
+        if (!isFirstSend) return uncertainBeforeResend('authorization failed before a resend');
+        return mutationFailure('replyToConversation', 'defect', 'AUTHENTICATION', output, {}, new Error(credentials.message));
+      }
+      // After a possible earlier send, notSent would hide that send, so nothing is recorded.
+      if (isFirstSend) {
+        try { await fence.recordNotSent(); }
+        catch { /* A failed checkpoint cannot authorize another send. */ }
+      }
       return newMutationRetry(failure('replyToConversation', 'AVAILABILITY', credentials.message));
     }
     if (!input.isInternalNote && !input.customerId) {
       const readTimeoutMs = this.client.replyReadTimeoutMs(call);
       if (!readTimeoutMs) return newMutationRetry(failure('replyToConversation', 'AVAILABILITY', 'too little attempt time remains to read the conversation'));
       const read = await this.client.exchangeWithToken(call, credentials.token, 'GET', conversationPath(input.conversationId), undefined, undefined, true, readTimeoutMs);
+      const refusedRead = 'the conversation read before a resend failed';
       if ('response' in read && read.response.status === 301) {
+        if (!isFirstSend) return uncertainBeforeResend(refusedRead);
         const location = String(read.response.headers.location ?? '');
         const matched = /^(?:https:\/\/api\.helpscout\.net)?\/v2\/conversations\/([1-9]\d*)$/.exec(location);
         const mergedId = matched ? Number(matched[1]) : 0;
@@ -172,47 +197,64 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
         return newMutationBranch('notFound', output, receipt, failure('replyToConversation', 'NOT_FOUND', message));
       }
       const terminal = classifyMutation(this.client, call, 'replyToConversation', read, output, input.conversationId, 'providerRejected', 'notFound');
-      if (terminal) { if (terminal.kind === 'retry') { try { await fence.recordNotSent(); } catch { /* A failed checkpoint remains fail closed. */ } } return terminal; }
+      if (terminal) {
+        if (terminal.kind === 'retry') { try { await fence.recordNotSent(); } catch { /* Refused after a possible earlier send, so that send stays counted. */ } }
+        else if (!isFirstSend) return uncertainBeforeResend(refusedRead);
+        return terminal;
+      }
       try {
         const conversation = decodeConversation(parseObject(responseOf(read).body), input.conversationId);
-        if (!conversation.primaryCustomer) return mutationFailure('replyToConversation', 'providerRejected', 'VALIDATION', output, receipt, new Error('the conversation has no primary customer to reply to; pass customerId'));
+        if (!conversation.primaryCustomer) return isFirstSend ? mutationFailure('replyToConversation', 'providerRejected', 'VALIDATION', output, receipt, new Error('the conversation has no primary customer to reply to; pass customerId')) : uncertainBeforeResend(refusedRead);
         output.customerId = conversation.primaryCustomer.id;
-      } catch (error) { return mutationFailure('replyToConversation', 'providerRejected', 'PROTOCOL', output, receipt, error); }
+      } catch (error) { return isFirstSend ? mutationFailure('replyToConversation', 'providerRejected', 'PROTOCOL', output, receipt, error) : uncertainBeforeResend(refusedRead); }
     }
     const path = `${conversationPath(input.conversationId)}/${input.isInternalNote ? 'notes' : 'reply'}`;
     const body = input.isInternalNote ? { text: input.text, ...(input.status ? { status: input.status } : {}) } :
       { text: input.text, ...(input.status ? { status: input.status } : {}), customer: { id: output.customerId } };
     let exchange: HelpScoutExchange;
+    const resendOrUncertain = (cause: Failure, retryAfterMs = 0) =>
+      // The claim stays the last marker, so the next attempt counts this send.
+      canResend ? newMutationRetry<ConversationReply>(cause, retryAfterMs) : newMutationUncertain(output, cause, receipt);
+    const reject = async (branch: string, cause: Failure, branchReceipt: ReceiptDraft): Promise<MutationAttempt<ConversationReply>> => {
+      if (!isFirstSend) return newMutationUncertain(output, cause, receipt);
+      try { await fence.recordCanResend(); }
+      catch { return newMutationRetry(failure('replyToConversation', 'AVAILABILITY', 'the refusal checkpoint could not be recorded')); }
+      return newMutationBranch(branch, output, branchReceipt, cause);
+    };
+    const lostAnswer = failure('replyToConversation', 'TRANSPORT', "the thread may exist because Help Scout's answer was lost");
     try { exchange = await fence.dispatch(() => this.client.exchangeWithToken(call, credentials.token, 'POST', path, undefined, body, false)); }
     catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(failure('replyToConversation', 'AVAILABILITY', 'the thread was not sent before the Execute dispatch deadline'));
-      return newMutationUncertain(output, failure('replyToConversation', 'TRANSPORT', "the thread may exist because Help Scout's answer was lost"), receipt);
+      // Dispatch refused before sending, so nothing reached Help Scout in this attempt.
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError) return newMutationRetry(failure('replyToConversation', 'AVAILABILITY', 'the thread was not sent before the Execute dispatch deadline'));
+      return resendOrUncertain(lostAnswer);
     }
     if ('error' in exchange && !(exchange.status !== undefined && exchange.status >= 200 && exchange.status < 300)) {
       if (isProvablyUnsent(exchange.error)) {
-        try { await fence.recordCanResend(); } catch { /* A failed checkpoint remains fail closed. */ }
+        try { await fence.recordCanResend(); } catch { /* A lost checkpoint leaves the claim, so the next attempt counts this send. */ }
         return newMutationRetry(failure('replyToConversation', 'TRANSPORT', 'Help Scout could not be reached, so no thread was sent'));
       }
-      return newMutationUncertain(output, failure('replyToConversation', 'TRANSPORT', "the thread may exist because Help Scout's answer was lost"), receipt);
+      return resendOrUncertain(lostAnswer);
     }
     const response = 'response' in exchange ? exchange.response : { status: exchange.status!, headers: exchange.headers ?? {}, body: new Uint8Array() };
     if (response.status >= 200 && response.status < 300) {
       const raw = String(response.headers['resource-id'] ?? '').trim();
       const threadId = /^[1-9]\d*$/.test(raw) ? Number(raw) : 0;
-      if (!positiveId(threadId)) return newMutationUncertain(output, failure('replyToConversation', 'TRANSPORT', 'Help Scout accepted the thread without a valid Resource-Id; the thread may exist'), receipt);
+      // Without a thread ID the answer cannot be read back, so it counts as an unknown outcome.
+      if (!positiveId(threadId)) return resendOrUncertain(failure('replyToConversation', 'TRANSPORT', 'Help Scout answered the thread without a valid Resource-Id; the thread may exist'));
       output.threadId = threadId;
       try { await fence.recordProviderId(String(threadId)); } catch { /* A lost ID still forbids another send. */ }
       return newMutationBranch('replied', output, this.client.receipt(call, threadId));
     }
     const outcome = this.client.classifyFailure('replyToConversation', response, credentials.token);
     const status = response.status;
-    if ([429, 503, 504].includes(status)) {
-      try { await fence.recordCanResend(); } catch { /* A failed checkpoint remains fail closed. */ }
+    if ([429, 503].includes(status)) {
+      try { await fence.recordCanResend(); } catch { /* A lost checkpoint leaves the claim, so the next attempt counts this send. */ }
       return newMutationRetry(outcome.failure, outcome.retryAfterMs);
     }
-    if ([404, 410].includes(status)) return newMutationBranch('notFound', output, receipt, outcome.failure);
-    if (status >= 400 && status < 500 && ![408, 409].includes(status)) return newMutationBranch('providerRejected', output, receipt, outcome.failure);
-    return newMutationUncertain(output, { ...outcome.failure, message: `${outcome.failure.message}; the thread may exist` }, receipt);
+    if (status === 404) return reject('notFound', outcome.failure, receipt);
+    if (definiteRefusalStatuses.has(status)) return reject('providerRejected', outcome.failure, receipt);
+    // A 3xx, 408, 409, 410, another unlisted status, or a 5xx other than 503 can follow a created thread.
+    return resendOrUncertain({ ...outcome.failure, message: `${outcome.failure.message}; the thread may exist` }, outcome.retryAfterMs);
   }
 
   private async readBack(call: Call, output: ConversationReply, marker: { callId: string; providerId?: string | undefined } | undefined): Promise<MutationAttempt<ConversationReply>> {
@@ -302,6 +344,22 @@ function classifyMutation<T>(client: HelpScoutClient, call: Call, operation: str
   const outcome = client.classifyFailure(operation, response, exchange.accessToken);
   if (outcome.isRetry) return newMutationRetry(outcome.failure, outcome.retryAfterMs);
   return newMutationBranch([404, 410].includes(response.status) ? notFoundBranch : rejectedBranch, value, client.receipt(call, objectId, outcome.logRef), outcome.failure);
+}
+
+/** Only these statuses prove Help Scout applied nothing; it documents 412 and 423 as a locked conversation. */
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 412, 413, 414, 415, 422, 423]);
+
+/** Report an answer to a sent write that neither confirms nor definitely refuses it; classifyMutation retries 408, 429, and 5xx. */
+function isUnknownWriteOutcome(exchange: HelpScoutExchange | CredentialResolution): boolean {
+  if ('kind' in exchange || 'error' in exchange) return false;
+  if (exchange.isTooLarge || exchange.isMalformed) return true;
+  const status = exchange.response.status;
+  return (status < 200 || status >= 300) && status !== 408 && status !== 429 && status < 500 && !definiteRefusalStatuses.has(status);
+}
+
+/** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
+function effectiveMaxSends(call: Call, operationMaxSends: number): number {
+  return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
 }
 
 function mutationFailure<T>(operation: string, branch: string, kind: Failure['kind'], value: T, receipt: ReceiptDraft, error?: unknown): MutationAttempt<T> {

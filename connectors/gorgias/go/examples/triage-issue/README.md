@@ -28,7 +28,8 @@ every Gorgias operation to triage a new customer issue:
 The `notFound` requester branch opens a ticket for a customer Gorgias does not
 know. Every other optional branch is unwired and fails the Flow with the
 connector's safe reason, including an unconfirmed create, note, or reply.
-Those writes are never resent after an uncertain outcome.
+Those writes select `uncertain` only at the send cap of three possible sends;
+below it, an unconfirmed write is looked up by its `external_id` and resent.
 
 ## Generate the Flow Definition
 
@@ -58,7 +59,7 @@ mkdir -p /tmp/gorgias-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/gorgias/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/gorgias/go \
-  --version v0.24.0 --tag connectors/gorgias/go/v0.24.0 \
+  --version v0.24.1 --tag connectors/gorgias/go/v0.24.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/gorgias-release/connector-release.json \
   --digest-output /tmp/gorgias-release/connector-release.json.sha256
@@ -133,12 +134,12 @@ has no idempotency key and lists tickets filtered only by customer:
 - an update retried after Worker loss writes the same values without duplicating a tag;
 - a lost create response, and a lost reply response, are found by their
   `external_id` on the retry and never resent;
-- a create that fails with a 502 and that Gorgias still does not show after
-  repeated lookups fails on the unwired `uncertain` branch and is never resent;
-- a rate-limited create waits for `Retry-After`, looks for the ticket by its
-  `external_id`, and creates one ticket;
+- a create that fails with a 502 and that Gorgias does not show is looked up
+  by its `external_id` and resent once below the send cap, creating one ticket;
+- a rate-limited create waits for `Retry-After` and sends again without a
+  lookup, because Gorgias did not process the 429, creating one ticket;
 - a Worker lost while Gorgias holds a create it already stored is replaced,
-  and the new attempt finds the dispatch checkpoint and the ticket and sends
+  and the new attempt finds the fence claim, looks the ticket up, and sends
   nothing;
 - a rejected ticket fails the Flow through the unwired `providerRejected`
   branch without Gorgias's message text;

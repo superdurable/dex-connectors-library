@@ -126,20 +126,22 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 		method: http.MethodPatch, path: conversationPath(input.InboxID, input.ConversationID), jsonPayload: buildConversationChange(input, output),
 	})
 	receipt := operation.client.receipt(call, writeResult.response, input.ConversationID)
-	if attempt, isTerminal := updateConversationAttemptForExchange(writeResult, receipt); isTerminal {
+	if attempt, isTerminal := updateConversationWriteAttemptForExchange(writeResult, receipt); isTerminal {
 		return attempt
 	}
 	readResult := operation.client.exchange(call, credentials, updateConversationOperation, hiverRequest{
 		method: http.MethodGet, path: conversationPath(input.InboxID, input.ConversationID),
 	})
-	receipt = operation.client.receipt(call, readResult.response, input.ConversationID)
-	if attempt, isTerminal := readBackAttemptForExchange(readResult, receipt); isTerminal {
-		return attempt
+	if readResult.outcome != exchangeSucceeded {
+		// Hiver accepted the absolute change, so an unconfirmed read-back repeats it.
+		failure := readResult.failure
+		failure.Message = "Hiver accepted the change but the read-back failed: " + failure.Message
+		return sdkgo.NewMutationRetry[UpdateConversationOutput](failure, readResult.retryAfter)
 	}
 	details, err := decodeConversationBody(readResult.response.body, input.InboxID)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, UpdateConversationOutput{}, hiverFailurePointer(sdkgo.FailureProtocol, updateConversationOperation,
-			"Hiver accepted the change but returned an invalid conversation: "+err.Error()), receipt)
+		return sdkgo.NewMutationRetry[UpdateConversationOutput](hiverFailure(sdkgo.FailureProtocol, updateConversationOperation,
+			"Hiver accepted the change but returned an invalid conversation: "+err.Error()), 0)
 	}
 	output.Conversation = details.Conversation
 	if missing := describeUnappliedChange(input, output); missing != "" {
@@ -227,17 +229,20 @@ func (operation UpdateConversationOperation) resolveTags(call sdkgo.Call, creden
 	return applied, removed, sdkgo.MutationAttempt[UpdateConversationOutput]{}, false
 }
 
-// readBackAttemptForExchange selects invalidResponse for a rejected read-back, because Hiver already accepted the change.
-func readBackAttemptForExchange(result hiverExchange, receipt sdkgo.Receipt) (sdkgo.MutationAttempt[UpdateConversationOutput], bool) {
-	if result.outcome != exchangeRejected {
+// updateConversationWriteAttemptForExchange repeats the absolute PATCH on every outcome except a definite refusal.
+func updateConversationWriteAttemptForExchange(result hiverExchange, receipt sdkgo.Receipt) (sdkgo.MutationAttempt[UpdateConversationOutput], bool) {
+	switch result.outcome {
+	case exchangeSucceeded, exchangeNotFound, exchangeDefect:
 		return updateConversationAttemptForExchange(result, receipt)
+	case exchangeRejected:
+		if isDefiniteRefusalStatus(result.response.statusCode) {
+			return updateConversationAttemptForExchange(result, receipt)
+		}
 	}
-	failure := result.failure
-	failure.Message = "Hiver accepted the change but rejected the read-back: " + failure.Message
-	return sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, UpdateConversationOutput{}, &failure, receipt), true
+	return sdkgo.NewMutationRetry[UpdateConversationOutput](result.failure, result.retryAfter), true
 }
 
-// updateConversationAttemptForExchange retries every unconfirmed outcome, because the change is absolute.
+// updateConversationAttemptForExchange maps a pre-write read; it retries every unconfirmed outcome.
 func updateConversationAttemptForExchange(result hiverExchange, receipt sdkgo.Receipt) (sdkgo.MutationAttempt[UpdateConversationOutput], bool) {
 	switch result.outcome {
 	case exchangeSucceeded:

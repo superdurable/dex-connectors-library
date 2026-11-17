@@ -21,9 +21,10 @@ every Zoho Desk operation to triage a new customer issue:
 6. `AddTriageComment` calls `desk.NewAddCommentStep` to add one private
    comment, and `CompleteTriage` completes with the outcome.
 
-Only happy-path connector branches are wired. An uncertain create or comment
-fails the Flow without resending, so a person can inspect Zoho Desk before
-taking further action. Other optional branches also fail the Flow, including
+Only happy-path connector branches are wired. An unknown create or comment
+outcome is resent while the send cap of three allows, and each resend may
+create another ticket or comment; an uncertain create or comment at the cap
+fails the Flow, so a person can inspect Zoho Desk before taking further action. Other optional branches also fail the Flow, including
 a rejected ticket, missing ticket, invalid response, or local defect.
 
 ## Generate the Flow Definition
@@ -60,7 +61,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/zoho/desk/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go \
-  --version v0.25.0 --tag connectors/zoho/desk/go/v0.25.0 \
+  --version v0.25.1 --tag connectors/zoho/desk/go/v0.25.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/zoho-desk-release/connector-ui.tgz \
   --ui-digest /tmp/zoho-desk-release/connector-ui.tgz.sha256 \
@@ -143,15 +144,18 @@ empty search with 204, and matches look-alike addresses in its email filter:
 - a Worker lost after an update is replaced; the next attempt reads back the
   absolute values and sends no second write;
 - a lost update response is retried and finds the values applied;
-- a lost create or comment response fails the Flow through the unwired
-  `uncertain` branch and is never resent;
+- a lost create or comment response is resent once within the send cap, and
+  the fake shows the resulting second ticket or comment;
+- a create or comment that fails with 503 or 500 once is retried and sent once more;
+- a create that fails with 500 at every send fails the Flow through the unwired
+  `uncertain` branch after three sends;
 - a rate-limited create waits for `Retry-After` and creates one ticket;
 - a Worker lost while Zoho Desk holds the create is replaced, and the new
-  attempt finds the dispatch checkpoint and sends nothing;
+  attempt counts the fence claim and resends the create once;
 - a token Zoho Desk rejects at the create is refreshed once through a
-  refreshing credential source at the EU Zoho Accounts server, the create is
-  sent once more, and the stored credentials keep the data center and the
-  unrotated refresh token;
+  refreshing credential source at the EU Zoho Accounts server, the next attempt
+  sends the create once more, and the stored credentials keep the data center
+  and the unrotated refresh token;
 - a rejected ticket fails the Flow through the unwired `providerRejected`
   branch without Zoho Desk's message text;
 - an invalid department fails the Flow before any Zoho Desk request.

@@ -3,7 +3,7 @@
 
 // Package intercom implements Intercom conversation operations and a signed conversation webhook
 // Trigger as Dex connector Steps. searchConversations, getConversation, and findContactByEmail read;
-// replyToConversation adds an admin reply or note at most once per Step execution; and
+// replyToConversation adds an admin reply or note, reading back before any resend under its send cap; and
 // updateConversationState closes, reopens, or snoozes a conversation and is safe to repeat.
 //
 // The connector authenticates with an Intercom app access token as a bearer token, sends every request
@@ -17,6 +17,7 @@ package intercom
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -121,6 +122,8 @@ type intercomRequest struct {
 	path    string
 	query   url.Values
 	payload any
+	// requestContext bounds a fenced write to its write window; nil uses the Step context.
+	requestContext context.Context
 }
 
 type intercomResponse struct {
@@ -351,12 +354,16 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, req
 	if len(request.query) != 0 {
 		target += "?" + request.query.Encode()
 	}
+	requestContext := request.requestContext
+	if requestContext == nil {
+		requestContext = call.Context
+	}
 	var httpRequest *http.Request
 	var err error
 	if body != nil {
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, body)
+		httpRequest, err = http.NewRequestWithContext(requestContext, request.method, target, body)
 	} else {
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, nil)
+		httpRequest, err = http.NewRequestWithContext(requestContext, request.method, target, nil)
 	}
 	if err != nil {
 		return nil, errIntercomRequestNotBuilt

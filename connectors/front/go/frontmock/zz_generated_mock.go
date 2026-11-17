@@ -281,7 +281,7 @@ func UpdateConversationProviderRejected(value front.UpdateConversationOutput, fa
 	return connectormock.Branch(front.UpdateConversationBranchProviderRejected, value, failure)
 }
 
-// UpdateConversationInvalidResponse selects the invalidResponse branch: Front returned a malformed or oversized conversation, so the change may have been applied.
+// UpdateConversationInvalidResponse selects the invalidResponse branch: Front returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.
 func UpdateConversationInvalidResponse(value front.UpdateConversationOutput, failure *sdkgo.Failure) connectormock.Case[front.UpdateConversationOutput] {
 	return connectormock.Branch(front.UpdateConversationBranchInvalidResponse, value, failure)
 }
@@ -314,7 +314,7 @@ func UpdateConversationInvalidTag() connectormock.Case[front.UpdateConversationO
 	return connectormock.Branch(front.UpdateConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Front rejected the tag ID (HTTP 400)."})
 }
 
-// UpdateConversationOversizedReadBack is the manifest mock oversizedReadBack: The read-back of cnv_100 exceeds maxResponseBytes after routing.
+// UpdateConversationOversizedReadBack is the manifest mock oversizedReadBack: The read of cnv_100 before routing exceeds maxResponseBytes.
 func UpdateConversationOversizedReadBack() connectormock.Case[front.UpdateConversationOutput] {
 	var value front.UpdateConversationOutput
 	return connectormock.Branch(front.UpdateConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureResponseTooLarge, Message: "The Front response exceeds maxResponseBytes."})

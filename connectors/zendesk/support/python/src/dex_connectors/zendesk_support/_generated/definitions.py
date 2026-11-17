@@ -31,6 +31,7 @@ INVALID_RESPONSE = "invalidResponse"
 NOT_FOUND = "notFound"
 PROVIDER_REJECTED = "providerRejected"
 SEARCHED = "searched"
+UNCERTAIN = "uncertain"
 UPDATED = "updated"
 
 SEARCH_TICKETS_DEFINITION = QueryDefinition(
@@ -68,8 +69,7 @@ CREATE_TICKET_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, CREATE_TICKET_OPERATION_ID),
     (
         BranchDefinition(CREATED, "The ticket exists; a repeated attempt returns the ticket the first attempt created.", False),
-        BranchDefinition(PROVIDER_REJECTED, "Zendesk conclusively rejected the ticket, such as an invalid requester, group, or assignee; no ticket was created.", True),
-        BranchDefinition(INVALID_RESPONSE, "Zendesk accepted the request but returned an invalid or oversized ticket, so the ticket may exist.", True),
+        BranchDefinition(PROVIDER_REJECTED, "Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -84,15 +84,16 @@ UPDATE_TICKET_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, UPDATE_TICKET_OPERATION_ID),
     (
         BranchDefinition(UPDATED, "The ticket holds the requested change; a repeated attempt finds its own earlier change instead of adding a second comment.", False),
-        BranchDefinition(NOT_FOUND, "The ticket does not exist or is not visible to the connection's agent.", True),
-        BranchDefinition(CONFLICT, "The ticket changed after expectedUpdatedAt, so nothing was written.", True),
-        BranchDefinition(PROVIDER_REJECTED, "Zendesk conclusively rejected the change, such as updating a closed ticket or assigning an unknown agent.", True),
-        BranchDefinition(INVALID_RESPONSE, "Zendesk returned an invalid or oversized ticket or audit response, so the change may have been applied.", True),
+        BranchDefinition(NOT_FOUND, "The ticket does not exist or is not visible to the connection's agent, and no earlier attempt of this Step may have written it.", True),
+        BranchDefinition(CONFLICT, "The ticket read before the first write changed after expectedUpdatedAt, so nothing was written.", True),
+        BranchDefinition(PROVIDER_REJECTED, "Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as updating a closed ticket or assigning an unknown agent; nothing was written.", True),
+        BranchDefinition(INVALID_RESPONSE, "Zendesk returned an invalid or oversized ticket or audit page on the read before the first write, so nothing was written.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, or Zendesk refused or contradicted the request after an earlier send whose outcome could not be confirmed, and the latest audit page shows no change by this Step, so the change and its comment may still appear. Below the cap, an unconfirmed write is read back and then resent.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),
-        2,
+        1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 6, timedelta(seconds=300)),
     ),
     repeat_on_unknown=RepeatOnUnknown.LIMITED,

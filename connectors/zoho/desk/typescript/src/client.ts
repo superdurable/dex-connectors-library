@@ -114,9 +114,13 @@ export class ZohoDeskClient {
     return { credentials, baseURL: this.apiBaseURL ?? `https://${host}/api/v1` };
   }
 
-  /** Send one provider exchange and refresh a rejected access token once. */
-  async exchange(call: Call, operation: string, session: { credentials: Credentials; baseURL: string }, method: string, path: string, query?: Record<string, string>, payload?: unknown): Promise<ExchangeResult> {
-    if (this.operationSignal(call).aborted) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'the operation deadline passed before Zoho Desk could send a request') };
+  /**
+   * Send one provider exchange and refresh a rejected access token once. A fenced write passes the Dispatch
+   * signal, which also bounds the request, and is sent once without that refresh, so the fence counts every send.
+   */
+  async exchange(call: Call, operation: string, session: { credentials: Credentials; baseURL: string }, method: string, path: string, query?: Record<string, string>, payload?: unknown, fenceSignal?: AbortSignal): Promise<ExchangeResult> {
+    const signal = fenceSignal ? AbortSignal.any([this.operationSignal(call), fenceSignal]) : this.operationSignal(call);
+    if (signal.aborted) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'the operation deadline passed before Zoho Desk could send a request') };
     let encoded: Uint8Array | undefined;
     try { if (payload !== undefined) encoded = Buffer.from(JSON.stringify(payload)); }
     catch { return { outcome: this.failure('defect', operation, 'LOCAL_DEFECT', 'Zoho Desk request could not be built') }; }
@@ -125,11 +129,11 @@ export class ZohoDeskClient {
       let observedStatus = 0;
       let observedHeaders: ProviderResponse['headers'] = {};
       const token = session.credentials.accessToken.reveal();
-      if (this.operationSignal(call).aborted) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'the operation deadline passed before Zoho Desk could send a request') };
+      if (signal.aborted) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'the operation deadline passed before Zoho Desk could send a request') };
       const request: ProviderRequest = {
         url: target, method, headers: { Authorization: `Zoho-oauthtoken ${token}`, orgId: this.orgId, Accept: 'application/json', ...(encoded ? { 'Content-Type': 'application/json' } : {}) },
         ...(encoded ? { body: encoded } : {}), maxResponseBytes: this.maxResponseBytes, maxErrorResponseBytes: MaxErrorBodyBytes,
-        timeoutMs: 10_000, signal: this.operationSignal(call),
+        timeoutMs: 10_000, signal,
         onResponseChunk: (_chunk, status, headers) => { observedStatus = status; observedHeaders = headers; },
         addressPolicy: this.apiBaseURL ? 'privateNetworkHTTP' : 'publicHTTPS',
       };
@@ -151,7 +155,7 @@ export class ZohoDeskClient {
         if (error instanceof AddressRefusal) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'Zoho Desk could not be reached; no request was sent') };
         return { outcome: this.failure('unavailable', operation, 'TRANSPORT', 'Zoho Desk request failed before a response arrived') };
       }
-      if (response.status === 401 && attempt === 0 && 'resolveAfterRejection' in this.credentials) {
+      if (response.status === 401 && attempt === 0 && !fenceSignal && 'resolveAfterRejection' in this.credentials) {
         try {
           const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, this.operationSignal(call));
           if (this.hasValidCredentials(replacement) && replacement.authMethodId === session.credentials.authMethodId) { session.credentials = replacement; continue; }
@@ -165,6 +169,19 @@ export class ZohoDeskClient {
       return { outcome: classifyStatus(response, operation, this.now()) };
     }
     throw new Error('Zoho Desk credential retry exhausted');
+  }
+
+  /**
+   * Refresh after a 401 on a fenced write without resending it. Returns 'replacement' for a changed, usable token in
+   * the same data center, 'unavailable' for a transient refresh failure, and 'reconnect' otherwise.
+   */
+  async replaceRejectedCredentials(call: Call, rejected: Credentials): Promise<'replacement' | 'reconnect' | 'unavailable'> {
+    if (!('resolveAfterRejection' in this.credentials)) return 'reconnect';
+    let replacement: Credentials;
+    try { replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, this.operationSignal(call)); }
+    catch (error) { return error instanceof ReauthorizationRequiredError ? 'reconnect' : 'unavailable'; }
+    return this.hasValidCredentials(replacement) && replacement.authMethodId === rejected.authMethodId &&
+      replacement.accessToken.reveal() !== rejected.accessToken.reveal() ? 'replacement' : 'reconnect';
   }
 
   private hasValidCredentials(credentials: Credentials): boolean {

@@ -4,11 +4,13 @@
 
 import json
 import re
+from datetime import timedelta
 from typing import Any
 
 from dex_connectors.sdk import (
     Call,
     CallID,
+    Failure,
     FailureKind,
     IdempotencyKey,
     MutationAttempt,
@@ -16,6 +18,14 @@ from dex_connectors.sdk import (
     QueryAttempt,
     QueryDefinition,
     Receipt,
+)
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    Decision,
+    DecisionKind,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
 )
 
 from ._generated import definitions as defs
@@ -365,6 +375,9 @@ class CreateTicketOperation:
             )
         credentials, credential_failure = await self.client.resolve_credentials(call, operation)
         if credential_failure:
+            if call.context is not None and call.context.attempt > 1:
+                # defect would hide a ticket an earlier attempt may have created.
+                return MutationAttempt.retry(credential_failure)
             return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
         assert credentials is not None
         ticket: dict[str, Any] = {
@@ -396,21 +409,23 @@ class CreateTicketOperation:
             idempotency_key=str(call.idempotency_key),
         )
         receipt = self.client.receipt(call, exchange)
-        terminal = _mutation_exchange(exchange, receipt, zero)
-        if terminal is not None:
-            return terminal
+        if exchange.outcome != "success":
+            assert exchange.failure is not None
+            if exchange.outcome == "defect":
+                return MutationAttempt.branch_result(defs.DEFECT, zero, receipt, exchange.failure)
+            if exchange.outcome in ("rejected", "notFound") and exchange.status in _DEFINITE_REFUSAL_STATUSES:
+                return MutationAttempt.branch_result(defs.PROVIDER_REJECTED, zero, receipt, exchange.failure)
+            # The keyed request is safe to repeat, and its outcome is unknown.
+            return MutationAttempt.retry(exchange.failure, exchange.retry_after)
         try:
             created, _, _ = decode_ticket_envelope(exchange.body, self.client.agent_ticket_url)
         except (ValueError, TypeError, KeyError) as error:
-            return MutationAttempt.branch_result(
-                defs.INVALID_RESPONSE,
-                zero,
-                receipt,
+            return MutationAttempt.retry(
                 failure(
                     FailureKind.PROTOCOL,
                     operation,
                     "Zendesk returned an invalid created ticket: " + str(error),
-                ),
+                )
             )
         receipt = self.client.receipt(call, exchange, created.id)
         lookup = (
@@ -485,14 +500,42 @@ class UpdateTicketOperation:
             return MutationAttempt.branch_result(
                 defs.DEFECT, zero, Receipt(), failure(kind, operation, str(error))
             )
+        try:
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
+            decision = await fence.decide()
+        except ValueError:
+            return MutationAttempt.branch_result(
+                defs.DEFECT,
+                zero,
+                Receipt(),
+                failure(FailureKind.LOCAL_DEFECT, operation, "single-dispatch fence could not start"),
+            )
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            # FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+            return MutationAttempt.retry(
+                failure(
+                    FailureKind.AVAILABILITY,
+                    operation,
+                    "the single-dispatch checkpoint could not be read; nothing was sent in this attempt",
+                )
+            )
+        permit = _TicketWritePermit(fence, decision, call.max_sends)
         credentials, credential_failure = await self.client.resolve_credentials(call, operation)
         if credential_failure:
+            if not permit.is_first_send:
+                return MutationAttempt.uncertain(zero, credential_failure, Receipt())
+            try:
+                await fence.record_not_sent()
+            except Exception:
+                return MutationAttempt.retry(
+                    failure(FailureKind.AVAILABILITY, operation, "Dex did not record the not-sent checkpoint")
+                )
             return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
         assert credentials is not None
         path = f"/tickets/{input.ticket_id}"
         exchange = await self.client.exchange(call, credentials, operation, "GET", path)
         receipt = self.client.receipt(call, exchange, input.ticket_id)
-        terminal = _mutation_exchange(exchange, receipt, zero, True)
+        terminal = await permit.read_attempt(exchange, receipt, zero)
         if terminal is not None:
             return terminal
         try:
@@ -500,19 +543,19 @@ class UpdateTicketOperation:
             if current.id != input.ticket_id:
                 raise ValueError("ticket response is for another ticket")
         except (ValueError, TypeError, KeyError) as error:
-            return MutationAttempt.branch_result(
-                defs.INVALID_RESPONSE,
-                zero,
-                receipt,
-                failure(FailureKind.PROTOCOL, operation, "Zendesk returned an invalid ticket: " + str(error)),
+            invalid = failure(
+                FailureKind.PROTOCOL, operation, "Zendesk returned an invalid ticket: " + str(error)
             )
+            if not permit.is_first_send:
+                return permit.unconfirmed_read(zero, invalid, receipt)
+            return MutationAttempt.branch_result(defs.INVALID_RESPONSE, zero, receipt, invalid)
         current_output = UpdateTicketOutput(current)
         if comment or input.expected_updated_at:
             exchange = await self.client.exchange(
                 call, credentials, operation, "GET", path + "/audits", {"sort_order": "desc"}
             )
             receipt = self.client.receipt(call, exchange, input.ticket_id)
-            terminal = _mutation_exchange(exchange, receipt, current_output, True)
+            terminal = await permit.read_attempt(exchange, receipt, current_output)
             if terminal is not None:
                 return terminal
             try:
@@ -531,29 +574,26 @@ class UpdateTicketOperation:
                             defs.UPDATED, UpdateTicketOutput(current, True), receipt
                         )
             except (ValueError, TypeError, AttributeError) as error:
-                return MutationAttempt.branch_result(
-                    defs.INVALID_RESPONSE,
-                    current_output,
-                    receipt,
-                    failure(
-                        FailureKind.PROTOCOL,
-                        operation,
-                        "Zendesk returned an invalid audit page: " + str(error),
-                    ),
-                )
-        if input.expected_updated_at and parse_time(input.expected_updated_at) != current.updated_at:
-            return MutationAttempt.branch_result(
-                defs.CONFLICT,
-                current_output,
-                receipt,
-                failure(
-                    FailureKind.CONFLICT,
+                invalid = failure(
+                    FailureKind.PROTOCOL,
                     operation,
-                    "ticket was updated at "
-                    + current.updated_at.isoformat(timespec="seconds").replace("+00:00", "Z")
-                    + ", after expectedUpdatedAt",
-                ),
+                    "Zendesk returned an invalid audit page: " + str(error),
+                )
+                if not permit.is_first_send:
+                    return permit.unconfirmed_read(current_output, invalid, receipt)
+                return MutationAttempt.branch_result(defs.INVALID_RESPONSE, current_output, receipt, invalid)
+        if input.expected_updated_at and parse_time(input.expected_updated_at) != current.updated_at:
+            conflict = failure(
+                FailureKind.CONFLICT,
+                operation,
+                "ticket was updated at "
+                + current.updated_at.isoformat(timespec="seconds").replace("+00:00", "Z")
+                + ", after expectedUpdatedAt",
             )
+            if not permit.is_first_send:
+                # An earlier send of this Step may have moved updated_at without an audit on the latest page.
+                return permit.unconfirmed_read(current_output, conflict, receipt)
+            return MutationAttempt.branch_result(defs.CONFLICT, current_output, receipt, conflict)
         change: dict[str, Any] = {
             "metadata": {"dex_idempotency_key": str(call.idempotency_key)},
             "safe_update": True,
@@ -577,11 +617,34 @@ class UpdateTicketOperation:
             change["comment"] = {"body": comment.body, "public": not comment.is_internal_note}
         if len(change) == 3:
             return MutationAttempt.branch_result(defs.UPDATED, UpdateTicketOutput(current, True), receipt)
-        exchange = await self.client.exchange(
-            call, credentials, operation, "PUT", path, payload={"ticket": change}
-        )
+        if permit.is_at_send_cap:
+            return MutationAttempt.uncertain(
+                current_output,
+                failure(
+                    FailureKind.TRANSPORT,
+                    operation,
+                    "earlier attempts may have written the change and the send cap is reached, "
+                    "and the latest audit page shows no change by this Step",
+                ),
+                receipt,
+            )
+        try:
+            exchange = await fence.dispatch(
+                lambda _deadline: self.client.exchange(
+                    call, credentials, operation, "PUT", path, payload={"ticket": change}, fenced=True
+                )
+            )
+        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+            # Dispatch refused before sending, so nothing reached Zendesk in this attempt.
+            return MutationAttempt.retry(
+                failure(
+                    FailureKind.AVAILABILITY,
+                    operation,
+                    "Zendesk write was not sent before the attempt deadline or checkpoint",
+                )
+            )
         receipt = self.client.receipt(call, exchange, input.ticket_id)
-        terminal = _mutation_exchange(exchange, receipt, current_output, True)
+        terminal = await permit.write_attempt(exchange, receipt, current_output)
         if terminal is not None:
             return terminal
         try:
@@ -589,14 +652,110 @@ class UpdateTicketOperation:
             if updated.id != input.ticket_id:
                 raise ValueError("ticket response is for another ticket")
         except (ValueError, TypeError, KeyError) as error:
-            return MutationAttempt.branch_result(
-                defs.INVALID_RESPONSE,
+            return permit.resend_or_uncertain(
                 current_output,
-                receipt,
                 failure(
                     FailureKind.PROTOCOL,
                     operation,
                     "Zendesk returned an invalid updated ticket: " + str(error),
                 ),
+                0,
+                receipt,
             )
         return MutationAttempt.branch_result(defs.UPDATED, UpdateTicketOutput(updated), receipt)
+
+
+# Only these statuses prove Zendesk applied nothing; any other non-2xx answer may have been applied.
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+
+
+class _TicketWritePermit:
+    """Map updateTicket reads and its fenced PUT under the fence decision's send-cap facts."""
+
+    def __init__(self, fence: Fence, decision: Decision, max_sends: int) -> None:
+        self.fence = fence
+        # No earlier attempt of this call may have sent.
+        self.is_first_send = decision.prior_send_upper_bound == 0
+        # Earlier sends reached the cap, so this attempt only reads back.
+        self.is_at_send_cap = decision.kind == DecisionKind.READ_BACK_REQUIRED
+        # This attempt's send leaves room under the cap for one more.
+        self.can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < max_sends
+
+    async def retry_before_dispatch(self, problem: Failure, retry_after: float) -> MutationAttempt[Any]:
+        """Record notSent only on a first send; otherwise the claim stays counted."""
+        if self.is_first_send:
+            try:
+                await self.fence.record_not_sent()
+            except Exception:
+                return MutationAttempt.retry(
+                    failure(
+                        FailureKind.AVAILABILITY,
+                        defs.UPDATE_TICKET_OPERATION_ID,
+                        "Dex did not record the not-sent checkpoint",
+                    ),
+                    retry_after,
+                )
+        return MutationAttempt.retry(problem, retry_after)
+
+    def unconfirmed_read(self, value: Any, problem: Failure, receipt: Receipt) -> MutationAttempt[Any]:
+        """Retry an inconclusive read after a possible earlier send, or select uncertain at the cap."""
+        if self.is_at_send_cap:
+            return MutationAttempt.uncertain(value, problem, receipt)
+        return MutationAttempt.retry(problem)
+
+    async def read_attempt(
+        self, exchange: Exchange, receipt: Receipt, value: Any
+    ) -> MutationAttempt[Any] | None:
+        """Map a read before the write; a definite answer after a possible send is uncertain."""
+        if exchange.outcome == "success":
+            return None
+        assert exchange.failure is not None
+        if exchange.outcome in ("retry", "notSent"):
+            return await self.retry_before_dispatch(exchange.failure, exchange.retry_after)
+        if not self.is_first_send:
+            if exchange.outcome in ("invalid", "defect"):
+                return self.unconfirmed_read(value, exchange.failure, receipt)
+            return MutationAttempt.uncertain(value, exchange.failure, receipt)
+        return _mutation_exchange(exchange, receipt, value, True)
+
+    async def write_attempt(
+        self, exchange: Exchange, receipt: Receipt, value: Any
+    ) -> MutationAttempt[Any] | None:
+        """Map the PUT; only a definite refusal of a first send selects a refusal branch."""
+        if exchange.outcome == "success":
+            return None
+        assert exchange.failure is not None
+        if exchange.outcome == "notSent" or exchange.status in (429, 503):
+            try:
+                await self.fence.record_can_resend()
+            except Exception:
+                # A lost checkpoint leaves the claim, so the next attempt counts this send toward the cap.
+                pass
+            return MutationAttempt.retry(exchange.failure, exchange.retry_after)
+        if (exchange.outcome == "defect" and self.is_first_send) or (
+            exchange.outcome in ("rejected", "notFound") and exchange.status in _DEFINITE_REFUSAL_STATUSES
+        ):
+            if not self.is_first_send:
+                return MutationAttempt.uncertain(value, exchange.failure, receipt)
+            try:
+                await self.fence.record_can_resend()
+            except Exception:
+                return MutationAttempt.retry(
+                    failure(
+                        FailureKind.AVAILABILITY,
+                        defs.UPDATE_TICKET_OPERATION_ID,
+                        "Dex did not record the refusal checkpoint",
+                    )
+                )
+            return _mutation_exchange(exchange, receipt, value, True)
+        # A 3xx, 408, 409, 410, other 5xx, unlisted status, or unusable 2xx may follow an applied write.
+        return self.resend_or_uncertain(value, exchange.failure, exchange.retry_after, receipt)
+
+    def resend_or_uncertain(
+        self, value: Any, problem: Failure, retry_after: float, receipt: Receipt
+    ) -> MutationAttempt[Any]:
+        """Retry an unknown write outcome while the send cap allows another send."""
+        if self.can_resend_unknown_outcome:
+            # The claim stays the last marker, so the next attempt reads back before it resends.
+            return MutationAttempt.retry(problem, retry_after)
+        return MutationAttempt.uncertain(value, problem, receipt)

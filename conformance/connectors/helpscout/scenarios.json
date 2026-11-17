@@ -542,6 +542,7 @@
           "attempt": 1,
           "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
           "providerId": "567",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -599,6 +600,7 @@
           "attempt": 1,
           "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
           "providerId": "568",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -656,7 +658,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "conversationId": 501,
@@ -713,7 +715,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "conversationId": 501,
@@ -735,10 +737,63 @@
       "operation": "replyToConversation"
     },
     {
+      "attempts": 3,
       "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
       "exchanges": [
         {
           "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/reply",
+          "requestBody": {
+            "customer": {
+              "id": 238604
+            },
+            "status": "pending",
+            "text": "We refunded the duplicate charge."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/reply",
+          "requestBody": {
+            "customer": {
+              "id": 238604
+            },
+            "status": "pending",
+            "text": "We refunded the duplicate charge."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -768,15 +823,16 @@
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
           "conversationId": 501,
           "customerId": 238604
         },
-        "requestCount": 1,
+        "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -788,6 +844,30 @@
         "status": "pending",
         "text": "We refunded the duplicate charge."
       },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
       "name": "reply-uncertain",
       "operation": "replyToConversation"
     },
@@ -2853,6 +2933,7 @@
           "attempt": 1,
           "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
           "providerId": "569",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -3199,8 +3280,9 @@
       "name": "reply-readback-uncertain",
       "operation": "replyToConversation",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+        "sendCount": 3,
         "state": "claimed"
       }
     },
@@ -3234,8 +3316,9 @@
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 2,
+          "attempt": 4,
           "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -3256,10 +3339,219 @@
       "name": "reply-500-uncertain",
       "operation": "replyToConversation",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+        "sendCount": 2,
         "state": "canResend"
       }
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "isInternalNote": true,
+        "text": "Internal note"
+      },
+      "name": "reply-untrusted-checkpoint-retry",
+      "operation": "replyToConversation",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+        "sendCount": 2,
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/notes",
+          "requestBody": {
+            "text": "Internal note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {
+            "Resource-Id": "569"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/notes",
+          "requestBody": {
+            "text": "Internal note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "replied",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "providerId": "569",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "conversationId": 501,
+          "isInternalNote": true,
+          "threadId": 569
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "isInternalNote": true,
+        "text": "Internal note"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "reply-resend-after-unknown",
+      "operation": "replyToConversation"
+    },
+    {
+      "attempts": 2,
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/notes",
+          "requestBody": {
+            "text": "Internal note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/notes",
+          "requestBody": {
+            "text": "Internal note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "conversationId": 501,
+          "isInternalNote": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "isInternalNote": true,
+        "text": "Internal note"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "CONFLICT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "reply-refusal-after-unknown-uncertain",
+      "operation": "replyToConversation"
     }
   ],
   "schemaVersion": 1

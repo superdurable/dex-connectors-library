@@ -200,7 +200,8 @@ class Client:
         """Resolve generated OAuth credentials and the matching Desk data center."""
         clock = asyncio.get_running_loop()
         self._operation_deadlines = {
-            call_id: deadline for call_id, deadline in self._operation_deadlines.items()
+            call_id: deadline
+            for call_id, deadline in self._operation_deadlines.items()
             if deadline > clock.time()
         }
         self._operation_deadlines[str(call.id)] = clock.time() + 25
@@ -230,8 +231,12 @@ class Client:
         path: str,
         query: dict[str, str] | None = None,
         payload: dict[str, Any] | None = None,
+        resend_after_unauthorized: bool = True,
     ) -> Exchange:
-        """Send once, or refresh and resend once after HTTP 401."""
+        """Send once, or refresh and resend once after HTTP 401.
+
+        A fenced write passes ``resend_after_unauthorized=False`` and refreshes outside the fence.
+        """
         target = base_url + path
         if query:
             target += "?" + "&".join(
@@ -242,7 +247,8 @@ class Client:
                 return Exchange(
                     "not_sent",
                     failure=failure(
-                        operation, FailureKind.TRANSPORT,
+                        operation,
+                        FailureKind.TRANSPORT,
                         "the operation deadline passed before Zoho Desk could send a request",
                     ),
                 )
@@ -255,11 +261,17 @@ class Client:
                 return Exchange(
                     "unavailable",
                     failure=failure(
-                        operation, FailureKind.TRANSPORT,
+                        operation,
+                        FailureKind.TRANSPORT,
                         "the operation deadline passed before Zoho Desk answered",
                     ),
                 )
-            if result.status != 401 or attempt or not hasattr(self.credentials, "resolve_after_rejection"):
+            if (
+                result.status != 401
+                or attempt
+                or not resend_after_unauthorized
+                or not hasattr(self.credentials, "resolve_after_rejection")
+            ):
                 return result
             try:
                 replacement = await asyncio.wait_for(
@@ -276,6 +288,35 @@ class Client:
             except Exception:
                 return result
         return result
+
+    async def replace_rejected_credentials(self, call: Call, rejected: Credentials) -> str:
+        """Refresh after a 401 on a fenced write without resending it.
+
+        Returns ``"replacement"`` for a changed, usable token in the same data
+        center, ``"unavailable"`` for a transient refresh failure, and
+        ``"reconnect"`` otherwise.
+        """
+        if not hasattr(self.credentials, "resolve_after_rejection"):
+            return "reconnect"
+        try:
+            replacement = await asyncio.wait_for(
+                self.credentials.resolve_after_rejection(call), self._remaining_seconds(call)
+            )
+        except Exception as error:
+            from dex_connectors.sdk import ReauthorizationRequiredError
+
+            return "reconnect" if isinstance(error, ReauthorizationRequiredError) else "unavailable"
+        rejected_token = rejected.access_token.reveal() if rejected.access_token else ""
+        if (
+            isinstance(replacement, Credentials)
+            and replacement.auth_method_id == rejected.auth_method_id
+            and replacement.auth_method_id in _DATA_CENTERS
+            and replacement.access_token
+            and _safe_token(replacement.access_token.reveal())
+            and replacement.access_token.reveal() != rejected_token
+        ):
+            return "replacement"
+        return "reconnect"
 
     async def _exchange_once(
         self,

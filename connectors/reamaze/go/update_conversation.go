@@ -105,12 +105,17 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 		method: http.MethodPut, path: conversationPath(input.ConversationID), payload: updateConversationRequestWire{Conversation: change},
 	})
 	receipt = operation.client.receipt(call, writeResult.response, input.ConversationID)
+	if writeResult.outcome == exchangeInvalid || (writeResult.outcome == exchangeRejected && !isDefiniteRefusalStatus(writeResult.response.statusCode)) {
+		// The PUT sets final values, so an unknown outcome repeats it.
+		return sdkgo.NewMutationRetry[UpdateConversationOutput](writeResult.failure, writeResult.retryAfter)
+	}
 	if attempt, isTerminal := updateConversationAttemptForExchange(writeResult, receipt, currentOutput); isTerminal {
 		return attempt
 	}
 	updated, err := decodeConversationBody(writeResult.response.body, input.ConversationID)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, currentOutput, reamazeFailurePointer(sdkgo.FailureProtocol, updateConversationOperation, "Re:amaze returned an invalid updated conversation: "+err.Error()), receipt)
+		return sdkgo.NewMutationRetry[UpdateConversationOutput](reamazeFailure(sdkgo.FailureProtocol, updateConversationOperation,
+			"Re:amaze accepted the change but returned an invalid updated conversation: "+err.Error()), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateConversationBranchUpdated, UpdateConversationOutput{Conversation: updated}, nil, receipt)
 }

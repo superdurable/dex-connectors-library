@@ -130,12 +130,10 @@ func TestFencedWritesKeepReceiptIdentityWhenCheckpointFailsClosed(t *testing.T) 
 		t.Run(test.name, func(t *testing.T) {
 			ctx := singledispatchtest.NewContext("reamaze-flow", test.name+"-foreign-checkpoint")
 			require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{CallID: "foreign", Attempt: 1, State: singledispatch.StateClaimed}))
-			branch, receipt, err := test.run(ctx)
-			require.NoError(t, err)
-			require.Equal(t, test.wantBranch, branch)
-			require.NotEmpty(t, receipt.CallID)
-			require.Equal(t, sdkgo.IdempotencyKey(receipt.CallID), receipt.IdempotencyKey)
-			require.Empty(t, receipt.ProviderObjectID, "a foreign marker cannot expose its provider ID")
+			_, _, err := test.run(ctx)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "FailClosed returns Retry instead of a terminal branch")
+			require.Contains(t, retry.Failure.Message, "nothing was sent in this attempt")
 			require.Zero(t, provider.requestCount())
 		})
 	}
@@ -252,12 +250,13 @@ func TestCreateConversationReadsBackUnusableAcceptedResponsesInTheSameAttempt(t 
 				reamaze.WithAPIBaseURL(provider.URL+"/api/v1"))
 			require.NoError(t, err)
 			ctx := singledispatchtest.NewContext("reamaze-flow", "accepted-unusable")
-			result, err := sdkgo.RunMutation(ctx, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+			// A send cap of one makes an absent read-back select uncertain instead of resending.
+			result, err := sdkgo.RunMutation(ctx, client.CreateConversation(), reamazeConnection, validCreateConversationInput(), sendCapOfOne)
 			if test.wantRetry {
 				var retry *sdkgo.RetryError
 				require.ErrorAs(t, err, &retry)
 				ctx.AdvanceAttempt()
-				_, err = sdkgo.RunMutation(ctx, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+				_, err = sdkgo.RunMutation(ctx, client.CreateConversation(), reamazeConnection, validCreateConversationInput(), sendCapOfOne)
 				require.ErrorAs(t, err, &retry)
 				require.Equal(t, 3, provider.requestCount())
 				require.Equal(t, http.MethodGet, provider.request(2).method)
@@ -325,12 +324,13 @@ func TestReplyReadsBackUnusableAcceptedResponsesInTheSameAttempt(t *testing.T) {
 			require.NoError(t, err)
 			ctx := singledispatchtest.NewContext("reamaze-flow", "accepted-reply-unusable")
 			input := reamaze.ReplyToConversationInput{ConversationID: "double-charge", Text: "Note.", IsInternalNote: true}
-			result, err := sdkgo.RunMutation(ctx, client.ReplyToConversation(), reamazeConnection, input)
+			// A send cap of one makes an absent read-back select uncertain instead of resending.
+			result, err := sdkgo.RunMutation(ctx, client.ReplyToConversation(), reamazeConnection, input, sendCapOfOne)
 			if test.wantRetry {
 				var retry *sdkgo.RetryError
 				require.ErrorAs(t, err, &retry)
 				ctx.AdvanceAttempt()
-				_, err = sdkgo.RunMutation(ctx, client.ReplyToConversation(), reamazeConnection, input)
+				_, err = sdkgo.RunMutation(ctx, client.ReplyToConversation(), reamazeConnection, input, sendCapOfOne)
 				require.ErrorAs(t, err, &retry)
 				require.Equal(t, 3, provider.requestCount())
 				require.Equal(t, http.MethodGet, provider.request(2).method)
@@ -364,10 +364,10 @@ func TestCustomTransportDialErrorAfterSendingDoesNotPermitResend(t *testing.T) {
 		reamaze.WithAPIBaseURL(provider.URL+"/api/v1"), reamaze.WithHTTPClient(&http.Client{Transport: transport}))
 	require.NoError(t, err)
 	ctx := singledispatchtest.NewContext("reamaze-flow", "dial-after-send")
-	_, err = sdkgo.RunMutation(ctx, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+	_, err = sdkgo.RunMutation(ctx, client.CreateConversation(), reamazeConnection, validCreateConversationInput(), sendCapOfOne)
 	require.Error(t, err)
 	ctx.AdvanceAttempt()
-	result, err := sdkgo.RunMutation(ctx, client.CreateConversation(), reamazeConnection, validCreateConversationInput())
+	result, err := sdkgo.RunMutation(ctx, client.CreateConversation(), reamazeConnection, validCreateConversationInput(), sendCapOfOne)
 	require.NoError(t, err)
 	require.Equal(t, reamaze.CreateConversationBranchUncertain, result.Branch)
 	require.Equal(t, 2, provider.requestCount())
@@ -458,10 +458,10 @@ func TestReplyFenceLostClaimFailsClosedWithoutAnotherPost(t *testing.T) {
 	ctx.LoseNextHeartbeat()
 	client := newReamazeClient(t, provider.URL)
 	input := reamaze.ReplyToConversationInput{ConversationID: "double-charge", Text: "Dex triage note."}
-	_, err := sdkgo.RunMutation(ctx, client.ReplyToConversation(), reamazeConnection, input)
+	_, err := sdkgo.RunMutation(ctx, client.ReplyToConversation(), reamazeConnection, input, sendCapOfOne)
 	require.Error(t, err)
 	ctx.AdvanceAttempt()
-	result, err := sdkgo.RunMutation(ctx, client.ReplyToConversation(), reamazeConnection, input)
+	result, err := sdkgo.RunMutation(ctx, client.ReplyToConversation(), reamazeConnection, input, sendCapOfOne)
 	require.NoError(t, err)
 	require.Equal(t, reamaze.ReplyToConversationBranchUncertain, result.Branch)
 	require.Equal(t, 2, provider.requestCount())

@@ -513,6 +513,12 @@ class UpdateConversationOperation:
         write = await self.client.exchange(
             call, credentials, operation, "PUT", path, payload={"conversation": change}
         )
+        if write.outcome == "invalid" or (
+            write.outcome == "rejected" and write.status not in DEFINITE_REFUSAL_STATUSES
+        ):
+            # The PUT sets final values, so an unknown outcome repeats it.
+            assert write.failure is not None
+            return MutationAttempt.retry(write.failure, write.retry_after_seconds)
         classified = _mutation_exchange(
             self.client, call, operation, write, current_output, object_id=input.conversation_id
         )
@@ -521,15 +527,13 @@ class UpdateConversationOperation:
         try:
             updated = decode_conversation_body(write.body, input.conversation_id)
         except ValueError as error:
-            return MutationAttempt.branch_result(
-                definitions.INVALID_RESPONSE,
-                current_output,
-                self.client.receipt(call, write, input.conversation_id),
+            return MutationAttempt.retry(
                 reamaze_failure(
                     FailureKind.PROTOCOL,
                     operation,
-                    "Re:amaze returned an invalid updated conversation: " + str(error),
-                ),
+                    "Re:amaze accepted the change but returned an invalid updated conversation: "
+                    + str(error),
+                )
             )
         return MutationAttempt.branch_result(
             definitions.UPDATED,
@@ -585,8 +589,13 @@ async def _fenced_credential_error(
     return _mutation_credentials_error(operation, error, value)
 
 
+# Only these statuses prove Re:amaze applied nothing; any other non-2xx answer may have been applied.
+DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+
+
 async def _fenced_exchange_result(
     fence: Fence,
+    is_first_send: bool,
     client: Client,
     call: Call,
     operation: str,
@@ -596,6 +605,7 @@ async def _fenced_exchange_result(
     object_id: str = "",
     has_not_found: bool = False,
 ) -> MutationAttempt[Any] | None:
+    """Map a sent write; any outcome but a definite refusal retries, and the next attempt reads back."""
     if exchange.outcome == "succeeded":
         return None
     assert exchange.failure is not None
@@ -604,25 +614,40 @@ async def _fenced_exchange_result(
         try:
             await fence.record_can_resend()
         except Exception:
-            return MutationAttempt.retry(
-                reamaze_failure(
-                    FailureKind.AVAILABILITY, operation, "retry checkpoint could not be recorded"
-                ),
-                exchange.retry_after_seconds,
-            )
+            pass  # A lost checkpoint leaves the claim, so the next attempt counts this send and reads back.
     if exchange.is_retryable_read:
         return MutationAttempt.retry(exchange.failure, exchange.retry_after_seconds)
-    if exchange.outcome == "invalid":
-        return MutationAttempt.uncertain(value, exchange.failure, receipt)
     if exchange.outcome == "not_found":
         branch = definitions.NOT_FOUND if has_not_found else definitions.PROVIDER_REJECTED
     elif exchange.outcome == "defect":
+        if not is_first_send:
+            return MutationAttempt.retry(exchange.failure)
         branch = definitions.DEFECT
-    elif exchange.status == 409:
-        return MutationAttempt.retry(exchange.failure)
-    else:
+    elif exchange.outcome == "rejected" and exchange.status in DEFINITE_REFUSAL_STATUSES:
         branch = definitions.PROVIDER_REJECTED
-    return MutationAttempt.branch_result(branch, value, receipt, exchange.failure)
+    else:
+        # A 3xx, 409, unlisted status, or invalid answer may follow an applied write.
+        return MutationAttempt.retry(exchange.failure, exchange.retry_after_seconds)
+    if not is_first_send:
+        return MutationAttempt.uncertain(value, exchange.failure, receipt)
+    try:
+        await fence.record_can_resend()
+    except Exception:
+        return MutationAttempt.retry(
+            reamaze_failure(FailureKind.AVAILABILITY, operation, "refusal checkpoint could not be recorded")
+        )
+    return MutationAttempt.branch_result(
+        branch, value, _empty_receipt() if branch == definitions.DEFECT else receipt, exchange.failure
+    )
+
+
+def _resend_when_unconfirmed(read_back: MutationAttempt[Any], can_resend: bool) -> MutationAttempt[Any]:
+    """Retry an unconfirmed read-back while the send cap allows another send."""
+    if read_back.kind == "uncertain" and can_resend:
+        assert read_back.failure is not None
+        # The claim stays the last marker, so the next attempt reads back again before it resends.
+        return MutationAttempt.retry(read_back.failure)
+    return read_back
 
 
 def _dispatch_key(call: Call) -> str:
@@ -703,7 +728,7 @@ class CreateConversationOperation:
                 reamaze_failure(FailureKind.VALIDATION, operation, str(error)),
             )
         try:
-            fence = Fence(call, timedelta(seconds=30))
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
         except ValueError as error:
             return MutationAttempt.branch_result(
                 definitions.DEFECT,
@@ -713,12 +738,15 @@ class CreateConversationOperation:
             )
         decision = await fence.decide()
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return MutationAttempt.uncertain(
-                zero,
-                reamaze_failure(FailureKind.TRANSPORT, operation, "dispatch checkpoint cannot be trusted"),
-                self.client.receipt(call, Exchange("")),
+            # FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+            return MutationAttempt.retry(
+                reamaze_failure(
+                    FailureKind.AVAILABILITY,
+                    operation,
+                    "dispatch checkpoint could not be read; nothing was sent in this attempt",
+                )
             )
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+        if decision.kind in (DecisionKind.READ_BACK_REQUIRED, DecisionKind.READ_BACK_THEN_RESEND_ALLOWED):
             try:
                 credentials = await self.client.resolve_credentials(call)
             except CredentialsUnavailableError:
@@ -741,13 +769,20 @@ class CreateConversationOperation:
                         call, Exchange(""), decision.marker.provider_id if decision.marker else ""
                     ),
                 )
+            # A saved conversation ID proves Re:amaze created it, so it is read back and never resent.
             if decision.marker and decision.marker.provider_id:
                 return await self._confirm_candidate(call, credentials, decision.marker.provider_id)
-            return await self._reconcile(call, credentials)
-        try:
-            credentials = await self.client.resolve_credentials(call)
-        except (CredentialsUnavailableError, CredentialsUnusableError) as error:
-            return await _fenced_credential_error(fence, operation, error, zero)
+            read_back = await self._reconcile(call, credentials)
+            if decision.kind == DecisionKind.READ_BACK_REQUIRED or read_back.kind != "uncertain":
+                return read_back
+            # The read-back found no conversation with the key, so this attempt resends below the cap.
+        else:
+            try:
+                credentials = await self.client.resolve_credentials(call)
+            except (CredentialsUnavailableError, CredentialsUnusableError) as error:
+                return await _fenced_credential_error(fence, operation, error, zero)
+        is_first_send = decision.prior_send_upper_bound == 0
+        can_resend = decision.prior_send_upper_bound + 1 < call.max_sends
         try:
             exchange = await fence.dispatch(
                 lambda _: self.client.exchange(
@@ -759,7 +794,8 @@ class CreateConversationOperation:
                     payload=_create_payload(input, _dispatch_key(call)),
                 )
             )
-        except (CheckpointError, InsufficientAttemptTimeError):
+        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+            # Dispatch refused before sending, so nothing reached Re:amaze in this attempt.
             return MutationAttempt.retry(
                 reamaze_failure(
                     FailureKind.AVAILABILITY,
@@ -767,23 +803,24 @@ class CreateConversationOperation:
                     "write was not sent before the attempt deadline or checkpoint",
                 )
             )
-        except (DispatchNotAllowedError, TimeoutError):
-            return MutationAttempt.uncertain(
-                zero,
+        except TimeoutError:
+            # The claim stays, so the next attempt counts this send and reads back first.
+            return MutationAttempt.retry(
                 reamaze_failure(
                     FailureKind.TRANSPORT, operation, "write dispatch outcome could not be confirmed"
-                ),
-                _empty_receipt(),
+                )
             )
         if 200 <= exchange.status < 300 and exchange.outcome != "succeeded":
-            return await self._reconcile(call, credentials)
-        classified = await _fenced_exchange_result(fence, self.client, call, operation, exchange, zero)
+            return _resend_when_unconfirmed(await self._reconcile(call, credentials), can_resend)
+        classified = await _fenced_exchange_result(
+            fence, is_first_send, self.client, call, operation, exchange, zero
+        )
         if classified is not None:
             return classified
         try:
             conversation = decode_conversation_body(exchange.body)
         except ValueError:
-            return await self._reconcile(call, credentials)
+            return _resend_when_unconfirmed(await self._reconcile(call, credentials), can_resend)
         try:
             await fence.record_provider_id(conversation.id)
         except Exception:
@@ -935,7 +972,7 @@ class ReplyToConversationOperation:
                 reamaze_failure(FailureKind.VALIDATION, operation, str(error)),
             )
         try:
-            fence = Fence(call, timedelta(seconds=30))
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
         except ValueError as error:
             return MutationAttempt.branch_result(
                 definitions.DEFECT,
@@ -945,12 +982,15 @@ class ReplyToConversationOperation:
             )
         decision = await fence.decide()
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return MutationAttempt.uncertain(
-                zero,
-                reamaze_failure(FailureKind.TRANSPORT, operation, "dispatch checkpoint cannot be trusted"),
-                self.client.receipt(call, Exchange("")),
+            # FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+            return MutationAttempt.retry(
+                reamaze_failure(
+                    FailureKind.AVAILABILITY,
+                    operation,
+                    "dispatch checkpoint could not be read; nothing was sent in this attempt",
+                )
             )
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+        if decision.kind in (DecisionKind.READ_BACK_REQUIRED, DecisionKind.READ_BACK_THEN_RESEND_ALLOWED):
             try:
                 credentials = await self.client.resolve_credentials(call)
             except CredentialsUnavailableError:
@@ -971,11 +1011,17 @@ class ReplyToConversationOperation:
                     ),
                     self.client.receipt(call, Exchange(""), input.conversation_id),
                 )
-            return await self._reconcile(call, credentials, input)
-        try:
-            credentials = await self.client.resolve_credentials(call)
-        except (CredentialsUnavailableError, CredentialsUnusableError) as error:
-            return await _fenced_credential_error(fence, operation, error, zero)
+            read_back = await self._reconcile(call, credentials, input)
+            if decision.kind == DecisionKind.READ_BACK_REQUIRED or read_back.kind != "uncertain":
+                return read_back
+            # The read-back found no message with the origin_id, so this attempt resends below the cap.
+        else:
+            try:
+                credentials = await self.client.resolve_credentials(call)
+            except (CredentialsUnavailableError, CredentialsUnusableError) as error:
+                return await _fenced_credential_error(fence, operation, error, zero)
+        is_first_send = decision.prior_send_upper_bound == 0
+        can_resend = decision.prior_send_upper_bound + 1 < call.max_sends
         message: dict[str, object] = {
             "body": input.text,
             "visibility": 1 if input.is_internal_note else 0,
@@ -996,7 +1042,8 @@ class ReplyToConversationOperation:
                     payload={"message": message},
                 )
             )
-        except (CheckpointError, InsufficientAttemptTimeError):
+        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+            # Dispatch refused before sending, so nothing reached Re:amaze in this attempt.
             return MutationAttempt.retry(
                 reamaze_failure(
                     FailureKind.AVAILABILITY,
@@ -1004,18 +1051,18 @@ class ReplyToConversationOperation:
                     "write was not sent before the attempt deadline or checkpoint",
                 )
             )
-        except (DispatchNotAllowedError, TimeoutError):
-            return MutationAttempt.uncertain(
-                zero,
+        except TimeoutError:
+            # The claim stays, so the next attempt counts this send and reads back first.
+            return MutationAttempt.retry(
                 reamaze_failure(
                     FailureKind.TRANSPORT, operation, "write dispatch outcome could not be confirmed"
-                ),
-                _empty_receipt(),
+                )
             )
         if 200 <= exchange.status < 300 and exchange.outcome != "succeeded":
-            return await self._reconcile(call, credentials, input)
+            return _resend_when_unconfirmed(await self._reconcile(call, credentials, input), can_resend)
         classified = await _fenced_exchange_result(
             fence,
+            is_first_send,
             self.client,
             call,
             operation,
@@ -1039,7 +1086,7 @@ class ReplyToConversationOperation:
                 raise ValueError("response is for another conversation")
             decoded = decode_message(document)
         except ValueError:
-            return await self._reconcile(call, credentials, input)
+            return _resend_when_unconfirmed(await self._reconcile(call, credentials, input), can_resend)
         return MutationAttempt.branch_result(
             definitions.REPLIED,
             ConversationReply(input.conversation_id, message=decoded),

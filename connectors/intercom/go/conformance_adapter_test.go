@@ -25,20 +25,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, intercom.WithAPIBaseURL(endpoint), intercom.WithHTTPClient(transport), intercom.WithClock(conformanceFixedClock(t, scenario)))
 	require.NoError(t, err)
 	context := newTestDexContext("conformance")
-	if len(scenario.PriorHeartbeat) != 0 {
-		var previous struct {
-			Value struct {
-				DispatchedCallID string `json:"intercomReplyDispatchedCallId"`
-				DispatchedAt     int64  `json:"intercomReplyDispatchedAt"`
-			} `json:"value"`
-		}
-		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &previous))
-		require.NoError(t, context.RecordHeartbeat(map[string]any{
-			"intercomReplyDispatchedCallId": previous.Value.DispatchedCallID,
-			"intercomReplyDispatchedAt":     previous.Value.DispatchedAt,
-		}))
-	}
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	prior := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(raw []byte) {
+		context.heartbeat = append(json.RawMessage(nil), raw...)
+	})
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		context.attempt = prior + int32(attempt)
+	}, actions: map[string]conformanceOperationInvocation{
 		"searchConversations":     newConformanceQueryInvocation(t, scenario.Input, context, client.SearchConversations(), intercomConnection),
 		"getConversation":         newConformanceQueryInvocation(t, scenario.Input, context, client.GetConversation(), intercomConnection),
 		"replyToConversation":     newConformanceMutationInvocation(t, scenario.Input, context, client.ReplyToConversation(), intercomConnection, scenario.CallID),

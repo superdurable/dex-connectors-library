@@ -81,7 +81,7 @@ export interface ReplyToConversationStepConfig<StepInput, OperationInput = Reply
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The thread was sent but Help Scout's answer was lost, a server error, or unreadable, so it may exist; the connector never sends it again. */
+  /** The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, an unlisted status, or a 2xx without a thread ID, or an accepted thread could not be confirmed by read-back. Without a thread ID, an unknown outcome is resent while the cap allows. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -112,7 +112,7 @@ export interface UpdateConversationStepConfig<StepInput, OperationInput = Update
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Help Scout conclusively rejected the change, such as an assignee who is not a user or team of the account. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Help Scout returned a malformed or oversized conversation, so part of the change may have been applied. */
+  /** Help Scout returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

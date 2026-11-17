@@ -350,8 +350,12 @@ class Client:
         query: dict[str, str] | None = None,
         payload: dict[str, Any] | None = None,
         idempotency_key: str = "",
+        fenced: bool = False,
     ) -> Exchange:
-        """Send and classify one Zendesk request without choosing its branch."""
+        """Send and classify one Zendesk request without choosing its branch.
+
+        A fenced write reports a provably unsent request as ``notSent``.
+        """
         basic = base64.b64encode(
             f"{credentials.email}/token:{credentials.api_token.reveal()}".encode()
         ).decode()
@@ -380,7 +384,14 @@ class Client:
             )
         try:
             response, _ = await send_traced(self.http_client, request)
-        except ProviderTransportError:
+        except ProviderTransportError as error:
+            if fenced and error.provably_not_sent:
+                return Exchange(
+                    "notSent",
+                    failure(
+                        FailureKind.TRANSPORT, operation, "Zendesk could not be reached; no request was sent"
+                    ),
+                )
             return Exchange(
                 "retry",
                 failure(FailureKind.TRANSPORT, operation, "Zendesk request failed before a response arrived"),

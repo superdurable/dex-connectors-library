@@ -1,6 +1,6 @@
 # Freshdesk Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk/go@v0.24.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk`.
 
@@ -8,7 +8,7 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/freshworks
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
 
-The TypeScript package `@superdurable/connector-freshdesk` v0.2.0 is also available at
+The TypeScript package `@superdurable/connector-freshdesk` v0.2.1 is also available at
 [`typescript/`](typescript/README.md). It implements all five ticket operations and,
 from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with
 Go, sharing its cursor documents byte for byte. It has Go-recorded conformance,
@@ -18,7 +18,7 @@ Go-recorded ticket-list cursors, a runnable
 integration tests poll a stateful ticket-list fake. Its live Freshdesk behavior has
 not been verified.
 
-The Python package `dex-connector-freshworks-freshdesk` v0.2.0 is available at
+The Python package `dex-connector-freshworks-freshdesk` v0.2.1 is available at
 [`python/`](python/README.md). It implements all five ticket operations and, from
 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go,
 sharing its cursor documents byte for byte. It includes a runnable
@@ -206,9 +206,13 @@ tags. It reads `GET /api/v2/tickets/{id}`, then sends
 `PUT /api/v2/tickets/{id}` with only the fields that differ, and the complete
 resulting tag list when tags change. Tags match without regard to letter case.
 When nothing differs, it selects `updated` with `wasAlreadyApplied: true` and
-writes nothing. A spam or deleted ticket returns 405 and a missing required
-field 400, both `providerRejected`. This release cannot clear an agent or
-group.
+writes nothing. A missing required field returns 400, which selects
+`providerRejected`. A 405, which Freshdesk may return for a spam or deleted
+ticket, is not on the list of definite refusals, so the absolute write is
+retried until the Step retry budget runs out. `invalidResponse` means the
+ticket read before the change was malformed or oversized, so this attempt sent
+no change; an invalid answer to the `PUT` is retried instead. This release
+cannot clear an agent or group.
 
 ### addNote
 
@@ -224,30 +228,39 @@ Freshdesk API v2 documents no idempotency key, so a repeated create or note is
 a duplicate ticket, a second internal note, or a second email to the customer.
 Dex retries a Step after a lost Worker, so the operations take these positions:
 
-- **updateTicket** is safe to repeat. Its write sets absolute values computed
-  from a fresh read, so a second dispatch sends the same values or finds them
-  applied without another write. It keeps async durability, and every
-  unconfirmed outcome, including a 5xx or a lost response, is retried.
-- **createTicket** and **addNote** run with sync durability, so Dex never sends
-  a second attempt while the first is in flight. The operation first checks the
-  previous heartbeat, resolves credentials, then records the current Call ID
-  and attempt before sending. A 429, 503, or traced DNS, connect, or TLS failure
-  before connection records which next attempt may retry. A missing or stale
-  checkpoint on a later attempt selects `uncertain` without sending; Dex does
-  not acknowledge heartbeat persistence.
+- **updateTicket** declares `repeatOnUnknown: safe`. Its write sets absolute
+  values computed from a fresh read, so a second dispatch sends the same values
+  or finds them applied without another write. It keeps async durability, and
+  every unconfirmed outcome of the `PUT`, including a 5xx, a 409, an unlisted
+  status, a lost response, or an invalid answer, is retried.
+- **createTicket** and **addNote** use the shared
+  [single-dispatch fence](../../../sdkgo/README.md#single-dispatch-fence) with
+  sync durability and the manifest send cap (`maxSends`, 3 by default). The
+  fence reads the prior checkpoint before credentials and counts every
+  possible send of the Call ID. Freshdesk has no ticket or conversation
+  read-back by Call ID, so an unknown outcome returns Retry and the next
+  attempt resends while fewer sends than the cap may have taken effect; the
+  send that reaches the cap selects `uncertain`, and the fence refuses any
+  further send. Each resend below the cap can add a duplicate ticket, note, or
+  customer email. An unreadable or untrusted checkpoint returns Retry without
+  sending. A 2xx whose ticket or conversation ID decodes is never resent, even
+  when another field is invalid.
+- A definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) of a
+  first send records `canResend` and selects its branch. After a possible
+  earlier send it selects `uncertain`, because the earlier send may have been
+  applied.
 - A write starts only when its request window retains at least one tenth of
   the attempt budget, capped by the 30-second Execute timeout. A full attempt
   therefore needs at least three seconds for the request, plus one second
   reserved before the observed Step deadline to record the outcome. A skipped
-  request records a permit for only the next attempt and returns Retry.
-- A transient credential-store read failure returns Retry without sending and
-  records a next-attempt permit. A missing or invalid credential selects
-  `defect` on the first attempt; after a permitted retry it returns Retry, so
+  request records `canResend` and returns Retry.
+- On a first send, a transient credential-store read failure records `notSent`
+  and returns Retry, and a missing or invalid credential records `notSent` and
+  selects `defect`. After a possible earlier send nothing is recorded: a
+  transient failure returns Retry and a terminal one selects `uncertain`, so
   credential trouble cannot hide a possibly accepted earlier write.
-- A 408, a 5xx other than 503, a lost or unreadable response, and an invalid or oversized
-  2xx select `uncertain`: the ticket or note may exist, and the connector never
-  resends it. The example leaves `uncertain` unwired, so the Flow fails;
-  an operator can inspect Freshdesk before deciding what to do next.
+- The example leaves `uncertain` unwired, so the Flow fails at the cap; an
+  operator can inspect Freshdesk before deciding what to do next.
 
 [Freshdesk API v2](https://developers.freshdesk.com/api/#create_ticket) documents ticket
 creation; [filter tickets](https://developers.freshdesk.com/api/#filter_tickets)
@@ -259,9 +272,17 @@ An account-specific ticket custom field would change the customer's ticket
 form and still leave note or reply correlation unresolved. A search miss
 cannot prove that a possibly accepted write did not happen.
 
-Keep these two Steps sync so results are committed promptly. A checkpoint lost before
-Dex stored it, or a crash before the request left, can make an attempt report
-`uncertain` for a request Freshdesk never received; that direction is safe.
+Keep these two Steps sync so results are committed promptly. Dex does not
+acknowledge heartbeat persistence. A later attempt with no stored checkpoint
+therefore counts one possible send for every earlier attempt, and a lost
+`canResend` checkpoint can use up the cap for a request Freshdesk never
+received; that direction never sends more than the cap.
+
+Checkpoints written by v0.24.0 and earlier (Python and TypeScript 0.2.0 and
+earlier), which use `freshdeskDispatchedCallId`, are untrusted by the SDK
+fence. An in-flight `createTicket` or `addNote` that wrote one retries without
+sending after the upgrade until its retry budget runs out. Reconcile those
+calls before upgrading.
 
 ## Errors
 
@@ -273,18 +294,21 @@ token that contains the API key is dropped.
 
 | Response | Reads and updateTicket | createTicket and addNote |
 | --- | --- | --- |
-| 400 | `providerRejected`, `VALIDATION` | `providerRejected`, `VALIDATION` |
-| 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same |
-| 404 | `notFound` where declared, otherwise `providerRejected` | same |
-| 405, 409, other 4xx | `providerRejected` | `providerRejected` |
-| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | same |
-| 429 | Retry after `Retry-After` | Retry after `Retry-After` |
-| connection refused before sending | Retry | Retry |
-| 503 | Retry, after `Retry-After` when present | Retry after a next-attempt checkpoint |
-| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain` |
-| invalid input or terminal connection credentials | `defect`, with no request | `defect` on the first attempt; Retry after a permitted retry |
-| transient credential-store failure | Retry, with no request | Retry with a next-attempt permit, with no request |
+| 400, 422 | `providerRejected`, `VALIDATION` or `PROVIDER_REJECTION` | `providerRejected` on a first send, otherwise `uncertain` |
+| 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same as 400 |
+| 404 | `notFound` where declared, otherwise `providerRejected` | `notFound` or `providerRejected` on a first send, otherwise `uncertain` |
+| 411, 413, 414, 415 | `providerRejected` | `providerRejected` on a first send, otherwise `uncertain` |
+| 405, 409, other 4xx | `providerRejected` for reads; Retry for the `PUT` | resend within the send cap, then `uncertain` |
+| 3xx | `providerRejected`, `PROTOCOL`, for reads; Retry for the `PUT`; redirects are never followed | resend within the send cap, then `uncertain` |
+| 429 | Retry after `Retry-After` | Retry after `Retry-After` with `canResend` checkpoint |
+| connection refused before sending | Retry | Retry with `canResend` checkpoint |
+| 503 | Retry, after `Retry-After` when present | Retry with `canResend` checkpoint |
+| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | resend within the send cap, then `uncertain` |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for reads, including the read before the `PUT`; Retry after the `PUT` | `uncertain` when the ticket or conversation ID decodes; otherwise resend within the send cap, then `uncertain` |
+| unreadable or untrusted fence checkpoint | not applicable | Retry without sending |
+| invalid input | `defect`, with no request | `defect`, with no request |
+| terminal connection credentials | `defect`, with no request | `notSent` checkpoint and `defect` on a first send; `uncertain` after a possible send |
+| transient credential-store failure | Retry, with no request | Retry with no request; `notSent` checkpoint only on a first send |
 
 The Receipt carries the Call ID, the ticket or conversation ID, and
 Freshdesk's `X-Request-Id` header when present.

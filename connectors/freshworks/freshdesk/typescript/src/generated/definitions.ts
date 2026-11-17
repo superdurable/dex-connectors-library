@@ -82,7 +82,7 @@ export const CreateTicketBranch = {
 export const CreateTicketBranchCreated = CreateTicketBranch.Created;
 /** Freshdesk conclusively rejected the ticket, such as an unknown status, group, or agent; no ticket was created. */
 export const CreateTicketBranchProviderRejected = CreateTicketBranch.ProviderRejected;
-/** The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it. */
+/** The ticket may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the ticket ID with an invalid ticket. The Step does not send it again. */
 export const CreateTicketBranchUncertain = CreateTicketBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateTicketBranchDefect = CreateTicketBranch.Defect;
@@ -92,7 +92,7 @@ export const CreateTicketDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "Freshdesk created the ticket and returned it." },
     { id: "providerRejected", description: "Freshdesk conclusively rejected the ticket, such as an unknown status, group, or agent; no ticket was created.", optional: true },
-    { id: "uncertain", description: "The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it.", optional: true },
+    { id: "uncertain", description: "The ticket may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the ticket ID with an invalid ticket. The Step does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },
@@ -116,7 +116,7 @@ export const UpdateTicketBranchUpdated = UpdateTicketBranch.Updated;
 export const UpdateTicketBranchNotFound = UpdateTicketBranch.NotFound;
 /** Freshdesk conclusively rejected the change, such as an unknown status, a missing required field, or a spam or deleted ticket. */
 export const UpdateTicketBranchProviderRejected = UpdateTicketBranch.ProviderRejected;
-/** Freshdesk returned an invalid or oversized ticket, so the change may have been applied. */
+/** Freshdesk returned an invalid or oversized ticket on the read before the change, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead. */
 export const UpdateTicketBranchInvalidResponse = UpdateTicketBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateTicketBranchDefect = UpdateTicketBranch.Defect;
@@ -127,12 +127,11 @@ export const UpdateTicketDefinition: MutationDefinition = {
     { id: "updated", description: "The ticket holds the requested values, written now or by an earlier attempt." },
     { id: "notFound", description: "The ticket does not exist or is not visible to the connection's agent.", optional: true },
     { id: "providerRejected", description: "Freshdesk conclusively rejected the change, such as an unknown status, a missing required field, or a spam or deleted ticket.", optional: true },
-    { id: "invalidResponse", description: "Freshdesk returned an invalid or oversized ticket, so the change may have been applied.", optional: true },
+    { id: "invalidResponse", description: "Freshdesk returned an invalid or oversized ticket on the read before the change, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateTicket. */
 export const UpdateTicketMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -151,7 +150,7 @@ export const AddNoteBranchAdded = AddNoteBranch.Added;
 export const AddNoteBranchNotFound = AddNoteBranch.NotFound;
 /** Freshdesk conclusively rejected the note or reply; nothing was added. */
 export const AddNoteBranchProviderRejected = AddNoteBranch.ProviderRejected;
-/** The request was sent but its outcome cannot be confirmed, so the note or reply may exist; the connector never resends it. */
+/** The note or reply may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the conversation ID with an invalid conversation. The Step does not send it again. */
 export const AddNoteBranchUncertain = AddNoteBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddNoteBranchDefect = AddNoteBranch.Defect;
@@ -162,7 +161,7 @@ export const AddNoteDefinition: MutationDefinition = {
     { id: "added", description: "Freshdesk added the note or reply and returned it." },
     { id: "notFound", description: "The ticket does not exist or is not visible to the connection's agent; nothing was added.", optional: true },
     { id: "providerRejected", description: "Freshdesk conclusively rejected the note or reply; nothing was added.", optional: true },
-    { id: "uncertain", description: "The request was sent but its outcome cannot be confirmed, so the note or reply may exist; the connector never resends it.", optional: true },
+    { id: "uncertain", description: "The note or reply may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the conversation ID with an invalid conversation. The Step does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },

@@ -81,7 +81,7 @@ export interface ReplyToConversationStepConfig<StepInput, OperationInput = Reply
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The reply or comment may exist after a lost answer, ambiguous server error, late answer, 409 conflict, or terminal credential failure during accepted-write read-back; an accepted comment may have been deleted before read-back. The connector never resends without proof of non-application. */
+  /** The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a 2xx without a provider ID, or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection credentials that require reauthorization or are unusable before sending, or the connector definition is invalid; transient credential failures Retry. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -112,7 +112,7 @@ export interface UpdateConversationStepConfig<StepInput, OperationInput = Update
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Front conclusively rejected a change, such as an unknown teammate, tag, or ticket status; changes sent before it stay applied. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Front returned a malformed or oversized conversation, so the change may have been applied. */
+  /** Front returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

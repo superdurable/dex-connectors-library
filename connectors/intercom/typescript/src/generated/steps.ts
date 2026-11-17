@@ -78,9 +78,9 @@ export interface ReplyToConversationStepConfig<StepInput, OperationInput = Reply
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Intercom conclusively rejected the reply, such as an unknown admin or a closed channel; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** An earlier attempt sent the reply but its outcome cannot be confirmed and the conversation shows no matching part, so the reply may exist; the connector never resends it. */
+  /** The send cap is reached, and the conversation shows no part by the admin with the reply's type and text after sends whose outcome could not be confirmed, so the reply may still appear. Below the cap, an unconfirmed send is read back and then resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Intercom accepted the reply but returned an invalid or oversized conversation, so the reply exists. */
+  /** Intercom shows the reply in the conversation, but its part is invalid, such as a part without an ID; the reply exists, so do not send it again. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -112,7 +112,7 @@ export interface UpdateConversationStateStepConfig<StepInput, OperationInput = U
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Intercom conclusively rejected the change, such as an unknown admin, and the conversation is not in the requested state. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Intercom returned an invalid or oversized conversation, so the change may have been applied. */
+  /** Intercom returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -179,6 +180,28 @@ func TestUpdateConversationMapsFailuresAndRetriesALostWrite(t *testing.T) {
 	})
 	_, err = updateConversation(t, newFakeBackedClient(t, lost), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
 	requireRetry(t, err, sdkgo.FailureTransport)
+
+	conflicted := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"GET /v2/conversations/501":   stored.read,
+		"PATCH /v2/conversations/501": respondJSON(http.StatusConflict, helpScoutErrorBody("Conflict", nil)),
+	})
+	_, err = updateConversation(t, newFakeBackedClient(t, conflicted), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
+	requireRetry(t, err, sdkgo.FailureAvailability) // A 409 is an unknown outcome, so the absolute write repeats.
+
+	var reads atomic.Int32
+	invalidReadBack := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"GET /v2/conversations/501": func(response http.ResponseWriter, request *http.Request) {
+			if reads.Add(1) == 1 {
+				stored.read(response, request)
+				return
+			}
+			writeJSON(response, http.StatusOK, `{"id":"broken"`)
+		},
+		"PATCH /v2/conversations/501": respondStatus(http.StatusNoContent, nil),
+	})
+	_, err = updateConversation(t, newFakeBackedClient(t, invalidReadBack), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
+	retry := requireRetry(t, err, sdkgo.FailureProtocol)
+	require.Contains(t, retry.Failure.Message, "Help Scout accepted the change", "an invalid read-back after a write repeats it instead of selecting invalidResponse")
 
 	for _, input := range []helpscout.UpdateConversationInput{
 		{Status: helpscout.ConversationStatusClosed},

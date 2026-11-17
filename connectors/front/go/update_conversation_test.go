@@ -203,6 +203,32 @@ func TestUpdateConversationMapsWriteFailures(t *testing.T) {
 		front.UpdateConversationInput{ConversationID: testConversationID, AddTagIDs: []string{testTagID}})
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry, "repeating an idempotent write after a server error is safe")
+	for _, status := range []int{http.StatusConflict, http.StatusGone, http.StatusTemporaryRedirect} {
+		state := &statefulConversation{t: t, conversation: testConversation{id: testConversationID, status: "archived"}, writeStatus: status}
+		provider := newRecordingFront(t, state.respond)
+		_, err = sdkgo.RunMutation(newTestDexContext("update-unknown"), newFrontClient(t, provider.URL).UpdateConversation(), frontConnection,
+			front.UpdateConversationInput{ConversationID: testConversationID, AddTagIDs: []string{testTagID}})
+		require.ErrorAs(t, err, &retry, "HTTP %d is an unknown outcome, so the absolute write repeats", status)
+	}
+}
+
+func TestUpdateConversationRetriesAnInvalidReadBackAfterAWrite(t *testing.T) {
+	provider := newRecordingFront(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusOK, `{"id":"`+testConversationID+`","status":"archived","tags":[]}`)
+			return
+		}
+		if request.Method != http.MethodGet {
+			writeJSON(t, response, http.StatusNoContent, ``)
+			return
+		}
+		writeJSON(t, response, http.StatusOK, `{"id":"broken"`)
+	})
+	_, err := sdkgo.RunMutation(newTestDexContext("update-invalid-read-back"), newFrontClient(t, provider.URL).UpdateConversation(), frontConnection,
+		front.UpdateConversationInput{ConversationID: testConversationID, AddTagIDs: []string{testTagID}})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "Front accepted the write, so an invalid read-back repeats it instead of selecting invalidResponse")
+	require.Contains(t, err.Error(), "Front accepted the change")
 }
 
 func TestUpdateConversationValidatesInputBeforeAnyRequest(t *testing.T) {

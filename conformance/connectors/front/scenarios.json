@@ -813,6 +813,7 @@
           "attempt": 1,
           "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
           "providerId": "abc123",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -869,6 +870,7 @@
           "attempt": 1,
           "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
           "providerId": "com_100",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -929,7 +931,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "authorId": "tea_123",
@@ -987,7 +989,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "authorId": "tea_123",
@@ -1009,8 +1011,63 @@
       "operation": "replyToConversation"
     },
     {
+      "attempts": 3,
       "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
       "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "options": {
+              "archive": true
+            },
+            "text": "Hello Jane"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "options": {
+              "archive": true
+            },
+            "text": "Hello Jane"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        },
         {
           "body": "{}",
           "headers": {},
@@ -1043,15 +1100,16 @@
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
           "authorId": "tea_123",
           "conversationId": "cnv_100"
         },
-        "requestCount": 1,
+        "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -1063,6 +1121,30 @@
         "shouldArchive": true,
         "text": "Hello Jane"
       },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
       "name": "reply-uncertain",
       "operation": "replyToConversation"
     },
@@ -1098,21 +1180,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "CONFLICT",
         "heartbeat": {
           "attempt": 1,
           "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "authorId": "tea_123",
-          "conversationId": "cnv_100"
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
       "input": {
@@ -2441,7 +2520,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "conversationId": "cnv_100"
@@ -2458,6 +2537,251 @@
       },
       "name": "reply-static-credential-rejected",
       "operation": "replyToConversation"
+    },
+    {
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "conversationId": "cnv_100",
+        "text": "Hello"
+      },
+      "name": "reply-untrusted-checkpoint-retry",
+      "operation": "replyToConversation",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+        "sendCount": 2,
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "body": "\u003cp\u003eHello\u003c/p\u003e",
+            "options": {
+              "archive": false
+            },
+            "text": "Hello"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"status\":\"accepted\",\"message_uid\":\"abc123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "body": "\u003cp\u003eHello\u003c/p\u003e",
+            "options": {
+              "archive": false
+            },
+            "text": "Hello"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "replied",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "providerId": "abc123",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "conversationId": "cnv_100",
+          "messageUid": "abc123"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "conversationId": "cnv_100",
+        "text": "Hello"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "reply-resend-after-unknown",
+      "operation": "replyToConversation"
+    },
+    {
+      "attempts": 2,
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "body": "\u003cp\u003eHello\u003c/p\u003e",
+            "options": {
+              "archive": false
+            },
+            "text": "Hello"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 504
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "body": "\u003cp\u003eHello\u003c/p\u003e",
+            "options": {
+              "archive": false
+            },
+            "text": "Hello"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "conversationId": "cnv_100"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "conversationId": "cnv_100",
+        "text": "Hello"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "reply-refusal-after-unknown-uncertain",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "conversationId": "cnv_100"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "conversationId": "cnv_100",
+        "text": "Hello"
+      },
+      "name": "reply-prior-claimed-at-cap",
+      "operation": "replyToConversation",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+        "sendCount": 3,
+        "state": "claimed"
+      }
     }
   ],
   "schemaVersion": 1

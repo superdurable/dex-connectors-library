@@ -90,12 +90,8 @@ async function invokeIntercom(
       now: () => new Date("2026-10-30T00:00:00Z"),
     },
   );
-  if (scenario.priorHeartbeat) {
-    context.marker = {
-      intercomReplyDispatchedCallId: scenario.callId,
-      intercomReplyDispatchedAt: 1793318400,
-    };
-  }
+  // The reply read-back bounds parts by the first attempt; Go's conformance context starts it at Unix second 1.
+  Object.assign(context, { firstAttemptAt: new Date(1_000) });
   const call = scenarioCall(
     scenario,
     { provider: "intercom", name: "intercom-test" },

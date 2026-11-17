@@ -82,7 +82,7 @@ export const CreateTicketBranch = {
 export const CreateTicketBranchCreated = CreateTicketBranch.Created;
 /** Zoho Desk conclusively rejected the ticket, such as an unknown department, status, or assignee; no ticket was created. */
 export const CreateTicketBranchProviderRejected = CreateTicketBranch.ProviderRejected;
-/** The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it. */
+/** The ticket may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, a later attempt was refused after an earlier possible send, or Zoho Desk returned the ticket ID with an invalid ticket. The Step does not send it again. */
 export const CreateTicketBranchUncertain = CreateTicketBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateTicketBranchDefect = CreateTicketBranch.Defect;
@@ -92,7 +92,7 @@ export const CreateTicketDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "Zoho Desk created the ticket and returned it." },
     { id: "providerRejected", description: "Zoho Desk conclusively rejected the ticket, such as an unknown department, status, or assignee; no ticket was created.", optional: true },
-    { id: "uncertain", description: "The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it.", optional: true },
+    { id: "uncertain", description: "The ticket may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, a later attempt was refused after an earlier possible send, or Zoho Desk returned the ticket ID with an invalid ticket. The Step does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },
@@ -116,7 +116,7 @@ export const UpdateTicketBranchUpdated = UpdateTicketBranch.Updated;
 export const UpdateTicketBranchNotFound = UpdateTicketBranch.NotFound;
 /** Zoho Desk conclusively rejected the change, such as an unknown status, an assignee outside the department, or a blueprint that forbids the transition. */
 export const UpdateTicketBranchProviderRejected = UpdateTicketBranch.ProviderRejected;
-/** Zoho Desk returned an invalid or oversized ticket, so the change may have been applied. */
+/** The ticket read before the change was invalid or oversized, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead. */
 export const UpdateTicketBranchInvalidResponse = UpdateTicketBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateTicketBranchDefect = UpdateTicketBranch.Defect;
@@ -127,12 +127,11 @@ export const UpdateTicketDefinition: MutationDefinition = {
     { id: "updated", description: "Zoho Desk accepted the requested values now or already held them; the returned ticket shows any change its automations made." },
     { id: "notFound", description: "The ticket does not exist or is not visible to the connection's agent.", optional: true },
     { id: "providerRejected", description: "Zoho Desk conclusively rejected the change, such as an unknown status, an assignee outside the department, or a blueprint that forbids the transition.", optional: true },
-    { id: "invalidResponse", description: "Zoho Desk returned an invalid or oversized ticket, so the change may have been applied.", optional: true },
+    { id: "invalidResponse", description: "The ticket read before the change was invalid or oversized, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateTicket. */
 export const UpdateTicketMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -151,7 +150,7 @@ export const AddCommentBranchAdded = AddCommentBranch.Added;
 export const AddCommentBranchNotFound = AddCommentBranch.NotFound;
 /** Zoho Desk conclusively rejected the comment; nothing was added. */
 export const AddCommentBranchProviderRejected = AddCommentBranch.ProviderRejected;
-/** The request was sent but its outcome cannot be confirmed, so the comment may exist; the connector never resends it. */
+/** The comment may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, a later attempt was refused after an earlier possible send, or Zoho Desk returned the comment ID with an invalid comment or another visibility. The Step does not send it again. */
 export const AddCommentBranchUncertain = AddCommentBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddCommentBranchDefect = AddCommentBranch.Defect;
@@ -162,7 +161,7 @@ export const AddCommentDefinition: MutationDefinition = {
     { id: "added", description: "Zoho Desk added the comment and returned it." },
     { id: "notFound", description: "The ticket does not exist or is not visible to the connection's agent; nothing was added.", optional: true },
     { id: "providerRejected", description: "Zoho Desk conclusively rejected the comment; nothing was added.", optional: true },
-    { id: "uncertain", description: "The request was sent but its outcome cannot be confirmed, so the comment may exist; the connector never resends it.", optional: true },
+    { id: "uncertain", description: "The comment may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, a later attempt was refused after an earlier possible send, or Zoho Desk returned the comment ID with an invalid comment or another visibility. The Step does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },

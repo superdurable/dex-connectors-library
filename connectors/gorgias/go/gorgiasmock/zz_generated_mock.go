@@ -316,7 +316,7 @@ func UpdateTicketProviderRejected(value gorgias.UpdateTicketOutput, failure *sdk
 	return connectormock.Branch(gorgias.UpdateTicketBranchProviderRejected, value, failure)
 }
 
-// UpdateTicketInvalidResponse selects the invalidResponse branch: Gorgias returned an invalid or oversized ticket, so the change may have been applied.
+// UpdateTicketInvalidResponse selects the invalidResponse branch: Gorgias returned an invalid or oversized ticket on the read before the change, so this attempt changed nothing.
 func UpdateTicketInvalidResponse(value gorgias.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[gorgias.UpdateTicketOutput] {
 	return connectormock.Branch(gorgias.UpdateTicketBranchInvalidResponse, value, failure)
 }
