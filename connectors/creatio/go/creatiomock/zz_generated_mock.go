@@ -18,6 +18,11 @@ import (
 // Mock is a scripted creatio connection. Script each operation through its accessor.
 type Mock struct {
 	connection        creatio.Connection
+	getLead           *connectormock.Query[creatio.GetLeadInput, creatio.LeadSummary]
+	listLeads         *connectormock.Query[creatio.ListLeadsInput, creatio.LeadsPage]
+	createLead        *connectormock.Mutation[creatio.CreateLeadInput, creatio.LeadSummary]
+	updateLead        *connectormock.Mutation[creatio.UpdateLeadInput, creatio.LeadWriteOutput]
+	deleteLead        *connectormock.Mutation[creatio.DeleteLeadInput, creatio.LeadWriteOutput]
 	getAccount        *connectormock.Query[creatio.GetAccountInput, creatio.AccountSummary]
 	listAccounts      *connectormock.Query[creatio.ListAccountsInput, creatio.AccountsPage]
 	createAccount     *connectormock.Mutation[creatio.CreateAccountInput, creatio.AccountSummary]
@@ -45,6 +50,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getLead:           connectormock.NewQuery[creatio.GetLeadInput, creatio.LeadSummary](t, creatio.GetLeadDefinition),
+		listLeads:         connectormock.NewQuery[creatio.ListLeadsInput, creatio.LeadsPage](t, creatio.ListLeadsDefinition),
+		createLead:        connectormock.NewMutation[creatio.CreateLeadInput, creatio.LeadSummary](t, creatio.CreateLeadDefinition),
+		updateLead:        connectormock.NewMutation[creatio.UpdateLeadInput, creatio.LeadWriteOutput](t, creatio.UpdateLeadDefinition),
+		deleteLead:        connectormock.NewMutation[creatio.DeleteLeadInput, creatio.LeadWriteOutput](t, creatio.DeleteLeadDefinition),
 		getAccount:        connectormock.NewQuery[creatio.GetAccountInput, creatio.AccountSummary](t, creatio.GetAccountDefinition),
 		listAccounts:      connectormock.NewQuery[creatio.ListAccountsInput, creatio.AccountsPage](t, creatio.ListAccountsDefinition),
 		createAccount:     connectormock.NewMutation[creatio.CreateAccountInput, creatio.AccountSummary](t, creatio.CreateAccountDefinition),
@@ -66,6 +76,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateContact:     connectormock.NewMutation[creatio.UpdateContactInput, creatio.ContactWriteOutput](t, creatio.UpdateContactDefinition),
 		deleteContact:     connectormock.NewMutation[creatio.DeleteContactInput, creatio.ContactWriteOutput](t, creatio.DeleteContactDefinition),
 	}
+	mock.getLead.Default(GetLeadDefault())
+	mock.listLeads.Default(ListLeadsDefault())
+	mock.createLead.Default(CreateLeadDefault())
+	mock.updateLead.Default(UpdateLeadDefault())
+	mock.deleteLead.Default(DeleteLeadDefault())
 	mock.getAccount.Default(GetAccountDefault())
 	mock.listAccounts.Default(ListAccountsDefault())
 	mock.createAccount.Default(CreateAccountDefault())
@@ -96,6 +111,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() creatio.Connection { return mock.connection }
+
+// GetLead returns the getLead script.
+func (mock *Mock) GetLead() *connectormock.Query[creatio.GetLeadInput, creatio.LeadSummary] {
+	return mock.getLead
+}
+
+// ListLeads returns the listLeads script.
+func (mock *Mock) ListLeads() *connectormock.Query[creatio.ListLeadsInput, creatio.LeadsPage] {
+	return mock.listLeads
+}
+
+// CreateLead returns the createLead script.
+func (mock *Mock) CreateLead() *connectormock.Mutation[creatio.CreateLeadInput, creatio.LeadSummary] {
+	return mock.createLead
+}
+
+// UpdateLead returns the updateLead script.
+func (mock *Mock) UpdateLead() *connectormock.Mutation[creatio.UpdateLeadInput, creatio.LeadWriteOutput] {
+	return mock.updateLead
+}
+
+// DeleteLead returns the deleteLead script.
+func (mock *Mock) DeleteLead() *connectormock.Mutation[creatio.DeleteLeadInput, creatio.LeadWriteOutput] {
+	return mock.deleteLead
+}
 
 // GetAccount returns the getAccount script.
 func (mock *Mock) GetAccount() *connectormock.Query[creatio.GetAccountInput, creatio.AccountSummary] {
@@ -199,6 +239,21 @@ func (mock *Mock) DeleteContact() *connectormock.Mutation[creatio.DeleteContactI
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetLead() sdkgo.Query[creatio.GetLeadInput, creatio.LeadSummary] {
+	return operations.mock.getLead
+}
+func (operations mockOperations) ListLeads() sdkgo.Query[creatio.ListLeadsInput, creatio.LeadsPage] {
+	return operations.mock.listLeads
+}
+func (operations mockOperations) CreateLead() sdkgo.Mutation[creatio.CreateLeadInput, creatio.LeadSummary] {
+	return operations.mock.createLead
+}
+func (operations mockOperations) UpdateLead() sdkgo.Mutation[creatio.UpdateLeadInput, creatio.LeadWriteOutput] {
+	return operations.mock.updateLead
+}
+func (operations mockOperations) DeleteLead() sdkgo.Mutation[creatio.DeleteLeadInput, creatio.LeadWriteOutput] {
+	return operations.mock.deleteLead
+}
 func (operations mockOperations) GetAccount() sdkgo.Query[creatio.GetAccountInput, creatio.AccountSummary] {
 	return operations.mock.getAccount
 }
@@ -258,6 +313,185 @@ func (operations mockOperations) UpdateContact() sdkgo.Mutation[creatio.UpdateCo
 }
 func (operations mockOperations) DeleteContact() sdkgo.Mutation[creatio.DeleteContactInput, creatio.ContactWriteOutput] {
 	return operations.mock.deleteContact
+}
+
+// GetLeadFound selects the found branch: Creatio returned the selected lead.
+func GetLeadFound(value creatio.LeadSummary, failure *sdkgo.Failure) connectormock.Case[creatio.LeadSummary] {
+	return connectormock.Branch(creatio.GetLeadBranchFound, value, failure)
+}
+
+// GetLeadNotFound selects the notFound branch: Creatio returned no accessible lead for this UUID.
+func GetLeadNotFound(value creatio.LeadSummary, failure *sdkgo.Failure) connectormock.Case[creatio.LeadSummary] {
+	return connectormock.Branch(creatio.GetLeadBranchNotFound, value, failure)
+}
+
+// GetLeadProviderRejected selects the providerRejected branch: Creatio conclusively rejected the lookup.
+func GetLeadProviderRejected(value creatio.LeadSummary, failure *sdkgo.Failure) connectormock.Case[creatio.LeadSummary] {
+	return connectormock.Branch(creatio.GetLeadBranchProviderRejected, value, failure)
+}
+
+// GetLeadInvalidResponse selects the invalidResponse branch: Creatio returned malformed or oversized OData JSON.
+func GetLeadInvalidResponse(value creatio.LeadSummary, failure *sdkgo.Failure) connectormock.Case[creatio.LeadSummary] {
+	return connectormock.Branch(creatio.GetLeadBranchInvalidResponse, value, failure)
+}
+
+// GetLeadDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetLeadDefect(value creatio.LeadSummary, failure *sdkgo.Failure) connectormock.Case[creatio.LeadSummary] {
+	return connectormock.Branch(creatio.GetLeadBranchDefect, value, failure)
+}
+
+// GetLeadRetry asks Dex to retry the getLead Step, after the delay when it is positive.
+func GetLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.LeadSummary] {
+	return connectormock.Retry[creatio.LeadSummary](failure, after)
+}
+
+// GetLeadFoundDefault is the manifest mock foundDefault: A sample lead is returned.
+func GetLeadFoundDefault() connectormock.Case[creatio.LeadSummary] {
+	value := connectormock.MustDecodeOutput[creatio.LeadSummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Lead"}`)
+	return connectormock.Branch(creatio.GetLeadBranchFound, value, nil)
+}
+
+// GetLeadDefault is the manifest default, foundDefault, which New installs.
+func GetLeadDefault() connectormock.Case[creatio.LeadSummary] { return GetLeadFoundDefault() }
+
+// ListLeadsListed selects the listed branch: Creatio returned an lead page.
+func ListLeadsListed(value creatio.LeadsPage, failure *sdkgo.Failure) connectormock.Case[creatio.LeadsPage] {
+	return connectormock.Branch(creatio.ListLeadsBranchListed, value, failure)
+}
+
+// ListLeadsProviderRejected selects the providerRejected branch: Creatio rejected the lead list.
+func ListLeadsProviderRejected(value creatio.LeadsPage, failure *sdkgo.Failure) connectormock.Case[creatio.LeadsPage] {
+	return connectormock.Branch(creatio.ListLeadsBranchProviderRejected, value, failure)
+}
+
+// ListLeadsInvalidResponse selects the invalidResponse branch: Creatio returned invalid or oversized OData JSON.
+func ListLeadsInvalidResponse(value creatio.LeadsPage, failure *sdkgo.Failure) connectormock.Case[creatio.LeadsPage] {
+	return connectormock.Branch(creatio.ListLeadsBranchInvalidResponse, value, failure)
+}
+
+// ListLeadsDefect selects the defect branch: Input or connection credentials are invalid.
+func ListLeadsDefect(value creatio.LeadsPage, failure *sdkgo.Failure) connectormock.Case[creatio.LeadsPage] {
+	return connectormock.Branch(creatio.ListLeadsBranchDefect, value, failure)
+}
+
+// ListLeadsRetry asks Dex to retry the listLeads Step, after the delay when it is positive.
+func ListLeadsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.LeadsPage] {
+	return connectormock.Retry[creatio.LeadsPage](failure, after)
+}
+
+// ListLeadsListedDefault is the manifest mock listedDefault: One sample lead is listed.
+func ListLeadsListedDefault() connectormock.Case[creatio.LeadsPage] {
+	value := connectormock.MustDecodeOutput[creatio.LeadsPage](`{"leads":[{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Lead"}]}`)
+	return connectormock.Branch(creatio.ListLeadsBranchListed, value, nil)
+}
+
+// ListLeadsDefault is the manifest default, listedDefault, which New installs.
+func ListLeadsDefault() connectormock.Case[creatio.LeadsPage] { return ListLeadsListedDefault() }
+
+// CreateLeadCreated selects the created branch: Creatio created the lead.
+func CreateLeadCreated(value creatio.LeadSummary, failure *sdkgo.Failure) connectormock.Case[creatio.LeadSummary] {
+	return connectormock.Branch(creatio.CreateLeadBranchCreated, value, failure)
+}
+
+// CreateLeadProviderRejected selects the providerRejected branch: Creatio rejected creation.
+func CreateLeadProviderRejected(value creatio.LeadSummary, failure *sdkgo.Failure) connectormock.Case[creatio.LeadSummary] {
+	return connectormock.Branch(creatio.CreateLeadBranchProviderRejected, value, failure)
+}
+
+// CreateLeadUncertain returns an uncertain createLead outcome.
+func CreateLeadUncertain(value creatio.LeadSummary, failure sdkgo.Failure) connectormock.Case[creatio.LeadSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateLeadDefect selects the defect branch: Input or connection credentials are invalid.
+func CreateLeadDefect(value creatio.LeadSummary, failure *sdkgo.Failure) connectormock.Case[creatio.LeadSummary] {
+	return connectormock.Branch(creatio.CreateLeadBranchDefect, value, failure)
+}
+
+// CreateLeadRetry asks Dex to retry the createLead Step, after the delay when it is positive.
+func CreateLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.LeadSummary] {
+	return connectormock.Retry[creatio.LeadSummary](failure, after)
+}
+
+// CreateLeadCreatedDefault is the manifest mock createdDefault: One sample lead is created.
+func CreateLeadCreatedDefault() connectormock.Case[creatio.LeadSummary] {
+	value := connectormock.MustDecodeOutput[creatio.LeadSummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Lead"}`)
+	return connectormock.Branch(creatio.CreateLeadBranchCreated, value, nil)
+}
+
+// CreateLeadDefault is the manifest default, createdDefault, which New installs.
+func CreateLeadDefault() connectormock.Case[creatio.LeadSummary] { return CreateLeadCreatedDefault() }
+
+// UpdateLeadUpdated selects the updated branch: Creatio updated the lead.
+func UpdateLeadUpdated(value creatio.LeadWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.LeadWriteOutput] {
+	return connectormock.Branch(creatio.UpdateLeadBranchUpdated, value, failure)
+}
+
+// UpdateLeadNotFound selects the notFound branch: No accessible lead has this UUID.
+func UpdateLeadNotFound(value creatio.LeadWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.LeadWriteOutput] {
+	return connectormock.Branch(creatio.UpdateLeadBranchNotFound, value, failure)
+}
+
+// UpdateLeadProviderRejected selects the providerRejected branch: Creatio rejected the update.
+func UpdateLeadProviderRejected(value creatio.LeadWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.LeadWriteOutput] {
+	return connectormock.Branch(creatio.UpdateLeadBranchProviderRejected, value, failure)
+}
+
+// UpdateLeadDefect selects the defect branch: Input or connection credentials are invalid.
+func UpdateLeadDefect(value creatio.LeadWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.LeadWriteOutput] {
+	return connectormock.Branch(creatio.UpdateLeadBranchDefect, value, failure)
+}
+
+// UpdateLeadRetry asks Dex to retry the updateLead Step, after the delay when it is positive.
+func UpdateLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.LeadWriteOutput] {
+	return connectormock.Retry[creatio.LeadWriteOutput](failure, after)
+}
+
+// UpdateLeadUpdatedDefault is the manifest mock updatedDefault: One sample lead is updated.
+func UpdateLeadUpdatedDefault() connectormock.Case[creatio.LeadWriteOutput] {
+	value := connectormock.MustDecodeOutput[creatio.LeadWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+	return connectormock.Branch(creatio.UpdateLeadBranchUpdated, value, nil)
+}
+
+// UpdateLeadDefault is the manifest default, updatedDefault, which New installs.
+func UpdateLeadDefault() connectormock.Case[creatio.LeadWriteOutput] {
+	return UpdateLeadUpdatedDefault()
+}
+
+// DeleteLeadDeleted selects the deleted branch: Creatio deleted the lead.
+func DeleteLeadDeleted(value creatio.LeadWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.LeadWriteOutput] {
+	return connectormock.Branch(creatio.DeleteLeadBranchDeleted, value, failure)
+}
+
+// DeleteLeadNotFound selects the notFound branch: No accessible lead has this UUID.
+func DeleteLeadNotFound(value creatio.LeadWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.LeadWriteOutput] {
+	return connectormock.Branch(creatio.DeleteLeadBranchNotFound, value, failure)
+}
+
+// DeleteLeadProviderRejected selects the providerRejected branch: Creatio rejected the deletion.
+func DeleteLeadProviderRejected(value creatio.LeadWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.LeadWriteOutput] {
+	return connectormock.Branch(creatio.DeleteLeadBranchProviderRejected, value, failure)
+}
+
+// DeleteLeadDefect selects the defect branch: Input or connection credentials are invalid.
+func DeleteLeadDefect(value creatio.LeadWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.LeadWriteOutput] {
+	return connectormock.Branch(creatio.DeleteLeadBranchDefect, value, failure)
+}
+
+// DeleteLeadRetry asks Dex to retry the deleteLead Step, after the delay when it is positive.
+func DeleteLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.LeadWriteOutput] {
+	return connectormock.Retry[creatio.LeadWriteOutput](failure, after)
+}
+
+// DeleteLeadDeletedDefault is the manifest mock deletedDefault: One sample lead is deleted.
+func DeleteLeadDeletedDefault() connectormock.Case[creatio.LeadWriteOutput] {
+	value := connectormock.MustDecodeOutput[creatio.LeadWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+	return connectormock.Branch(creatio.DeleteLeadBranchDeleted, value, nil)
+}
+
+// DeleteLeadDefault is the manifest default, deletedDefault, which New installs.
+func DeleteLeadDefault() connectormock.Case[creatio.LeadWriteOutput] {
+	return DeleteLeadDeletedDefault()
 }
 
 // GetAccountFound selects the found branch: Creatio returned the selected account.

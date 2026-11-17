@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getLead/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.LeadSummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Lead"}`)
+			return err
+		}},
+		{name: "listLeads/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.LeadsPage](`{"leads":[{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Lead"}]}`)
+			return err
+		}},
+		{name: "createLead/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.LeadSummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Lead"}`)
+			return err
+		}},
+		{name: "updateLead/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.LeadWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
+		{name: "deleteLead/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.LeadWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
 		{name: "getAccount/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[creatio.AccountSummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Company"}`)
 			return err
@@ -106,6 +126,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetLead().Definition().Operation.OperationID != "getLead" {
+		t.Errorf("getLead mock has another definition")
+	}
+	if mock.ListLeads().Definition().Operation.OperationID != "listLeads" {
+		t.Errorf("listLeads mock has another definition")
+	}
+	if mock.CreateLead().Definition().Operation.OperationID != "createLead" {
+		t.Errorf("createLead mock has another definition")
+	}
+	if mock.UpdateLead().Definition().Operation.OperationID != "updateLead" {
+		t.Errorf("updateLead mock has another definition")
+	}
+	if mock.DeleteLead().Definition().Operation.OperationID != "deleteLead" {
+		t.Errorf("deleteLead mock has another definition")
+	}
 	if mock.GetAccount().Definition().Operation.OperationID != "getAccount" {
 		t.Errorf("getAccount mock has another definition")
 	}

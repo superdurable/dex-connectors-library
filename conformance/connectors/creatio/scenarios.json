@@ -6289,6 +6289,1515 @@
       },
       "name": "deleteOpportunity-transportFailure",
       "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "d9e4f88f-f539-5f35-98a5-4caec221843e",
+      "exchanges": [
+        {
+          "body": "{\"Id\":\"59f2ffca-b4ae-4545-82e6-58830db5077b\",\"LeadName\":\"Example Lead\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,LeadName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+          "name": "Example Lead"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getLead-found",
+      "operation": "getLead"
+    },
+    {
+      "callId": "c225bd1e-ed26-5e2b-b359-8f21319c7ca8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,LeadName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getLead-notFound",
+      "operation": "getLead"
+    },
+    {
+      "callId": "07747158-4b1d-5e5b-8e3e-381cf468eaee",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,LeadName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getLead-providerRejected",
+      "operation": "getLead"
+    },
+    {
+      "callId": "ef8e8b6b-2269-5a60-beb7-b47c5543d00d",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,LeadName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getLead-invalidResponse",
+      "operation": "getLead"
+    },
+    {
+      "callId": "9ec1984f-8025-54a4-a13d-656a72bbb435",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,LeadName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getLead-rateLimit",
+      "operation": "getLead"
+    },
+    {
+      "callId": "41fa25bd-d3ea-5d92-bc37-2b6284608357",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,LeadName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getLead-serverUnavailable",
+      "operation": "getLead"
+    },
+    {
+      "callId": "eb23f8e6-f884-5c08-a8c8-0ab710cacdf4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,LeadName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getLead-requestTimeout",
+      "operation": "getLead"
+    },
+    {
+      "callId": "05edb364-09a3-5754-8446-a31138e9ec50",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "invalid/id"
+      },
+      "name": "getLead-defect",
+      "operation": "getLead"
+    },
+    {
+      "callId": "6a288890-6165-582f-8d11-ba927db276df",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "query": {
+            "$select": [
+              "Id,LeadName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "getLead-transportFailure",
+      "operation": "getLead"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"Id\":\"59f2ffca-b4ae-4545-82e6-58830db5077b\",\"LeadName\":\"Example Lead\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,LeadName"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "leads": [
+            {
+              "id": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+              "name": "Example Lead"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listLeads-success",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,LeadName"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "leads": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listLeads-providerRejected",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,LeadName"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "leads": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listLeads-invalidResponse",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "leads": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 201
+      },
+      "name": "listLeads-defect",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,LeadName"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listLeads-rateLimit",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,LeadName"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listLeads-serverUnavailable",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,LeadName"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listLeads-transportFailure",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+      "exchanges": [
+        {
+          "body": "{\"Id\":\"59f2ffca-b4ae-4545-82e6-58830db5077b\",\"LeadName\":\"Example Lead\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Lead",
+          "requestBody": {
+            "LeadName": "Example Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+          "providerId": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+          "name": "Example Lead"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+      "input": {
+        "name": "Example Lead"
+      },
+      "name": "createLead-success",
+      "operation": "createLead"
+    },
+    {
+      "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Lead",
+          "requestBody": {
+            "LeadName": "Example Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+      "input": {
+        "name": "Example Lead"
+      },
+      "name": "createLead-providerRejected",
+      "operation": "createLead"
+    },
+    {
+      "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+      "input": {
+        "name": ""
+      },
+      "name": "createLead-defect",
+      "operation": "createLead"
+    },
+    {
+      "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Lead",
+          "requestBody": {
+            "LeadName": "Example Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+      "input": {
+        "name": "Example Lead"
+      },
+      "name": "createLead-rateLimit",
+      "operation": "createLead"
+    },
+    {
+      "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Lead",
+          "requestBody": {
+            "LeadName": "Example Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+      "input": {
+        "name": "Example Lead"
+      },
+      "name": "createLead-serverUnavailable",
+      "operation": "createLead"
+    },
+    {
+      "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Lead",
+          "requestBody": {
+            "LeadName": "Example Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+      "input": {
+        "name": "Example Lead"
+      },
+      "name": "createLead-transportFailure",
+      "operation": "createLead"
+    },
+    {
+      "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Lead",
+          "query": {
+            "$filter": [
+              "LeadName eq 'Example Lead'"
+            ],
+            "$select": [
+              "Id,LeadName"
+            ],
+            "$top": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+      "input": {
+        "name": "Example Lead"
+      },
+      "name": "createLead-uncertain",
+      "operation": "createLead",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "64079e6d-b2fa-5c74-959d-bce27cb77615",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestBody": {
+            "LeadName": "Example Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64079e6d-b2fa-5c74-959d-bce27cb77615",
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+        "name": "Example Lead"
+      },
+      "name": "updateLead-success",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "64079e6d-b2fa-5c74-959d-bce27cb77615",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestBody": {
+            "LeadName": "Example Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64079e6d-b2fa-5c74-959d-bce27cb77615",
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+        "name": "Example Lead"
+      },
+      "name": "updateLead-notFound",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "64079e6d-b2fa-5c74-959d-bce27cb77615",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestBody": {
+            "LeadName": "Example Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64079e6d-b2fa-5c74-959d-bce27cb77615",
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+        "name": "Example Lead"
+      },
+      "name": "updateLead-providerRejected",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "64079e6d-b2fa-5c74-959d-bce27cb77615",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64079e6d-b2fa-5c74-959d-bce27cb77615",
+      "input": {
+        "leadId": "invalid",
+        "name": "Example Lead"
+      },
+      "name": "updateLead-defect",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "64079e6d-b2fa-5c74-959d-bce27cb77615",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestBody": {
+            "LeadName": "Example Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64079e6d-b2fa-5c74-959d-bce27cb77615",
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+        "name": "Example Lead"
+      },
+      "name": "updateLead-rateLimit",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "64079e6d-b2fa-5c74-959d-bce27cb77615",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestBody": {
+            "LeadName": "Example Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64079e6d-b2fa-5c74-959d-bce27cb77615",
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+        "name": "Example Lead"
+      },
+      "name": "updateLead-serverUnavailable",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "64079e6d-b2fa-5c74-959d-bce27cb77615",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestBody": {
+            "LeadName": "Example Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64079e6d-b2fa-5c74-959d-bce27cb77615",
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b",
+        "name": "Example Lead"
+      },
+      "name": "updateLead-transportFailure",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "58206f65-5eda-56ee-be17-a421cad740a9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58206f65-5eda-56ee-be17-a421cad740a9",
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "deleteLead-success",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "58206f65-5eda-56ee-be17-a421cad740a9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58206f65-5eda-56ee-be17-a421cad740a9",
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "deleteLead-notFound",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "58206f65-5eda-56ee-be17-a421cad740a9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58206f65-5eda-56ee-be17-a421cad740a9",
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "deleteLead-providerRejected",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "58206f65-5eda-56ee-be17-a421cad740a9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58206f65-5eda-56ee-be17-a421cad740a9",
+      "input": {
+        "leadId": "invalid"
+      },
+      "name": "deleteLead-defect",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "58206f65-5eda-56ee-be17-a421cad740a9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58206f65-5eda-56ee-be17-a421cad740a9",
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "deleteLead-rateLimit",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "58206f65-5eda-56ee-be17-a421cad740a9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58206f65-5eda-56ee-be17-a421cad740a9",
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "deleteLead-serverUnavailable",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "58206f65-5eda-56ee-be17-a421cad740a9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Lead(59f2ffca-b4ae-4545-82e6-58830db5077b)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58206f65-5eda-56ee-be17-a421cad740a9",
+      "input": {
+        "leadId": "59f2ffca-b4ae-4545-82e6-58830db5077b"
+      },
+      "name": "deleteLead-transportFailure",
+      "operation": "deleteLead"
     }
   ],
   "schemaVersion": 1

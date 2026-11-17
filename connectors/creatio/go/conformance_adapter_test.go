@@ -59,6 +59,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createOpportunity": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateOpportunity(), reference, scenario.CallID),
 		"updateOpportunity": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateOpportunity(), reference, scenario.CallID),
 		"deleteOpportunity": newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteOpportunity(), reference, scenario.CallID),
+		"getLead":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetLead(), reference),
+		"listLeads":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListLeads(), reference),
+		"createLead":        newConformanceMutationInvocation(t, scenario.Input, context, client.CreateLead(), reference, scenario.CallID),
+		"updateLead":        newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateLead(), reference, scenario.CallID),
+		"deleteLead":        newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteLead(), reference, scenario.CallID),
 	}}
 }
 

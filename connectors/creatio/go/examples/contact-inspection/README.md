@@ -1,6 +1,6 @@
 # Creatio contact inspection Flow
 
-These runnable Flows call `getContact`, `listContacts`, `createContact`, `listAccounts`, `createAccount`, `listActivities`, `createActivity`, `listOpportunities`, and `createOpportunity` through the static `creatio` connection. They persist typed results in Attributes and expose them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+These runnable Flows call `getContact`, `listContacts`, `createContact`, `listAccounts`, `createAccount`, `listActivities`, `createActivity`, `listOpportunities`, `createOpportunity`, `listLeads`, and `createLead` through the static `creatio` connection. They persist typed results in Attributes and expose them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -16,6 +16,8 @@ dexcli visualize ./examples/contact-inspection/flow/list_activities.go --schema-
 dexcli visualize ./examples/contact-inspection/flow/create_activity.go --schema-version 2.0 --lint app --json --out /tmp/creatio-activity-creation-fdg
 dexcli visualize ./examples/contact-inspection/flow/list_opportunities.go --schema-version 2.0 --lint app --json --out /tmp/creatio-opportunities-search-fdg
 dexcli visualize ./examples/contact-inspection/flow/create_opportunity.go --schema-version 2.0 --lint app --json --out /tmp/creatio-opportunity-creation-fdg
+dexcli visualize ./examples/contact-inspection/flow/list_leads.go --schema-version 2.0 --lint app --open=false --json --out /tmp/creatio-leads-search-fdg
+dexcli visualize ./examples/contact-inspection/flow/create_lead.go --schema-version 2.0 --lint app --open=false --json --out /tmp/creatio-lead-creation-fdg
 ```
 
 Run with `--lint app --open=false` for strict FDG 2.0 validation.
@@ -44,4 +46,6 @@ Start `CreatioActivitySearch` with input `{"pageNumber":1,"pageSize":25}` and a 
 
 Start `CreatioOpportunitySearch` with input `{"pageNumber":1,"pageSize":25}` and a unique Flow ID. Start `CreatioOpportunityCreation` with input `{"name":"Example Opportunity","contactId":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","accountId":"59f2ffca-b4ae-4545-82e6-58830db5077b","ownerId":"90a68db5-cb3a-4f64-bb60-c0a934ee7600"}`. Replace sample UUIDs with the buyer Contact, Account, and responsible owner Contact from your instance. An ambiguous prior create can select `uncertain`.
 
-CI runs the mock-backed real-Dex integration test. Real Creatio authorization and retrieval remain unverified.
+Start `CreatioLeadSearch` with input `{"pageNumber":1,"pageSize":25}` and a unique Flow ID. Start `CreatioLeadCreation` with input `{"name":"Example Lead"}`. The `name` is sent as OData `LeadName`; instance business processes may change it after creation. A name match after an unknown create cannot prove that this Flow created it, so the optional `uncertain` branch can be selected.
+
+CI runs the mock-backed real-Dex integration test. Real Creatio authorization, Lead validation, and OData results remain unverified.
