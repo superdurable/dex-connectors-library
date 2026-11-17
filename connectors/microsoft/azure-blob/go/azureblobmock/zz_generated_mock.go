@@ -18,6 +18,9 @@ import (
 // Mock is a scripted microsoft-azure-blob connection. Script each operation through its accessor.
 type Mock struct {
 	connection azureblob.Connection
+	listBlobs  *connectormock.Query[azureblob.ListBlobsInput, azureblob.BlobsPage]
+	putBlob    *connectormock.Mutation[azureblob.PutBlobInput, azureblob.BlobWriteResult]
+	deleteBlob *connectormock.Mutation[azureblob.DeleteBlobInput, azureblob.BlobDeleteResult]
 	getBlob    *connectormock.Query[azureblob.GetBlobInput, azureblob.BlobDownload]
 }
 
@@ -26,8 +29,14 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getBlob: connectormock.NewQuery[azureblob.GetBlobInput, azureblob.BlobDownload](t, azureblob.GetBlobDefinition),
+		listBlobs:  connectormock.NewQuery[azureblob.ListBlobsInput, azureblob.BlobsPage](t, azureblob.ListBlobsDefinition),
+		putBlob:    connectormock.NewMutation[azureblob.PutBlobInput, azureblob.BlobWriteResult](t, azureblob.PutBlobDefinition),
+		deleteBlob: connectormock.NewMutation[azureblob.DeleteBlobInput, azureblob.BlobDeleteResult](t, azureblob.DeleteBlobDefinition),
+		getBlob:    connectormock.NewQuery[azureblob.GetBlobInput, azureblob.BlobDownload](t, azureblob.GetBlobDefinition),
 	}
+	mock.listBlobs.Default(ListBlobsDefault())
+	mock.putBlob.Default(PutBlobDefault())
+	mock.deleteBlob.Default(DeleteBlobDefault())
 	mock.getBlob.Default(GetBlobDefault())
 	connection, err := azureblob.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "microsoft-azure-blob", Name: connectionName})
 	if err != nil {
@@ -40,6 +49,21 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() azureblob.Connection { return mock.connection }
 
+// ListBlobs returns the listBlobs script.
+func (mock *Mock) ListBlobs() *connectormock.Query[azureblob.ListBlobsInput, azureblob.BlobsPage] {
+	return mock.listBlobs
+}
+
+// PutBlob returns the putBlob script.
+func (mock *Mock) PutBlob() *connectormock.Mutation[azureblob.PutBlobInput, azureblob.BlobWriteResult] {
+	return mock.putBlob
+}
+
+// DeleteBlob returns the deleteBlob script.
+func (mock *Mock) DeleteBlob() *connectormock.Mutation[azureblob.DeleteBlobInput, azureblob.BlobDeleteResult] {
+	return mock.deleteBlob
+}
+
 // GetBlob returns the getBlob script.
 func (mock *Mock) GetBlob() *connectormock.Query[azureblob.GetBlobInput, azureblob.BlobDownload] {
 	return mock.getBlob
@@ -47,8 +71,121 @@ func (mock *Mock) GetBlob() *connectormock.Query[azureblob.GetBlobInput, azurebl
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListBlobs() sdkgo.Query[azureblob.ListBlobsInput, azureblob.BlobsPage] {
+	return operations.mock.listBlobs
+}
+func (operations mockOperations) PutBlob() sdkgo.Mutation[azureblob.PutBlobInput, azureblob.BlobWriteResult] {
+	return operations.mock.putBlob
+}
+func (operations mockOperations) DeleteBlob() sdkgo.Mutation[azureblob.DeleteBlobInput, azureblob.BlobDeleteResult] {
+	return operations.mock.deleteBlob
+}
 func (operations mockOperations) GetBlob() sdkgo.Query[azureblob.GetBlobInput, azureblob.BlobDownload] {
 	return operations.mock.getBlob
+}
+
+// ListBlobsListed selects the listed branch: Azure returned one blob page.
+func ListBlobsListed(value azureblob.BlobsPage, failure *sdkgo.Failure) connectormock.Case[azureblob.BlobsPage] {
+	return connectormock.Branch(azureblob.ListBlobsBranchListed, value, failure)
+}
+
+// ListBlobsMissing selects the missing branch: The container does not exist.
+func ListBlobsMissing(value azureblob.BlobsPage, failure *sdkgo.Failure) connectormock.Case[azureblob.BlobsPage] {
+	return connectormock.Branch(azureblob.ListBlobsBranchMissing, value, failure)
+}
+
+// ListBlobsProviderRejected selects the providerRejected branch: Azure rejected the list request.
+func ListBlobsProviderRejected(value azureblob.BlobsPage, failure *sdkgo.Failure) connectormock.Case[azureblob.BlobsPage] {
+	return connectormock.Branch(azureblob.ListBlobsBranchProviderRejected, value, failure)
+}
+
+// ListBlobsInvalidResponse selects the invalidResponse branch: Azure returned invalid or oversized XML.
+func ListBlobsInvalidResponse(value azureblob.BlobsPage, failure *sdkgo.Failure) connectormock.Case[azureblob.BlobsPage] {
+	return connectormock.Branch(azureblob.ListBlobsBranchInvalidResponse, value, failure)
+}
+
+// ListBlobsDefect selects the defect branch: The container or connection is invalid.
+func ListBlobsDefect(value azureblob.BlobsPage, failure *sdkgo.Failure) connectormock.Case[azureblob.BlobsPage] {
+	return connectormock.Branch(azureblob.ListBlobsBranchDefect, value, failure)
+}
+
+// ListBlobsRetry asks Dex to retry the listBlobs Step, after the delay when it is positive.
+func ListBlobsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[azureblob.BlobsPage] {
+	return connectormock.Retry[azureblob.BlobsPage](failure, after)
+}
+
+// ListBlobsListedDefault is the manifest mock listedDefault: One example blob is listed.
+func ListBlobsListedDefault() connectormock.Case[azureblob.BlobsPage] {
+	value := connectormock.MustDecodeOutput[azureblob.BlobsPage](`{"names":["example.txt"],"nextMarker":""}`)
+	return connectormock.Branch(azureblob.ListBlobsBranchListed, value, nil)
+}
+
+// ListBlobsDefault is the manifest default, listedDefault, which New installs.
+func ListBlobsDefault() connectormock.Case[azureblob.BlobsPage] { return ListBlobsListedDefault() }
+
+// PutBlobStored selects the stored branch: Azure stored the complete block blob.
+func PutBlobStored(value azureblob.BlobWriteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.BlobWriteResult] {
+	return connectormock.Branch(azureblob.PutBlobBranchStored, value, failure)
+}
+
+// PutBlobProviderRejected selects the providerRejected branch: Azure rejected the write.
+func PutBlobProviderRejected(value azureblob.BlobWriteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.BlobWriteResult] {
+	return connectormock.Branch(azureblob.PutBlobBranchProviderRejected, value, failure)
+}
+
+// PutBlobInvalidResponse selects the invalidResponse branch: Azure returned invalid response metadata.
+func PutBlobInvalidResponse(value azureblob.BlobWriteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.BlobWriteResult] {
+	return connectormock.Branch(azureblob.PutBlobBranchInvalidResponse, value, failure)
+}
+
+// PutBlobDefect selects the defect branch: The input or connection is invalid.
+func PutBlobDefect(value azureblob.BlobWriteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.BlobWriteResult] {
+	return connectormock.Branch(azureblob.PutBlobBranchDefect, value, failure)
+}
+
+// PutBlobRetry asks Dex to retry the putBlob Step, after the delay when it is positive.
+func PutBlobRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[azureblob.BlobWriteResult] {
+	return connectormock.Retry[azureblob.BlobWriteResult](failure, after)
+}
+
+// PutBlobStoredDefault is the manifest mock storedDefault: One example blob was stored.
+func PutBlobStoredDefault() connectormock.Case[azureblob.BlobWriteResult] {
+	value := connectormock.MustDecodeOutput[azureblob.BlobWriteResult](`{"etag":"\"0x1\""}`)
+	return connectormock.Branch(azureblob.PutBlobBranchStored, value, nil)
+}
+
+// PutBlobDefault is the manifest default, storedDefault, which New installs.
+func PutBlobDefault() connectormock.Case[azureblob.BlobWriteResult] { return PutBlobStoredDefault() }
+
+// DeleteBlobDeleted selects the deleted branch: Azure accepted the deletion or the blob was already missing.
+func DeleteBlobDeleted(value azureblob.BlobDeleteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.BlobDeleteResult] {
+	return connectormock.Branch(azureblob.DeleteBlobBranchDeleted, value, failure)
+}
+
+// DeleteBlobProviderRejected selects the providerRejected branch: Azure rejected the deletion.
+func DeleteBlobProviderRejected(value azureblob.BlobDeleteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.BlobDeleteResult] {
+	return connectormock.Branch(azureblob.DeleteBlobBranchProviderRejected, value, failure)
+}
+
+// DeleteBlobDefect selects the defect branch: The input or connection is invalid.
+func DeleteBlobDefect(value azureblob.BlobDeleteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.BlobDeleteResult] {
+	return connectormock.Branch(azureblob.DeleteBlobBranchDefect, value, failure)
+}
+
+// DeleteBlobRetry asks Dex to retry the deleteBlob Step, after the delay when it is positive.
+func DeleteBlobRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[azureblob.BlobDeleteResult] {
+	return connectormock.Retry[azureblob.BlobDeleteResult](failure, after)
+}
+
+// DeleteBlobDeletedDefault is the manifest mock deletedDefault: One example blob was deleted.
+func DeleteBlobDeletedDefault() connectormock.Case[azureblob.BlobDeleteResult] {
+	value := connectormock.MustDecodeOutput[azureblob.BlobDeleteResult](`{"deleted":true}`)
+	return connectormock.Branch(azureblob.DeleteBlobBranchDeleted, value, nil)
+}
+
+// DeleteBlobDefault is the manifest default, deletedDefault, which New installs.
+func DeleteBlobDefault() connectormock.Case[azureblob.BlobDeleteResult] {
+	return DeleteBlobDeletedDefault()
 }
 
 // GetBlobDownloaded selects the downloaded branch: Azure returned the complete blob.

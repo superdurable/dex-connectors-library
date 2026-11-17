@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: microsoft-azure-blob
   displayName: Azure Blob Storage
-  description: Download a bounded blob from an Azure Storage container with Shared Key authorization.
+  description: List, download, upload, and delete bounded blobs with Azure Storage Shared Key authorization.
   company: Microsoft
   categories: [databases-storage, files-documents]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: microsoft-azure-blob
   languages:
@@ -44,6 +44,11 @@ spec:
         type: integer
         default: 1048576
         description: Maximum complete blob body in bytes. Blank uses the displayed default; increase only for a known larger blob that the Flow can safely store.
+      - name: listPageSize
+        goName: ListPageSize
+        type: integer
+        default: 100
+        description: Positive maximum number of blob names per list page. Blank uses the displayed default; increase for a large container when the returned XML fits maxResponseBytes.
   auth:
     type: apiKey
     connectionKind: microsoft-azure-blob-shared-key
@@ -58,9 +63,69 @@ spec:
       steps:
         - Open Storage accounts > selected account > Overview and copy its lowercase account name into accountName. The account must allow Shared Key access; accounts configured to disallow Shared Key need a different authorization method and cannot use this connector release.
         - Open Security + networking > Access keys > Show keys. Copy one base64 key value into the secret account_key field. Grant the connection only to trusted Workers; this key authorizes the storage account. Never put the key in Flow input.
-        - Open Data storage > Containers > selected container and note its lowercase name and blob path. Use those values as getBlob Flow input. Leave endpoint, timeout, and maxResponseBytes blank for their displayed defaults.
+        - Open Data storage > Containers > selected container and note its lowercase name and blob path. Use those values as Flow input. Leave endpoint, timeout, maxResponseBytes, and listPageSize blank for their displayed defaults.
         - Rotate by selecting the other access key, updating this connection, verifying a Flow, then regenerating the old key under Access keys. Remove the connection when access should end.
   operations:
+    - name: listBlobs
+      goName: ListBlobs
+      inputType: ListBlobsInput
+      outputType: BlobsPage
+      kind: query
+      description: List one page of blob names in a container, optionally by prefix.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Azure returned one blob page.}
+        - {id: missing, goName: Missing, description: The container does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Azure rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Azure returned invalid or oversized XML., optional: true}
+        - {id: defect, goName: Defect, description: The container or connection is invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example blob is listed.
+          output: {names: [example.txt], nextMarker: ''}
+    - name: putBlob
+      goName: PutBlob
+      inputType: PutBlobInput
+      outputType: BlobWriteResult
+      kind: mutation
+      description: Create or replace one bounded block blob from base64 bytes.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: stored, goName: Stored, description: Azure stored the complete block blob.}
+        - {id: providerRejected, goName: ProviderRejected, description: Azure rejected the write., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Azure returned invalid response metadata., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - name: storedDefault
+          branch: stored
+          default: true
+          description: One example blob was stored.
+          output: {etag: '"0x1"'}
+    - name: deleteBlob
+      goName: DeleteBlob
+      inputType: DeleteBlobInput
+      outputType: BlobDeleteResult
+      kind: mutation
+      description: Delete one blob and its snapshots by name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Azure accepted the deletion or the blob was already missing.}
+        - {id: providerRejected, goName: ProviderRejected, description: Azure rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One example blob was deleted.
+          output: {deleted: true}
     - name: getBlob
       goName: GetBlob
       inputType: GetBlobInput

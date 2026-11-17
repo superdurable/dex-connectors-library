@@ -24,7 +24,8 @@ import (
 func TestBlobDownloadUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := azureblobmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	listingFlow := NewBlobListingFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, listingFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestBlobDownloadUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "aGVsbG8=", output.DataBase64)
 	require.Len(t, mock.GetBlob().Calls(), 1)
+	listingID := "azureblob-blob-listing-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, listingFlow, listingID, azureblob.ListBlobsInput{Container: "docs"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	listing, err := client.WaitForFlow(ctx, listingID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, listing.Status, listing.ErrorMessage)
+	var page azureblob.BlobsPage
+	require.NoError(t, listing.DecodeSingleOutput(&page))
+	require.Equal(t, []string{"example.txt"}, page.Names)
+	require.Len(t, mock.ListBlobs().Calls(), 1)
 }

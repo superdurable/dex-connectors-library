@@ -19,5 +19,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	credentials := Credentials{AccountKey: sdkgo.NewSecretString("c2VjcmV0LXRlc3Qta2V5")}
 	client, err := New(Config{Endpoint: endpoint, AccountName: "exampleacct"}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport), signingTimeOption{now: func() time.Time { return time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC) }})
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{"getBlob": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetBlob(), reference)}}
+	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"getBlob":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetBlob(), reference),
+		"listBlobs":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListBlobs(), reference),
+		"putBlob":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.PutBlob(), reference, scenario.CallID),
+		"deleteBlob": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteBlob(), reference, scenario.CallID),
+	}}
 }

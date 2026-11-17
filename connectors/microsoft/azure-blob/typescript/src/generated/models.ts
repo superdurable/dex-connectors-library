@@ -16,6 +16,8 @@ export interface Config {
   timeoutMs?: number;
   /** Maximum complete blob body in bytes. Blank uses the displayed default; increase only for a known larger blob that the Flow can safely store. */
   maxResponseBytes?: number;
+  /** Positive maximum number of blob names per list page. Blank uses the displayed default; increase for a large container when the returned XML fits maxResponseBytes. */
+  listPageSize?: number;
 }
 
 /** Runtime schema for manifest configuration. */
@@ -24,6 +26,7 @@ export const ConfigSchema = z.object({
   "endpoint": z.string().optional(),
   "timeoutMs": z.number().int().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "listPageSize": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

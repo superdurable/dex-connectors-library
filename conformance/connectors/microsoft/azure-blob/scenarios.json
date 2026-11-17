@@ -488,6 +488,989 @@
       },
       "name": "getBlob-transportFailure",
       "operation": "getBlob"
+    },
+    {
+      "callId": "b07-list-1",
+      "exchanges": [
+        {
+          "body": "\u003cEnumerationResults\u003e\u003cBlobs\u003e\u003cBlob\u003e\u003cName\u003ereports/a.txt\u003c/Name\u003e\u003c/Blob\u003e\u003c/Blobs\u003e\u003cNextMarker\u003enext\u003c/NextMarker\u003e\u003c/EnumerationResults\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/docs",
+          "query": {
+            "comp": [
+              "list"
+            ],
+            "marker": [
+              "cursor"
+            ],
+            "maxresults": [
+              "100"
+            ],
+            "prefix": [
+              "reports/"
+            ],
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:urD6zw6ZYaLx0FB0kd80bAHlTgX1naL1tPM192PTy7Y="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "names": [
+            "reports/a.txt"
+          ],
+          "nextMarker": "next"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "docs",
+        "marker": "cursor",
+        "prefix": "reports/"
+      },
+      "name": "listBlobs-listed",
+      "operation": "listBlobs"
+    },
+    {
+      "callId": "b07-list-2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/docs",
+          "query": {
+            "comp": [
+              "list"
+            ],
+            "maxresults": [
+              "100"
+            ],
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:rXVULLTRrW2hmMdbe5iJRPSCbqoJ0ZaTLfmu+9hS3lQ="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "names": [],
+          "nextMarker": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "docs"
+      },
+      "name": "listBlobs-missing",
+      "operation": "listBlobs"
+    },
+    {
+      "callId": "b07-list-3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/docs",
+          "query": {
+            "comp": [
+              "list"
+            ],
+            "maxresults": [
+              "100"
+            ],
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:rXVULLTRrW2hmMdbe5iJRPSCbqoJ0ZaTLfmu+9hS3lQ="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "names": [],
+          "nextMarker": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "docs"
+      },
+      "name": "listBlobs-provider-rejected",
+      "operation": "listBlobs"
+    },
+    {
+      "callId": "b07-list-4",
+      "exchanges": [
+        {
+          "body": "\u003cbad\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/docs",
+          "query": {
+            "comp": [
+              "list"
+            ],
+            "maxresults": [
+              "100"
+            ],
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:rXVULLTRrW2hmMdbe5iJRPSCbqoJ0ZaTLfmu+9hS3lQ="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "names": [],
+          "nextMarker": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "docs"
+      },
+      "name": "listBlobs-invalid-response",
+      "operation": "listBlobs"
+    },
+    {
+      "callId": "b07-list-5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "names": [],
+          "nextMarker": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "Invalid"
+      },
+      "name": "listBlobs-defect",
+      "operation": "listBlobs"
+    },
+    {
+      "callId": "b07-list-6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/docs",
+          "query": {
+            "comp": [
+              "list"
+            ],
+            "maxresults": [
+              "100"
+            ],
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:rXVULLTRrW2hmMdbe5iJRPSCbqoJ0ZaTLfmu+9hS3lQ="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "docs"
+      },
+      "name": "listBlobs-429",
+      "operation": "listBlobs"
+    },
+    {
+      "callId": "b07-list-7",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/docs",
+          "query": {
+            "comp": [
+              "list"
+            ],
+            "maxresults": [
+              "100"
+            ],
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:rXVULLTRrW2hmMdbe5iJRPSCbqoJ0ZaTLfmu+9hS3lQ="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "docs"
+      },
+      "name": "listBlobs-500",
+      "operation": "listBlobs"
+    },
+    {
+      "callId": "b07-list-8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/docs",
+          "query": {
+            "comp": [
+              "list"
+            ],
+            "maxresults": [
+              "100"
+            ],
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:rXVULLTRrW2hmMdbe5iJRPSCbqoJ0ZaTLfmu+9hS3lQ="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "docs"
+      },
+      "name": "listBlobs-transport",
+      "operation": "listBlobs"
+    },
+    {
+      "callId": "b18bc66a-c1d7-5f7c-a3c1-434facdb10c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "ETag": "\"0x1\""
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/docs/reports/a.txt",
+          "requestBody": "hello",
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:feo1W4AjrX47nUp1Pw7UEG/XJ/Q7b98LYKJPXLBoROw="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Ms-Blob-Type": [
+              "BlockBlob"
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "stored",
+        "failureKind": "",
+        "output": {
+          "etag": "\"0x1\""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b18bc66a-c1d7-5f7c-a3c1-434facdb10c3",
+      "input": {
+        "blobName": "reports/a.txt",
+        "container": "docs",
+        "contentType": "text/plain",
+        "dataBase64": "aGVsbG8="
+      },
+      "name": "putBlob-stored",
+      "operation": "putBlob"
+    },
+    {
+      "callId": "b18bc66a-c1d7-5f7c-a3c1-434facdb10c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/docs/a.txt",
+          "requestBody": "hello",
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:eko/tqPMW4tmz0dk3iQoWya52k8qG4iC6X6v6dc9WdY="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Ms-Blob-Type": [
+              "BlockBlob"
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "etag": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b18bc66a-c1d7-5f7c-a3c1-434facdb10c3",
+      "input": {
+        "blobName": "a.txt",
+        "container": "docs",
+        "contentType": "text/plain",
+        "dataBase64": "aGVsbG8="
+      },
+      "name": "putBlob-provider-rejected",
+      "operation": "putBlob"
+    },
+    {
+      "callId": "b18bc66a-c1d7-5f7c-a3c1-434facdb10c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/docs/a.txt",
+          "requestBody": "hello",
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:eko/tqPMW4tmz0dk3iQoWya52k8qG4iC6X6v6dc9WdY="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Ms-Blob-Type": [
+              "BlockBlob"
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "etag": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b18bc66a-c1d7-5f7c-a3c1-434facdb10c3",
+      "input": {
+        "blobName": "a.txt",
+        "container": "docs",
+        "contentType": "text/plain",
+        "dataBase64": "aGVsbG8="
+      },
+      "name": "putBlob-invalid-response",
+      "operation": "putBlob"
+    },
+    {
+      "callId": "b18bc66a-c1d7-5f7c-a3c1-434facdb10c3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "etag": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b18bc66a-c1d7-5f7c-a3c1-434facdb10c3",
+      "input": {
+        "blobName": "a.txt",
+        "container": "Invalid",
+        "contentType": "text/plain",
+        "dataBase64": "aGVsbG8="
+      },
+      "name": "putBlob-defect",
+      "operation": "putBlob"
+    },
+    {
+      "callId": "b18bc66a-c1d7-5f7c-a3c1-434facdb10c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/docs/a.txt",
+          "requestBody": "hello",
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:eko/tqPMW4tmz0dk3iQoWya52k8qG4iC6X6v6dc9WdY="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Ms-Blob-Type": [
+              "BlockBlob"
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b18bc66a-c1d7-5f7c-a3c1-434facdb10c3",
+      "input": {
+        "blobName": "a.txt",
+        "container": "docs",
+        "contentType": "text/plain",
+        "dataBase64": "aGVsbG8="
+      },
+      "name": "putBlob-429",
+      "operation": "putBlob"
+    },
+    {
+      "callId": "b18bc66a-c1d7-5f7c-a3c1-434facdb10c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/docs/a.txt",
+          "requestBody": "hello",
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:eko/tqPMW4tmz0dk3iQoWya52k8qG4iC6X6v6dc9WdY="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Ms-Blob-Type": [
+              "BlockBlob"
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b18bc66a-c1d7-5f7c-a3c1-434facdb10c3",
+      "input": {
+        "blobName": "a.txt",
+        "container": "docs",
+        "contentType": "text/plain",
+        "dataBase64": "aGVsbG8="
+      },
+      "name": "putBlob-500",
+      "operation": "putBlob"
+    },
+    {
+      "callId": "b18bc66a-c1d7-5f7c-a3c1-434facdb10c3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/docs/a.txt",
+          "requestBody": "hello",
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:eko/tqPMW4tmz0dk3iQoWya52k8qG4iC6X6v6dc9WdY="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Ms-Blob-Type": [
+              "BlockBlob"
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b18bc66a-c1d7-5f7c-a3c1-434facdb10c3",
+      "input": {
+        "blobName": "a.txt",
+        "container": "docs",
+        "contentType": "text/plain",
+        "dataBase64": "aGVsbG8="
+      },
+      "name": "putBlob-transport",
+      "operation": "putBlob"
+    },
+    {
+      "callId": "45bdb026-7aa0-5f30-ac20-55be428add2b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/docs/a.txt",
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:/MJBENNqlkP9Q/WQ2A01IsHWlpVj/OueY6O5VKqqG4Q="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Delete-Snapshots": [
+              "include"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "45bdb026-7aa0-5f30-ac20-55be428add2b",
+      "input": {
+        "blobName": "a.txt",
+        "container": "docs"
+      },
+      "name": "deleteBlob-deleted",
+      "operation": "deleteBlob"
+    },
+    {
+      "callId": "45bdb026-7aa0-5f30-ac20-55be428add2b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/docs/a.txt",
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:/MJBENNqlkP9Q/WQ2A01IsHWlpVj/OueY6O5VKqqG4Q="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Delete-Snapshots": [
+              "include"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "45bdb026-7aa0-5f30-ac20-55be428add2b",
+      "input": {
+        "blobName": "a.txt",
+        "container": "docs"
+      },
+      "name": "deleteBlob-missing",
+      "operation": "deleteBlob"
+    },
+    {
+      "callId": "45bdb026-7aa0-5f30-ac20-55be428add2b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/docs/a.txt",
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:/MJBENNqlkP9Q/WQ2A01IsHWlpVj/OueY6O5VKqqG4Q="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Delete-Snapshots": [
+              "include"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "45bdb026-7aa0-5f30-ac20-55be428add2b",
+      "input": {
+        "blobName": "a.txt",
+        "container": "docs"
+      },
+      "name": "deleteBlob-provider-rejected",
+      "operation": "deleteBlob"
+    },
+    {
+      "callId": "45bdb026-7aa0-5f30-ac20-55be428add2b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "45bdb026-7aa0-5f30-ac20-55be428add2b",
+      "input": {
+        "blobName": "a.txt",
+        "container": "Invalid"
+      },
+      "name": "deleteBlob-defect",
+      "operation": "deleteBlob"
+    },
+    {
+      "callId": "45bdb026-7aa0-5f30-ac20-55be428add2b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/docs/a.txt",
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:/MJBENNqlkP9Q/WQ2A01IsHWlpVj/OueY6O5VKqqG4Q="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Delete-Snapshots": [
+              "include"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "45bdb026-7aa0-5f30-ac20-55be428add2b",
+      "input": {
+        "blobName": "a.txt",
+        "container": "docs"
+      },
+      "name": "deleteBlob-429",
+      "operation": "deleteBlob"
+    },
+    {
+      "callId": "45bdb026-7aa0-5f30-ac20-55be428add2b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/docs/a.txt",
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:/MJBENNqlkP9Q/WQ2A01IsHWlpVj/OueY6O5VKqqG4Q="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Delete-Snapshots": [
+              "include"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "45bdb026-7aa0-5f30-ac20-55be428add2b",
+      "input": {
+        "blobName": "a.txt",
+        "container": "docs"
+      },
+      "name": "deleteBlob-500",
+      "operation": "deleteBlob"
+    },
+    {
+      "callId": "45bdb026-7aa0-5f30-ac20-55be428add2b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/docs/a.txt",
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:/MJBENNqlkP9Q/WQ2A01IsHWlpVj/OueY6O5VKqqG4Q="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Delete-Snapshots": [
+              "include"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "45bdb026-7aa0-5f30-ac20-55be428add2b",
+      "input": {
+        "blobName": "a.txt",
+        "container": "docs"
+      },
+      "name": "deleteBlob-transport",
+      "operation": "deleteBlob"
     }
   ],
   "schemaVersion": 1

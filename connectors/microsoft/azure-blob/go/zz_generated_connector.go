@@ -23,6 +23,7 @@ type Config struct {
 	Endpoint         string        `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
 	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	ListPageSize     int64         `json:"listPageSize,omitempty" yaml:"listPageSize,omitempty"`
 }
 
 type Credentials struct {
@@ -41,11 +42,23 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListBlobs() sdkgo.Query[ListBlobsInput, BlobsPage]
+	PutBlob() sdkgo.Mutation[PutBlobInput, BlobWriteResult]
+	DeleteBlob() sdkgo.Mutation[DeleteBlobInput, BlobDeleteResult]
 	GetBlob() sdkgo.Query[GetBlobInput, BlobDownload]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListBlobs() sdkgo.Query[ListBlobsInput, BlobsPage] {
+	return operations.client.ListBlobs()
+}
+func (operations clientOperations) PutBlob() sdkgo.Mutation[PutBlobInput, BlobWriteResult] {
+	return operations.client.PutBlob()
+}
+func (operations clientOperations) DeleteBlob() sdkgo.Mutation[DeleteBlobInput, BlobDeleteResult] {
+	return operations.client.DeleteBlob()
+}
 func (operations clientOperations) GetBlob() sdkgo.Query[GetBlobInput, BlobDownload] {
 	return operations.client.GetBlob()
 }
@@ -146,6 +159,7 @@ func DefaultConfig() Config {
 	return Config{
 		Timeout:          time.Duration(15000000000),
 		MaxResponseBytes: 1048576,
+		ListPageSize:     100,
 	}
 }
 
@@ -156,6 +170,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.ListPageSize == 0 {
+		config.ListPageSize = defaults.ListPageSize
 	}
 	return config
 }
@@ -176,6 +193,9 @@ func (config Config) Validate() error {
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
 	}
+	if config.ListPageSize < 0 {
+		return fmt.Errorf("configuration listPageSize cannot be negative")
+	}
 	return nil
 }
 
@@ -184,6 +204,221 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential account_key is required")
 	}
 	return nil
+}
+
+const ListBlobsBranchListed sdkgo.BranchID = "listed"
+const ListBlobsBranchMissing sdkgo.BranchID = "missing"
+const ListBlobsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListBlobsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListBlobsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListBlobsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listBlobs"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListBlobsBranchListed, Description: "Azure returned one blob page."},
+		{ID: ListBlobsBranchMissing, Description: "The container does not exist.", Optional: true},
+		{ID: ListBlobsBranchProviderRejected, Description: "Azure rejected the list request.", Optional: true},
+		{ID: ListBlobsBranchInvalidResponse, Description: "Azure returned invalid or oversized XML.", Optional: true},
+		{ID: ListBlobsBranchDefect, Description: "The container or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListBlobsResult = sdkgo.QueryResult[BlobsPage]
+
+type ListBlobsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=microsoft-azure-blob"`
+	operationID                    struct{}                                     `connector:"operationId=listBlobs"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListBlobsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListBlobsResult]                `connector:"branch=listed"`
+	Missing                        sdkgo.Target[ListBlobsResult]                `connector:"branch=missing,optional"`
+	ProviderRejected               sdkgo.Target[ListBlobsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListBlobsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListBlobsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[BlobsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListBlobsStep[IN any](config ListBlobsStepConfig[IN]) sdkgo.QueryStep[IN, ListBlobsInput, BlobsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-azure-blob connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListBlobsInput, BlobsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListBlobs(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListBlobsResult] {
+			branches := make([]sdkgo.BranchTarget[ListBlobsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListBlobsBranchListed))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(ListBlobsBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListBlobsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListBlobsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListBlobsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const PutBlobBranchStored sdkgo.BranchID = "stored"
+const PutBlobBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PutBlobBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const PutBlobBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PutBlobDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "putBlob"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PutBlobBranchStored, Description: "Azure stored the complete block blob."},
+		{ID: PutBlobBranchProviderRejected, Description: "Azure rejected the write.", Optional: true},
+		{ID: PutBlobBranchInvalidResponse, Description: "Azure returned invalid response metadata.", Optional: true},
+		{ID: PutBlobBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type PutBlobResult = sdkgo.MutationResult[BlobWriteResult]
+
+type PutBlobStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=microsoft-azure-blob"`
+	operationID                       struct{}                                              `connector:"operationId=putBlob"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) PutBlobInput                                 `connector:"mapToOperationInput"`
+	Stored                            sdkgo.Target[PutBlobResult]                           `connector:"branch=stored"`
+	ProviderRejected                  sdkgo.Target[PutBlobResult]                           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[PutBlobResult]                           `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[PutBlobResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[BlobWriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewPutBlobStep[IN any](config PutBlobStepConfig[IN]) sdkgo.MutationStep[IN, PutBlobInput, BlobWriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-azure-blob connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PutBlobInput, BlobWriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PutBlob(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PutBlobResult] {
+			branches := make([]sdkgo.BranchTarget[PutBlobResult], 0, 4)
+			if config.Stored.HasStep() {
+				branches = append(branches, config.Stored.BranchTarget(PutBlobBranchStored))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PutBlobBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(PutBlobBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PutBlobBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteBlobBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteBlobBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteBlobBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteBlobDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteBlob"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteBlobBranchDeleted, Description: "Azure accepted the deletion or the blob was already missing."},
+		{ID: DeleteBlobBranchProviderRejected, Description: "Azure rejected the deletion.", Optional: true},
+		{ID: DeleteBlobBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteBlobResult = sdkgo.MutationResult[BlobDeleteResult]
+
+type DeleteBlobStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=microsoft-azure-blob"`
+	operationID                       struct{}                                               `connector:"operationId=deleteBlob"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteBlobInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteBlobResult]                         `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteBlobResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteBlobResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[BlobDeleteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteBlobStep[IN any](config DeleteBlobStepConfig[IN]) sdkgo.MutationStep[IN, DeleteBlobInput, BlobDeleteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-azure-blob connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteBlobInput, BlobDeleteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteBlob(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteBlobResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteBlobResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteBlobBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteBlobBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteBlobBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetBlobBranchDownloaded sdkgo.BranchID = "downloaded"

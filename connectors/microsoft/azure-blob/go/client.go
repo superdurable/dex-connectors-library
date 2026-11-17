@@ -14,6 +14,8 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -43,6 +45,7 @@ type Client struct {
 	endpoint         string
 	accountName      string
 	maxResponseBytes int64
+	listPageSize     int64
 	credentials      CredentialSource
 	httpClient       *http.Client
 	now              func() time.Time
@@ -68,7 +71,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Azure Blob endpoint: %w", err)
 	}
-	client := &Client{endpoint: strings.TrimRight(validated, "/"), accountName: config.AccountName, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, now: time.Now}
+	client := &Client{endpoint: strings.TrimRight(validated, "/"), accountName: config.AccountName, maxResponseBytes: config.MaxResponseBytes, listPageSize: config.ListPageSize, credentials: credentials, now: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Azure Blob client option is required")
@@ -92,6 +95,18 @@ type providerResponse struct {
 }
 
 func (client *Client) downloadBlob(call sdkgo.Call, container, blobName string) providerResponse {
+	return client.requestStorage(call, http.MethodGet, blobPath(container, blobName), nil, "", nil)
+}
+
+func blobPath(container, blobName string) string {
+	segments := strings.Split(blobName, "/")
+	for index, segment := range segments {
+		segments[index] = url.PathEscape(segment)
+	}
+	return "/" + container + "/" + strings.Join(segments, "/")
+}
+
+func (client *Client) requestStorage(call sdkgo.Call, method, path string, body []byte, contentType string, extraHeaders http.Header) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -104,26 +119,52 @@ func (client *Client) downloadBlob(call sdkgo.Call, container, blobName string) 
 	if err != nil || len(signingKey) == 0 {
 		return providerResponse{err: errCredential}
 	}
-	segments := strings.Split(blobName, "/")
-	for index, segment := range segments {
-		segments[index] = url.PathEscape(segment)
-	}
-	path := "/" + container + "/" + strings.Join(segments, "/")
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.endpoint+path, nil)
+	request, err := http.NewRequestWithContext(call.Context, method, client.endpoint+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	timestamp := client.now().UTC().Format(http.TimeFormat)
-	// Shared Key signs the encoded path exactly as sent, including any endpoint path.
+	request.Header.Set("x-ms-date", timestamp)
+	request.Header.Set("x-ms-version", storageVersion)
+	if contentType != "" {
+		request.Header.Set("Content-Type", contentType)
+	}
+	for name, values := range extraHeaders {
+		for _, value := range values {
+			request.Header.Add(name, value)
+		}
+	}
+	// Shared Key signs every x-ms header and the encoded resource path and query.
 	canonicalResource := "/" + client.accountName + request.URL.EscapedPath()
-	signedValue := "GET" + strings.Repeat("\n", 12) + "x-ms-date:" + timestamp + "\n" + "x-ms-version:" + storageVersion + "\n" + canonicalResource
+	query := request.URL.Query()
+	queryNames := make([]string, 0, len(query))
+	for name := range query {
+		queryNames = append(queryNames, strings.ToLower(name))
+	}
+	sort.Strings(queryNames)
+	for _, name := range queryNames {
+		values := query[name]
+		sort.Strings(values)
+		canonicalResource += "\n" + name + ":" + strings.Join(values, ",")
+	}
+	canonicalHeaders := make([]string, 0)
+	for name, values := range request.Header {
+		lowerName := strings.ToLower(name)
+		if strings.HasPrefix(lowerName, "x-ms-") {
+			canonicalHeaders = append(canonicalHeaders, lowerName+":"+strings.Join(values, ","))
+		}
+	}
+	sort.Strings(canonicalHeaders)
+	contentLength := ""
+	if len(body) > 0 {
+		contentLength = strconv.Itoa(len(body))
+	}
+	signedValue := method + "\n\n\n" + contentLength + "\n\n" + contentType + strings.Repeat("\n", 7) + strings.Join(canonicalHeaders, "\n") + "\n" + canonicalResource
 	mac := hmac.New(sha256.New, signingKey)
 	if _, err := mac.Write([]byte(signedValue)); err != nil {
 		return providerResponse{err: errRequest}
 	}
 	signature := base64.StdEncoding.EncodeToString(mac.Sum(nil))
-	request.Header.Set("x-ms-date", timestamp)
-	request.Header.Set("x-ms-version", storageVersion)
 	request.Header.Set("Authorization", "SharedKey "+client.accountName+":"+signature)
 	response, err := client.httpClient.Do(request)
 	if err != nil {
@@ -131,9 +172,9 @@ func (client *Client) downloadBlob(call sdkgo.Call, container, blobName string) 
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.now())
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	if bytes.Contains(body, []byte(accountKey)) {
+	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	if bytes.Contains(responseBody, []byte(accountKey)) {
 		return providerResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
 	}
-	return providerResponse{body: body, status: response.StatusCode, contentType: response.Header.Get("Content-Type"), etag: response.Header.Get("ETag"), retryAfter: retryAfter, err: err}
+	return providerResponse{body: responseBody, status: response.StatusCode, contentType: response.Header.Get("Content-Type"), etag: response.Header.Get("ETag"), retryAfter: retryAfter, err: err}
 }
