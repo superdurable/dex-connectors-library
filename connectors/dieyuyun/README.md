@@ -9,3 +9,7 @@ Sign in to the [Wuliang AI console](https://open-console.dieyuyun.com/), open **
 ## Go
 
 The [account balance Flow](go/examples/account-balance/) is a runnable Worker with static Dex Web connection name `dieyuyun`. `fetched` completes the Flow; optional branches fail it unless an application wires a business response. Read-only transient failures retry safely. The local mock integration test uses synthetic balance data and a real Dex Worker and Client. Live authorization and balance values remain unverified without a user-controlled connection.
+
+## TypeScript
+
+The [TypeScript balance Flow](typescript/examples/balance/) is a runnable Worker and Client using the same static `dieyuyun` connection. It preserves the provider decimal balance text without floating-point conversion and persists only `availableCNY`.
