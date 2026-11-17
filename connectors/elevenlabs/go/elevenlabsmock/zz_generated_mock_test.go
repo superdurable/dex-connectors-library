@@ -36,6 +36,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[elevenlabs.Voice](`{"voiceId":"voice_meridian","name":"Meridian Narrator"}`)
 			return err
 		}},
+		{name: "editVoiceMetadata/metadataEdited/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elevenlabs.EditedVoiceMetadata](`{"voiceId":"voice_meridian","name":"Meridian Narrator"}`)
+			return err
+		}},
+		{name: "deleteVoice/voiceDeleted/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elevenlabs.DeletedVoice](`{"voiceId":"voice_meridian","deleted":true}`)
+			return err
+		}},
 		{name: "updateVoiceSettings/updatedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[elevenlabs.UpdatedVoiceSettings](`{"voiceId":"voice_meridian"}`)
 			return err
@@ -72,6 +80,12 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetVoice().Definition().Operation.OperationID != "getVoice" {
 		t.Errorf("getVoice mock has another definition")
+	}
+	if mock.EditVoiceMetadata().Definition().Operation.OperationID != "editVoiceMetadata" {
+		t.Errorf("editVoiceMetadata mock has another definition")
+	}
+	if mock.DeleteVoice().Definition().Operation.OperationID != "deleteVoice" {
+		t.Errorf("deleteVoice mock has another definition")
 	}
 	if mock.UpdateVoiceSettings().Definition().Operation.OperationID != "updateVoiceSettings" {
 		t.Errorf("updateVoiceSettings mock has another definition")

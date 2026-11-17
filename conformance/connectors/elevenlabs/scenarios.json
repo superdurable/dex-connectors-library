@@ -2590,6 +2590,839 @@
       },
       "name": "deleteHistoryItem-transport",
       "operation": "deleteHistoryItem"
+    },
+    {
+      "callId": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/edit",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "TWVyaWRpYW4gTmFycmF0b3I=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QSBjbGVhciBuYXJyYXRpb24gdm9pY2U=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"description\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "edited",
+        "failureKind": "",
+        "output": {
+          "name": "Meridian Narrator",
+          "voiceId": "voice_meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "input": {
+        "description": "A clear narration voice",
+        "name": "Meridian Narrator",
+        "voiceId": "voice_meridian"
+      },
+      "name": "editVoiceMetadata-success",
+      "operation": "editVoiceMetadata"
+    },
+    {
+      "callId": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/edit",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "TWVyaWRpYW4gTmFycmF0b3I=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QSBjbGVhciBuYXJyYXRpb24gdm9pY2U=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"description\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "name": "",
+          "voiceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "input": {
+        "description": "A clear narration voice",
+        "name": "Meridian Narrator",
+        "voiceId": "voice_meridian"
+      },
+      "name": "editVoiceMetadata-notFound",
+      "operation": "editVoiceMetadata"
+    },
+    {
+      "callId": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/edit",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "TWVyaWRpYW4gTmFycmF0b3I=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QSBjbGVhciBuYXJyYXRpb24gdm9pY2U=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"description\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": "",
+          "voiceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "input": {
+        "description": "A clear narration voice",
+        "name": "Meridian Narrator",
+        "voiceId": "voice_meridian"
+      },
+      "name": "editVoiceMetadata-rejected",
+      "operation": "editVoiceMetadata"
+    },
+    {
+      "callId": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/edit",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "TWVyaWRpYW4gTmFycmF0b3I=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QSBjbGVhciBuYXJyYXRpb24gdm9pY2U=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"description\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "name": "",
+          "voiceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "input": {
+        "description": "A clear narration voice",
+        "name": "Meridian Narrator",
+        "voiceId": "voice_meridian"
+      },
+      "name": "editVoiceMetadata-invalidResponse",
+      "operation": "editVoiceMetadata"
+    },
+    {
+      "callId": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": "",
+          "voiceId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "input": {
+        "name": "Meridian Narrator",
+        "voiceId": "bad/id"
+      },
+      "name": "editVoiceMetadata-defect",
+      "operation": "editVoiceMetadata"
+    },
+    {
+      "callId": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/edit",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "TWVyaWRpYW4gTmFycmF0b3I=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QSBjbGVhciBuYXJyYXRpb24gdm9pY2U=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"description\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "input": {
+        "description": "A clear narration voice",
+        "name": "Meridian Narrator",
+        "voiceId": "voice_meridian"
+      },
+      "name": "editVoiceMetadata-429",
+      "operation": "editVoiceMetadata"
+    },
+    {
+      "callId": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/edit",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "TWVyaWRpYW4gTmFycmF0b3I=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QSBjbGVhciBuYXJyYXRpb24gdm9pY2U=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"description\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "input": {
+        "description": "A clear narration voice",
+        "name": "Meridian Narrator",
+        "voiceId": "voice_meridian"
+      },
+      "name": "editVoiceMetadata-503",
+      "operation": "editVoiceMetadata"
+    },
+    {
+      "callId": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/edit",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "TWVyaWRpYW4gTmFycmF0b3I=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QSBjbGVhciBuYXJyYXRpb24gdm9pY2U=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"description\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "input": {
+        "description": "A clear narration voice",
+        "name": "Meridian Narrator",
+        "voiceId": "voice_meridian"
+      },
+      "name": "editVoiceMetadata-500",
+      "operation": "editVoiceMetadata"
+    },
+    {
+      "callId": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/edit",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "TWVyaWRpYW4gTmFycmF0b3I=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QSBjbGVhciBuYXJyYXRpb24gdm9pY2U=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"description\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e23dadb9-38c0-5f89-a9d2-2ea41d193529",
+      "input": {
+        "description": "A clear narration voice",
+        "name": "Meridian Narrator",
+        "voiceId": "voice_meridian"
+      },
+      "name": "editVoiceMetadata-transport",
+      "operation": "editVoiceMetadata"
+    },
+    {
+      "callId": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "voiceId": "voice_meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "deleteVoice-success",
+      "operation": "deleteVoice"
+    },
+    {
+      "callId": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "voiceId": "voice_meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "deleteVoice-notFound",
+      "operation": "deleteVoice"
+    },
+    {
+      "callId": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "voiceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "deleteVoice-rejected",
+      "operation": "deleteVoice"
+    },
+    {
+      "callId": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "voiceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "deleteVoice-invalidResponse",
+      "operation": "deleteVoice"
+    },
+    {
+      "callId": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "voiceId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "input": {
+        "voiceId": "bad/id"
+      },
+      "name": "deleteVoice-defect",
+      "operation": "deleteVoice"
+    },
+    {
+      "callId": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "deleteVoice-429",
+      "operation": "deleteVoice"
+    },
+    {
+      "callId": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "deleteVoice-503",
+      "operation": "deleteVoice"
+    },
+    {
+      "callId": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "deleteVoice-500",
+      "operation": "deleteVoice"
+    },
+    {
+      "callId": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d07f79dd-2819-5161-bf82-39e0f3135309",
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "deleteVoice-transport",
+      "operation": "deleteVoice"
     }
   ],
   "schemaVersion": 1

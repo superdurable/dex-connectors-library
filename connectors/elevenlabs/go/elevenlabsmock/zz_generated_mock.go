@@ -23,6 +23,8 @@ type Mock struct {
 	getHistoryItem      *connectormock.Query[elevenlabs.HistoryItemIdentityInput, elevenlabs.HistoryItemMetadata]
 	deleteHistoryItem   *connectormock.Mutation[elevenlabs.HistoryItemIdentityInput, elevenlabs.DeletedHistoryItem]
 	getVoice            *connectormock.Query[elevenlabs.GetVoiceInput, elevenlabs.Voice]
+	editVoiceMetadata   *connectormock.Mutation[elevenlabs.EditVoiceMetadataInput, elevenlabs.EditedVoiceMetadata]
+	deleteVoice         *connectormock.Mutation[elevenlabs.GetVoiceInput, elevenlabs.DeletedVoice]
 	updateVoiceSettings *connectormock.Mutation[elevenlabs.UpdateVoiceSettingsInput, elevenlabs.UpdatedVoiceSettings]
 	listVoices          *connectormock.Query[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput]
 	createSpeech        *connectormock.Query[elevenlabs.CreateSpeechInput, elevenlabs.CreateSpeechOutput]
@@ -38,6 +40,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		getHistoryItem:      connectormock.NewQuery[elevenlabs.HistoryItemIdentityInput, elevenlabs.HistoryItemMetadata](t, elevenlabs.GetHistoryItemDefinition),
 		deleteHistoryItem:   connectormock.NewMutation[elevenlabs.HistoryItemIdentityInput, elevenlabs.DeletedHistoryItem](t, elevenlabs.DeleteHistoryItemDefinition),
 		getVoice:            connectormock.NewQuery[elevenlabs.GetVoiceInput, elevenlabs.Voice](t, elevenlabs.GetVoiceDefinition),
+		editVoiceMetadata:   connectormock.NewMutation[elevenlabs.EditVoiceMetadataInput, elevenlabs.EditedVoiceMetadata](t, elevenlabs.EditVoiceMetadataDefinition),
+		deleteVoice:         connectormock.NewMutation[elevenlabs.GetVoiceInput, elevenlabs.DeletedVoice](t, elevenlabs.DeleteVoiceDefinition),
 		updateVoiceSettings: connectormock.NewMutation[elevenlabs.UpdateVoiceSettingsInput, elevenlabs.UpdatedVoiceSettings](t, elevenlabs.UpdateVoiceSettingsDefinition),
 		listVoices:          connectormock.NewQuery[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput](t, elevenlabs.ListVoicesDefinition),
 		createSpeech:        connectormock.NewQuery[elevenlabs.CreateSpeechInput, elevenlabs.CreateSpeechOutput](t, elevenlabs.CreateSpeechDefinition),
@@ -47,6 +51,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.getHistoryItem.Default(GetHistoryItemDefault())
 	mock.deleteHistoryItem.Default(DeleteHistoryItemDefault())
 	mock.getVoice.Default(GetVoiceDefault())
+	mock.editVoiceMetadata.Default(EditVoiceMetadataDefault())
+	mock.deleteVoice.Default(DeleteVoiceDefault())
 	mock.updateVoiceSettings.Default(UpdateVoiceSettingsDefault())
 	mock.listVoices.Default(ListVoicesDefault())
 	mock.createSpeech.Default(CreateSpeechDefault())
@@ -86,6 +92,16 @@ func (mock *Mock) GetVoice() *connectormock.Query[elevenlabs.GetVoiceInput, elev
 	return mock.getVoice
 }
 
+// EditVoiceMetadata returns the editVoiceMetadata script.
+func (mock *Mock) EditVoiceMetadata() *connectormock.Mutation[elevenlabs.EditVoiceMetadataInput, elevenlabs.EditedVoiceMetadata] {
+	return mock.editVoiceMetadata
+}
+
+// DeleteVoice returns the deleteVoice script.
+func (mock *Mock) DeleteVoice() *connectormock.Mutation[elevenlabs.GetVoiceInput, elevenlabs.DeletedVoice] {
+	return mock.deleteVoice
+}
+
 // UpdateVoiceSettings returns the updateVoiceSettings script.
 func (mock *Mock) UpdateVoiceSettings() *connectormock.Mutation[elevenlabs.UpdateVoiceSettingsInput, elevenlabs.UpdatedVoiceSettings] {
 	return mock.updateVoiceSettings
@@ -117,6 +133,12 @@ func (operations mockOperations) DeleteHistoryItem() sdkgo.Mutation[elevenlabs.H
 }
 func (operations mockOperations) GetVoice() sdkgo.Query[elevenlabs.GetVoiceInput, elevenlabs.Voice] {
 	return operations.mock.getVoice
+}
+func (operations mockOperations) EditVoiceMetadata() sdkgo.Mutation[elevenlabs.EditVoiceMetadataInput, elevenlabs.EditedVoiceMetadata] {
+	return operations.mock.editVoiceMetadata
+}
+func (operations mockOperations) DeleteVoice() sdkgo.Mutation[elevenlabs.GetVoiceInput, elevenlabs.DeletedVoice] {
+	return operations.mock.deleteVoice
 }
 func (operations mockOperations) UpdateVoiceSettings() sdkgo.Mutation[elevenlabs.UpdateVoiceSettingsInput, elevenlabs.UpdatedVoiceSettings] {
 	return operations.mock.updateVoiceSettings
@@ -313,6 +335,83 @@ func GetVoiceFoundDefault() connectormock.Case[elevenlabs.Voice] {
 
 // GetVoiceDefault is the manifest default, foundDefault, which New installs.
 func GetVoiceDefault() connectormock.Case[elevenlabs.Voice] { return GetVoiceFoundDefault() }
+
+// EditVoiceMetadataEdited selects the edited branch: ElevenLabs accepted the voice metadata edit.
+func EditVoiceMetadataEdited(value elevenlabs.EditedVoiceMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	return connectormock.Branch(elevenlabs.EditVoiceMetadataBranchEdited, value, failure)
+}
+
+// EditVoiceMetadataNotFound selects the notFound branch: The voice is unavailable.
+func EditVoiceMetadataNotFound(value elevenlabs.EditedVoiceMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	return connectormock.Branch(elevenlabs.EditVoiceMetadataBranchNotFound, value, failure)
+}
+
+// EditVoiceMetadataProviderRejected selects the providerRejected branch: ElevenLabs rejected the metadata edit.
+func EditVoiceMetadataProviderRejected(value elevenlabs.EditedVoiceMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	return connectormock.Branch(elevenlabs.EditVoiceMetadataBranchProviderRejected, value, failure)
+}
+
+// EditVoiceMetadataInvalidResponse selects the invalidResponse branch: ElevenLabs returned an invalid edit confirmation.
+func EditVoiceMetadataInvalidResponse(value elevenlabs.EditedVoiceMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	return connectormock.Branch(elevenlabs.EditVoiceMetadataBranchInvalidResponse, value, failure)
+}
+
+// EditVoiceMetadataDefect selects the defect branch: Voice ID and metadata or credentials are invalid.
+func EditVoiceMetadataDefect(value elevenlabs.EditedVoiceMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	return connectormock.Branch(elevenlabs.EditVoiceMetadataBranchDefect, value, failure)
+}
+
+// EditVoiceMetadataRetry asks Dex to retry the editVoiceMetadata Step, after the delay when it is positive.
+func EditVoiceMetadataRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	return connectormock.Retry[elevenlabs.EditedVoiceMetadata](failure, after)
+}
+
+// EditVoiceMetadataMetadataEdited is the manifest mock metadataEdited: One voice's display metadata was edited.
+func EditVoiceMetadataMetadataEdited() connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	value := connectormock.MustDecodeOutput[elevenlabs.EditedVoiceMetadata](`{"voiceId":"voice_meridian","name":"Meridian Narrator"}`)
+	return connectormock.Branch(elevenlabs.EditVoiceMetadataBranchEdited, value, nil)
+}
+
+// EditVoiceMetadataDefault is the manifest default, metadataEdited, which New installs.
+func EditVoiceMetadataDefault() connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	return EditVoiceMetadataMetadataEdited()
+}
+
+// DeleteVoiceDeleted selects the deleted branch: The voice is absent.
+func DeleteVoiceDeleted(value elevenlabs.DeletedVoice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.DeletedVoice] {
+	return connectormock.Branch(elevenlabs.DeleteVoiceBranchDeleted, value, failure)
+}
+
+// DeleteVoiceProviderRejected selects the providerRejected branch: ElevenLabs rejected voice deletion.
+func DeleteVoiceProviderRejected(value elevenlabs.DeletedVoice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.DeletedVoice] {
+	return connectormock.Branch(elevenlabs.DeleteVoiceBranchProviderRejected, value, failure)
+}
+
+// DeleteVoiceInvalidResponse selects the invalidResponse branch: ElevenLabs returned an invalid deletion confirmation.
+func DeleteVoiceInvalidResponse(value elevenlabs.DeletedVoice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.DeletedVoice] {
+	return connectormock.Branch(elevenlabs.DeleteVoiceBranchInvalidResponse, value, failure)
+}
+
+// DeleteVoiceDefect selects the defect branch: Voice ID or credentials are invalid.
+func DeleteVoiceDefect(value elevenlabs.DeletedVoice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.DeletedVoice] {
+	return connectormock.Branch(elevenlabs.DeleteVoiceBranchDefect, value, failure)
+}
+
+// DeleteVoiceRetry asks Dex to retry the deleteVoice Step, after the delay when it is positive.
+func DeleteVoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elevenlabs.DeletedVoice] {
+	return connectormock.Retry[elevenlabs.DeletedVoice](failure, after)
+}
+
+// DeleteVoiceVoiceDeleted is the manifest mock voiceDeleted: One voice was deleted.
+func DeleteVoiceVoiceDeleted() connectormock.Case[elevenlabs.DeletedVoice] {
+	value := connectormock.MustDecodeOutput[elevenlabs.DeletedVoice](`{"voiceId":"voice_meridian","deleted":true}`)
+	return connectormock.Branch(elevenlabs.DeleteVoiceBranchDeleted, value, nil)
+}
+
+// DeleteVoiceDefault is the manifest default, voiceDeleted, which New installs.
+func DeleteVoiceDefault() connectormock.Case[elevenlabs.DeletedVoice] {
+	return DeleteVoiceVoiceDeleted()
+}
 
 // UpdateVoiceSettingsUpdated selects the updated branch: ElevenLabs confirmed the voice settings replacement.
 func UpdateVoiceSettingsUpdated(value elevenlabs.UpdatedVoiceSettings, failure *sdkgo.Failure) connectormock.Case[elevenlabs.UpdatedVoiceSettings] {

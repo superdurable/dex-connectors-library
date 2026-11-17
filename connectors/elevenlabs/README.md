@@ -16,6 +16,8 @@ List and inspect voices, replace voice settings, and generate bounded audio thro
 | `getHistoryItem` | Query, safe | https://elevenlabs.io/docs/api-reference/history/get |
 | `deleteHistoryItem` | Mutation, safe repeat | https://elevenlabs.io/docs/api-reference/history/delete |
 | `getVoice` | Query | https://elevenlabs.io/docs/api-reference/voices/get |
+| `editVoiceMetadata` | Mutation, safe repeat | https://elevenlabs.io/docs/api-reference/voices/update |
+| `deleteVoice` | Mutation, safe repeat | https://elevenlabs.io/docs/api-reference/voices/delete |
 | `updateVoiceSettings` | Mutation, safe repeat | https://elevenlabs.io/docs/api-reference/voices/settings/update |
 | `createSpeech` | Query | https://elevenlabs.io/docs/api-reference/text-to-speech/convert |
 
@@ -24,6 +26,8 @@ The demo uses operation-specific `elevenlabs.NewListVoicesStep` and `elevenlabs.
 `listModels` returns IDs, names, text-to-speech support, and per-request text limits for models available to the connection. Its runnable model catalog Flow uses `NewListModelsStep` and the same static connection.
 
 `listHistoryItems` pages generated item IDs and operational metadata, with optional voice, model, source, and continuation filters. `getHistoryItem` reads one item; `deleteHistoryItem` permanently removes one item and treats confirmed absence as deleted. Returned history omits generated text, audio, and request contents from Flow results and Attributes. The runnable history Flow lists metadata through the static connection.
+
+`editVoiceMetadata` replaces an owned voice's display name and optional description using the provider's multipart edit endpoint. It does not upload audio samples. `deleteVoice` permanently removes a voice and treats confirmed absence as deleted. Both operations safely repeat the same request after an unknown outcome. The runnable voice metadata Flow exercises the edit operation through the static connection.
 
 The Python package is [`dex-connector-elevenlabs`](python/README.md), imported as
 `dex_connectors.elevenlabs`.
@@ -50,6 +54,8 @@ Provider error bodies and secrets are never copied into failures, receipts, or o
 
 `getVoice` additionally selects `notFound` for a missing voice. `updateVoiceSettings` selects `updated`, `notFound`, `providerRejected`, or `defect`; an interrupted or unusable success confirmation retries the same absolute settings.
 
+`editVoiceMetadata` selects `edited`, `notFound`, `providerRejected`, `invalidResponse`, or `defect`. `deleteVoice` selects `deleted`, `providerRejected`, `invalidResponse`, or `defect`. A 404 delete response confirms the desired absent state.
+
 ## Mocks
 
 The generated `elevenlabsmock` package uses one consistent default answer per operation:
@@ -57,6 +63,8 @@ The generated `elevenlabsmock` package uses one consistent default answer per op
 - `listVoices` default `listedDefault`: `{"voices":[{"voiceId":"voice_meridian","name":"Meridian Narrator"}],"hasMore":false}`
 - `getVoice` default `foundDefault`: `{"voiceId":"voice_meridian","name":"Meridian Narrator"}`
 - `updateVoiceSettings` default `updatedDefault`: `{"voiceId":"voice_meridian"}`
+- `editVoiceMetadata` default `metadataEdited`: `{"voiceId":"voice_meridian","name":"Meridian Narrator"}`
+- `deleteVoice` default `voiceDeleted`: `{"voiceId":"voice_meridian","deleted":true}`
 - `createSpeech` default `createdDefault`: `{"audioBase64":"SUQz","contentType":"audio/mpeg"}`
 
 `examples/demo/flow/workflow_mock_integration_test.go` starts a real Dex Flow through the mock connection in CI. Provider unit tests use local HTTP servers for the documented request shape and a rate-limit response.

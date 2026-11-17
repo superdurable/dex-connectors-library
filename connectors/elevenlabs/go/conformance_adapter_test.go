@@ -24,6 +24,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(Config{BaseURL: endpoint}, credentials, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"editVoiceMetadata":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.EditVoiceMetadata(), testConnection, scenario.CallID),
+		"deleteVoice":         newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteVoice(), testConnection, scenario.CallID),
 		"listHistoryItems":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListHistoryItems(), testConnection),
 		"getHistoryItem":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetHistoryItem(), testConnection),
 		"deleteHistoryItem":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteHistoryItem(), testConnection, scenario.CallID),

@@ -144,6 +144,39 @@ spec:
           description: A representative voice was found by ID.
           default: true
           output: {voiceId: voice_meridian, name: Meridian Narrator}
+    - name: editVoiceMetadata
+      goName: EditVoiceMetadata
+      inputType: EditVoiceMetadataInput
+      outputType: EditedVoiceMetadata
+      kind: mutation
+      description: Replace a voice's display name and optionally its description without changing samples.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: edited, goName: Edited, description: ElevenLabs accepted the voice metadata edit.}
+        - {id: notFound, goName: NotFound, description: The voice is unavailable., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs rejected the metadata edit., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ElevenLabs returned an invalid edit confirmation., optional: true}
+        - {id: defect, goName: Defect, description: Voice ID and metadata or credentials are invalid., optional: true}
+      mocks:
+        - {name: metadataEdited, branch: edited, description: One voice's display metadata was edited., default: true, output: {voiceId: voice_meridian, name: Meridian Narrator}}
+    - name: deleteVoice
+      goName: DeleteVoice
+      inputType: GetVoiceInput
+      outputType: DeletedVoice
+      kind: mutation
+      description: Permanently delete a voice by ID; a missing voice is already absent.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The voice is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs rejected voice deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ElevenLabs returned an invalid deletion confirmation., optional: true}
+        - {id: defect, goName: Defect, description: Voice ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: voiceDeleted, branch: deleted, description: One voice was deleted., default: true, output: {voiceId: voice_meridian, deleted: true}}
     - name: updateVoiceSettings
       goName: UpdateVoiceSettings
       inputType: UpdateVoiceSettingsInput
