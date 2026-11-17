@@ -4270,21 +4270,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "id": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "77b56df0-f538-5349-a1bf-5535116b7af0",
       "input": {
@@ -4293,7 +4290,7 @@
         "lastName": "Lovelace",
         "unsubscribed": true
       },
-      "name": "createContact-uncertain",
+      "name": "createContact-malformed-response",
       "operation": "createContact"
     },
     {
@@ -4672,27 +4669,24 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "id": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
       "input": {
         "name": "example.test"
       },
-      "name": "createDomain-uncertain",
+      "name": "createDomain-malformed-response",
       "operation": "createDomain"
     },
     {
