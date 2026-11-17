@@ -25,9 +25,13 @@ webhooks through ClickUp API v2, `https://api.clickup.com/api/v2`:
 The `taskEvent` Trigger receives ClickUp's task webhook events, verified with
 their `X-Signature`.
 
+## Python package
+
+The [Python package](python/README.md) implements all seven task operations and the signed `taskEvent` Trigger at `dex-connector-clickup` v0.2.0. Its [task event example](python/examples/task_event/README.md) runs a real Dex Worker and an ASGI webhook endpoint with a durable inbox. Live ClickUp webhook delivery is unverified.
+
 ## TypeScript package
 
-The [TypeScript package](typescript/README.md) implements all seven task operations at `@superdurable/connector-clickup` v0.1.0. Its [runnable get-task Flow](typescript/examples/get-task/) uses the static `clickup-workspace` connection and is exercised against a real Dex Worker and Client with a local ClickUp HTTP fixture. The signed `taskEvent` Trigger remains Go only. The shared Go recordings cover 63 TypeScript provider scenarios; live ClickUp authorization and provider calls are unverified.
+The [TypeScript package](typescript/README.md) implements all seven task operations at `@superdurable/connector-clickup` v0.1.0. Its [runnable get-task Flow](typescript/examples/get-task/) uses the static `clickup-workspace` connection and is exercised against a real Dex Worker and Client with a local ClickUp HTTP fixture. The signed `taskEvent` Trigger remains unavailable in TypeScript. The shared Go recordings cover 63 TypeScript provider scenarios; live ClickUp authorization and provider calls are unverified.
 
 ## Mocks
 
@@ -392,4 +396,4 @@ the documented examples, the hex case of `X-Signature`, and retry timing; and
 
 ## Python package
 
-The `python/` package implements all seven task and Workspace member operations in this manifest. The `taskEvent` webhook Trigger remains Go-only. The runnable [Python getTask Flow](python/examples/get_task/README.md) uses the static `clickup-workspace` connection and includes a real Dex Worker/Client integration test. Create and comment mutations checkpoint the dispatch before sending, and a retried attempt reads back rather than risking a duplicate. Live ClickUp provider behavior for this Python port remains unverified.
+The `python/` package implements all seven task and Workspace member operations and the signed `taskEvent` Trigger. The runnable [Python getTask Flow](python/examples/get_task/README.md) and [task event Flow](python/examples/task_event/README.md) use the static `clickup-workspace` connection and include real Dex Worker/Client integration tests. Create and comment mutations checkpoint the dispatch before sending, and a retried attempt reads back rather than risking a duplicate. Live ClickUp provider behavior for this Python port remains unverified.

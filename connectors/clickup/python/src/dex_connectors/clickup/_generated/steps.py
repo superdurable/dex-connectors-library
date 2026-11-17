@@ -142,6 +142,7 @@ def new_create_task_step(
     defect: dex.StepTarget[MutationResult[CreateTaskOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[CreateTaskOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateTaskInput, CreateTaskOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("ClickUp Step connection name must match its connection reference")
@@ -175,6 +176,7 @@ def new_create_task_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -195,6 +197,7 @@ def new_update_task_step(
     defect: dex.StepTarget[MutationResult[UpdateTaskOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpdateTaskOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdateTaskInput, UpdateTaskOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("ClickUp Step connection name must match its connection reference")
@@ -228,6 +231,7 @@ def new_update_task_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -248,6 +252,7 @@ def new_update_task_tags_step(
     defect: dex.StepTarget[MutationResult[UpdateTaskTagsOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpdateTaskTagsOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdateTaskTagsInput, UpdateTaskTagsOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("ClickUp Step connection name must match its connection reference")
@@ -281,6 +286,7 @@ def new_update_task_tags_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -301,6 +307,7 @@ def new_add_comment_step(
     defect: dex.StepTarget[MutationResult[AddCommentOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[AddCommentOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, AddCommentInput, AddCommentOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("ClickUp Step connection name must match its connection reference")
@@ -334,6 +341,7 @@ def new_add_comment_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
