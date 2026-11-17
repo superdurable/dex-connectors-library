@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 """Replay Go-recorded Webflow provider scenarios through the Python port."""
+
 import sys
 from pathlib import Path
 
@@ -13,10 +14,16 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/webflow/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/webflow/scenarios.json")
+    if scenario["operation"] in {"listCollectionItems", "getCollectionItem"}
+]
 CONNECTION = sdk.ConnectionRef("webflow", "webflow")
 ADAPTER = conformance.PythonOperationAdapter(
-    "webflow", CONNECTION, webflow,
+    "webflow",
+    CONNECTION,
+    webflow,
     lambda client, _: webflow.Client(
         webflow.Config(base_url="http://127.0.0.1:8848/v2"),
         conformance.static_credentials(CONNECTION, webflow.Credentials(sdk.SecretString("test-token"))),

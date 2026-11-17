@@ -52,15 +52,15 @@ func TestMockDefaultCompletesWithRealDex(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	flowID := "webflow-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	input := webflow.ListCollectionItemsInput{CollectionID: "62b720ef280c7a7a3be8cabe", Limit: 10}
+	input := webflow.ListCollectionsInput{SiteID: "62b720ef280c7a7a3be8cabc"}
 	_, err = client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
 	require.NoError(t, err)
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-	var output webflow.ListCollectionItemsOutput
+	var output webflow.ListCollectionsOutput
 	require.NoError(t, result.DecodeSingleOutput(&output))
-	calls := mock.ListCollectionItems().Calls()
+	calls := mock.ListCollections().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, input, calls[0].Input)
 }
