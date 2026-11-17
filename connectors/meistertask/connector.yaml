@@ -58,7 +58,88 @@ spec:
         - Find non-secret positive section IDs in a MeisterTask project board or GET /sections. Pass one as sectionId for getSection or updateSection; createSection needs its parent projectId. Blank IDs or names are invalid; blank list status uses active sections.
         - For updateTask, find assignedToId in the project member list (GET /projects/{projectId}/members), sectionId in the project board or GET /sections, and provide due as an RFC 3339 timestamp such as 2026-11-18T00:00:00Z. Omit each field to leave its current value unchanged.
         - For comments, open a task's Comments view or GET /tasks/{taskId}/comments to find positive taskId and commentId values; blank IDs are invalid. CreateComment text is nonempty Markdown, not a secret; blank is invalid. Page and items are positive integers with zero selecting provider defaults.
+        - For labels, open a project's Tags view or GET /projects/{projectId}/labels for positive projectId and labelId values. GET /tasks/{taskId}/task_labels returns the distinct positive taskLabelId attachment ID for removal. Blank IDs are invalid; the task must belong to the label's project.
   operations:
+    - name: listProjectLabels
+      goName: ListProjectLabels
+      inputType: ListProjectLabelsInput
+      outputType: ProjectLabels
+      kind: query
+      description: Read labels defined in one project.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: MeisterTask returned the label outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample label outcome is available.
+          output: {labels: [{id: '25', projectId: '123', name: Priority}], projectId: '123'}
+    - name: listTaskLabels
+      goName: ListTaskLabels
+      inputType: ListTaskLabelsInput
+      outputType: TaskLabels
+      kind: query
+      description: Read label attachments on one task.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: MeisterTask returned the label outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample label outcome is available.
+          output: {labels: [{id: '364', taskId: '15', labelId: '25'}], taskId: '15'}
+    - name: removeTaskLabel
+      goName: RemoveTaskLabel
+      inputType: RemoveTaskLabelInput
+      outputType: RemovedTaskLabel
+      kind: mutation
+      description: Remove one label attachment from a task.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: removed, goName: Removed, description: MeisterTask returned the label outcome.}
+        - {id: notFound, goName: NotFound, description: MeisterTask did not expose the attachment., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: removedDefault
+          branch: removed
+          default: true
+          description: A sample label outcome is available.
+          output: {taskLabelId: '364'}
+    - name: addTaskLabel
+      goName: AddTaskLabel
+      inputType: AddTaskLabelInput
+      outputType: TaskLabelSummary
+      kind: mutation
+      description: Attach one project label to a task.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, dispatchFence: true, maxSends: 3}
+      branches:
+        - {id: added, goName: Added, description: MeisterTask returned the label outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Attachment may have succeeded; inspect task labels before manual retry., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: addedDefault
+          branch: added
+          default: true
+          description: A sample label outcome is available.
+          output: {id: '364', taskId: '15', labelId: '25'}
     - name: listComments
       goName: ListComments
       inputType: ListCommentsInput

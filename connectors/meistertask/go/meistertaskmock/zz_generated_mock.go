@@ -17,23 +17,27 @@ import (
 
 // Mock is a scripted meistertask connection. Script each operation through its accessor.
 type Mock struct {
-	connection    meistertask.Connection
-	listComments  *connectormock.Query[meistertask.ListCommentsInput, meistertask.CommentsPage]
-	getComment    *connectormock.Query[meistertask.GetCommentInput, meistertask.CommentSummary]
-	deleteComment *connectormock.Mutation[meistertask.DeleteCommentInput, meistertask.DeletedComment]
-	createComment *connectormock.Mutation[meistertask.CreateCommentInput, meistertask.CommentSummary]
-	listSections  *connectormock.Query[meistertask.ListSectionsInput, meistertask.SectionsPage]
-	getSection    *connectormock.Query[meistertask.GetSectionInput, meistertask.SectionSummary]
-	updateSection *connectormock.Mutation[meistertask.UpdateSectionInput, meistertask.SectionSummary]
-	createSection *connectormock.Mutation[meistertask.CreateSectionInput, meistertask.SectionSummary]
-	listProjects  *connectormock.Query[meistertask.ListProjectsInput, meistertask.ProjectsPage]
-	getProject    *connectormock.Query[meistertask.GetProjectInput, meistertask.ProjectSummary]
-	updateProject *connectormock.Mutation[meistertask.UpdateProjectInput, meistertask.ProjectSummary]
-	createProject *connectormock.Mutation[meistertask.CreateProjectInput, meistertask.ProjectSummary]
-	listTasks     *connectormock.Query[meistertask.ListTasksInput, meistertask.TasksPage]
-	getTask       *connectormock.Query[meistertask.GetTaskInput, meistertask.TaskSummary]
-	updateTask    *connectormock.Mutation[meistertask.UpdateTaskInput, meistertask.TaskSummary]
-	createTask    *connectormock.Mutation[meistertask.CreateTaskInput, meistertask.TaskSummary]
+	connection        meistertask.Connection
+	listProjectLabels *connectormock.Query[meistertask.ListProjectLabelsInput, meistertask.ProjectLabels]
+	listTaskLabels    *connectormock.Query[meistertask.ListTaskLabelsInput, meistertask.TaskLabels]
+	removeTaskLabel   *connectormock.Mutation[meistertask.RemoveTaskLabelInput, meistertask.RemovedTaskLabel]
+	addTaskLabel      *connectormock.Mutation[meistertask.AddTaskLabelInput, meistertask.TaskLabelSummary]
+	listComments      *connectormock.Query[meistertask.ListCommentsInput, meistertask.CommentsPage]
+	getComment        *connectormock.Query[meistertask.GetCommentInput, meistertask.CommentSummary]
+	deleteComment     *connectormock.Mutation[meistertask.DeleteCommentInput, meistertask.DeletedComment]
+	createComment     *connectormock.Mutation[meistertask.CreateCommentInput, meistertask.CommentSummary]
+	listSections      *connectormock.Query[meistertask.ListSectionsInput, meistertask.SectionsPage]
+	getSection        *connectormock.Query[meistertask.GetSectionInput, meistertask.SectionSummary]
+	updateSection     *connectormock.Mutation[meistertask.UpdateSectionInput, meistertask.SectionSummary]
+	createSection     *connectormock.Mutation[meistertask.CreateSectionInput, meistertask.SectionSummary]
+	listProjects      *connectormock.Query[meistertask.ListProjectsInput, meistertask.ProjectsPage]
+	getProject        *connectormock.Query[meistertask.GetProjectInput, meistertask.ProjectSummary]
+	updateProject     *connectormock.Mutation[meistertask.UpdateProjectInput, meistertask.ProjectSummary]
+	createProject     *connectormock.Mutation[meistertask.CreateProjectInput, meistertask.ProjectSummary]
+	listTasks         *connectormock.Query[meistertask.ListTasksInput, meistertask.TasksPage]
+	getTask           *connectormock.Query[meistertask.GetTaskInput, meistertask.TaskSummary]
+	updateTask        *connectormock.Mutation[meistertask.UpdateTaskInput, meistertask.TaskSummary]
+	createTask        *connectormock.Mutation[meistertask.CreateTaskInput, meistertask.TaskSummary]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -41,23 +45,31 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listComments:  connectormock.NewQuery[meistertask.ListCommentsInput, meistertask.CommentsPage](t, meistertask.ListCommentsDefinition),
-		getComment:    connectormock.NewQuery[meistertask.GetCommentInput, meistertask.CommentSummary](t, meistertask.GetCommentDefinition),
-		deleteComment: connectormock.NewMutation[meistertask.DeleteCommentInput, meistertask.DeletedComment](t, meistertask.DeleteCommentDefinition),
-		createComment: connectormock.NewMutation[meistertask.CreateCommentInput, meistertask.CommentSummary](t, meistertask.CreateCommentDefinition),
-		listSections:  connectormock.NewQuery[meistertask.ListSectionsInput, meistertask.SectionsPage](t, meistertask.ListSectionsDefinition),
-		getSection:    connectormock.NewQuery[meistertask.GetSectionInput, meistertask.SectionSummary](t, meistertask.GetSectionDefinition),
-		updateSection: connectormock.NewMutation[meistertask.UpdateSectionInput, meistertask.SectionSummary](t, meistertask.UpdateSectionDefinition),
-		createSection: connectormock.NewMutation[meistertask.CreateSectionInput, meistertask.SectionSummary](t, meistertask.CreateSectionDefinition),
-		listProjects:  connectormock.NewQuery[meistertask.ListProjectsInput, meistertask.ProjectsPage](t, meistertask.ListProjectsDefinition),
-		getProject:    connectormock.NewQuery[meistertask.GetProjectInput, meistertask.ProjectSummary](t, meistertask.GetProjectDefinition),
-		updateProject: connectormock.NewMutation[meistertask.UpdateProjectInput, meistertask.ProjectSummary](t, meistertask.UpdateProjectDefinition),
-		createProject: connectormock.NewMutation[meistertask.CreateProjectInput, meistertask.ProjectSummary](t, meistertask.CreateProjectDefinition),
-		listTasks:     connectormock.NewQuery[meistertask.ListTasksInput, meistertask.TasksPage](t, meistertask.ListTasksDefinition),
-		getTask:       connectormock.NewQuery[meistertask.GetTaskInput, meistertask.TaskSummary](t, meistertask.GetTaskDefinition),
-		updateTask:    connectormock.NewMutation[meistertask.UpdateTaskInput, meistertask.TaskSummary](t, meistertask.UpdateTaskDefinition),
-		createTask:    connectormock.NewMutation[meistertask.CreateTaskInput, meistertask.TaskSummary](t, meistertask.CreateTaskDefinition),
+		listProjectLabels: connectormock.NewQuery[meistertask.ListProjectLabelsInput, meistertask.ProjectLabels](t, meistertask.ListProjectLabelsDefinition),
+		listTaskLabels:    connectormock.NewQuery[meistertask.ListTaskLabelsInput, meistertask.TaskLabels](t, meistertask.ListTaskLabelsDefinition),
+		removeTaskLabel:   connectormock.NewMutation[meistertask.RemoveTaskLabelInput, meistertask.RemovedTaskLabel](t, meistertask.RemoveTaskLabelDefinition),
+		addTaskLabel:      connectormock.NewMutation[meistertask.AddTaskLabelInput, meistertask.TaskLabelSummary](t, meistertask.AddTaskLabelDefinition),
+		listComments:      connectormock.NewQuery[meistertask.ListCommentsInput, meistertask.CommentsPage](t, meistertask.ListCommentsDefinition),
+		getComment:        connectormock.NewQuery[meistertask.GetCommentInput, meistertask.CommentSummary](t, meistertask.GetCommentDefinition),
+		deleteComment:     connectormock.NewMutation[meistertask.DeleteCommentInput, meistertask.DeletedComment](t, meistertask.DeleteCommentDefinition),
+		createComment:     connectormock.NewMutation[meistertask.CreateCommentInput, meistertask.CommentSummary](t, meistertask.CreateCommentDefinition),
+		listSections:      connectormock.NewQuery[meistertask.ListSectionsInput, meistertask.SectionsPage](t, meistertask.ListSectionsDefinition),
+		getSection:        connectormock.NewQuery[meistertask.GetSectionInput, meistertask.SectionSummary](t, meistertask.GetSectionDefinition),
+		updateSection:     connectormock.NewMutation[meistertask.UpdateSectionInput, meistertask.SectionSummary](t, meistertask.UpdateSectionDefinition),
+		createSection:     connectormock.NewMutation[meistertask.CreateSectionInput, meistertask.SectionSummary](t, meistertask.CreateSectionDefinition),
+		listProjects:      connectormock.NewQuery[meistertask.ListProjectsInput, meistertask.ProjectsPage](t, meistertask.ListProjectsDefinition),
+		getProject:        connectormock.NewQuery[meistertask.GetProjectInput, meistertask.ProjectSummary](t, meistertask.GetProjectDefinition),
+		updateProject:     connectormock.NewMutation[meistertask.UpdateProjectInput, meistertask.ProjectSummary](t, meistertask.UpdateProjectDefinition),
+		createProject:     connectormock.NewMutation[meistertask.CreateProjectInput, meistertask.ProjectSummary](t, meistertask.CreateProjectDefinition),
+		listTasks:         connectormock.NewQuery[meistertask.ListTasksInput, meistertask.TasksPage](t, meistertask.ListTasksDefinition),
+		getTask:           connectormock.NewQuery[meistertask.GetTaskInput, meistertask.TaskSummary](t, meistertask.GetTaskDefinition),
+		updateTask:        connectormock.NewMutation[meistertask.UpdateTaskInput, meistertask.TaskSummary](t, meistertask.UpdateTaskDefinition),
+		createTask:        connectormock.NewMutation[meistertask.CreateTaskInput, meistertask.TaskSummary](t, meistertask.CreateTaskDefinition),
 	}
+	mock.listProjectLabels.Default(ListProjectLabelsDefault())
+	mock.listTaskLabels.Default(ListTaskLabelsDefault())
+	mock.removeTaskLabel.Default(RemoveTaskLabelDefault())
+	mock.addTaskLabel.Default(AddTaskLabelDefault())
 	mock.listComments.Default(ListCommentsDefault())
 	mock.getComment.Default(GetCommentDefault())
 	mock.deleteComment.Default(DeleteCommentDefault())
@@ -84,6 +96,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() meistertask.Connection { return mock.connection }
+
+// ListProjectLabels returns the listProjectLabels script.
+func (mock *Mock) ListProjectLabels() *connectormock.Query[meistertask.ListProjectLabelsInput, meistertask.ProjectLabels] {
+	return mock.listProjectLabels
+}
+
+// ListTaskLabels returns the listTaskLabels script.
+func (mock *Mock) ListTaskLabels() *connectormock.Query[meistertask.ListTaskLabelsInput, meistertask.TaskLabels] {
+	return mock.listTaskLabels
+}
+
+// RemoveTaskLabel returns the removeTaskLabel script.
+func (mock *Mock) RemoveTaskLabel() *connectormock.Mutation[meistertask.RemoveTaskLabelInput, meistertask.RemovedTaskLabel] {
+	return mock.removeTaskLabel
+}
+
+// AddTaskLabel returns the addTaskLabel script.
+func (mock *Mock) AddTaskLabel() *connectormock.Mutation[meistertask.AddTaskLabelInput, meistertask.TaskLabelSummary] {
+	return mock.addTaskLabel
+}
 
 // ListComments returns the listComments script.
 func (mock *Mock) ListComments() *connectormock.Query[meistertask.ListCommentsInput, meistertask.CommentsPage] {
@@ -167,6 +199,18 @@ func (mock *Mock) CreateTask() *connectormock.Mutation[meistertask.CreateTaskInp
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListProjectLabels() sdkgo.Query[meistertask.ListProjectLabelsInput, meistertask.ProjectLabels] {
+	return operations.mock.listProjectLabels
+}
+func (operations mockOperations) ListTaskLabels() sdkgo.Query[meistertask.ListTaskLabelsInput, meistertask.TaskLabels] {
+	return operations.mock.listTaskLabels
+}
+func (operations mockOperations) RemoveTaskLabel() sdkgo.Mutation[meistertask.RemoveTaskLabelInput, meistertask.RemovedTaskLabel] {
+	return operations.mock.removeTaskLabel
+}
+func (operations mockOperations) AddTaskLabel() sdkgo.Mutation[meistertask.AddTaskLabelInput, meistertask.TaskLabelSummary] {
+	return operations.mock.addTaskLabel
+}
 func (operations mockOperations) ListComments() sdkgo.Query[meistertask.ListCommentsInput, meistertask.CommentsPage] {
 	return operations.mock.listComments
 }
@@ -214,6 +258,150 @@ func (operations mockOperations) UpdateTask() sdkgo.Mutation[meistertask.UpdateT
 }
 func (operations mockOperations) CreateTask() sdkgo.Mutation[meistertask.CreateTaskInput, meistertask.TaskSummary] {
 	return operations.mock.createTask
+}
+
+// ListProjectLabelsListed selects the listed branch: MeisterTask returned the label outcome.
+func ListProjectLabelsListed(value meistertask.ProjectLabels, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectLabels] {
+	return connectormock.Branch(meistertask.ListProjectLabelsBranchListed, value, failure)
+}
+
+// ListProjectLabelsProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func ListProjectLabelsProviderRejected(value meistertask.ProjectLabels, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectLabels] {
+	return connectormock.Branch(meistertask.ListProjectLabelsBranchProviderRejected, value, failure)
+}
+
+// ListProjectLabelsInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+func ListProjectLabelsInvalidResponse(value meistertask.ProjectLabels, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectLabels] {
+	return connectormock.Branch(meistertask.ListProjectLabelsBranchInvalidResponse, value, failure)
+}
+
+// ListProjectLabelsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListProjectLabelsDefect(value meistertask.ProjectLabels, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectLabels] {
+	return connectormock.Branch(meistertask.ListProjectLabelsBranchDefect, value, failure)
+}
+
+// ListProjectLabelsRetry asks Dex to retry the listProjectLabels Step, after the delay when it is positive.
+func ListProjectLabelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.ProjectLabels] {
+	return connectormock.Retry[meistertask.ProjectLabels](failure, after)
+}
+
+// ListProjectLabelsListedDefault is the manifest mock listedDefault: A sample label outcome is available.
+func ListProjectLabelsListedDefault() connectormock.Case[meistertask.ProjectLabels] {
+	value := connectormock.MustDecodeOutput[meistertask.ProjectLabels](`{"labels":[{"id":"25","projectId":"123","name":"Priority"}],"projectId":"123"}`)
+	return connectormock.Branch(meistertask.ListProjectLabelsBranchListed, value, nil)
+}
+
+// ListProjectLabelsDefault is the manifest default, listedDefault, which New installs.
+func ListProjectLabelsDefault() connectormock.Case[meistertask.ProjectLabels] {
+	return ListProjectLabelsListedDefault()
+}
+
+// ListTaskLabelsListed selects the listed branch: MeisterTask returned the label outcome.
+func ListTaskLabelsListed(value meistertask.TaskLabels, failure *sdkgo.Failure) connectormock.Case[meistertask.TaskLabels] {
+	return connectormock.Branch(meistertask.ListTaskLabelsBranchListed, value, failure)
+}
+
+// ListTaskLabelsProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func ListTaskLabelsProviderRejected(value meistertask.TaskLabels, failure *sdkgo.Failure) connectormock.Case[meistertask.TaskLabels] {
+	return connectormock.Branch(meistertask.ListTaskLabelsBranchProviderRejected, value, failure)
+}
+
+// ListTaskLabelsInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+func ListTaskLabelsInvalidResponse(value meistertask.TaskLabels, failure *sdkgo.Failure) connectormock.Case[meistertask.TaskLabels] {
+	return connectormock.Branch(meistertask.ListTaskLabelsBranchInvalidResponse, value, failure)
+}
+
+// ListTaskLabelsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListTaskLabelsDefect(value meistertask.TaskLabels, failure *sdkgo.Failure) connectormock.Case[meistertask.TaskLabels] {
+	return connectormock.Branch(meistertask.ListTaskLabelsBranchDefect, value, failure)
+}
+
+// ListTaskLabelsRetry asks Dex to retry the listTaskLabels Step, after the delay when it is positive.
+func ListTaskLabelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.TaskLabels] {
+	return connectormock.Retry[meistertask.TaskLabels](failure, after)
+}
+
+// ListTaskLabelsListedDefault is the manifest mock listedDefault: A sample label outcome is available.
+func ListTaskLabelsListedDefault() connectormock.Case[meistertask.TaskLabels] {
+	value := connectormock.MustDecodeOutput[meistertask.TaskLabels](`{"labels":[{"id":"364","taskId":"15","labelId":"25"}],"taskId":"15"}`)
+	return connectormock.Branch(meistertask.ListTaskLabelsBranchListed, value, nil)
+}
+
+// ListTaskLabelsDefault is the manifest default, listedDefault, which New installs.
+func ListTaskLabelsDefault() connectormock.Case[meistertask.TaskLabels] {
+	return ListTaskLabelsListedDefault()
+}
+
+// RemoveTaskLabelRemoved selects the removed branch: MeisterTask returned the label outcome.
+func RemoveTaskLabelRemoved(value meistertask.RemovedTaskLabel, failure *sdkgo.Failure) connectormock.Case[meistertask.RemovedTaskLabel] {
+	return connectormock.Branch(meistertask.RemoveTaskLabelBranchRemoved, value, failure)
+}
+
+// RemoveTaskLabelNotFound selects the notFound branch: MeisterTask did not expose the attachment.
+func RemoveTaskLabelNotFound(value meistertask.RemovedTaskLabel, failure *sdkgo.Failure) connectormock.Case[meistertask.RemovedTaskLabel] {
+	return connectormock.Branch(meistertask.RemoveTaskLabelBranchNotFound, value, failure)
+}
+
+// RemoveTaskLabelProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func RemoveTaskLabelProviderRejected(value meistertask.RemovedTaskLabel, failure *sdkgo.Failure) connectormock.Case[meistertask.RemovedTaskLabel] {
+	return connectormock.Branch(meistertask.RemoveTaskLabelBranchProviderRejected, value, failure)
+}
+
+// RemoveTaskLabelDefect selects the defect branch: Local input or connection credentials are invalid.
+func RemoveTaskLabelDefect(value meistertask.RemovedTaskLabel, failure *sdkgo.Failure) connectormock.Case[meistertask.RemovedTaskLabel] {
+	return connectormock.Branch(meistertask.RemoveTaskLabelBranchDefect, value, failure)
+}
+
+// RemoveTaskLabelRetry asks Dex to retry the removeTaskLabel Step, after the delay when it is positive.
+func RemoveTaskLabelRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.RemovedTaskLabel] {
+	return connectormock.Retry[meistertask.RemovedTaskLabel](failure, after)
+}
+
+// RemoveTaskLabelRemovedDefault is the manifest mock removedDefault: A sample label outcome is available.
+func RemoveTaskLabelRemovedDefault() connectormock.Case[meistertask.RemovedTaskLabel] {
+	value := connectormock.MustDecodeOutput[meistertask.RemovedTaskLabel](`{"taskLabelId":"364"}`)
+	return connectormock.Branch(meistertask.RemoveTaskLabelBranchRemoved, value, nil)
+}
+
+// RemoveTaskLabelDefault is the manifest default, removedDefault, which New installs.
+func RemoveTaskLabelDefault() connectormock.Case[meistertask.RemovedTaskLabel] {
+	return RemoveTaskLabelRemovedDefault()
+}
+
+// AddTaskLabelAdded selects the added branch: MeisterTask returned the label outcome.
+func AddTaskLabelAdded(value meistertask.TaskLabelSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.TaskLabelSummary] {
+	return connectormock.Branch(meistertask.AddTaskLabelBranchAdded, value, failure)
+}
+
+// AddTaskLabelProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func AddTaskLabelProviderRejected(value meistertask.TaskLabelSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.TaskLabelSummary] {
+	return connectormock.Branch(meistertask.AddTaskLabelBranchProviderRejected, value, failure)
+}
+
+// AddTaskLabelUncertain returns an uncertain addTaskLabel outcome.
+func AddTaskLabelUncertain(value meistertask.TaskLabelSummary, failure sdkgo.Failure) connectormock.Case[meistertask.TaskLabelSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// AddTaskLabelDefect selects the defect branch: Local input or connection credentials are invalid.
+func AddTaskLabelDefect(value meistertask.TaskLabelSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.TaskLabelSummary] {
+	return connectormock.Branch(meistertask.AddTaskLabelBranchDefect, value, failure)
+}
+
+// AddTaskLabelRetry asks Dex to retry the addTaskLabel Step, after the delay when it is positive.
+func AddTaskLabelRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.TaskLabelSummary] {
+	return connectormock.Retry[meistertask.TaskLabelSummary](failure, after)
+}
+
+// AddTaskLabelAddedDefault is the manifest mock addedDefault: A sample label outcome is available.
+func AddTaskLabelAddedDefault() connectormock.Case[meistertask.TaskLabelSummary] {
+	value := connectormock.MustDecodeOutput[meistertask.TaskLabelSummary](`{"id":"364","taskId":"15","labelId":"25"}`)
+	return connectormock.Branch(meistertask.AddTaskLabelBranchAdded, value, nil)
+}
+
+// AddTaskLabelDefault is the manifest default, addedDefault, which New installs.
+func AddTaskLabelDefault() connectormock.Case[meistertask.TaskLabelSummary] {
+	return AddTaskLabelAddedDefault()
 }
 
 // ListCommentsListed selects the listed branch: MeisterTask returned the comment outcome.

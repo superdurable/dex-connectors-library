@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listProjectLabels/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ProjectLabels](`{"labels":[{"id":"25","projectId":"123","name":"Priority"}],"projectId":"123"}`)
+			return err
+		}},
+		{name: "listTaskLabels/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.TaskLabels](`{"labels":[{"id":"364","taskId":"15","labelId":"25"}],"taskId":"15"}`)
+			return err
+		}},
+		{name: "removeTaskLabel/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.RemovedTaskLabel](`{"taskLabelId":"364"}`)
+			return err
+		}},
+		{name: "addTaskLabel/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.TaskLabelSummary](`{"id":"364","taskId":"15","labelId":"25"}`)
+			return err
+		}},
 		{name: "listComments/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[meistertask.CommentsPage](`{"comments":[{"id":"2","taskId":"15","personId":"7"}],"page":1}`)
 			return err
@@ -90,6 +106,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListProjectLabels().Definition().Operation.OperationID != "listProjectLabels" {
+		t.Errorf("listProjectLabels mock has another definition")
+	}
+	if mock.ListTaskLabels().Definition().Operation.OperationID != "listTaskLabels" {
+		t.Errorf("listTaskLabels mock has another definition")
+	}
+	if mock.RemoveTaskLabel().Definition().Operation.OperationID != "removeTaskLabel" {
+		t.Errorf("removeTaskLabel mock has another definition")
+	}
+	if mock.AddTaskLabel().Definition().Operation.OperationID != "addTaskLabel" {
+		t.Errorf("addTaskLabel mock has another definition")
+	}
 	if mock.ListComments().Definition().Operation.OperationID != "listComments" {
 		t.Errorf("listComments mock has another definition")
 	}

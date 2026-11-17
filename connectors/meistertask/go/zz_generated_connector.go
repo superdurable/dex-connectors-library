@@ -40,6 +40,10 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListProjectLabels() sdkgo.Query[ListProjectLabelsInput, ProjectLabels]
+	ListTaskLabels() sdkgo.Query[ListTaskLabelsInput, TaskLabels]
+	RemoveTaskLabel() sdkgo.Mutation[RemoveTaskLabelInput, RemovedTaskLabel]
+	AddTaskLabel() sdkgo.Mutation[AddTaskLabelInput, TaskLabelSummary]
 	ListComments() sdkgo.Query[ListCommentsInput, CommentsPage]
 	GetComment() sdkgo.Query[GetCommentInput, CommentSummary]
 	DeleteComment() sdkgo.Mutation[DeleteCommentInput, DeletedComment]
@@ -60,6 +64,18 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListProjectLabels() sdkgo.Query[ListProjectLabelsInput, ProjectLabels] {
+	return operations.client.ListProjectLabels()
+}
+func (operations clientOperations) ListTaskLabels() sdkgo.Query[ListTaskLabelsInput, TaskLabels] {
+	return operations.client.ListTaskLabels()
+}
+func (operations clientOperations) RemoveTaskLabel() sdkgo.Mutation[RemoveTaskLabelInput, RemovedTaskLabel] {
+	return operations.client.RemoveTaskLabel()
+}
+func (operations clientOperations) AddTaskLabel() sdkgo.Mutation[AddTaskLabelInput, TaskLabelSummary] {
+	return operations.client.AddTaskLabel()
+}
 func (operations clientOperations) ListComments() sdkgo.Query[ListCommentsInput, CommentsPage] {
 	return operations.client.ListComments()
 }
@@ -244,6 +260,296 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_token is required")
 	}
 	return nil
+}
+
+const ListProjectLabelsBranchListed sdkgo.BranchID = "listed"
+const ListProjectLabelsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListProjectLabelsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListProjectLabelsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListProjectLabelsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listProjectLabels"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListProjectLabelsBranchListed, Description: "MeisterTask returned the label outcome."},
+		{ID: ListProjectLabelsBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: ListProjectLabelsBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: ListProjectLabelsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListProjectLabelsResult = sdkgo.QueryResult[ProjectLabels]
+
+type ListProjectLabelsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=meistertask"`
+	operationID                    struct{}                                         `connector:"operationId=listProjectLabels"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListProjectLabelsInput                  `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListProjectLabelsResult]            `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListProjectLabelsResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListProjectLabelsResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListProjectLabelsResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ProjectLabels]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListProjectLabelsStep[IN any](config ListProjectLabelsStepConfig[IN]) sdkgo.QueryStep[IN, ListProjectLabelsInput, ProjectLabels] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListProjectLabelsInput, ProjectLabels]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListProjectLabels(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListProjectLabelsResult] {
+			branches := make([]sdkgo.BranchTarget[ListProjectLabelsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListProjectLabelsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListProjectLabelsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListProjectLabelsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListProjectLabelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTaskLabelsBranchListed sdkgo.BranchID = "listed"
+const ListTaskLabelsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTaskLabelsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTaskLabelsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTaskLabelsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTaskLabels"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTaskLabelsBranchListed, Description: "MeisterTask returned the label outcome."},
+		{ID: ListTaskLabelsBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: ListTaskLabelsBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: ListTaskLabelsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTaskLabelsResult = sdkgo.QueryResult[TaskLabels]
+
+type ListTaskLabelsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=meistertask"`
+	operationID                    struct{}                                      `connector:"operationId=listTaskLabels"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTaskLabelsInput                  `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTaskLabelsResult]            `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTaskLabelsResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTaskLabelsResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTaskLabelsResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TaskLabels]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListTaskLabelsStep[IN any](config ListTaskLabelsStepConfig[IN]) sdkgo.QueryStep[IN, ListTaskLabelsInput, TaskLabels] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTaskLabelsInput, TaskLabels]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTaskLabels(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTaskLabelsResult] {
+			branches := make([]sdkgo.BranchTarget[ListTaskLabelsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTaskLabelsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTaskLabelsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTaskLabelsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTaskLabelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RemoveTaskLabelBranchRemoved sdkgo.BranchID = "removed"
+const RemoveTaskLabelBranchNotFound sdkgo.BranchID = "notFound"
+const RemoveTaskLabelBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RemoveTaskLabelBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RemoveTaskLabelDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "removeTaskLabel"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RemoveTaskLabelBranchRemoved, Description: "MeisterTask returned the label outcome."},
+		{ID: RemoveTaskLabelBranchNotFound, Description: "MeisterTask did not expose the attachment.", Optional: true},
+		{ID: RemoveTaskLabelBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: RemoveTaskLabelBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RemoveTaskLabelResult = sdkgo.MutationResult[RemovedTaskLabel]
+
+type RemoveTaskLabelStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=meistertask"`
+	operationID                       struct{}                                               `connector:"operationId=removeTaskLabel"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) RemoveTaskLabelInput                          `connector:"mapToOperationInput"`
+	Removed                           sdkgo.Target[RemoveTaskLabelResult]                    `connector:"branch=removed"`
+	NotFound                          sdkgo.Target[RemoveTaskLabelResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[RemoveTaskLabelResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[RemoveTaskLabelResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[RemovedTaskLabel]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewRemoveTaskLabelStep[IN any](config RemoveTaskLabelStepConfig[IN]) sdkgo.MutationStep[IN, RemoveTaskLabelInput, RemovedTaskLabel] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RemoveTaskLabelInput, RemovedTaskLabel]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RemoveTaskLabel(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RemoveTaskLabelResult] {
+			branches := make([]sdkgo.BranchTarget[RemoveTaskLabelResult], 0, 4)
+			if config.Removed.HasStep() {
+				branches = append(branches, config.Removed.BranchTarget(RemoveTaskLabelBranchRemoved))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(RemoveTaskLabelBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RemoveTaskLabelBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RemoveTaskLabelBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const AddTaskLabelBranchAdded sdkgo.BranchID = "added"
+const AddTaskLabelBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const AddTaskLabelBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const AddTaskLabelBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var AddTaskLabelDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "addTaskLabel"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: AddTaskLabelBranchAdded, Description: "MeisterTask returned the label outcome."},
+		{ID: AddTaskLabelBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: AddTaskLabelBranchUncertain, Description: "Attachment may have succeeded; inspect task labels before manual retry.", Optional: true},
+		{ID: AddTaskLabelBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type AddTaskLabelResult = sdkgo.MutationResult[TaskLabelSummary]
+
+type AddTaskLabelStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=meistertask"`
+	operationID                       struct{}                                               `connector:"operationId=addTaskLabel"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) AddTaskLabelInput                             `connector:"mapToOperationInput"`
+	Added                             sdkgo.Target[AddTaskLabelResult]                       `connector:"branch=added"`
+	ProviderRejected                  sdkgo.Target[AddTaskLabelResult]                       `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[AddTaskLabelResult]                       `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[AddTaskLabelResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TaskLabelSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewAddTaskLabelStep[IN any](config AddTaskLabelStepConfig[IN]) sdkgo.MutationStep[IN, AddTaskLabelInput, TaskLabelSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddTaskLabelInput, TaskLabelSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.AddTaskLabel(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[AddTaskLabelResult] {
+			branches := make([]sdkgo.BranchTarget[AddTaskLabelResult], 0, 4)
+			if config.Added.HasStep() {
+				branches = append(branches, config.Added.BranchTarget(AddTaskLabelBranchAdded))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(AddTaskLabelBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(AddTaskLabelBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(AddTaskLabelBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
 }
 
 const ListCommentsBranchListed sdkgo.BranchID = "listed"
