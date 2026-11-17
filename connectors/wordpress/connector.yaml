@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: wordpress
   displayName: WordPress
-  description: Read published posts and create drafts or published posts through WordPress REST API.
+  description: Read and manage posts, pages, and users through the WordPress REST API.
   company: WordPress
   categories: [marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: wordpress
   languages:
@@ -66,6 +66,7 @@ spec:
         - Open the same site's /wp-admin/profile.php, copy the Username, then under Application Passwords name this Dex connection and click Add New Application Password.
         - Copy the secret password shown once, including or omitting its display spaces, and save it in application_password. Do not use the ordinary WordPress login password.
         - For createPost, use a WordPress account with edit_posts permission for drafts and publish_posts permission to publish; Author or Editor normally has both. Keep timeout, maxResponseBytes, and maxPostBytes blank for their displayed defaults; revoke this application's password from the same profile page when the connection is retired.
+        - For page writes, use an account with edit_pages and publish_pages as needed. User updates require the account's edit_users capability; select the account in Users > All Users at your site's /wp-admin/users.php and use its numeric REST user ID. Existing read-only operations remain available to accounts with their usual WordPress access.
   operations:
     - name: createPost
       goName: CreatePost
@@ -136,3 +137,245 @@ spec:
           description: The first page contains a published Meridian release post.
           default: true
           output: {posts: [{id: 42, slug: meridian-release, status: publish, link: 'https://example.test/meridian-release/', title: {rendered: Meridian release}, content: {rendered: '<p>Released.</p>'}, dateGMT: '2026-11-07T12:00:00'}], page: 1, total: 1, totalPages: 1}
+    - name: updatePost
+      goName: UpdatePost
+      inputType: UpdatePostInput
+      outputType: CreatedPost
+      kind: mutation
+      description: "UpdatePost through the WordPress REST API."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "WordPress updated the post."}
+        - {id: notFound, goName: NotFound, description: "The post was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "WordPress conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "WordPress returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          description: "A sample post updated result."
+          default: true
+          output: {id: 42, status: publish}
+    - name: deletePost
+      goName: DeletePost
+      inputType: DeletePostInput
+      outputType: CreatedPost
+      kind: mutation
+      description: "DeletePost through the WordPress REST API."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: "WordPress deleted the post."}
+        - {id: notFound, goName: NotFound, description: "The post was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "WordPress conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "WordPress returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          description: "A sample post deleted result."
+          default: true
+          output: {id: 42, status: trash}
+    - name: createPage
+      goName: CreatePage
+      inputType: CreatePageInput
+      outputType: Page
+      kind: mutation
+      description: "CreatePage through the WordPress REST API."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "WordPress created the page."}
+        - {id: notFound, goName: NotFound, description: "The page was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "WordPress conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "WordPress returned malformed or oversized JSON.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The capped create outcome could not be confirmed.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        repeatOnUnknown: limited
+        maxSends: 3
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          description: "A sample page created result."
+          default: true
+          output: {id: 51, slug: sample-page, status: draft, link: "https://example.test/sample-page/", title: {rendered: Sample page}}
+    - name: getPage
+      goName: GetPage
+      inputType: GetPageInput
+      outputType: Page
+      kind: query
+      description: "GetPage through the WordPress REST API."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "WordPress found the page."}
+        - {id: notFound, goName: NotFound, description: "The page was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "WordPress conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "WordPress returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: "A sample page found result."
+          default: true
+          output: {id: 51, slug: sample-page, status: publish, link: "https://example.test/sample-page/", title: {rendered: Sample page}}
+    - name: listPages
+      goName: ListPages
+      inputType: ListPagesInput
+      outputType: PagePage
+      kind: query
+      description: "ListPages through the WordPress REST API."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "WordPress listed the page."}
+        - {id: notFound, goName: NotFound, description: "The page was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "WordPress conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "WordPress returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: "A sample page listed result."
+          default: true
+          output: {pages: [{id: 51, slug: sample-page, status: publish, link: "https://example.test/sample-page/", title: {rendered: Sample page}}]}
+    - name: updatePage
+      goName: UpdatePage
+      inputType: UpdatePageInput
+      outputType: Page
+      kind: mutation
+      description: "UpdatePage through the WordPress REST API."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "WordPress updated the page."}
+        - {id: notFound, goName: NotFound, description: "The page was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "WordPress conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "WordPress returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          description: "A sample page updated result."
+          default: true
+          output: {id: 51, slug: sample-page, status: publish, link: "https://example.test/sample-page/", title: {rendered: Sample page}}
+    - name: deletePage
+      goName: DeletePage
+      inputType: DeletePageInput
+      outputType: Page
+      kind: mutation
+      description: "DeletePage through the WordPress REST API."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: "WordPress deleted the page."}
+        - {id: notFound, goName: NotFound, description: "The page was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "WordPress conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "WordPress returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          description: "A sample page deleted result."
+          default: true
+          output: {id: 51, slug: sample-page, status: trash, link: "https://example.test/sample-page/", title: {rendered: Sample page}}
+    - name: getUser
+      goName: GetUser
+      inputType: GetUserInput
+      outputType: User
+      kind: query
+      description: "GetUser through the WordPress REST API."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "WordPress found the user."}
+        - {id: notFound, goName: NotFound, description: "The user was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "WordPress conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "WordPress returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: "A sample user found result."
+          default: true
+          output: {id: 7, name: Sample Editor, slug: sample-editor}
+    - name: listUsers
+      goName: ListUsers
+      inputType: ListUsersInput
+      outputType: UserPage
+      kind: query
+      description: "ListUsers through the WordPress REST API."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "WordPress listed the user."}
+        - {id: notFound, goName: NotFound, description: "The user was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "WordPress conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "WordPress returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: "A sample user listed result."
+          default: true
+          output: {users: [{id: 7, name: Sample Editor, slug: sample-editor}]}
+    - name: updateUser
+      goName: UpdateUser
+      inputType: UpdateUserInput
+      outputType: User
+      kind: mutation
+      description: "UpdateUser through the WordPress REST API."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "WordPress updated the user."}
+        - {id: notFound, goName: NotFound, description: "The user was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "WordPress conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "WordPress returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          description: "A sample user updated result."
+          default: true
+          output: {id: 7, name: Sample Editor, slug: sample-editor}

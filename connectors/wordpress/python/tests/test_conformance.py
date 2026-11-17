@@ -14,15 +14,21 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/wordpress/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/wordpress/scenarios.json")
+    if scenario["operation"] in {"createPost", "getPost", "listPosts"}
+]
 CONNECTION = sdk.ConnectionRef("wordpress", "wordpress")
 ADAPTER = PythonOperationAdapter(
-    "wordpress", CONNECTION, wordpress,
+    "wordpress",
+    CONNECTION,
+    wordpress,
     lambda http_client, _: wordpress.Client(
         wordpress.Config(site_url="http://127.0.0.1:12345"),
-        sdk.StaticCredentialProvider({
-            CONNECTION: wordpress.Credentials("editor", sdk.SecretString("synthetic test password"))
-        }),
+        sdk.StaticCredentialProvider(
+            {CONNECTION: wordpress.Credentials("editor", sdk.SecretString("synthetic test password"))}
+        ),
         http_client,
     ),
     with_context=True,

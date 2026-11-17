@@ -1207,6 +1207,3893 @@
       },
       "name": "listPosts-transport",
       "operation": "listPosts"
+    },
+    {
+      "callId": "4022a986-fdec-58a3-90d9-1af920e3801b",
+      "exchanges": [
+        {
+          "body": "{\"id\":42,\"status\":\"publish\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "New post"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 42,
+          "status": "publish"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4022a986-fdec-58a3-90d9-1af920e3801b",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "postId": 42,
+        "status": "publish",
+        "title": "New post"
+      },
+      "name": "updatePost-success",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "c7820d1e-4406-52c5-b035-c860db86013d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "New post"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c7820d1e-4406-52c5-b035-c860db86013d",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "postId": 42,
+        "status": "publish",
+        "title": "New post"
+      },
+      "name": "updatePost-not-found",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "f66e2be9-1df4-53ca-b944-36759ff79a3e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "New post"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f66e2be9-1df4-53ca-b944-36759ff79a3e",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "postId": 42,
+        "status": "publish",
+        "title": "New post"
+      },
+      "name": "updatePost-rejected",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "8988ed0b-b26e-53ae-9c18-e5deb7efa7fa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "New post"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8988ed0b-b26e-53ae-9c18-e5deb7efa7fa",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "postId": 42,
+        "status": "publish",
+        "title": "New post"
+      },
+      "name": "updatePost-invalid",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "New post"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000001",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "postId": 42,
+        "status": "publish",
+        "title": "New post"
+      },
+      "name": "updatePost-rate-limit",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "New post"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000001",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "postId": 42,
+        "status": "publish",
+        "title": "New post"
+      },
+      "name": "updatePost-server-error",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "New post"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000001",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "postId": 42,
+        "status": "publish",
+        "title": "New post"
+      },
+      "name": "updatePost-service-unavailable",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000001",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "New post"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000001",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "postId": 42,
+        "status": "publish",
+        "title": "New post"
+      },
+      "name": "updatePost-transport",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "747029d2-86ba-5230-aea0-546f0c6c91e3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "747029d2-86ba-5230-aea0-546f0c6c91e3",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "postId": 0,
+        "status": "publish",
+        "title": "New post"
+      },
+      "name": "updatePost-defect",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "bda44ac4-7430-57ec-a55d-4f811ac89728",
+      "exchanges": [
+        {
+          "body": "{\"id\":42,\"status\":\"trash\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 42,
+          "status": "trash"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bda44ac4-7430-57ec-a55d-4f811ac89728",
+      "input": {
+        "postId": 42
+      },
+      "name": "deletePost-success",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "a4a09f9d-6b29-575f-802d-05bcc939ee8e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a4a09f9d-6b29-575f-802d-05bcc939ee8e",
+      "input": {
+        "postId": 42
+      },
+      "name": "deletePost-not-found",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "591b034e-3037-5fc9-9c37-ab7abe40bd7d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "591b034e-3037-5fc9-9c37-ab7abe40bd7d",
+      "input": {
+        "postId": 42
+      },
+      "name": "deletePost-rejected",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "76849f7e-5125-5d1b-a37d-0b7851c92b87",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76849f7e-5125-5d1b-a37d-0b7851c92b87",
+      "input": {
+        "postId": 42
+      },
+      "name": "deletePost-invalid",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000002",
+      "input": {
+        "postId": 42
+      },
+      "name": "deletePost-rate-limit",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000002",
+      "input": {
+        "postId": 42
+      },
+      "name": "deletePost-server-error",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000002",
+      "input": {
+        "postId": 42
+      },
+      "name": "deletePost-service-unavailable",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000002",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000002",
+      "input": {
+        "postId": 42
+      },
+      "name": "deletePost-transport",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "139b280b-3373-5c11-907f-136442d4b587",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "139b280b-3373-5c11-907f-136442d4b587",
+      "input": {
+        "postId": 0
+      },
+      "name": "deletePost-defect",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "38e816cb-f994-5d67-8e16-fe3230cc4d0d",
+      "exchanges": [
+        {
+          "body": "{\"id\":51,\"slug\":\"sample-page\",\"status\":\"draft\",\"link\":\"https://example.test/sample-page/\",\"title\":{\"rendered\":\"Sample page\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages",
+          "requestBody": {
+            "content": "\u003cp\u003eContent.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "38e816cb-f994-5d67-8e16-fe3230cc4d0d",
+          "providerId": "51",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 51,
+          "link": "https://example.test/sample-page/",
+          "slug": "sample-page",
+          "status": "draft",
+          "title": {
+            "rendered": "Sample page"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "38e816cb-f994-5d67-8e16-fe3230cc4d0d",
+      "input": {
+        "content": "\u003cp\u003eContent.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Sample page"
+      },
+      "name": "createPage-success",
+      "operation": "createPage"
+    },
+    {
+      "callId": "35eb6c65-35bc-59a3-8a72-683a4bcc05df",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages",
+          "requestBody": {
+            "content": "\u003cp\u003eContent.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "35eb6c65-35bc-59a3-8a72-683a4bcc05df",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35eb6c65-35bc-59a3-8a72-683a4bcc05df",
+      "input": {
+        "content": "\u003cp\u003eContent.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Sample page"
+      },
+      "name": "createPage-not-found",
+      "operation": "createPage"
+    },
+    {
+      "callId": "6898b37c-de3c-5c84-8336-a51f314873e1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages",
+          "requestBody": {
+            "content": "\u003cp\u003eContent.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6898b37c-de3c-5c84-8336-a51f314873e1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6898b37c-de3c-5c84-8336-a51f314873e1",
+      "input": {
+        "content": "\u003cp\u003eContent.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Sample page"
+      },
+      "name": "createPage-rejected",
+      "operation": "createPage"
+    },
+    {
+      "callId": "0e34d450-fd8e-5f1d-8493-39ca5019ebad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages",
+          "requestBody": {
+            "content": "\u003cp\u003eContent.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0e34d450-fd8e-5f1d-8493-39ca5019ebad",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0e34d450-fd8e-5f1d-8493-39ca5019ebad",
+      "input": {
+        "content": "\u003cp\u003eContent.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Sample page"
+      },
+      "name": "createPage-invalid",
+      "operation": "createPage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages",
+          "requestBody": {
+            "content": "\u003cp\u003eContent.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "97769a0a-84fa-5113-880c-4ea675d4533c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000003",
+      "input": {
+        "content": "\u003cp\u003eContent.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Sample page"
+      },
+      "name": "createPage-rate-limit",
+      "operation": "createPage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages",
+          "requestBody": {
+            "content": "\u003cp\u003eContent.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d0dc4680-1edd-5662-b794-23e0e73e86ef",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000003",
+      "input": {
+        "content": "\u003cp\u003eContent.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Sample page"
+      },
+      "name": "createPage-server-error",
+      "operation": "createPage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages",
+          "requestBody": {
+            "content": "\u003cp\u003eContent.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "23deb126-c777-590b-bff6-d88dd937fb4d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000003",
+      "input": {
+        "content": "\u003cp\u003eContent.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Sample page"
+      },
+      "name": "createPage-service-unavailable",
+      "operation": "createPage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000003",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages",
+          "requestBody": {
+            "content": "\u003cp\u003eContent.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "31ded647-73a6-5ffa-b315-4b0dec25b484",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000003",
+      "input": {
+        "content": "\u003cp\u003eContent.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Sample page"
+      },
+      "name": "createPage-transport",
+      "operation": "createPage"
+    },
+    {
+      "callId": "10e0efac-d462-5ee2-90d9-d53ce82c83dd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10e0efac-d462-5ee2-90d9-d53ce82c83dd",
+      "input": {
+        "content": "\u003cp\u003eContent.\u003c/p\u003e",
+        "status": "draft",
+        "title": ""
+      },
+      "name": "createPage-defect",
+      "operation": "createPage"
+    },
+    {
+      "attempts": 3,
+      "callId": "4524cd05-d8a8-58cb-9ea4-c3e399e398d9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages",
+          "requestBody": {
+            "content": "\u003cp\u003eContent.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages",
+          "requestBody": {
+            "content": "\u003cp\u003eContent.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages",
+          "requestBody": {
+            "content": "\u003cp\u003eContent.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "4524cd05-d8a8-58cb-9ea4-c3e399e398d9",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "4524cd05-d8a8-58cb-9ea4-c3e399e398d9",
+      "input": {
+        "content": "\u003cp\u003eContent.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Sample page"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "4524cd05-d8a8-58cb-9ea4-c3e399e398d9",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "4524cd05-d8a8-58cb-9ea4-c3e399e398d9",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createPage-uncertain",
+      "operation": "createPage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000004",
+      "exchanges": [
+        {
+          "body": "{\"id\":51,\"slug\":\"sample-page\",\"status\":\"publish\",\"link\":\"https://example.test/sample-page/\",\"title\":{\"rendered\":\"Sample page\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": 51,
+          "link": "https://example.test/sample-page/",
+          "slug": "sample-page",
+          "status": "publish",
+          "title": {
+            "rendered": "Sample page"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageId": 51
+      },
+      "name": "getPage-success",
+      "operation": "getPage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageId": 51
+      },
+      "name": "getPage-not-found",
+      "operation": "getPage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageId": 51
+      },
+      "name": "getPage-rejected",
+      "operation": "getPage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageId": 51
+      },
+      "name": "getPage-invalid",
+      "operation": "getPage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageId": 51
+      },
+      "name": "getPage-rate-limit",
+      "operation": "getPage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageId": 51
+      },
+      "name": "getPage-server-error",
+      "operation": "getPage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageId": 51
+      },
+      "name": "getPage-service-unavailable",
+      "operation": "getPage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000004",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageId": 51
+      },
+      "name": "getPage-transport",
+      "operation": "getPage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000004",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageId": 0
+      },
+      "name": "getPage-defect",
+      "operation": "getPage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000005",
+      "exchanges": [
+        {
+          "body": "[{\"id\":51,\"slug\":\"sample-page\",\"status\":\"publish\",\"link\":\"https://example.test/sample-page/\",\"title\":{\"rendered\":\"Sample page\"}}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "pages": [
+            {
+              "id": 51,
+              "link": "https://example.test/sample-page/",
+              "slug": "sample-page",
+              "status": "publish",
+              "title": {
+                "rendered": "Sample page"
+              }
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listPages-success",
+      "operation": "listPages"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "pages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listPages-not-found",
+      "operation": "listPages"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "pages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listPages-rejected",
+      "operation": "listPages"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "pages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listPages-invalid",
+      "operation": "listPages"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listPages-rate-limit",
+      "operation": "listPages"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listPages-server-error",
+      "operation": "listPages"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listPages-service-unavailable",
+      "operation": "listPages"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000005",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/pages",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listPages-transport",
+      "operation": "listPages"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "pages": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 101
+      },
+      "name": "listPages-defect",
+      "operation": "listPages"
+    },
+    {
+      "callId": "66c9e38e-4e8a-5e83-8ec7-1a0a7bbedd47",
+      "exchanges": [
+        {
+          "body": "{\"id\":51,\"slug\":\"sample-page\",\"status\":\"publish\",\"link\":\"https://example.test/sample-page/\",\"title\":{\"rendered\":\"Sample page\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 51,
+          "link": "https://example.test/sample-page/",
+          "slug": "sample-page",
+          "status": "publish",
+          "title": {
+            "rendered": "Sample page"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "66c9e38e-4e8a-5e83-8ec7-1a0a7bbedd47",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "pageId": 51,
+        "status": "publish",
+        "title": "Sample page"
+      },
+      "name": "updatePage-success",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "88b236cf-a859-550c-bcda-d67a94484177",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "88b236cf-a859-550c-bcda-d67a94484177",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "pageId": 51,
+        "status": "publish",
+        "title": "Sample page"
+      },
+      "name": "updatePage-not-found",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "50a3baed-333b-52fc-a963-c45a5eb04d52",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50a3baed-333b-52fc-a963-c45a5eb04d52",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "pageId": 51,
+        "status": "publish",
+        "title": "Sample page"
+      },
+      "name": "updatePage-rejected",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "5c4703ff-29bc-5c81-b732-e1b6bbae43ad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5c4703ff-29bc-5c81-b732-e1b6bbae43ad",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "pageId": 51,
+        "status": "publish",
+        "title": "Sample page"
+      },
+      "name": "updatePage-invalid",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000006",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "pageId": 51,
+        "status": "publish",
+        "title": "Sample page"
+      },
+      "name": "updatePage-rate-limit",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000006",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "pageId": 51,
+        "status": "publish",
+        "title": "Sample page"
+      },
+      "name": "updatePage-server-error",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000006",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "pageId": 51,
+        "status": "publish",
+        "title": "Sample page"
+      },
+      "name": "updatePage-service-unavailable",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000006",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestBody": {
+            "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+            "status": "publish",
+            "title": "Sample page"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000006",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "pageId": 51,
+        "status": "publish",
+        "title": "Sample page"
+      },
+      "name": "updatePage-transport",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "9fd8d6e1-2c46-571f-9caf-27d119a2fa72",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9fd8d6e1-2c46-571f-9caf-27d119a2fa72",
+      "input": {
+        "content": "\u003cp\u003eUpdated.\u003c/p\u003e",
+        "pageId": 0,
+        "status": "publish",
+        "title": "Sample page"
+      },
+      "name": "updatePage-defect",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "3c8fbe00-c49b-5891-bfa4-1f23d0285da0",
+      "exchanges": [
+        {
+          "body": "{\"id\":51,\"slug\":\"sample-page\",\"status\":\"trash\",\"link\":\"https://example.test/sample-page/\",\"title\":{\"rendered\":\"Sample page\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 51,
+          "link": "https://example.test/sample-page/",
+          "slug": "sample-page",
+          "status": "trash",
+          "title": {
+            "rendered": "Sample page"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3c8fbe00-c49b-5891-bfa4-1f23d0285da0",
+      "input": {
+        "pageId": 51
+      },
+      "name": "deletePage-success",
+      "operation": "deletePage"
+    },
+    {
+      "callId": "2487bbc6-6b94-5dc7-b47b-bed5ebb17a81",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2487bbc6-6b94-5dc7-b47b-bed5ebb17a81",
+      "input": {
+        "pageId": 51
+      },
+      "name": "deletePage-not-found",
+      "operation": "deletePage"
+    },
+    {
+      "callId": "ecb4c2a2-c96b-595c-b0da-54dd069c9566",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ecb4c2a2-c96b-595c-b0da-54dd069c9566",
+      "input": {
+        "pageId": 51
+      },
+      "name": "deletePage-rejected",
+      "operation": "deletePage"
+    },
+    {
+      "callId": "55dac524-f222-5f8f-b858-1d0fc9e815cd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55dac524-f222-5f8f-b858-1d0fc9e815cd",
+      "input": {
+        "pageId": 51
+      },
+      "name": "deletePage-invalid",
+      "operation": "deletePage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000007",
+      "input": {
+        "pageId": 51
+      },
+      "name": "deletePage-rate-limit",
+      "operation": "deletePage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000007",
+      "input": {
+        "pageId": 51
+      },
+      "name": "deletePage-server-error",
+      "operation": "deletePage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000007",
+      "input": {
+        "pageId": 51
+      },
+      "name": "deletePage-service-unavailable",
+      "operation": "deletePage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wp/v2/pages/51",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000007",
+      "input": {
+        "pageId": 51
+      },
+      "name": "deletePage-transport",
+      "operation": "deletePage"
+    },
+    {
+      "callId": "0d12d1a7-e8b8-5b85-b46d-c8eca6caee7c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0d12d1a7-e8b8-5b85-b46d-c8eca6caee7c",
+      "input": {
+        "pageId": 0
+      },
+      "name": "deletePage-defect",
+      "operation": "deletePage"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000008",
+      "exchanges": [
+        {
+          "body": "{\"id\":7,\"name\":\"Sample Editor\",\"slug\":\"sample-editor\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": 7,
+          "name": "Sample Editor",
+          "slug": "sample-editor"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7
+      },
+      "name": "getUser-success",
+      "operation": "getUser"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7
+      },
+      "name": "getUser-not-found",
+      "operation": "getUser"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7
+      },
+      "name": "getUser-rejected",
+      "operation": "getUser"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7
+      },
+      "name": "getUser-invalid",
+      "operation": "getUser"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7
+      },
+      "name": "getUser-rate-limit",
+      "operation": "getUser"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7
+      },
+      "name": "getUser-server-error",
+      "operation": "getUser"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7
+      },
+      "name": "getUser-service-unavailable",
+      "operation": "getUser"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7
+      },
+      "name": "getUser-transport",
+      "operation": "getUser"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000008",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 0
+      },
+      "name": "getUser-defect",
+      "operation": "getUser"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000009",
+      "exchanges": [
+        {
+          "body": "[{\"id\":7,\"name\":\"Sample Editor\",\"slug\":\"sample-editor\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "users": [
+            {
+              "id": 7,
+              "name": "Sample Editor",
+              "slug": "sample-editor"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listUsers-success",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000009",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listUsers-not-found",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000009",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listUsers-rejected",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000009",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listUsers-invalid",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000009",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listUsers-rate-limit",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000009",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listUsers-server-error",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000009",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listUsers-service-unavailable",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000009",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/users",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listUsers-transport",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000009",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "users": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 101
+      },
+      "name": "listUsers-defect",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "ea795f50-5610-5a7c-ab94-90f8763ffc66",
+      "exchanges": [
+        {
+          "body": "{\"id\":7,\"name\":\"Sample Editor\",\"slug\":\"sample-editor\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestBody": {
+            "name": "Sample Editor"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 7,
+          "name": "Sample Editor",
+          "slug": "sample-editor"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea795f50-5610-5a7c-ab94-90f8763ffc66",
+      "input": {
+        "name": "Sample Editor",
+        "userId": 7
+      },
+      "name": "updateUser-success",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "1b30c36f-0368-5d57-a282-dbcb1507f96d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestBody": {
+            "name": "Sample Editor"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1b30c36f-0368-5d57-a282-dbcb1507f96d",
+      "input": {
+        "name": "Sample Editor",
+        "userId": 7
+      },
+      "name": "updateUser-not-found",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "96b00bcc-2dde-593b-ad58-4c7f5f29a04e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestBody": {
+            "name": "Sample Editor"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96b00bcc-2dde-593b-ad58-4c7f5f29a04e",
+      "input": {
+        "name": "Sample Editor",
+        "userId": 7
+      },
+      "name": "updateUser-rejected",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "27a3b72a-2407-5535-87da-65044722f7cd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestBody": {
+            "name": "Sample Editor"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "27a3b72a-2407-5535-87da-65044722f7cd",
+      "input": {
+        "name": "Sample Editor",
+        "userId": 7
+      },
+      "name": "updateUser-invalid",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000010",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestBody": {
+            "name": "Sample Editor"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000010",
+      "input": {
+        "name": "Sample Editor",
+        "userId": 7
+      },
+      "name": "updateUser-rate-limit",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000010",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestBody": {
+            "name": "Sample Editor"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000010",
+      "input": {
+        "name": "Sample Editor",
+        "userId": 7
+      },
+      "name": "updateUser-server-error",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000010",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestBody": {
+            "name": "Sample Editor"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000010",
+      "input": {
+        "name": "Sample Editor",
+        "userId": 7
+      },
+      "name": "updateUser-service-unavailable",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-000000000010",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/users/7",
+          "requestBody": {
+            "name": "Sample Editor"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22222222-2222-4222-8222-000000000010",
+      "input": {
+        "name": "Sample Editor",
+        "userId": 7
+      },
+      "name": "updateUser-transport",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "51b7f64d-7668-5de7-9a0f-315b1545cf94",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "51b7f64d-7668-5de7-9a0f-315b1545cf94",
+      "input": {
+        "name": "Sample Editor",
+        "userId": 0
+      },
+      "name": "updateUser-defect",
+      "operation": "updateUser"
     }
   ],
   "schemaVersion": 1
