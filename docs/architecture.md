@@ -230,8 +230,10 @@ every event, `connector-conformance` replays the scenarios of every connector th
 plan selects, and every fixture after a shared runner change, in parallel with
 the `language-connectors` package tests: each takes about an hour at most for
 the full catalog, so the queue waits for the longer one instead of their sum.
-The conformance mutation self-test can take hours, so it runs only on pull
-requests, scheduled runs, and manual runs. To run every job, including the
+When most fixtures are selected, `connector-conformance` splits into up to six
+shard jobs, each checking several connectors at once. The conformance mutation
+self-test still costs hours of runner time, so it runs only on pull requests,
+scheduled runs, and manual runs. To run every job, including the
 self-test, on a pull request branch, start CI manually with
 `gh workflow run CI --ref <branch>`.
 

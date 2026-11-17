@@ -31,6 +31,7 @@ jobs:
       # Connector jobs read the resolved scope and base, which fall back to all when the base is unknown.
       connector_scope: ${{ steps.plan.outputs.connector_scope }}
       connector_base: ${{ steps.plan.outputs.connector_base }}
+      conformance_matrix: ${{ steps.conformance.outputs.matrix }}
     env:
       CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
@@ -77,6 +78,20 @@ jobs:
           fi
           GOWORK=off go run ./cmd/connectorctl test-matrix "${arguments[@]}"
           printf 'connector_scope=%s\nconnector_base=%s\n' "${scope}" "${base}" >> "${GITHUB_OUTPUT}"
+      # Replay and the mutation self-test of every fixture take hours in one job; shard large selections.
+      - name: Plan connector conformance shards
+        id: conformance
+        env:
+          PLANNED_CONNECTOR_COUNT: ${{ steps.plan.outputs.count }}
+          PLANNED_SCOPE: ${{ steps.plan.outputs.connector_scope }}
+          PLANNED_BASE: ${{ steps.plan.outputs.connector_base }}
+        run: |
+          arguments=(--conformance-ci-matrix --head "${CONNECTOR_HEAD}" --planned-connector-count "${PLANNED_CONNECTOR_COUNT:-0}")
+          if [ "${PLANNED_SCOPE}" = changed ]; then
+            arguments+=(--base "${PLANNED_BASE}")
+          fi
+          matrix="$(python3 script/connector_conformance.py "${arguments[@]}")"
+          echo "matrix=${matrix}" >> "${GITHUB_OUTPUT}"
       - name: Resolve release inventory once for connector validation
         if: steps.plan.outputs.count != '0' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         env:
@@ -413,10 +428,16 @@ jobs:
     needs: connector-plan
     if: needs.connector-plan.outputs.count != '0'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.connector-plan.outputs.conformance_matrix) }}
     env:
       CONNECTOR_SCOPE: ${{ needs.connector-plan.outputs.connector_scope }}
       CONNECTOR_BASE: ${{ needs.connector-plan.outputs.connector_base }}
       CONNECTOR_HEAD: ${{ github.sha }}
+      # Each shard replays and self-tests every shard_count-th selected connector, several at a time.
+      CONFORMANCE_SHARD_INDEX: ${{ matrix.shard_index }}
+      CONFORMANCE_SHARD_COUNT: ${{ matrix.shard_count }}
     steps:
       - uses: actions/checkout@v6
         with:

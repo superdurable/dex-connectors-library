@@ -5,17 +5,26 @@
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
-from concurrent.futures import ThreadPoolExecutor
+import time
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
+from typing import TextIO
 
 ROOT = Path(__file__).resolve().parents[1]
+# Connectors checked at once default to the CPU count; this variable or --workers overrides it.
+CONFORMANCE_WORKERS_ENVIRONMENT_VARIABLE = "CONFORMANCE_WORKERS"
+# CI shards one connector-conformance job per this many planned connectors, up to the maximum.
+CONFORMANCE_CONNECTORS_PER_SHARD = 20
+CONFORMANCE_MAX_SHARD_COUNT = 6
 NATIVE_WIRE_CONNECTORS = frozenset({
     "connectors/postgresql", "connectors/mysql", "connectors/mongodb", "connectors/microsoft/sql-server",
     "connectors/superdurable/email",
@@ -259,18 +268,21 @@ def conformance_operations_output(connectorctl: Path, manifest: str) -> str:
                                    env={**os.environ, "GOWORK": "off"}, text=True)
 
 
-def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] | None = None) -> None:
+def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] | None = None,
+                  log: TextIO | None = None) -> None:
     """Require each language runner and execute Go, Python, and TypeScript replay.
 
     Every Python and TypeScript package needs scenarios unless conformance/exemptions.yaml exempts its connector.
+    Output goes to log, or standard output when log is None.
     """
+    log = sys.stdout if log is None else log
     python_package = connector / "python"
     typescript_package = connector / "typescript"
     relative = connector.relative_to(ROOT / "connectors")
     exemption = (exemptions if exemptions is not None else conformance_exemptions()).get(
         str(connector.relative_to(ROOT)))
     if exemption is not None:
-        print(f"{connector.relative_to(ROOT)}: exempt ({exemption})", flush=True)
+        print(f"{connector.relative_to(ROOT)}: exempt ({exemption})", file=log, flush=True)
         return
     fixture = ROOT / "conformance/connectors" / relative / "scenarios.json"
     if not fixture.is_file():
@@ -371,257 +383,360 @@ def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] 
     go_test = connector / "go/zz_generated_conformance_test.go"
     if not go_test.is_file():
         raise ValueError(f"{connector.relative_to(ROOT)} has no Go reference test")
-    subprocess.run(
-        ["go", "test", "./...", "-run", "^TestConnectorConformance$", "-count=1"],
-        cwd=connector / "go", env={**os.environ, "GOWORK": "off"}, check=True
-    )
+    run_logged_command(["go", "test", "./...", "-run", "^TestConnectorConformance$", "-count=1"],
+                       connector / "go", log, env={**os.environ, "GOWORK": "off"})
     if (python_package / "pyproject.toml").is_file():
         runner = python_package / "tests/test_conformance.py"
-        subprocess.run(["uv", "sync", "--locked", "--project", str(python_package)], cwd=ROOT, check=True)
-        subprocess.run(["uv", "run", "--project", str(python_package), "pytest", str(runner)], cwd=ROOT, check=True)
+        run_logged_command(["uv", "sync", "--locked", "--project", str(python_package)], ROOT, log)
+        run_logged_command(["uv", "run", "--project", str(python_package), "pytest", str(runner)], ROOT, log)
     if (typescript_package / "package.json").is_file():
         runner = typescript_package / "test/conformance.test.ts"
-        subprocess.run(["npm", "ci", "--prefix", str(typescript_package)], cwd=ROOT, check=True)
-        subprocess.run(["npm", "run", "build", "--prefix", str(typescript_package)], cwd=ROOT, check=True)
-        subprocess.run([str(typescript_package / "node_modules/.bin/vitest"), "run", "test/conformance.test.ts"],
-                       cwd=typescript_package, check=True)
+        run_logged_command(["npm", "ci", "--prefix", str(typescript_package)], ROOT, log)
+        run_logged_command(["npm", "run", "build", "--prefix", str(typescript_package)], ROOT, log)
+        run_logged_command([str(typescript_package / "node_modules/.bin/vitest"), "run", "test/conformance.test.ts"],
+                           typescript_package, log)
 
 
-def mutation_self_test(connectors: list[Path]) -> None:
-    """Prove recordings and all port runners reject representative weak expectations."""
-    for connector in connectors:
-        relative = connector.relative_to(ROOT / "connectors")
-        fixture_path = ROOT / "conformance/connectors" / relative / "scenarios.json"
-        if not fixture_path.is_file():
-            continue
-        original = json.loads(fixture_path.read_text())
-        operation_output = subprocess.check_output(
-            ["go", "run", "./cmd/connectorctl", "conformance-operations", str(connector / "connector.yaml")],
+def conformance_worker_count(requested_workers: int | None, connector_count: int) -> int:
+    """Return how many connectors to check at once.
+
+    An explicit request wins, then CONFORMANCE_WORKERS, then the CPU count; never more than the connectors.
+    """
+    if requested_workers is None:
+        configured = os.environ.get(CONFORMANCE_WORKERS_ENVIRONMENT_VARIABLE, "").strip()
+        requested_workers = int(configured) if configured else (os.cpu_count() or 1)
+    if requested_workers < 1:
+        raise ValueError(f"conformance checks need at least one worker, not {requested_workers}")
+    return max(1, min(requested_workers, connector_count))
+
+
+def select_conformance_shard(connectors: list[Path], shard_index: int, shard_count: int) -> list[Path]:
+    """Return this shard's connectors: every shard_count-th one of the sorted list, starting at shard_index."""
+    if shard_count < 1 or not 0 <= shard_index < shard_count:
+        raise ValueError(f"shard index {shard_index} is outside shard count {shard_count}")
+    return sorted(connectors)[shard_index::shard_count]
+
+
+def conformance_ci_matrix(paths: list[str], has_base: bool, planned_connector_count: int) -> list[dict[str, int]]:
+    """Return the connector-conformance shards: one for a few connectors, more when most fixtures replay."""
+    if (not has_base or has_shared_runner_change(paths)
+            or any(path in MUTATION_SHARED_SELECTION_FILES for path in paths)):
+        shard_count = CONFORMANCE_MAX_SHARD_COUNT
+    else:
+        shard_count = min(CONFORMANCE_MAX_SHARD_COUNT,
+                          max(1, -(-planned_connector_count // CONFORMANCE_CONNECTORS_PER_SHARD)))
+    return [{"shard_index": index, "shard_count": shard_count} for index in range(shard_count)]
+
+
+def check_connectors_concurrently(connectors: list[Path], check_connector: Callable[[Path, TextIO], None],
+                                  requested_workers: int | None, label: str) -> None:
+    """Run check_connector for each connector on a bounded thread pool.
+
+    Each connector's log prints whole when it finishes. After a failure, unstarted connectors are cancelled
+    and the first failure is raised once running ones finish.
+    """
+    if not connectors:
+        return
+    worker_count = conformance_worker_count(requested_workers, len(connectors))
+    print(f"{label}: {len(connectors)} connectors, {worker_count} at a time", flush=True)
+    failures: list[tuple[Path, Exception]] = []
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        futures = {executor.submit(check_logged_connector, connector, check_connector, label): connector
+                   for connector in connectors}
+        for future in as_completed(futures):
+            if future.cancelled():
+                continue
+            log_text, failure = future.result()
+            sys.stdout.write(log_text)
+            sys.stdout.flush()
+            if failure is not None:
+                failures.append((futures[future], failure))
+                for pending in futures:
+                    pending.cancel()
+    if failures:
+        names = ", ".join(str(connector.relative_to(ROOT)) for connector, _ in failures)
+        print(f"{label} failed for {names}", file=sys.stderr, flush=True)
+        raise failures[0][1]
+
+
+def check_logged_connector(connector: Path, check_connector: Callable[[Path, TextIO], None],
+                           label: str) -> tuple[str, Exception | None]:
+    """Check one connector, returning its buffered log and the failure it raised, if any."""
+    log = io.StringIO()
+    name = connector.relative_to(ROOT)
+    started = time.monotonic()
+    print(f"{label}: {name}", file=log)
+    try:
+        check_connector(connector, log)
+    except Exception as failure:  # check_connectors_concurrently reports it with this connector's log.
+        print(f"{label}: {name} FAILED after {time.monotonic() - started:.0f}s: {failure}", file=log)
+        if isinstance(failure, subprocess.CalledProcessError) and failure.output:
+            print(failure.output, file=log)
+        return log.getvalue(), failure
+    print(f"{label}: {name} passed in {time.monotonic() - started:.0f}s", file=log)
+    return log.getvalue(), None
+
+
+def run_logged_command(command: list[str], cwd: Path, log: TextIO, env: dict[str, str] | None = None) -> None:
+    """Run a command with its combined output in log; raise CalledProcessError on failure."""
+    result = subprocess.run(command, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                            check=False)
+    if result.returncode != 0:
+        raise subprocess.CalledProcessError(result.returncode, command, result.stdout)
+    log.write(result.stdout)
+
+
+def mutation_self_test(connectors: list[Path], requested_workers: int | None = None) -> None:
+    """Prove recordings and all port runners reject representative weak expectations.
+
+    Connectors run concurrently: each writes mutated fixtures to its own temporary directory and builds only its
+    own packages, so they share no writable path.
+    """
+    if not connectors:
+        return
+    with tempfile.TemporaryDirectory(prefix="connector-conformance-connectorctl-") as directory:
+        connectorctl = Path(directory) / "connectorctl"
+        subprocess.run(["go", "build", "-o", str(connectorctl), "./cmd/connectorctl"], cwd=ROOT,
+                       env={**os.environ, "GOWORK": "off"}, check=True)
+        check_connectors_concurrently(
+            connectors, lambda connector, log: mutation_self_test_connector(connector, connectorctl, log),
+            requested_workers, "Mutation self-test")
+
+
+def mutation_self_test_connector(connector: Path, connectorctl: Path, log: TextIO) -> None:
+    """Prove one connector's recordings and port runners reject weak expectations, logging to log."""
+    relative = connector.relative_to(ROOT / "connectors")
+    fixture_path = ROOT / "conformance/connectors" / relative / "scenarios.json"
+    if not fixture_path.is_file():
+        return
+    original = json.loads(fixture_path.read_text())
+    operation_output = subprocess.check_output(
+        [str(connectorctl), "conformance-operations", str(connector / "connector.yaml")],
+        cwd=ROOT, env={**os.environ, "GOWORK": "off"}, text=True,
+    )
+    declared_operations = json.loads(operation_output)
+    commands = {"go": (["go", "test", ".", "-run", "^TestConnectorConformance$", "-count=1"],
+                       connector / "go")}
+    python_package = connector / "python"
+    if (python_package / "pyproject.toml").is_file():
+        run_logged_command(["uv", "sync", "--locked", "--project", str(python_package)], ROOT, log)
+        commands["python"] = (["uv", "run", "--project", str(python_package), "pytest",
+                                str(python_package / "tests/test_conformance.py"), "-q"], ROOT)
+    typescript_package = connector / "typescript"
+    if (typescript_package / "package.json").is_file():
+        run_logged_command(["npm", "ci", "--prefix", str(typescript_package)], ROOT, log)
+        run_logged_command(["npm", "run", "build", "--prefix", str(typescript_package)], ROOT, log)
+        commands["typescript"] = ([str(typescript_package / "node_modules/.bin/vitest"), "run",
+                                    "test/conformance.test.ts"], typescript_package)
+    implemented_operations = {
+        language: set(json.loads(subprocess.check_output(
+            [str(connectorctl), "language-capabilities", str(connector / "connector.yaml"), language],
             cwd=ROOT, env={**os.environ, "GOWORK": "off"}, text=True,
-        )
-        declared_operations = json.loads(operation_output)
-        commands = {"go": (["go", "test", ".", "-run", "^TestConnectorConformance$", "-count=1"],
-                           connector / "go")}
-        python_package = connector / "python"
-        if (python_package / "pyproject.toml").is_file():
-            subprocess.run(["uv", "sync", "--locked", "--project", str(python_package)], cwd=ROOT, check=True)
-            commands["python"] = (["uv", "run", "--project", str(python_package), "pytest",
-                                    str(python_package / "tests/test_conformance.py"), "-q"], ROOT)
-        typescript_package = connector / "typescript"
-        if (typescript_package / "package.json").is_file():
-            subprocess.run(["npm", "ci", "--prefix", str(typescript_package)], cwd=ROOT, check=True)
-            subprocess.run(["npm", "run", "build", "--prefix", str(typescript_package)], cwd=ROOT, check=True)
-            commands["typescript"] = ([str(typescript_package / "node_modules/.bin/vitest"), "run",
-                                        "test/conformance.test.ts"], typescript_package)
-        implemented_operations = {
-            language: set(json.loads(subprocess.check_output(
-                ["go", "run", "./cmd/connectorctl", "language-capabilities", str(connector / "connector.yaml"), language],
-                cwd=ROOT, env={**os.environ, "GOWORK": "off"}, text=True,
-            ))["operations"])
-            for language in commands if language != "go"
-        }
-        candidates = scenarios_every_port_replays_first(original["scenarios"], implemented_operations)
-        scenario = next((item for item in candidates
-                         if item["exchanges"] and not item["expected"]["retry"]), None)
-        if scenario is None:
-            raise ValueError(f"{relative} has no completed provider scenario to mutate")
-        mutation_sources = [("classification", scenario), ("exchange", scenario),
-                            ("wrong-output-field", scenario), ("pending-passing-go", scenario)]
-        list_output_scenario = next((item for item in candidates
-                                     if isinstance(item["expected"].get("output"), dict)
-                                     and any(isinstance(value, list)
-                                             for value in item["expected"]["output"].values())), None)
-        query_scenario = next((item for item in candidates
-                               if any(exchange.get("query") for exchange in item["exchanges"])), None)
-        optional_query_scenario = next((item for item in candidates
-                                        if any(field in item["input"] and field in exchange.get("query", {})
-                                               for field in declared_operations[item["operation"]]["optionalInputFields"]
-                                               for exchange in item["exchanges"])), None)
-        form_scenario = next((item for item in candidates
-                              if any(exchange.get("form") for exchange in item["exchanges"])), None)
-        header_scenario = next((item for item in candidates
-                                if any(exchange.get("requestHeaders") for exchange in item["exchanges"])), None)
-        read_server_error = next((item for item in candidates if item["expected"]["retry"]
-                                  and declared_operations[item["operation"]]["kind"] == "query"
-                                  and any(500 <= exchange.get("status", 0) <= 599
-                                          for exchange in item["exchanges"])), None)
-        mime_scenario = next((item for item in candidates
-                              if any("$rawMime" in exchange.get("requestBody", {})
+        ))["operations"])
+        for language in commands if language != "go"
+    }
+    candidates = scenarios_every_port_replays_first(original["scenarios"], implemented_operations)
+    scenario = next((item for item in candidates
+                     if item["exchanges"] and not item["expected"]["retry"]), None)
+    if scenario is None:
+        raise ValueError(f"{relative} has no completed provider scenario to mutate")
+    mutation_sources = [("classification", scenario), ("exchange", scenario),
+                        ("wrong-output-field", scenario), ("pending-passing-go", scenario)]
+    list_output_scenario = next((item for item in candidates
+                                 if isinstance(item["expected"].get("output"), dict)
+                                 and any(isinstance(value, list)
+                                         for value in item["expected"]["output"].values())), None)
+    query_scenario = next((item for item in candidates
+                           if any(exchange.get("query") for exchange in item["exchanges"])), None)
+    optional_query_scenario = next((item for item in candidates
+                                    if any(field in item["input"] and field in exchange.get("query", {})
+                                           for field in declared_operations[item["operation"]]["optionalInputFields"]
+                                           for exchange in item["exchanges"])), None)
+    form_scenario = next((item for item in candidates
+                          if any(exchange.get("form") for exchange in item["exchanges"])), None)
+    header_scenario = next((item for item in candidates
+                            if any(exchange.get("requestHeaders") for exchange in item["exchanges"])), None)
+    read_server_error = next((item for item in candidates if item["expected"]["retry"]
+                              and declared_operations[item["operation"]]["kind"] == "query"
+                              and any(500 <= exchange.get("status", 0) <= 599
                                       for exchange in item["exchanges"])), None)
-        multipart_scenario = next((item for item in candidates
-                                   if any(isinstance(exchange.get("requestBody"), dict)
-                                          and len(exchange["requestBody"].get("$multipart", [])) >= 2
-                                          for exchange in item["exchanges"])), None)
-        multipart_named_scenario = next((item for item in candidates
-                                         if any(isinstance(exchange.get("requestBody"), dict)
-                                                and len(exchange["requestBody"].get("$multipart", [])) >= 2
-                                                and any("Content-Disposition" in part["headers"]
-                                                        for part in exchange["requestBody"].get("$multipart", []))
-                                                for exchange in item["exchanges"])), None)
-        multipart_related_scenario = next((item for item in candidates
-                                           if any(isinstance(exchange.get("requestBody"), dict)
-                                                  and len(exchange["requestBody"].get("$multipart", [])) >= 2
-                                                  and "multipart/related" in str(exchange.get("requestHeaders", {}).get("Content-Type", ""))
-                                                  for exchange in item["exchanges"])), None)
-        keyed_scenario = next((item for item in candidates
-                               if item.get("idempotencyKey")), None)
-        synthetic_random_scenario = next((item for item in candidates
-                                          if item.get("randomRequestFields") and any(
-                                              exchange.get("requestBody") for exchange in item["exchanges"])), None)
-        heartbeat_scenario = next((item for item in candidates
-                                   if any("heartbeat" in intermediate
-                                          for intermediate in item.get("intermediate", []))), None)
-        final_heartbeat_scenario = next((item for item in candidates
-                                         if "heartbeat" in item["expected"]), None)
-        cleared_heartbeat_scenario = next((item for item in candidates
-                                           if item["expected"].get("heartbeat") == {"cleared": True}
-                                           or any(value.get("heartbeat") == {"cleared": True}
-                                                  for value in item.get("intermediate", []))), None)
-        no_heartbeat_scenario = next((item for item in candidates
-                                      if declared_operations[item["operation"]]["kind"] == "mutation"
-                                      and "priorHeartbeat" in item and "heartbeat" not in item["expected"]), None)
-        mutation_sources.extend((name, source) for name, source in (
-            ("dropped-query", query_scenario), ("renamed-query", query_scenario),
-            ("renamed-optional-query", optional_query_scenario),
-            ("changed-form-value", form_scenario), ("read-5xx-classification", read_server_error),
-            ("changed-header-value", header_scenario),
-            ("mime-subject", mime_scenario), ("mime-recipient", mime_scenario),
-            ("mime-body", mime_scenario), ("random-idempotency-key", keyed_scenario),
-            ("multipart-part-name", multipart_named_scenario), ("multipart-part-body", multipart_scenario),
-            ("multipart-missing-part", multipart_scenario), ("multipart-part-order", multipart_scenario),
-            ("multipart-part-content-type", multipart_related_scenario),
-            ("wrong-nonempty-list", list_output_scenario),
-            ("synthetic-random-digest", synthetic_random_scenario),
-            ("wrong-heartbeat-shape", heartbeat_scenario),
-            ("port-heartbeat-shape", heartbeat_scenario),
-            ("present-null-for-clear", cleared_heartbeat_scenario),
-            ("wrong-final-heartbeat-shape", final_heartbeat_scenario),
-            ("extra-heartbeat", no_heartbeat_scenario),
-        ) if source is not None)
-        for mutation, source in mutation_sources:
-            changed = json.loads(json.dumps(source))
-            marker = {
-                "classification": "__wrong_conformance_branch__",
-                "exchange": "/wrong-conformance-path",
-                "renamed-query": "__wrong_conformance_query__",
-                "changed-form-value": "__wrong_conformance_form__",
-                "read-5xx-classification": "__wrong_read_5xx_branch__",
-                "changed-header-value": "__wrong_conformance_header__",
-                "wrong-output-field": "__wrong_output_field__",
-                "mime-subject": "__wrong_mime_subject__",
-                "mime-recipient": "__wrong_mime_recipient__",
-                "mime-body": "__wrong_mime_body__",
-            }.get(mutation, "unasserted query")
-            if mutation in ("classification", "read-5xx-classification"):
-                changed["expected"]["branch"] = marker
-                if mutation == "read-5xx-classification":
-                    changed["expected"]["retry"] = False
-            elif mutation == "exchange":
-                changed["exchanges"][0]["path"] = marker
-            elif mutation in ("dropped-query", "renamed-query"):
-                exchange = next(exchange for exchange in changed["exchanges"] if exchange.get("query"))
-                key, value = next(iter(exchange["query"].items()))
-                del exchange["query"][key]
-                if mutation == "renamed-query":
-                    exchange["query"][marker] = value
-            elif mutation == "renamed-optional-query":
-                optional_fields = declared_operations[changed["operation"]]["optionalInputFields"]
-                exchange = next(exchange for exchange in changed["exchanges"]
-                                if any(field in changed["input"] and field in exchange.get("query", {})
-                                       for field in optional_fields))
-                field = next(field for field in optional_fields if field in changed["input"]
-                             and field in exchange["query"])
-                renamed = re.sub(r"(?<!^)(?=[A-Z])", "_", field).lower()
-                exchange["query"][renamed if renamed != field else field + "_renamed"] = exchange["query"].pop(field)
-            elif mutation == "changed-header-value":
-                exchange = next(exchange for exchange in changed["exchanges"] if exchange.get("requestHeaders"))
-                name = next(iter(exchange["requestHeaders"]))
-                exchange["requestHeaders"][name] = marker
-            elif mutation == "wrong-output-field":
-                changed["expected"]["output"][marker] = "wrong"
-            elif mutation == "wrong-nonempty-list":
-                key = next(key for key, value in changed["expected"]["output"].items()
-                           if isinstance(value, list))
-                changed["expected"]["output"][key] = ["__wrong_nonempty_list__"]
-            elif mutation == "wrong-heartbeat-shape":
-                intermediate = next(value for value in changed["intermediate"] if "heartbeat" in value)
-                intermediate["heartbeat"] = {"__wrong_heartbeat_shape__": True}
-            elif mutation == "wrong-final-heartbeat-shape":
-                changed["expected"]["heartbeat"] = {"__wrong_heartbeat_shape__": True}
-            elif mutation in ("port-heartbeat-shape", "present-null-for-clear", "extra-heartbeat"):
-                pass
-            elif mutation.startswith("mime-"):
-                exchange = next(exchange for exchange in changed["exchanges"]
-                                if "$rawMime" in exchange.get("requestBody", {}))
-                mime = exchange["requestBody"]["$rawMime"]
-                if mutation == "mime-subject":
-                    exchange["requestBody"]["$rawMime"] = re.sub(r"Subject: [^\r\n]+", "Subject: " + marker, mime, count=1)
-                elif mutation == "mime-recipient":
-                    exchange["requestBody"]["$rawMime"] = re.sub(r"To: [^\r\n]+", "To: " + marker, mime, count=1)
-                else:
-                    exchange["requestBody"]["$rawMime"] = mime.replace("Update", marker, 1)
-            elif mutation.startswith("multipart-"):
-                exchange = next(exchange for exchange in changed["exchanges"]
-                                if isinstance(exchange.get("requestBody"), dict)
-                                and len(exchange["requestBody"].get("$multipart", [])) >= 2
-                                and (mutation != "multipart-part-name" or
-                                     any("Content-Disposition" in part["headers"]
-                                         for part in exchange["requestBody"]["$multipart"]))
-                                and (mutation != "multipart-part-content-type" or
-                                     "multipart/related" in str(exchange.get("requestHeaders", {}).get("Content-Type", ""))))
-                parts = exchange["requestBody"]["$multipart"]
-                if mutation == "multipart-part-name":
-                    part = next(part for part in parts if "Content-Disposition" in part["headers"])
-                    part["headers"]["Content-Disposition"][0] += "; name=wrong"
-                elif mutation == "multipart-part-content-type":
-                    parts[0]["headers"]["Content-Type"][0] += "; mismatch=1"
-                elif mutation == "multipart-part-body":
-                    parts[0]["bodyBase64"] = "d3Jvbmc="
-                elif mutation == "multipart-missing-part":
-                    parts.pop()
-                else:
-                    parts[0], parts[1] = parts[1], parts[0]
-            elif mutation == "random-idempotency-key":
-                changed["idempotencyKey"] = "random-00000000-0000-4000-8000-000000000000"
-            elif mutation == "synthetic-random-digest":
-                pointer = changed["randomRequestFields"][0].split("/")[1:]
-                exchange = next(exchange for exchange in changed["exchanges"] if exchange.get("requestBody"))
-                field = exchange["requestBody"]
-                for component in pointer:
-                    field = field[component]
-                field["$syntheticSha256"] = "0" * 64
-            elif mutation == "pending-passing-go":
-                changed["pending"] = True
+    mime_scenario = next((item for item in candidates
+                          if any("$rawMime" in exchange.get("requestBody", {})
+                                  for exchange in item["exchanges"])), None)
+    multipart_scenario = next((item for item in candidates
+                               if any(isinstance(exchange.get("requestBody"), dict)
+                                      and len(exchange["requestBody"].get("$multipart", [])) >= 2
+                                      for exchange in item["exchanges"])), None)
+    multipart_named_scenario = next((item for item in candidates
+                                     if any(isinstance(exchange.get("requestBody"), dict)
+                                            and len(exchange["requestBody"].get("$multipart", [])) >= 2
+                                            and any("Content-Disposition" in part["headers"]
+                                                    for part in exchange["requestBody"].get("$multipart", []))
+                                            for exchange in item["exchanges"])), None)
+    multipart_related_scenario = next((item for item in candidates
+                                       if any(isinstance(exchange.get("requestBody"), dict)
+                                              and len(exchange["requestBody"].get("$multipart", [])) >= 2
+                                              and "multipart/related" in str(exchange.get("requestHeaders", {}).get("Content-Type", ""))
+                                              for exchange in item["exchanges"])), None)
+    keyed_scenario = next((item for item in candidates
+                           if item.get("idempotencyKey")), None)
+    synthetic_random_scenario = next((item for item in candidates
+                                      if item.get("randomRequestFields") and any(
+                                          exchange.get("requestBody") for exchange in item["exchanges"])), None)
+    heartbeat_scenario = next((item for item in candidates
+                               if any("heartbeat" in intermediate
+                                      for intermediate in item.get("intermediate", []))), None)
+    final_heartbeat_scenario = next((item for item in candidates
+                                     if "heartbeat" in item["expected"]), None)
+    cleared_heartbeat_scenario = next((item for item in candidates
+                                       if item["expected"].get("heartbeat") == {"cleared": True}
+                                       or any(value.get("heartbeat") == {"cleared": True}
+                                              for value in item.get("intermediate", []))), None)
+    no_heartbeat_scenario = next((item for item in candidates
+                                  if declared_operations[item["operation"]]["kind"] == "mutation"
+                                  and "priorHeartbeat" in item and "heartbeat" not in item["expected"]), None)
+    mutation_sources.extend((name, source) for name, source in (
+        ("dropped-query", query_scenario), ("renamed-query", query_scenario),
+        ("renamed-optional-query", optional_query_scenario),
+        ("changed-form-value", form_scenario), ("read-5xx-classification", read_server_error),
+        ("changed-header-value", header_scenario),
+        ("mime-subject", mime_scenario), ("mime-recipient", mime_scenario),
+        ("mime-body", mime_scenario), ("random-idempotency-key", keyed_scenario),
+        ("multipart-part-name", multipart_named_scenario), ("multipart-part-body", multipart_scenario),
+        ("multipart-missing-part", multipart_scenario), ("multipart-part-order", multipart_scenario),
+        ("multipart-part-content-type", multipart_related_scenario),
+        ("wrong-nonempty-list", list_output_scenario),
+        ("synthetic-random-digest", synthetic_random_scenario),
+        ("wrong-heartbeat-shape", heartbeat_scenario),
+        ("port-heartbeat-shape", heartbeat_scenario),
+        ("present-null-for-clear", cleared_heartbeat_scenario),
+        ("wrong-final-heartbeat-shape", final_heartbeat_scenario),
+        ("extra-heartbeat", no_heartbeat_scenario),
+    ) if source is not None)
+    for mutation, source in mutation_sources:
+        changed = json.loads(json.dumps(source))
+        marker = {
+            "classification": "__wrong_conformance_branch__",
+            "exchange": "/wrong-conformance-path",
+            "renamed-query": "__wrong_conformance_query__",
+            "changed-form-value": "__wrong_conformance_form__",
+            "read-5xx-classification": "__wrong_read_5xx_branch__",
+            "changed-header-value": "__wrong_conformance_header__",
+            "wrong-output-field": "__wrong_output_field__",
+            "mime-subject": "__wrong_mime_subject__",
+            "mime-recipient": "__wrong_mime_recipient__",
+            "mime-body": "__wrong_mime_body__",
+        }.get(mutation, "unasserted query")
+        if mutation in ("classification", "read-5xx-classification"):
+            changed["expected"]["branch"] = marker
+            if mutation == "read-5xx-classification":
+                changed["expected"]["retry"] = False
+        elif mutation == "exchange":
+            changed["exchanges"][0]["path"] = marker
+        elif mutation in ("dropped-query", "renamed-query"):
+            exchange = next(exchange for exchange in changed["exchanges"] if exchange.get("query"))
+            key, value = next(iter(exchange["query"].items()))
+            del exchange["query"][key]
+            if mutation == "renamed-query":
+                exchange["query"][marker] = value
+        elif mutation == "renamed-optional-query":
+            optional_fields = declared_operations[changed["operation"]]["optionalInputFields"]
+            exchange = next(exchange for exchange in changed["exchanges"]
+                            if any(field in changed["input"] and field in exchange.get("query", {})
+                                   for field in optional_fields))
+            field = next(field for field in optional_fields if field in changed["input"]
+                         and field in exchange["query"])
+            renamed = re.sub(r"(?<!^)(?=[A-Z])", "_", field).lower()
+            exchange["query"][renamed if renamed != field else field + "_renamed"] = exchange["query"].pop(field)
+        elif mutation == "changed-header-value":
+            exchange = next(exchange for exchange in changed["exchanges"] if exchange.get("requestHeaders"))
+            name = next(iter(exchange["requestHeaders"]))
+            exchange["requestHeaders"][name] = marker
+        elif mutation == "wrong-output-field":
+            changed["expected"]["output"][marker] = "wrong"
+        elif mutation == "wrong-nonempty-list":
+            key = next(key for key, value in changed["expected"]["output"].items()
+                       if isinstance(value, list))
+            changed["expected"]["output"][key] = ["__wrong_nonempty_list__"]
+        elif mutation == "wrong-heartbeat-shape":
+            intermediate = next(value for value in changed["intermediate"] if "heartbeat" in value)
+            intermediate["heartbeat"] = {"__wrong_heartbeat_shape__": True}
+        elif mutation == "wrong-final-heartbeat-shape":
+            changed["expected"]["heartbeat"] = {"__wrong_heartbeat_shape__": True}
+        elif mutation in ("port-heartbeat-shape", "present-null-for-clear", "extra-heartbeat"):
+            pass
+        elif mutation.startswith("mime-"):
+            exchange = next(exchange for exchange in changed["exchanges"]
+                            if "$rawMime" in exchange.get("requestBody", {}))
+            mime = exchange["requestBody"]["$rawMime"]
+            if mutation == "mime-subject":
+                exchange["requestBody"]["$rawMime"] = re.sub(r"Subject: [^\r\n]+", "Subject: " + marker, mime, count=1)
+            elif mutation == "mime-recipient":
+                exchange["requestBody"]["$rawMime"] = re.sub(r"To: [^\r\n]+", "To: " + marker, mime, count=1)
             else:
-                exchange = next(exchange for exchange in changed["exchanges"] if exchange.get("form"))
-                key = next(iter(exchange["form"]))
-                exchange["form"][key] = marker
-            document = {**original, "scenarios": [changed if item["name"] == source["name"] else item
-                                                 for item in original["scenarios"]]}
-            with tempfile.TemporaryDirectory(prefix="connector-conformance-") as directory:
-                fixture = Path(directory) / "scenarios.json"
-                fixture.write_text(json.dumps(document))
-                selected_commands = ({language: value for language, value in commands.items() if language != "go"}
-                                     if mutation in ("port-heartbeat-shape", "present-null-for-clear", "extra-heartbeat") else commands)
-                for language, (command, cwd) in selected_commands.items():
-                    if not does_language_replay(language, changed["operation"], implemented_operations):
-                        print(f"Mutation {mutation}: {relative} {language} runner skipped; its package does not "
-                              f"implement {changed['operation']}", flush=True)
-                        continue
-                    result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=False,
-                                            env={**os.environ, "GOWORK": "off",
-                                                 "CONNECTOR_CONFORMANCE_FIXTURE": str(fixture),
-                                                 **({"CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT": changed["name"]}
-                                                    if mutation == "port-heartbeat-shape" else {}),
-                                                 **({"CONNECTOR_CONFORMANCE_MUTATE_CLEAR_AS_NULL": changed["name"]}
-                                                    if mutation == "present-null-for-clear" else {}),
-                                                 **({"CONNECTOR_CONFORMANCE_MUTATE_EXTRA_HEARTBEAT": changed["name"]}
-                                                    if mutation == "extra-heartbeat" else {})})
-                    if result.returncode == 0:
-                        raise AssertionError(f"{relative} {language} runner accepted {mutation} mutation")
-                    if mutation != "pending-passing-go" and changed["name"] not in result.stdout + result.stderr:
-                        raise AssertionError(f"{relative} {language} runner did not exercise {changed['name']}")
-                    print(f"Mutation {mutation}: {relative} {language} runner rejected fixture", flush=True)
+                exchange["requestBody"]["$rawMime"] = mime.replace("Update", marker, 1)
+        elif mutation.startswith("multipart-"):
+            exchange = next(exchange for exchange in changed["exchanges"]
+                            if isinstance(exchange.get("requestBody"), dict)
+                            and len(exchange["requestBody"].get("$multipart", [])) >= 2
+                            and (mutation != "multipart-part-name" or
+                                 any("Content-Disposition" in part["headers"]
+                                     for part in exchange["requestBody"]["$multipart"]))
+                            and (mutation != "multipart-part-content-type" or
+                                 "multipart/related" in str(exchange.get("requestHeaders", {}).get("Content-Type", ""))))
+            parts = exchange["requestBody"]["$multipart"]
+            if mutation == "multipart-part-name":
+                part = next(part for part in parts if "Content-Disposition" in part["headers"])
+                part["headers"]["Content-Disposition"][0] += "; name=wrong"
+            elif mutation == "multipart-part-content-type":
+                parts[0]["headers"]["Content-Type"][0] += "; mismatch=1"
+            elif mutation == "multipart-part-body":
+                parts[0]["bodyBase64"] = "d3Jvbmc="
+            elif mutation == "multipart-missing-part":
+                parts.pop()
+            else:
+                parts[0], parts[1] = parts[1], parts[0]
+        elif mutation == "random-idempotency-key":
+            changed["idempotencyKey"] = "random-00000000-0000-4000-8000-000000000000"
+        elif mutation == "synthetic-random-digest":
+            pointer = changed["randomRequestFields"][0].split("/")[1:]
+            exchange = next(exchange for exchange in changed["exchanges"] if exchange.get("requestBody"))
+            field = exchange["requestBody"]
+            for component in pointer:
+                field = field[component]
+            field["$syntheticSha256"] = "0" * 64
+        elif mutation == "pending-passing-go":
+            changed["pending"] = True
+        else:
+            exchange = next(exchange for exchange in changed["exchanges"] if exchange.get("form"))
+            key = next(iter(exchange["form"]))
+            exchange["form"][key] = marker
+        document = {**original, "scenarios": [changed if item["name"] == source["name"] else item
+                                             for item in original["scenarios"]]}
+        with tempfile.TemporaryDirectory(prefix="connector-conformance-") as directory:
+            fixture = Path(directory) / "scenarios.json"
+            fixture.write_text(json.dumps(document))
+            selected_commands = ({language: value for language, value in commands.items() if language != "go"}
+                                 if mutation in ("port-heartbeat-shape", "present-null-for-clear", "extra-heartbeat") else commands)
+            for language, (command, cwd) in selected_commands.items():
+                if not does_language_replay(language, changed["operation"], implemented_operations):
+                    print(f"Mutation {mutation}: {relative} {language} runner skipped; its package does not "
+                          f"implement {changed['operation']}", file=log)
+                    continue
+                result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=False,
+                                        env={**os.environ, "GOWORK": "off",
+                                             "CONNECTOR_CONFORMANCE_FIXTURE": str(fixture),
+                                             **({"CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT": changed["name"]}
+                                                if mutation == "port-heartbeat-shape" else {}),
+                                             **({"CONNECTOR_CONFORMANCE_MUTATE_CLEAR_AS_NULL": changed["name"]}
+                                                if mutation == "present-null-for-clear" else {}),
+                                             **({"CONNECTOR_CONFORMANCE_MUTATE_EXTRA_HEARTBEAT": changed["name"]}
+                                                if mutation == "extra-heartbeat" else {})})
+                if result.returncode == 0:
+                    raise AssertionError(f"{relative} {language} runner accepted {mutation} mutation")
+                if mutation != "pending-passing-go" and changed["name"] not in result.stdout + result.stderr:
+                    raise AssertionError(f"{relative} {language} runner did not exercise {changed['name']}")
+                print(f"Mutation {mutation}: {relative} {language} runner rejected fixture", file=log)
 
 
 def scenarios_every_port_replays_first(scenarios: list[dict], implemented_operations: dict[str, set[str]]) -> list[dict]:
@@ -644,6 +759,14 @@ def main() -> None:
     parser.add_argument("--include-connector", action="append", default=[],
                         help="also replay this connector, such as one the CI plan selected; works with or without --base")
     parser.add_argument("--mutation-self-test", action="store_true")
+    parser.add_argument("--workers", type=int,
+                        help="connectors to check at once; defaults to $CONFORMANCE_WORKERS, then the CPU count")
+    parser.add_argument("--shard-index", type=int, default=int(os.environ.get("CONFORMANCE_SHARD_INDEX") or 0),
+                        help="check only this shard of the selected connectors; defaults to $CONFORMANCE_SHARD_INDEX")
+    parser.add_argument("--shard-count", type=int, default=int(os.environ.get("CONFORMANCE_SHARD_COUNT") or 1),
+                        help="number of shards; defaults to $CONFORMANCE_SHARD_COUNT, then 1")
+    parser.add_argument("--conformance-ci-matrix", action="store_true")
+    parser.add_argument("--planned-connector-count", type=int, default=0)
     parser.add_argument("--database-ci-matrix", action="store_true")
     parser.add_argument("--email-ci-matrix", action="store_true")
     arguments = parser.parse_args()
@@ -655,6 +778,11 @@ def main() -> None:
     if arguments.email_ci_matrix:
         paths = changed_paths(arguments.base, arguments.head) if arguments.base else []
         print(json.dumps({"include": email_ci_matrix(paths)}))
+        return
+    if arguments.conformance_ci_matrix:
+        paths = changed_paths(arguments.base, arguments.head) if arguments.base else []
+        print(json.dumps({"include": conformance_ci_matrix(paths, bool(arguments.base),
+                                                           arguments.planned_connector_count)}))
         return
     if arguments.mutation_self_test:
         if arguments.connector:
@@ -668,8 +796,10 @@ def main() -> None:
                 ROOT / "connectors" / fixture.relative_to(ROOT / "conformance/connectors").parent
                 for fixture in (ROOT / "conformance/connectors").rglob("scenarios.json")
             )
-        mutation_self_test([connector for connector in connectors
-                            if str(connector.relative_to(ROOT)) not in exemptions])
+        connectors = select_conformance_shard([connector for connector in connectors
+                                               if str(connector.relative_to(ROOT)) not in exemptions],
+                                              arguments.shard_index, arguments.shard_count)
+        mutation_self_test(connectors, arguments.workers)
         return
     if arguments.connector:
         connectors = sorted({(ROOT / path).resolve() for path in arguments.connector})
@@ -682,8 +812,9 @@ def main() -> None:
     for connector in connectors:
         if not (connector / "connector.yaml").is_file():
             parser.error(f"{connector} is not a connector directory")
-        print(f"Conformance: {connector.relative_to(ROOT)}", flush=True)
-        run_connector(connector, paths, exemptions)
+    check_connectors_concurrently(
+        select_conformance_shard(connectors, arguments.shard_index, arguments.shard_count),
+        lambda connector, log: run_connector(connector, paths, exemptions, log), arguments.workers, "Conformance")
 
 
 if __name__ == "__main__":

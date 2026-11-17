@@ -506,6 +506,16 @@ class QueueOnlyJobsTest(unittest.TestCase):
             with self.subTest(event=event_name):
                 self.assertEqual(runs, evaluate_condition(mutation, {"github.event_name": event_name}))
 
+    def test_conformance_shards_come_from_the_plan(self) -> None:
+        plan = workflow_job(self.workflow, "connector-plan")
+        self.assertIn("conformance_matrix: ${{ steps.conformance.outputs.matrix }}", plan)
+        self.assertIn('matrix="$(python3 script/connector_conformance.py "${arguments[@]}")"', plan)
+        job = workflow_job(self.workflow, "connector-conformance")
+        self.assertIn("matrix: ${{ fromJSON(needs.connector-plan.outputs.conformance_matrix) }}", job)
+        self.assertIn("fail-fast: false", job)
+        self.assertIn("CONFORMANCE_SHARD_INDEX: ${{ matrix.shard_index }}", job)
+        self.assertIn("CONFORMANCE_SHARD_COUNT: ${{ matrix.shard_count }}", job)
+
     def test_replay_includes_every_plan_selected_connector(self) -> None:
         makefile = MAKEFILE_PATH.read_text(encoding="utf-8")
         prerequisites, recipe = makefile_target(makefile, "test-connector-conformance")
