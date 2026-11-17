@@ -24,6 +24,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
 			return err
 		}},
+		{name: "upsertSubscriber/upsertedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
+			return err
+		}},
+		{name: "listTags/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.TagsPage](`{"tags":[{"id":12,"name":"Welcome"}],"nextCursor":""}`)
+			return err
+		}},
+		{name: "createTag/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.TagMetadata](`{"id":12,"name":"Welcome"}`)
+			return err
+		}},
+		{name: "tagSubscriber/taggedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
+			return err
+		}},
+		{name: "removeTagFromSubscriber/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.TagRemoval](`{"tagId":12,"subscriberId":204,"removed":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +59,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetSubscriber().Definition().Operation.OperationID != "getSubscriber" {
 		t.Errorf("getSubscriber mock has another definition")
+	}
+	if mock.UpsertSubscriber().Definition().Operation.OperationID != "upsertSubscriber" {
+		t.Errorf("upsertSubscriber mock has another definition")
+	}
+	if mock.ListTags().Definition().Operation.OperationID != "listTags" {
+		t.Errorf("listTags mock has another definition")
+	}
+	if mock.CreateTag().Definition().Operation.OperationID != "createTag" {
+		t.Errorf("createTag mock has another definition")
+	}
+	if mock.TagSubscriber().Definition().Operation.OperationID != "tagSubscriber" {
+		t.Errorf("tagSubscriber mock has another definition")
+	}
+	if mock.RemoveTagFromSubscriber().Definition().Operation.OperationID != "removeTagFromSubscriber" {
+		t.Errorf("removeTagFromSubscriber mock has another definition")
 	}
 }

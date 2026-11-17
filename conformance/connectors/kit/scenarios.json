@@ -610,6 +610,1471 @@
       },
       "name": "getSubscriber-transportFailure",
       "operation": "getSubscriber"
+    },
+    {
+      "callId": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
+      "exchanges": [
+        {
+          "body": "{\"subscriber\":{\"id\":204,\"email_address\":\"alice@example.com\",\"first_name\":\"Alice\",\"state\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/subscribers",
+          "requestBody": {
+            "email_address": "alice@example.com",
+            "first_name": "Alice"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "emailAddress": "alice@example.com",
+          "firstName": "Alice",
+          "id": 204,
+          "state": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
+      "input": {
+        "emailAddress": "alice@example.com",
+        "firstName": "Alice"
+      },
+      "name": "upsertSubscriber-success",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/subscribers",
+          "requestBody": {
+            "email_address": "alice@example.com",
+            "first_name": "Alice"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
+      "input": {
+        "emailAddress": "alice@example.com",
+        "firstName": "Alice"
+      },
+      "name": "upsertSubscriber-providerRejected",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/subscribers",
+          "requestBody": {
+            "email_address": "alice@example.com",
+            "first_name": "Alice"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
+      "input": {
+        "emailAddress": "alice@example.com",
+        "firstName": "Alice"
+      },
+      "name": "upsertSubscriber-invalidResponse",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
+      "input": {
+        "emailAddress": "bad",
+        "firstName": "Alice"
+      },
+      "name": "upsertSubscriber-defect",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/subscribers",
+          "requestBody": {
+            "email_address": "alice@example.com",
+            "first_name": "Alice"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
+      "input": {
+        "emailAddress": "alice@example.com",
+        "firstName": "Alice"
+      },
+      "name": "upsertSubscriber-rateLimit",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/subscribers",
+          "requestBody": {
+            "email_address": "alice@example.com",
+            "first_name": "Alice"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
+      "input": {
+        "emailAddress": "alice@example.com",
+        "firstName": "Alice"
+      },
+      "name": "upsertSubscriber-serverUnavailable",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/subscribers",
+          "requestBody": {
+            "email_address": "alice@example.com",
+            "first_name": "Alice"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
+      "input": {
+        "emailAddress": "alice@example.com",
+        "firstName": "Alice"
+      },
+      "name": "upsertSubscriber-transportFailure",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"tags\":[{\"id\":12,\"name\":\"Welcome\"}],\"pagination\":{\"has_next_page\":false,\"end_cursor\":\"cursor-2\",\"per_page\":20}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tags",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "",
+          "tags": [
+            {
+              "id": 12,
+              "name": "Welcome"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listTags-success",
+      "operation": "listTags"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tags",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextCursor": "",
+          "tags": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listTags-providerRejected",
+      "operation": "listTags"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tags",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "tags": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listTags-invalidResponse",
+      "operation": "listTags"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "tags": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": -1
+      },
+      "name": "listTags-defect",
+      "operation": "listTags"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tags",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listTags-rateLimit",
+      "operation": "listTags"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tags",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listTags-serverUnavailable",
+      "operation": "listTags"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tags",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listTags-transportFailure",
+      "operation": "listTags"
+    },
+    {
+      "callId": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
+      "exchanges": [
+        {
+          "body": "{\"tag\":{\"id\":12,\"name\":\"Welcome\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tags",
+          "requestBody": {
+            "name": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": 12,
+          "name": "Welcome"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
+      "input": {
+        "name": "Welcome"
+      },
+      "name": "createTag-success",
+      "operation": "createTag"
+    },
+    {
+      "callId": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tags",
+          "requestBody": {
+            "name": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
+      "input": {
+        "name": "Welcome"
+      },
+      "name": "createTag-providerRejected",
+      "operation": "createTag"
+    },
+    {
+      "callId": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tags",
+          "requestBody": {
+            "name": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
+      "input": {
+        "name": "Welcome"
+      },
+      "name": "createTag-invalidResponse",
+      "operation": "createTag"
+    },
+    {
+      "callId": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
+      "input": {
+        "name": " "
+      },
+      "name": "createTag-defect",
+      "operation": "createTag"
+    },
+    {
+      "callId": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tags",
+          "requestBody": {
+            "name": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
+      "input": {
+        "name": "Welcome"
+      },
+      "name": "createTag-rateLimit",
+      "operation": "createTag"
+    },
+    {
+      "callId": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tags",
+          "requestBody": {
+            "name": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
+      "input": {
+        "name": "Welcome"
+      },
+      "name": "createTag-serverUnavailable",
+      "operation": "createTag"
+    },
+    {
+      "callId": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tags",
+          "requestBody": {
+            "name": "Welcome"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
+      "input": {
+        "name": "Welcome"
+      },
+      "name": "createTag-transportFailure",
+      "operation": "createTag"
+    },
+    {
+      "callId": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "exchanges": [
+        {
+          "body": "{\"subscriber\":{\"id\":204,\"email_address\":\"alice@example.com\",\"first_name\":\"Alice\",\"state\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "tagged",
+        "failureKind": "",
+        "output": {
+          "emailAddress": "alice@example.com",
+          "firstName": "Alice",
+          "id": 204,
+          "state": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "tagSubscriber-success",
+      "operation": "tagSubscriber"
+    },
+    {
+      "callId": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "tagSubscriber-providerRejected",
+      "operation": "tagSubscriber"
+    },
+    {
+      "callId": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "tagSubscriber-invalidResponse",
+      "operation": "tagSubscriber"
+    },
+    {
+      "callId": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "input": {
+        "subscriberId": 204,
+        "tagId": -1
+      },
+      "name": "tagSubscriber-defect",
+      "operation": "tagSubscriber"
+    },
+    {
+      "callId": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "tagSubscriber-rateLimit",
+      "operation": "tagSubscriber"
+    },
+    {
+      "callId": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "tagSubscriber-serverUnavailable",
+      "operation": "tagSubscriber"
+    },
+    {
+      "callId": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "tagSubscriber-transportFailure",
+      "operation": "tagSubscriber"
+    },
+    {
+      "callId": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "tagSubscriber-notFound",
+      "operation": "tagSubscriber"
+    },
+    {
+      "callId": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "removed": true,
+          "subscriberId": 204,
+          "tagId": 12
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "removeTagFromSubscriber-success",
+      "operation": "removeTagFromSubscriber"
+    },
+    {
+      "callId": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "removed": false,
+          "subscriberId": 0,
+          "tagId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "removeTagFromSubscriber-providerRejected",
+      "operation": "removeTagFromSubscriber"
+    },
+    {
+      "callId": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "removed": false,
+          "subscriberId": 0,
+          "tagId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "removeTagFromSubscriber-invalidResponse",
+      "operation": "removeTagFromSubscriber"
+    },
+    {
+      "callId": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "removed": false,
+          "subscriberId": 0,
+          "tagId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "input": {
+        "subscriberId": 204,
+        "tagId": -1
+      },
+      "name": "removeTagFromSubscriber-defect",
+      "operation": "removeTagFromSubscriber"
+    },
+    {
+      "callId": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "removeTagFromSubscriber-rateLimit",
+      "operation": "removeTagFromSubscriber"
+    },
+    {
+      "callId": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "removeTagFromSubscriber-serverUnavailable",
+      "operation": "removeTagFromSubscriber"
+    },
+    {
+      "callId": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "removeTagFromSubscriber-transportFailure",
+      "operation": "removeTagFromSubscriber"
+    },
+    {
+      "callId": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "removed": false,
+          "subscriberId": 0,
+          "tagId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "removeTagFromSubscriber-notFound",
+      "operation": "removeTagFromSubscriber"
     }
   ],
   "schemaVersion": 1

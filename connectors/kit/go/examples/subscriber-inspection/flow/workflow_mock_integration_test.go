@@ -24,7 +24,7 @@ import (
 func TestSubscriberInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := kitmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewTagsFlow(mock.Connection())})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +56,15 @@ func TestSubscriberInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, 20, output.PerPage)
 	require.Len(t, mock.ListSubscribers().Calls(), 1)
+	tagsFlow := NewTagsFlow(mock.Connection())
+	tagsID := "kit-tags-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, tagsFlow, tagsID, kit.ListTagsInput{PerPage: 20}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	tagsResult, err := client.WaitForFlow(ctx, tagsID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, tagsResult.Status, tagsResult.ErrorMessage)
+	var tags kit.TagsPage
+	require.NoError(t, tagsResult.DecodeSingleOutput(&tags))
+	require.Len(t, tags.Tags, 1)
+	require.Len(t, mock.ListTags().Calls(), 1)
 }

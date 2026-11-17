@@ -5,6 +5,7 @@
 package kit
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -60,6 +61,10 @@ var errCredential = errors.New("Kit credential unavailable")
 var errRequest = errors.New("Kit request failed")
 
 func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Duration, error) {
+	return client.request(call, http.MethodGet, path, nil)
+}
+
+func (client *Client) request(call sdkgo.Call, method, path string, body []byte) ([]byte, int, time.Duration, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return nil, 0, 0, errCredential
@@ -68,11 +73,14 @@ func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Durat
 	if !providerhttp.IsHeaderSafeCredential(apiKey) {
 		return nil, 0, 0, errCredential
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return nil, 0, 0, errRequest
 	}
 	request.Header.Set("Accept", "application/json")
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.Header.Set("X-Kit-Api-Key", apiKey)
 	response, err := client.httpClient.Do(request)
 	if err != nil {
@@ -80,8 +88,8 @@ func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Durat
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	return body, response.StatusCode, retryAfter, err
+	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	return responseBody, response.StatusCode, retryAfter, err
 }
 
 type queryBranches struct{ found, notFound, rejected, invalid, defect sdkgo.BranchID }
