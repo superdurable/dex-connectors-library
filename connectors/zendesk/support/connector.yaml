@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: zendesk-support
   displayName: Zendesk Support
-  description: Search, read, create, and update Zendesk Support tickets, with duplicate-safe ticket creation and follow-up comments, and receive each created, updated, or deleted ticket.
+  description: Search, list, read, create, update, and delete Zendesk Support tickets and manage related users and organizations.
   company: Zendesk
   categories: [customer-support]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: zendesk
   languages:
@@ -71,6 +71,68 @@ spec:
       configurationType: TicketChangedTriggerConfiguration
       description: "Receive each ticket created, updated, or deleted in the account, read through Zendesk's cursor-based incremental ticket export; the first run records a baseline and delivers no existing tickets. Requires an admin connection."
   operations:
+    - name: listTickets
+      goName: ListTickets
+      inputType: ListTicketsInput
+      outputType: ListTicketsOutput
+      kind: query
+      description: List one bounded cursor page of tickets available to the agent.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Zendesk returned one ticket page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Page input or credentials are invalid., optional: true}
+      pagination: {inputField: cursor, nextField: nextCursor}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample ticket is listed.
+          pages:
+            - {tickets: [{id: 35436, agentUrl: "https://acme.zendesk.com/agent/tickets/35436", subject: Customer issue, status: open, requesterId: 7701, createdAt: "2026-10-21T08:00:00Z", updatedAt: "2026-10-22T08:00:00Z"}], nextCursor: cursor-1}
+            - {tickets: [{id: 35437, agentUrl: "https://acme.zendesk.com/agent/tickets/35437", subject: Follow-up, status: pending, requesterId: 7701, createdAt: "2026-10-23T08:00:00Z", updatedAt: "2026-10-24T08:00:00Z"}], nextCursor: cursor-2}
+            - {tickets: [], nextCursor: ""}
+    - name: deleteTicket
+      goName: DeleteTicket
+      inputType: DeleteTicketInput
+      outputType: DeleteTicketOutput
+      kind: mutation
+      description: Soft-delete one ticket by ID when the connection has delete permission.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Zendesk accepted the ticket deletion.}
+        - {id: notFound, goName: NotFound, description: The ticket does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the delete., optional: true}
+        - {id: defect, goName: Defect, description: Ticket ID or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample ticket is deleted.
+          output: {ticketId: 35436}
+    - name: recoverSuspendedTicket
+      goName: RecoverSuspendedTicket
+      inputType: RecoverSuspendedTicketInput
+      outputType: RecoverSuspendedTicketOutput
+      kind: mutation
+      description: Recover one suspended ticket, assigning the authenticated agent as requester.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: recovered, goName: Recovered, description: Zendesk recovered the suspended ticket.}
+        - {id: notFound, goName: NotFound, description: The suspended ticket does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the recovery., optional: true}
+        - {id: defect, goName: Defect, description: Suspended ticket ID or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The recovery may have succeeded but could not be confirmed., optional: true}
+      mocks:
+        - name: recoveredDefault
+          branch: recovered
+          default: true
+          description: One sample suspended ticket is recovered.
+          output: {ticket: {id: 35436, agentUrl: "https://acme.zendesk.com/agent/tickets/35436", subject: Customer issue, status: open, requesterId: 7701, createdAt: "2026-10-21T08:00:00Z", updatedAt: "2026-10-22T08:00:00Z"}}
     - name: searchTickets
       goName: SearchTickets
       inputType: SearchTicketsInput

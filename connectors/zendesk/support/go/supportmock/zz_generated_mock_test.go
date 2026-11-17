@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listTickets/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListTicketsOutput](`{"tickets":[{"id":35436,"agentUrl":"https://acme.zendesk.com/agent/tickets/35436","subject":"Customer issue","status":"open","requesterId":7701,"createdAt":"2026-10-21T08:00:00Z","updatedAt":"2026-10-22T08:00:00Z"}],"nextCursor":"cursor-1"}`)
+			return err
+		}},
+		{name: "listTickets/listedDefault/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListTicketsOutput](`{"tickets":[{"id":35437,"agentUrl":"https://acme.zendesk.com/agent/tickets/35437","subject":"Follow-up","status":"pending","requesterId":7701,"createdAt":"2026-10-23T08:00:00Z","updatedAt":"2026-10-24T08:00:00Z"}],"nextCursor":"cursor-2"}`)
+			return err
+		}},
+		{name: "listTickets/listedDefault/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListTicketsOutput](`{"tickets":[],"nextCursor":""}`)
+			return err
+		}},
+		{name: "deleteTicket/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.DeleteTicketOutput](`{"ticketId":35436}`)
+			return err
+		}},
+		{name: "recoverSuspendedTicket/recoveredDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.RecoverSuspendedTicketOutput](`{"ticket":{"id":35436,"agentUrl":"https://acme.zendesk.com/agent/tickets/35436","subject":"Customer issue","status":"open","requesterId":7701,"createdAt":"2026-10-21T08:00:00Z","updatedAt":"2026-10-22T08:00:00Z"}}`)
+			return err
+		}},
 		{name: "searchTickets/customerIssueTickets/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[support.SearchTicketsOutput](`{"tickets":[{"id":35435,"agentUrl":"https://acme.zendesk.com/agent/tickets/35435","subject":"Double charge on order 88213","status":"pending","requesterId":7701,"tags":["billing-double-charge"],"createdAt":"2026-10-20T08:00:00Z","updatedAt":"2026-10-21T08:00:00Z"},{"id":35436,"agentUrl":"https://acme.zendesk.com/agent/tickets/35436","subject":"Double charge on order 88213","status":"pending","requesterId":7701,"tags":["billing-double-charge"],"createdAt":"2026-10-21T08:00:00Z","updatedAt":"2026-10-22T08:00:00Z"}],"nextCursor":"cursor-1"}`)
 			return err
@@ -54,6 +74,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListTickets().Definition().Operation.OperationID != "listTickets" {
+		t.Errorf("listTickets mock has another definition")
+	}
+	if mock.DeleteTicket().Definition().Operation.OperationID != "deleteTicket" {
+		t.Errorf("deleteTicket mock has another definition")
+	}
+	if mock.RecoverSuspendedTicket().Definition().Operation.OperationID != "recoverSuspendedTicket" {
+		t.Errorf("recoverSuspendedTicket mock has another definition")
+	}
 	if mock.SearchTickets().Definition().Operation.OperationID != "searchTickets" {
 		t.Errorf("searchTickets mock has another definition")
 	}

@@ -1,6 +1,6 @@
 # Zendesk Support Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zendesk/support`.
 
@@ -17,6 +17,9 @@ Flows. It exposes these operation-specific Dex Step factories:
 | `support.NewGetTicketStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `support.NewCreateTicketStep` | Mutation | `created` | `providerRejected`, `invalidResponse`, `defect` |
 | `support.NewUpdateTicketStep` | Mutation | `updated` | `notFound`, `conflict`, `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewListTicketsStep` | Query | `listed` | `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewDeleteTicketStep` | Mutation | `deleted` | `notFound`, `providerRejected`, `defect` |
+| `support.NewRecoverSuspendedTicketStep` | Mutation | `recovered` | `notFound`, `providerRejected`, `defect`, `uncertain` |
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
@@ -106,6 +109,10 @@ A Result passes through any value Zendesk adds later. Inputs are validated
 against the documented values before any request.
 
 ## Operations
+
+`listTickets` reads one cursor page of up to 100 non-archived tickets visible to the connection's agent. Pass the returned `nextCursor` to read another page; the first page is used when it is blank. For a complete account export, use the incremental export API instead.
+
+`deleteTicket` soft-deletes one ticket by ID. Zendesk requires an administrator or an agent with deletion permission. `recoverSuspendedTicket` converts one suspended ticket to a regular ticket; Zendesk changes its requester to the authenticated agent. Recovery has a three-send cap and selects `uncertain` after an unconfirmed final attempt. Operators can inspect the suspended-ticket queue and the recovered ticket before manually retrying.
 
 ### searchTickets
 

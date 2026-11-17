@@ -17,11 +17,14 @@ import (
 
 // Mock is a scripted zendesk-support connection. Script each operation through its accessor.
 type Mock struct {
-	connection    support.Connection
-	searchTickets *connectormock.Query[support.SearchTicketsInput, support.SearchTicketsOutput]
-	getTicket     *connectormock.Query[support.GetTicketInput, support.TicketDetails]
-	createTicket  *connectormock.Mutation[support.CreateTicketInput, support.CreateTicketOutput]
-	updateTicket  *connectormock.Mutation[support.UpdateTicketInput, support.UpdateTicketOutput]
+	connection             support.Connection
+	listTickets            *connectormock.Query[support.ListTicketsInput, support.ListTicketsOutput]
+	deleteTicket           *connectormock.Mutation[support.DeleteTicketInput, support.DeleteTicketOutput]
+	recoverSuspendedTicket *connectormock.Mutation[support.RecoverSuspendedTicketInput, support.RecoverSuspendedTicketOutput]
+	searchTickets          *connectormock.Query[support.SearchTicketsInput, support.SearchTicketsOutput]
+	getTicket              *connectormock.Query[support.GetTicketInput, support.TicketDetails]
+	createTicket           *connectormock.Mutation[support.CreateTicketInput, support.CreateTicketOutput]
+	updateTicket           *connectormock.Mutation[support.UpdateTicketInput, support.UpdateTicketOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,11 +32,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		searchTickets: connectormock.NewQuery[support.SearchTicketsInput, support.SearchTicketsOutput](t, support.SearchTicketsDefinition),
-		getTicket:     connectormock.NewQuery[support.GetTicketInput, support.TicketDetails](t, support.GetTicketDefinition),
-		createTicket:  connectormock.NewMutation[support.CreateTicketInput, support.CreateTicketOutput](t, support.CreateTicketDefinition),
-		updateTicket:  connectormock.NewMutation[support.UpdateTicketInput, support.UpdateTicketOutput](t, support.UpdateTicketDefinition),
+		listTickets:            connectormock.NewQuery[support.ListTicketsInput, support.ListTicketsOutput](t, support.ListTicketsDefinition),
+		deleteTicket:           connectormock.NewMutation[support.DeleteTicketInput, support.DeleteTicketOutput](t, support.DeleteTicketDefinition),
+		recoverSuspendedTicket: connectormock.NewMutation[support.RecoverSuspendedTicketInput, support.RecoverSuspendedTicketOutput](t, support.RecoverSuspendedTicketDefinition),
+		searchTickets:          connectormock.NewQuery[support.SearchTicketsInput, support.SearchTicketsOutput](t, support.SearchTicketsDefinition),
+		getTicket:              connectormock.NewQuery[support.GetTicketInput, support.TicketDetails](t, support.GetTicketDefinition),
+		createTicket:           connectormock.NewMutation[support.CreateTicketInput, support.CreateTicketOutput](t, support.CreateTicketDefinition),
+		updateTicket:           connectormock.NewMutation[support.UpdateTicketInput, support.UpdateTicketOutput](t, support.UpdateTicketDefinition),
 	}
+	mock.listTickets.Default(ListTicketsDefault())
+	mock.deleteTicket.Default(DeleteTicketDefault())
+	mock.recoverSuspendedTicket.Default(RecoverSuspendedTicketDefault())
 	mock.searchTickets.Default(SearchTicketsDefault())
 	mock.getTicket.Default(GetTicketDefault())
 	mock.createTicket.Default(CreateTicketDefault())
@@ -48,6 +57,21 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() support.Connection { return mock.connection }
+
+// ListTickets returns the listTickets script.
+func (mock *Mock) ListTickets() *connectormock.Query[support.ListTicketsInput, support.ListTicketsOutput] {
+	return mock.listTickets
+}
+
+// DeleteTicket returns the deleteTicket script.
+func (mock *Mock) DeleteTicket() *connectormock.Mutation[support.DeleteTicketInput, support.DeleteTicketOutput] {
+	return mock.deleteTicket
+}
+
+// RecoverSuspendedTicket returns the recoverSuspendedTicket script.
+func (mock *Mock) RecoverSuspendedTicket() *connectormock.Mutation[support.RecoverSuspendedTicketInput, support.RecoverSuspendedTicketOutput] {
+	return mock.recoverSuspendedTicket
+}
 
 // SearchTickets returns the searchTickets script.
 func (mock *Mock) SearchTickets() *connectormock.Query[support.SearchTicketsInput, support.SearchTicketsOutput] {
@@ -71,6 +95,15 @@ func (mock *Mock) UpdateTicket() *connectormock.Mutation[support.UpdateTicketInp
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListTickets() sdkgo.Query[support.ListTicketsInput, support.ListTicketsOutput] {
+	return operations.mock.listTickets
+}
+func (operations mockOperations) DeleteTicket() sdkgo.Mutation[support.DeleteTicketInput, support.DeleteTicketOutput] {
+	return operations.mock.deleteTicket
+}
+func (operations mockOperations) RecoverSuspendedTicket() sdkgo.Mutation[support.RecoverSuspendedTicketInput, support.RecoverSuspendedTicketOutput] {
+	return operations.mock.recoverSuspendedTicket
+}
 func (operations mockOperations) SearchTickets() sdkgo.Query[support.SearchTicketsInput, support.SearchTicketsOutput] {
 	return operations.mock.searchTickets
 }
@@ -82,6 +115,124 @@ func (operations mockOperations) CreateTicket() sdkgo.Mutation[support.CreateTic
 }
 func (operations mockOperations) UpdateTicket() sdkgo.Mutation[support.UpdateTicketInput, support.UpdateTicketOutput] {
 	return operations.mock.updateTicket
+}
+
+// ListTicketsListed selects the listed branch: Zendesk returned one ticket page.
+func ListTicketsListed(value support.ListTicketsOutput, failure *sdkgo.Failure) connectormock.Case[support.ListTicketsOutput] {
+	return connectormock.Branch(support.ListTicketsBranchListed, value, failure)
+}
+
+// ListTicketsProviderRejected selects the providerRejected branch: Zendesk rejected the list.
+func ListTicketsProviderRejected(value support.ListTicketsOutput, failure *sdkgo.Failure) connectormock.Case[support.ListTicketsOutput] {
+	return connectormock.Branch(support.ListTicketsBranchProviderRejected, value, failure)
+}
+
+// ListTicketsInvalidResponse selects the invalidResponse branch: Zendesk returned malformed or oversized JSON.
+func ListTicketsInvalidResponse(value support.ListTicketsOutput, failure *sdkgo.Failure) connectormock.Case[support.ListTicketsOutput] {
+	return connectormock.Branch(support.ListTicketsBranchInvalidResponse, value, failure)
+}
+
+// ListTicketsDefect selects the defect branch: Page input or credentials are invalid.
+func ListTicketsDefect(value support.ListTicketsOutput, failure *sdkgo.Failure) connectormock.Case[support.ListTicketsOutput] {
+	return connectormock.Branch(support.ListTicketsBranchDefect, value, failure)
+}
+
+// ListTicketsRetry asks Dex to retry the listTickets Step, after the delay when it is positive.
+func ListTicketsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[support.ListTicketsOutput] {
+	return connectormock.Retry[support.ListTicketsOutput](failure, after)
+}
+
+// ListTicketsListedDefault is the manifest mock listedDefault: One sample ticket is listed.
+func ListTicketsListedDefault() connectormock.Case[support.ListTicketsOutput] {
+	pages := []support.ListTicketsOutput{
+		connectormock.MustDecodeOutput[support.ListTicketsOutput](`{"tickets":[{"id":35436,"agentUrl":"https://acme.zendesk.com/agent/tickets/35436","subject":"Customer issue","status":"open","requesterId":7701,"createdAt":"2026-10-21T08:00:00Z","updatedAt":"2026-10-22T08:00:00Z"}],"nextCursor":"cursor-1"}`),
+		connectormock.MustDecodeOutput[support.ListTicketsOutput](`{"tickets":[{"id":35437,"agentUrl":"https://acme.zendesk.com/agent/tickets/35437","subject":"Follow-up","status":"pending","requesterId":7701,"createdAt":"2026-10-23T08:00:00Z","updatedAt":"2026-10-24T08:00:00Z"}],"nextCursor":"cursor-2"}`),
+		connectormock.MustDecodeOutput[support.ListTicketsOutput](`{"tickets":[],"nextCursor":""}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[support.ListTicketsInput]("cursor", "nextCursor", pages)
+	return connectormock.Paged(support.ListTicketsBranchListed, pageNumber, pages...)
+}
+
+// ListTicketsDefault is the manifest default, listedDefault, which New installs.
+func ListTicketsDefault() connectormock.Case[support.ListTicketsOutput] {
+	return ListTicketsListedDefault()
+}
+
+// DeleteTicketDeleted selects the deleted branch: Zendesk accepted the ticket deletion.
+func DeleteTicketDeleted(value support.DeleteTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.DeleteTicketOutput] {
+	return connectormock.Branch(support.DeleteTicketBranchDeleted, value, failure)
+}
+
+// DeleteTicketNotFound selects the notFound branch: The ticket does not exist.
+func DeleteTicketNotFound(value support.DeleteTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.DeleteTicketOutput] {
+	return connectormock.Branch(support.DeleteTicketBranchNotFound, value, failure)
+}
+
+// DeleteTicketProviderRejected selects the providerRejected branch: Zendesk rejected the delete.
+func DeleteTicketProviderRejected(value support.DeleteTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.DeleteTicketOutput] {
+	return connectormock.Branch(support.DeleteTicketBranchProviderRejected, value, failure)
+}
+
+// DeleteTicketDefect selects the defect branch: Ticket ID or credentials are invalid.
+func DeleteTicketDefect(value support.DeleteTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.DeleteTicketOutput] {
+	return connectormock.Branch(support.DeleteTicketBranchDefect, value, failure)
+}
+
+// DeleteTicketRetry asks Dex to retry the deleteTicket Step, after the delay when it is positive.
+func DeleteTicketRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[support.DeleteTicketOutput] {
+	return connectormock.Retry[support.DeleteTicketOutput](failure, after)
+}
+
+// DeleteTicketDeletedDefault is the manifest mock deletedDefault: One sample ticket is deleted.
+func DeleteTicketDeletedDefault() connectormock.Case[support.DeleteTicketOutput] {
+	value := connectormock.MustDecodeOutput[support.DeleteTicketOutput](`{"ticketId":35436}`)
+	return connectormock.Branch(support.DeleteTicketBranchDeleted, value, nil)
+}
+
+// DeleteTicketDefault is the manifest default, deletedDefault, which New installs.
+func DeleteTicketDefault() connectormock.Case[support.DeleteTicketOutput] {
+	return DeleteTicketDeletedDefault()
+}
+
+// RecoverSuspendedTicketRecovered selects the recovered branch: Zendesk recovered the suspended ticket.
+func RecoverSuspendedTicketRecovered(value support.RecoverSuspendedTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.RecoverSuspendedTicketOutput] {
+	return connectormock.Branch(support.RecoverSuspendedTicketBranchRecovered, value, failure)
+}
+
+// RecoverSuspendedTicketNotFound selects the notFound branch: The suspended ticket does not exist.
+func RecoverSuspendedTicketNotFound(value support.RecoverSuspendedTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.RecoverSuspendedTicketOutput] {
+	return connectormock.Branch(support.RecoverSuspendedTicketBranchNotFound, value, failure)
+}
+
+// RecoverSuspendedTicketProviderRejected selects the providerRejected branch: Zendesk rejected the recovery.
+func RecoverSuspendedTicketProviderRejected(value support.RecoverSuspendedTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.RecoverSuspendedTicketOutput] {
+	return connectormock.Branch(support.RecoverSuspendedTicketBranchProviderRejected, value, failure)
+}
+
+// RecoverSuspendedTicketDefect selects the defect branch: Suspended ticket ID or credentials are invalid.
+func RecoverSuspendedTicketDefect(value support.RecoverSuspendedTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.RecoverSuspendedTicketOutput] {
+	return connectormock.Branch(support.RecoverSuspendedTicketBranchDefect, value, failure)
+}
+
+// RecoverSuspendedTicketUncertain returns an uncertain recoverSuspendedTicket outcome.
+func RecoverSuspendedTicketUncertain(value support.RecoverSuspendedTicketOutput, failure sdkgo.Failure) connectormock.Case[support.RecoverSuspendedTicketOutput] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// RecoverSuspendedTicketRetry asks Dex to retry the recoverSuspendedTicket Step, after the delay when it is positive.
+func RecoverSuspendedTicketRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[support.RecoverSuspendedTicketOutput] {
+	return connectormock.Retry[support.RecoverSuspendedTicketOutput](failure, after)
+}
+
+// RecoverSuspendedTicketRecoveredDefault is the manifest mock recoveredDefault: One sample suspended ticket is recovered.
+func RecoverSuspendedTicketRecoveredDefault() connectormock.Case[support.RecoverSuspendedTicketOutput] {
+	value := connectormock.MustDecodeOutput[support.RecoverSuspendedTicketOutput](`{"ticket":{"id":35436,"agentUrl":"https://acme.zendesk.com/agent/tickets/35436","subject":"Customer issue","status":"open","requesterId":7701,"createdAt":"2026-10-21T08:00:00Z","updatedAt":"2026-10-22T08:00:00Z"}}`)
+	return connectormock.Branch(support.RecoverSuspendedTicketBranchRecovered, value, nil)
+}
+
+// RecoverSuspendedTicketDefault is the manifest default, recoveredDefault, which New installs.
+func RecoverSuspendedTicketDefault() connectormock.Case[support.RecoverSuspendedTicketOutput] {
+	return RecoverSuspendedTicketRecoveredDefault()
 }
 
 // SearchTicketsSearched selects the searched branch: One page of matching tickets was returned; it may be empty.

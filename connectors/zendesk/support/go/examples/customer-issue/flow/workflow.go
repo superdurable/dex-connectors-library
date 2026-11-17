@@ -30,6 +30,8 @@ const (
 	FollowUpNote = "The customer contacted us again about this issue. Message recorded by Dex:"
 
 	recordCustomerIssueStepType     = "RecordCustomerIssue"
+	listVisibleTicketsStepType      = "ListVisibleTickets"
+	continueIssueSearchStepType     = "ContinueIssueSearch"
 	findUnsolvedIssueTicketStepType = "FindUnsolvedIssueTicket"
 	chooseIssueTicketStepType       = "ChooseIssueTicket"
 	readCandidateTicketStepType     = "ReadCandidateTicket"
@@ -138,6 +140,13 @@ func (*Flow) GetFlowType() string { return FlowType }
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(recordCustomerIssue{}),
+		dex.DefineStep(support.NewListTicketsStep(support.ListTicketsStepConfig[CustomerIssue]{
+			StepType: listVisibleTicketsStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "zendesk", GroupLabel: "Zendesk Support", Explanation: "Check one visible ticket page before searching for this customer issue."},
+			Connection:  flow.connection, MapToOperationInput: func(CustomerIssue) support.ListTicketsInput { return support.ListTicketsInput{PageSize: 10} },
+			Listed: sdkgo.GoTo(continueIssueSearch{}),
+		})),
+		dex.DefineStep(continueIssueSearch{}),
 		dex.DefineStep(support.NewSearchTicketsStep(support.SearchTicketsStepConfig[CustomerIssue]{
 			StepType: findUnsolvedIssueTicketStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -326,6 +335,22 @@ func (recordCustomerIssue) Execute(ctx dex.Context, input Input) (*dex.StepDecis
 		return dex.ForceFail(err.Error()), nil
 	}
 	if err := customerIssueAttribute.Set(ctx, issue); err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[CustomerIssue](listVisibleTicketsStepType), issue), nil
+}
+
+// dex:group group-id:issue group-label:"Customer issue"
+// dex:explanation text:"Continue the issue search after confirming that the connection can list visible tickets."
+type continueIssueSearch struct {
+	dex.StepDefaultsNoWaitFor[support.ListTicketsResult]
+}
+
+func (continueIssueSearch) GetStepType() string { return continueIssueSearchStepType }
+
+func (continueIssueSearch) Execute(ctx dex.Context, _ support.ListTicketsResult) (*dex.StepDecision, error) {
+	issue, err := customerIssueAttribute.Get(ctx)
+	if err != nil {
 		return nil, err
 	}
 	return dex.GoTo(sdkgo.StepRef[CustomerIssue](findUnsolvedIssueTicketStepType), issue), nil
