@@ -2,11 +2,10 @@
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gemini`.
 
-The Gemini Connector is an independent Go module for the Google Gemini API
-[`models.generateContent`](https://ai.google.dev/api/generate-content) method.
-It provides `gemini.NewGenerateContentStep`, the native `generateContent`
-Query, for Gemini's own request fields such as `Contents`, `ThinkingBudget`,
-and an unchanged `responseJsonSchema`.
+The Gemini Connector is an independent Go module for Gemini content generation
+and [File Search store management](https://ai.google.dev/api/file-search/file-search-stores).
+It provides the native `generateContent` Query and typed Go Steps to list,
+get, create, and delete File Search stores.
 
 Provider-neutral text generation Steps use the
 [llm connector](../../superdurable/llm/README.md) with `provider: gemini`. Its
@@ -17,7 +16,7 @@ by changing only the connection.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/google/gemini/go@v0.23.0
+go get github.com/superdurable/dex-connectors-library/connectors/google/gemini/go@v0.24.0
 ```
 
 ## Python
@@ -82,6 +81,33 @@ default.
 `gemini.WithHTTPClient` supplies a custom transport. The connector uses a copy
 of that client, disables its redirects, and applies a 270-second timeout when
 the client sets none.
+
+## File Search stores
+
+Go adds `NewListFileSearchStoresStep`, `NewGetFileSearchStoreStep`,
+`NewCreateFileSearchStoreStep`, and `NewDeleteFileSearchStoreStep`. The
+[`StoreInventoryFlow`](go/examples/generate-summary/flow/store_inventory.go) is
+a runnable example of listing one page and returning its `nextPageToken`.
+Python and TypeScript currently implement only `generateContent`.
+
+`listFileSearchStores` accepts an optional page size from 1 to 20 and the
+previous page token. `getFileSearchStore` and `deleteFileSearchStore` accept a
+full `fileSearchStores/{id}` name. Deleting an absent store succeeds; set
+`Force` to delete a store containing documents. `createFileSearchStore` needs a
+display name and optionally `models/{model-id}` as `EmbeddingModel`. The
+provider chooses the resource name.
+
+Queries and deletion are safe to repeat. Creation uses a three-send cap.
+After an unknown outcome it reads back by a checkpointed provider resource ID
+when one is available. Otherwise it may resend while below the cap; at the cap
+it selects `uncertain` for manual reconciliation. Gemini does not accept a
+create idempotency key, and display names are not unique, so another store with
+the same name never confirms this create. The connector does not put the API
+key in a URL or return it in a result.
+
+The connection's API key also authorizes these operations. No additional
+OAuth scopes or fields are required. The example has no new Dex Web
+configuration units; its page size and cursor are Flow input.
 
 ## Generate content
 

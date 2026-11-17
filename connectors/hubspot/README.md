@@ -1,6 +1,6 @@
 # HubSpot Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hubspot/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hubspot/go@v0.26.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/hubspot`.
 
@@ -8,7 +8,7 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/hubspot`.
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
 
-This module searches, reads, upserts, and updates HubSpot CRM contacts,
+This module searches, reads, creates, upserts, updates, and archives HubSpot CRM contacts,
 companies, and deals through HubSpot's 2026-09 CRM object API. It is the
 system-of-record write path for a Flow: identify a person by email, find the
 deal that belongs to them, and move that deal forward.
@@ -19,6 +19,8 @@ deal that belongs to them, and move that deal forward.
 | `getObject` | Query | `GET /crm/objects/2026-09/{objectType}/{recordId}` | `found` | Go, Python, TypeScript |
 | `upsertObject` | Mutation | `POST /crm/objects/2026-09/{objectType}/batch/upsert` with one input | `upserted` | Go, Python, TypeScript |
 | `updateObject` | Mutation | `PATCH /crm/objects/2026-09/{objectType}/{recordId}` | `updated` | Go, Python, TypeScript |
+| `createObject` | Mutation | `POST /crm/objects/2026-09/{objectType}` | `created` | Go |
+| `deleteObject` | Mutation | `DELETE /crm/objects/2026-09/{objectType}/{recordId}` | `deleted` | Go |
 
 It also exposes one Trigger:
 
@@ -101,6 +103,10 @@ records can take a few moments to appear in HubSpot search.
 
 `GetObjectInput` names the object type, the record ID, and optional
 `Properties`. A missing or archived record selects `notFound`.
+
+### createObject and deleteObject
+
+`CreateObjectInput` supplies the object type and internal property values for a new record. HubSpot does not accept an idempotency key for this endpoint, so the connector limits possible sends to three. It reads back a returned record ID before any further send; when no ID is known, it retries unknown outcomes within the send cap and selects `uncertain` when it cannot confirm the result. `DeleteObjectInput` supplies a decimal record ID. Archive is safe to retry, and an already absent record returns `deleted`.
 
 ### upsertObject
 

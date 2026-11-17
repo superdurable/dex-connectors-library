@@ -222,7 +222,7 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 	}
 	if request.requiresManage && credential.AuthMethodID != ManageAuthMethodID {
 		return providerResponse{}, client.outcome(outcomeRejected, operation, sdkgo.FailureAuthorization,
-			"addPlaylistItem requires a YouTube connection authorized with the google-oauth-manage method and its youtube scope", client.receipt(call, objectID, nil))
+			operation+" requires a YouTube connection authorized with the google-oauth-manage method and its youtube scope", client.receipt(call, objectID, nil))
 	}
 	if request.writeFence != nil {
 		return client.exchangeFencedWrite(call, operation, request, objectID, credential)
@@ -281,7 +281,7 @@ func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, req
 	classified.receipt = receipt
 	if classified.disposition == outcomeRetry {
 		classified.disposition = outcomeWriteUnconfirmed
-		if classified.failure.Kind == sdkgo.FailureRateLimit {
+		if classified.failure.Kind == sdkgo.FailureRateLimit || (operation == "createPlaylist" && response.statusCode == http.StatusServiceUnavailable) {
 			classified.disposition = outcomeRetryUnprocessed
 		}
 	}

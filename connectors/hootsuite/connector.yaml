@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: hootsuite
   displayName: Hootsuite
-  description: List social profiles, inspect scheduled messages, and schedule text posts.
+  description: List social profiles, inspect and delete outbound messages, and schedule text posts.
   company: Hootsuite
   categories: [social-media, marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: hootsuite
   languages:
@@ -87,6 +87,46 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: getMessage
+      goName: GetMessage
+      inputType: GetMessageInput
+      outputType: OutboundMessage
+      kind: query
+      description: Retrieve one outbound Hootsuite message by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Hootsuite returned the outbound message.}
+        - {id: notFound, goName: NotFound, description: The message ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Hootsuite rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Hootsuite returned unusable message JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local message ID or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One scheduled message was retrieved.
+          output: {id: '4138476039', state: SCHEDULED, socialProfileId: '115185509', scheduledSendTime: '2026-11-15T14:00:00Z'}
+    - name: deleteMessage
+      goName: DeleteMessage
+      inputType: DeleteMessageInput
+      outputType: DeletedMessage
+      kind: mutation
+      description: Delete an outbound message while Hootsuite permits deletion.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The message is absent after the delete request.}
+        - {id: providerRejected, goName: ProviderRejected, description: Hootsuite refused deletion in the current message state., optional: true}
+        - {id: defect, goName: Defect, description: Local message ID or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One scheduled message was deleted.
+          output: {id: '4138476039'}
     - name: listSocialProfiles
       goName: ListSocialProfiles
       inputType: ListSocialProfilesInput

@@ -1017,6 +1017,567 @@
       },
       "name": "schedulePost-transportFailure",
       "operation": "schedulePost"
+    },
+    {
+      "callId": "GET-MESSAGE-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"4138476039\",\"state\":\"SCHEDULED\",\"socialProfile\":{\"id\":\"115185509\"},\"scheduledSendTime\":\"2026-11-15T14:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/messages/4138476039",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "4138476039",
+          "scheduledSendTime": "2026-11-15T14:00:00Z",
+          "socialProfileId": "115185509",
+          "state": "SCHEDULED"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "4138476039"
+      },
+      "name": "getMessage-found",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "GET-MESSAGE-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/messages/4138476039",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "socialProfileId": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "4138476039"
+      },
+      "name": "getMessage-providerRejected",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "GET-MESSAGE-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"4138476039\",\"state\":\"SCHEDULED\",\"socialProfile\":{\"id\":\"115185509\"},\"scheduledSendTime\":\"2026-11-15T14:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/messages/4138476039",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "4138476039",
+          "scheduledSendTime": "2026-11-15T14:00:00Z",
+          "socialProfileId": "115185509",
+          "state": "SCHEDULED"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "4138476039"
+      },
+      "name": "getMessage-invalidResponse",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "GET-MESSAGE-CALL-ID",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "socialProfileId": "",
+          "state": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getMessage-defect",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "GET-MESSAGE-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/messages/4138476039",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "id": "4138476039"
+      },
+      "name": "getMessage-rateLimit",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "GET-MESSAGE-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/messages/4138476039",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "4138476039"
+      },
+      "name": "getMessage-serverUnavailable",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "GET-MESSAGE-CALL-ID",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/messages/4138476039",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "4138476039"
+      },
+      "name": "getMessage-transportFailure",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "GET-MESSAGE-CALL-ID",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/messages/4138476039",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "socialProfileId": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "4138476039"
+      },
+      "name": "getMessage-notFound",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "exchanges": [
+        {
+          "body": "{\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/messages/4138476039",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "4138476039"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "input": {
+        "id": "4138476039"
+      },
+      "name": "deleteMessage-deleted",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/messages/4138476039",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "input": {
+        "id": "4138476039"
+      },
+      "name": "deleteMessage-providerRejected",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "input": {
+        "id": ""
+      },
+      "name": "deleteMessage-defect",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/messages/4138476039",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "input": {
+        "id": "4138476039"
+      },
+      "name": "deleteMessage-rateLimit",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/messages/4138476039",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "input": {
+        "id": "4138476039"
+      },
+      "name": "deleteMessage-serverUnavailable",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/messages/4138476039",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "input": {
+        "id": "4138476039"
+      },
+      "name": "deleteMessage-transportFailure",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "exchanges": [
+        {
+          "body": "{\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/messages/4138476039",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "4138476039"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "input": {
+        "id": "4138476039"
+      },
+      "name": "deleteMessage-alreadyAbsent",
+      "operation": "deleteMessage"
     }
   ],
   "schemaVersion": 1

@@ -1,6 +1,6 @@
 {
   "connectorId": "harvest",
-  "releaseTag": "connectors/harvest/go/v0.2.0",
+  "releaseTag": "connectors/harvest/go/v0.3.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-harvest",

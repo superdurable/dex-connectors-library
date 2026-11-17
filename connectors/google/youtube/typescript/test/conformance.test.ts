@@ -7,7 +7,8 @@ import { BodyTooLargeError, ProviderTransportError, type ProviderRequest } from 
 import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type HeartbeatContext, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 import { YouTubeClient } from '../src/client.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/youtube/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/youtube/scenarios.json', import.meta.url))
+  .filter(scenario => ['searchVideos', 'getVideo', 'getChannel', 'listPlaylistItems', 'addPlaylistItem'].includes(scenario.operation));
 const connection = { provider: 'google', name: 'youtube' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeYouTube));

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: insightly
   displayName: Insightly CRM
-  description: Read Insightly contact identity with explicit page controls.
+  description: Read and manage Insightly contacts, leads, organisations, opportunities, projects, and tasks.
   company: Insightly
   categories: [crm-sales]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   languages:
     python:
@@ -95,3 +95,124 @@ spec:
           default: true
           description: One sample contact is returned.
           output: {id: 45678, firstName: Ada, lastName: Lovelace, emailAddress: 'ada@example.com'}
+    - name: listRecords
+      goName: ListRecords
+      inputType: ListRecordsInput
+      outputType: RecordsPage
+      kind: query
+      description: List one bounded page of contacts, leads, organisations, opportunities, projects, or tasks.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Insightly returned the record page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Insightly rejected the list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Insightly returned invalid record JSON., optional: true}
+        - {id: defect, goName: Defect, description: The resource or page input is invalid., optional: true}
+      mocks:
+        - name: listedLeads
+          branch: listed
+          default: true
+          description: One sample lead is listed.
+          output: {records: [{recordType: leads, id: 1201, fields: {LEAD_ID: 1201, FIRST_NAME: Ada, LAST_NAME: Lovelace}}]}
+    - name: getRecord
+      goName: GetRecord
+      inputType: GetRecordInput
+      outputType: Record
+      kind: query
+      description: Read one primary CRM record by its numeric ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Insightly returned the record.}
+        - {id: notFound, goName: NotFound, description: Insightly found no record with the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Insightly rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Insightly returned invalid record JSON., optional: true}
+        - {id: defect, goName: Defect, description: The resource or ID is invalid., optional: true}
+      mocks:
+        - name: foundLead
+          branch: found
+          default: true
+          description: One sample lead was found.
+          output: {recordType: leads, id: 1201, fields: {LEAD_ID: 1201, FIRST_NAME: Ada, LAST_NAME: Lovelace}}
+    - name: searchRecords
+      goName: SearchRecords
+      inputType: SearchRecordsInput
+      outputType: RecordsPage
+      kind: query
+      description: Search one primary CRM resource by a provider field and value.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: searched, goName: Searched, description: Insightly returned the matching record page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Insightly rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Insightly returned invalid search JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The resource, search field, or page input is invalid.", optional: true}
+      mocks:
+        - name: matchingLead
+          branch: searched
+          default: true
+          description: One lead matches the exact email address.
+          output: {records: [{recordType: leads, id: 1201, fields: {LEAD_ID: 1201, EMAIL: 'ada@example.com'}}]}
+    - name: createRecord
+      goName: CreateRecord
+      inputType: CreateRecordInput
+      outputType: Record
+      kind: mutation
+      description: Create one primary CRM record using provider JSON fields.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: created, goName: Created, description: Insightly created the record.}
+        - {id: providerRejected, goName: ProviderRejected, description: Insightly rejected the create., optional: true}
+        - {id: defect, goName: Defect, description: "The resource, fields, or credentials are invalid.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: A bounded create could not be confirmed after its send cap., optional: true}
+      mocks:
+        - name: createdLead
+          branch: created
+          default: true
+          description: Insightly created a lead.
+          output: {recordType: leads, id: 1201, fields: {LEAD_ID: 1201, FIRST_NAME: Ada, LAST_NAME: Lovelace}}
+    - name: updateRecord
+      goName: UpdateRecord
+      inputType: UpdateRecordInput
+      outputType: Record
+      kind: mutation
+      description: Partially update one primary CRM record by its numeric ID.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: Insightly updated the record.}
+        - {id: notFound, goName: NotFound, description: Insightly found no record with the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Insightly rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Insightly returned invalid updated JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The resource, ID, fields, or credentials are invalid.", optional: true}
+      mocks:
+        - name: updatedLead
+          branch: updated
+          default: true
+          description: Insightly updated the lead surname.
+          output: {recordType: leads, id: 1201, fields: {LEAD_ID: 1201, FIRST_NAME: Ada, LAST_NAME: Byron}}
+    - name: deleteRecord
+      goName: DeleteRecord
+      inputType: DeleteRecordInput
+      outputType: DeletedRecord
+      kind: mutation
+      description: Delete one primary CRM record by its numeric ID.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: The record was deleted or was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Insightly rejected the delete., optional: true}
+        - {id: defect, goName: Defect, description: "The resource, ID, or credentials are invalid.", optional: true}
+      mocks:
+        - name: deletedLead
+          branch: deleted
+          default: true
+          description: Insightly deleted the lead.
+          output: {recordType: leads, id: 1201}

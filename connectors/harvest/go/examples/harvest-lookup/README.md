@@ -1,6 +1,6 @@
 # Harvest lookup example
 
-This Worker registers `HarvestLookup` with static connection name `harvest`. It calls `listProjects and listTimeEntries` in one typed Flow.
+This Worker registers `HarvestLookup` with static connection name `harvest`. It calls `listProjects`, `getProject`, `listTimeEntries`, `getTimeEntry`, `getCurrentUser`, `listClients`, `listContacts`, `getCompany`, `listTasks`, `listInvoices`, `listExpenses`, and `listEstimates` in one typed Flow.
 
 ## Generate and run
 
@@ -19,7 +19,7 @@ mkdir -p /tmp/harvest-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/harvest/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/harvest/go \
-  --version v0.2.0 --tag connectors/harvest/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/harvest/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/harvest-release/connector-release.json \
   --digest-output /tmp/harvest-release/connector-release.json.sha256

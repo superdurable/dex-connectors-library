@@ -6,7 +6,8 @@ import { SecretString, StaticCredentialProvider, type Call } from '@superdurable
 import { Client, ListProjectsInputSchema, ListTimeEntriesInputSchema } from '../src/index.js';
 import { ExchangeRecorder, loadScenarios, replay, withScenarioHTTPServer, scenarioCall, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/harvest/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/harvest/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'listProjects' || scenario.operation === 'listTimeEntries');
 const connection = { provider: 'harvest', name: 'harvest' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeHarvest));

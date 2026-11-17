@@ -1,6 +1,6 @@
 # Gmail Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.27.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.28.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gmail`.
 
@@ -11,10 +11,24 @@ Install `@superdurable/connector-google-gmail` with `@superdurable/dex`. The [Ty
 | Capability | Go | Python | TypeScript |
 | --- | --- | --- | --- |
 | `getMessage`, `sendMessage`, `replyToMessage` | yes | yes | yes |
+| `listMessages`, `listThreads`, `getThread`, `listLabels`, `getLabel` | yes | no | no |
 | `messageReceived`, `replyReceived` Triggers | yes | yes, from 0.3.0 | yes, from 0.3.0 |
 
-The Gmail Connector receives root messages and replies, reads one message, and
-sends new messages or replies from the verified primary address.
+The Gmail Connector receives root messages and replies, reads and searches
+messages, threads, and labels, and sends new messages or replies from the
+verified primary address.
+
+The Go `listMessages` and `listThreads` Queries accept Gmail search syntax,
+label IDs, a page token, an optional 1–500 result limit, and an option to
+include Spam and Trash. They return IDs and a next token; call `getMessage` or
+`getThread` for full content. `getThread` decodes its messages. `listLabels`
+returns the mailbox's labels, and `getLabel` returns one label with message and
+thread counts. All five Queries are safe to repeat and use the existing
+`gmail.readonly` scope. The [search Flow](go/examples/thread-reply/flow/search_mailbox.go)
+shows `listMessages` with the existing `gmail-inbox` connection.
+
+These additions do not add Dex Web operation configuration fields. The
+example accepts the search query and page limit as Flow input.
 
 The OAuth grant requests exactly these scopes:
 

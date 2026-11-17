@@ -8,7 +8,7 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { SpreadsheetClient } from '../src/client.js';
 import { GetValuesInputSchema, FindRowInputSchema, UpsertRowInputSchema, type Credentials, type UpsertRowInput, type UpsertRowOutput } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/spreadsheet/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/spreadsheet/scenarios.json', import.meta.url)).filter(scenario => ['getValues', 'findRow', 'upsertRow'].includes(scenario.operation));
 const connection = { provider: 'google', name: 'customer-sheet' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeSpreadsheet));
 

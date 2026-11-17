@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-youtube
   displayName: YouTube
-  description: Search YouTube videos, read videos, channels, and playlist pages, and add a video to a playlist at most once through the YouTube Data API v3.
+  description: Read and manage YouTube channels, playlists, playlist items, and videos through the YouTube Data API v3.
   company: Google
   categories: [social-media]
-  version: v0.4.0
+  version: v0.5.0
 spec:
   provider: google
   languages:
@@ -43,7 +43,7 @@ spec:
     methods:
       - id: google-oauth-readonly
         displayName: Google OAuth, read-only
-        description: "Recommended for Flows that only read; requests the youtube.readonly scope, which allows searchVideos, getVideo, getChannel, and listPlaylistItems, and addPlaylistItem selects providerRejected without calling YouTube."
+        description: "Recommended for Flows that only read; requests youtube.readonly for channel, playlist, playlist item, video, and category Queries. Mutations select providerRejected without calling YouTube."
         recommended: true
         type: oauth2
         connectionKind: google-youtube-readonly-oauth
@@ -95,7 +95,7 @@ spec:
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
       - id: google-oauth-manage
         displayName: Google OAuth, manage
-        description: "Required for addPlaylistItem; requests the youtube scope, which reads and manages the authorized account's YouTube data, so use it only for the connection that changes playlists."
+        description: "Required for playlist, playlist item, channel, video, and rating Mutations; requests the youtube scope, which reads and manages the authorized account's YouTube data."
         type: oauth2
         connectionKind: google-youtube-oauth
         fields:
@@ -144,6 +144,313 @@ spec:
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: listChannels
+      goName: ListChannels
+      inputType: ListChannelsInput
+      outputType: ChannelsPage
+      kind: query
+      description: List the connected account's channel identities.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: YouTube confirmed the channel listed result.}
+        - {id: notFound, goName: NotFound, description: The selected channel is not visible., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: YouTube daily quota is exhausted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: YouTube definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example channel identity is returned.
+          output: {"channels":[{"id":"UC1234567890123456789012","title":"Compiler Lab","description":"Compiler tutorials"}],"nextPageToken":""}
+    - name: updateChannel
+      goName: UpdateChannel
+      inputType: UpdateChannelInput
+      outputType: UpdatedChannelDescription
+      kind: mutation
+      description: Replace one owned channel's description while preserving its other branding settings.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: YouTube confirmed the channel updated result.}
+        - {id: notFound, goName: NotFound, description: The selected channel is not visible., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: YouTube daily quota is exhausted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: YouTube definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One example channel identity is returned.
+          output: {"id":"UC1234567890123456789012","description":"Updated compiler tutorials"}
+    - name: listVideos
+      goName: ListVideos
+      inputType: ListVideosInput
+      outputType: VideosPage
+      kind: query
+      description: Read YouTube listVideos using the documented Data API v3 endpoint.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: YouTube confirmed the listVideos result.}
+        - {id: notFound, goName: NotFound, description: The selected video is not visible., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: YouTube daily quota is exhausted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: YouTube definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example listVideos result is returned.
+          output: {"videos":[{"id":"AbCdEfGhI12","channelId":"UC1234567890123456789012","channelTitle":"Compiler Lab","title":"Compiler release walkthrough","description":"A short compiler tour","publishedAt":"2026-10-20T10:00:00Z","privacyStatus":"public"}],"nextPageToken":""}
+    - name: listVideoCategories
+      goName: ListVideoCategories
+      inputType: ListVideoCategoriesInput
+      outputType: VideoCategoriesPage
+      kind: query
+      description: Read YouTube listVideoCategories using the documented Data API v3 endpoint.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: YouTube confirmed the listVideoCategories result.}
+        - {id: notFound, goName: NotFound, description: The selected video is not visible., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: YouTube daily quota is exhausted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: YouTube definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example listVideoCategories result is returned.
+          output: {"categories":[{"id":"27","title":"Education","assignable":true}]}
+    - name: rateVideo
+      goName: RateVideo
+      inputType: RateVideoInput
+      outputType: RatedVideo
+      kind: mutation
+      description: Apply YouTube rateVideo using the documented Data API v3 endpoint.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: rated, goName: Rated, description: YouTube confirmed the rateVideo result.}
+        - {id: notFound, goName: NotFound, description: The selected video is not visible., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: YouTube daily quota is exhausted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: YouTube definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: ratedDefault
+          branch: rated
+          default: true
+          description: One example rateVideo result is returned.
+          output: {"videoId":"AbCdEfGhI12","rating":"like"}
+    - name: deleteVideo
+      goName: DeleteVideo
+      inputType: GetVideoInput
+      outputType: DeletedVideo
+      kind: mutation
+      description: Apply YouTube deleteVideo using the documented Data API v3 endpoint.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: YouTube confirmed the deleteVideo result.}
+        - {id: notFound, goName: NotFound, description: The selected video is not visible., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: YouTube daily quota is exhausted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: YouTube definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One example deleteVideo result is returned.
+          output: {"videoId":"AbCdEfGhI12"}
+    - name: updateVideo
+      goName: UpdateVideo
+      inputType: UpdateVideoInput
+      outputType: UpdatedVideo
+      kind: mutation
+      description: Apply YouTube updateVideo using the documented Data API v3 endpoint.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: YouTube confirmed the updateVideo result.}
+        - {id: notFound, goName: NotFound, description: The selected video is not visible., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: YouTube daily quota is exhausted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: YouTube definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One example updateVideo result is returned.
+          output: {"videoId":"AbCdEfGhI12","title":"Updated walkthrough","description":"A short compiler tour","categoryId":"27","privacyStatus":"public"}
+    - name: createPlaylist
+      goName: CreatePlaylist
+      inputType: CreatePlaylistInput
+      outputType: Playlist
+      kind: mutation
+      description: Create one owned playlist with a title, description, and privacy setting.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
+      branches:
+        - {id: created, goName: Created, description: YouTube confirmed the created playlist.}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: YouTube daily quota is exhausted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: YouTube definitively rejected the request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A prior create may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One private example playlist is created.
+          output: {id: PLcurated123, title: Compiler picks, description: Curated videos, privacyStatus: private}
+    - name: getPlaylistItem
+      goName: GetPlaylistItem
+      inputType: PlaylistItemIDInput
+      outputType: PlaylistItem
+      kind: query
+      description: Read one playlist item by its stable YouTube item ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: YouTube confirmed the item found result.}
+        - {id: notFound, goName: NotFound, description: The item is not visible., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: YouTube daily quota is exhausted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: YouTube definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example playlist item is returned.
+          output: {"id":"PLITEM001","playlistId":"PLcurated123","videoId":"AbCdEfGhI12","title":"Compiler release walkthrough","position":0,"addedAt":"2026-10-26T10:00:00Z","videoPublishedAt":"2026-10-20T10:00:00Z"}
+    - name: deletePlaylistItem
+      goName: DeletePlaylistItem
+      inputType: PlaylistItemIDInput
+      outputType: DeletedPlaylistItem
+      kind: mutation
+      description: Delete one playlist item by its stable YouTube item ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: YouTube confirmed the item deleted result.}
+        - {id: notFound, goName: NotFound, description: The item is not visible., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: YouTube daily quota is exhausted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: YouTube definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One example playlist item is returned.
+          output: {"playlistItemId":"PLITEM001"}
+    - name: getPlaylist
+      goName: GetPlaylist
+      inputType: GetPlaylistInput
+      outputType: Playlist
+      kind: query
+      description: Read one playlist's title, description, and privacy setting by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: YouTube confirmed the getPlaylist result.}
+        - {id: notFound, goName: NotFound, description: The selected playlist is not visible., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: YouTube daily quota is exhausted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: YouTube definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example getPlaylist result is returned.
+          output: {"id":"PLcurated123","title":"Compiler picks","description":"Curated videos","privacyStatus":"private"}
+    - name: listPlaylists
+      goName: ListPlaylists
+      inputType: ListPlaylistsInput
+      outputType: PlaylistsPage
+      kind: query
+      description: List one page of playlists owned by the connected account or a selected channel.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: YouTube confirmed the listPlaylists result.}
+        - {id: notFound, goName: NotFound, description: The selected playlist is not visible., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: YouTube daily quota is exhausted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: YouTube definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example listPlaylists result is returned.
+          output: {"playlists":[{"id":"PLcurated123","title":"Compiler picks","description":"Curated videos","privacyStatus":"private"}],"nextPageToken":""}
+    - name: updatePlaylist
+      goName: UpdatePlaylist
+      inputType: UpdatePlaylistInput
+      outputType: Playlist
+      kind: mutation
+      description: Replace one playlist's title, description, and privacy setting with supplied values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: YouTube confirmed the updatePlaylist result.}
+        - {id: notFound, goName: NotFound, description: The selected playlist is not visible., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: YouTube daily quota is exhausted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: YouTube definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One example updatePlaylist result is returned.
+          output: {"id":"PLcurated123","title":"Updated picks","description":"Curated videos","privacyStatus":"private"}
+    - name: deletePlaylist
+      goName: DeletePlaylist
+      inputType: GetPlaylistInput
+      outputType: DeletedPlaylist
+      kind: mutation
+      description: Delete an owned playlist by ID; a missing playlist is already absent.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: YouTube confirmed the deletePlaylist result.}
+        - {id: notFound, goName: NotFound, description: The selected playlist is not visible., optional: true}
+        - {id: quotaExhausted, goName: QuotaExhausted, description: YouTube daily quota is exhausted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: YouTube definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YouTube returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One example deletePlaylist result is returned.
+          output: {"playlistId":"PLcurated123"}
     - name: searchVideos
       goName: SearchVideos
       inputType: SearchVideosInput

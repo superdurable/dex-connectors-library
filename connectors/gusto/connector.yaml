@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: gusto
   displayName: Gusto
-  description: Read an employee from an authorized Gusto company.
+  description: Read employees from an authorized Gusto company.
   company: Gusto
   categories: [hr-recruiting, finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: gusto
   languages:
@@ -44,7 +44,7 @@ spec:
         goName: MaxResponseBytes
         type: integer
         default: 1048576
-        description: Maximum complete Gusto JSON response in bytes. Blank uses the displayed default; increase only for an unusually large employee record.
+        description: Maximum complete Gusto JSON response in bytes. Blank uses the displayed default; increase only for an unusually large employee page.
   auth:
     type: oauth2
     refreshable: true
@@ -75,7 +75,7 @@ spec:
       steps:
         - In Gusto Developer Portal, create or open an application under Applications and register the exact HTTPS redirect URI shown by Dex Web under Redirect URIs. Enable the employees:read scope and any required consent for the company.
         - Copy the application Client ID and Client Secret into the fields below. Enter the same callback URI as redirectUri, and choose Authorize in Dex Web for the intended company.
-        - Supply employeeId in the Flow input as the employee UUID from Gusto's employee list or webhook. The company-level token must grant employees:read; employee IDs are non-secret UUIDs.
+        - Supply employeeId in the lookup Flow input as the employee UUID from Gusto's employee list or webhook. For listEmployees, supply the company UUID from the authorized company in Gusto or its authorization response, then choose a positive page and per-page count. These UUIDs are non-secret; blank prevents the request. The company-level token must grant employees:read.
     oauth2:
       authorizationEndpoint: https://api.gusto.com/oauth/authorize
       tokenEndpoint: https://api.gusto.com/oauth/token
@@ -96,6 +96,27 @@ spec:
         requiredScopes: [employees:read]
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: listEmployees
+      goName: ListEmployees
+      inputType: ListEmployeesInput
+      outputType: EmployeesPage
+      kind: query
+      description: Read one bounded page of employees from an authorized company.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Gusto returned the requested employee page.}
+        - {id: missing, goName: Missing, description: The company is not visible to this connection., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Gusto conclusively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Gusto returned malformed or oversized employee data., optional: true}
+        - {id: defect, goName: Defect, description: 'Page settings, company UUID, or OAuth credentials are invalid.', optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample employee page is returned.
+          output: {employees: [{employeeId: 90a68db5-cb3a-4f64-bb60-c0a934ee7600, firstName: Ada, lastName: Lovelace, email: ada@example.com, companyId: 7d61f73e-a18c-46a5-88e2-2bfa894657d7}]}
     - name: getEmployee
       goName: GetEmployee
       inputType: GetEmployeeInput

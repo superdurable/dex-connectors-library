@@ -43,6 +43,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetMessage() sdkgo.Query[GetMessageInput, OutboundMessage]
+	DeleteMessage() sdkgo.Mutation[DeleteMessageInput, DeletedMessage]
 	ListSocialProfiles() sdkgo.Query[ListSocialProfilesInput, SocialProfilesPage]
 	ListScheduledPosts() sdkgo.Query[ListScheduledPostsInput, ScheduledPostsPage]
 	SchedulePost() sdkgo.Mutation[SchedulePostInput, ScheduledPostReceipt]
@@ -50,6 +52,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetMessage() sdkgo.Query[GetMessageInput, OutboundMessage] {
+	return operations.client.GetMessage()
+}
+func (operations clientOperations) DeleteMessage() sdkgo.Mutation[DeleteMessageInput, DeletedMessage] {
+	return operations.client.DeleteMessage()
+}
 func (operations clientOperations) ListSocialProfiles() sdkgo.Query[ListSocialProfilesInput, SocialProfilesPage] {
 	return operations.client.ListSocialProfiles()
 }
@@ -258,6 +266,148 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const GetMessageBranchFound sdkgo.BranchID = "found"
+const GetMessageBranchNotFound sdkgo.BranchID = "notFound"
+const GetMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetMessageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetMessageDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetMessageBranchFound, Description: "Hootsuite returned the outbound message."},
+		{ID: GetMessageBranchNotFound, Description: "The message ID does not exist.", Optional: true},
+		{ID: GetMessageBranchProviderRejected, Description: "Hootsuite rejected the lookup.", Optional: true},
+		{ID: GetMessageBranchInvalidResponse, Description: "Hootsuite returned unusable message JSON.", Optional: true},
+		{ID: GetMessageBranchDefect, Description: "Local message ID or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetMessageResult = sdkgo.QueryResult[OutboundMessage]
+
+type GetMessageStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=hootsuite"`
+	operationID                    struct{}                                           `connector:"operationId=getMessage"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetMessageInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetMessageResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetMessageResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetMessageResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetMessageResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetMessageResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[OutboundMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[IN, GetMessageInput, OutboundMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("hootsuite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMessageInput, OutboundMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetMessageResult] {
+			branches := make([]sdkgo.BranchTarget[GetMessageResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetMessageBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetMessageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetMessageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetMessageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteMessageBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteMessageBranchDeleted, Description: "The message is absent after the delete request."},
+		{ID: DeleteMessageBranchProviderRejected, Description: "Hootsuite refused deletion in the current message state.", Optional: true},
+		{ID: DeleteMessageBranchDefect, Description: "Local message ID or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteMessageResult = sdkgo.MutationResult[DeletedMessage]
+
+type DeleteMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=hootsuite"`
+	operationID                       struct{}                                             `connector:"operationId=deleteMessage"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteMessageInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteMessageResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteMessageResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteMessageResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteMessageStep[IN any](config DeleteMessageStepConfig[IN]) sdkgo.MutationStep[IN, DeleteMessageInput, DeletedMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("hootsuite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteMessageInput, DeletedMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteMessageResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteMessageResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteMessageBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteMessageBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListSocialProfilesBranchListed sdkgo.BranchID = "listed"

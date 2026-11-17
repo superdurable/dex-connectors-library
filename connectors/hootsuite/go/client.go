@@ -70,6 +70,14 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.requestWithoutBody(call, http.MethodGet, path)
+}
+
+func (client *Client) delete(call sdkgo.Call, path string) providerResponse {
+	return client.requestWithoutBody(call, http.MethodDelete, path)
+}
+
+func (client *Client) requestWithoutBody(call sdkgo.Call, method, path string) providerResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if sdkgo.IsReauthorizationRequired(err) {
 		return providerResponse{err: errCredential}
@@ -84,7 +92,7 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(accessToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, nil)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}

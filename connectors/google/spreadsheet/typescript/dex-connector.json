@@ -1,6 +1,6 @@
 {
   "connectorId": "google-sheets",
-  "releaseTag": "connectors/google/spreadsheet/go/v0.26.0",
+  "releaseTag": "connectors/google/spreadsheet/go/v0.27.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-sheets",

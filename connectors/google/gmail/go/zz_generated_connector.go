@@ -58,6 +58,11 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListMessages() sdkgo.Query[ListMessagesInput, MessagesPage]
+	ListThreads() sdkgo.Query[ListThreadsInput, ThreadsPage]
+	GetThread() sdkgo.Query[GetThreadInput, Thread]
+	ListLabels() sdkgo.Query[ListLabelsInput, LabelsList]
+	GetLabel() sdkgo.Query[GetLabelInput, Label]
 	GetMessage() sdkgo.Query[GetMessageInput, Message]
 	SendMessage() sdkgo.Mutation[SendMessageInput, SendMessageOutput]
 	ReplyToMessage() sdkgo.Mutation[ReplyToMessageInput, SendMessageOutput]
@@ -65,6 +70,21 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListMessages() sdkgo.Query[ListMessagesInput, MessagesPage] {
+	return operations.client.ListMessages()
+}
+func (operations clientOperations) ListThreads() sdkgo.Query[ListThreadsInput, ThreadsPage] {
+	return operations.client.ListThreads()
+}
+func (operations clientOperations) GetThread() sdkgo.Query[GetThreadInput, Thread] {
+	return operations.client.GetThread()
+}
+func (operations clientOperations) ListLabels() sdkgo.Query[ListLabelsInput, LabelsList] {
+	return operations.client.ListLabels()
+}
+func (operations clientOperations) GetLabel() sdkgo.Query[GetLabelInput, Label] {
+	return operations.client.GetLabel()
+}
 func (operations clientOperations) GetMessage() sdkgo.Query[GetMessageInput, Message] {
 	return operations.client.GetMessage()
 }
@@ -428,6 +448,383 @@ func NewReplyReceivedTrigger(config ReplyReceivedTriggerConfig) sdkgo.TriggerRun
 	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[MessageEvent]{
 		Definition: ReplyReceivedTriggerDefinition, Binding: binding,
 		Source: config.Connection.client.replyReceivedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
+const ListMessagesBranchListed sdkgo.BranchID = "listed"
+const ListMessagesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListMessagesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListMessagesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListMessagesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listMessages"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListMessagesBranchListed, Description: "Gmail returned the selected message page."},
+		{ID: ListMessagesBranchProviderRejected, Description: "Gmail conclusively rejected the search.", Optional: true},
+		{ID: ListMessagesBranchInvalidResponse, Description: "Gmail returned malformed or oversized message list JSON.", Optional: true},
+		{ID: ListMessagesBranchDefect, Description: "Local search input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListMessagesResult = sdkgo.QueryResult[MessagesPage]
+
+type ListMessagesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=gmail"`
+	operationID                    struct{}                                        `connector:"operationId=listMessages"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                  `connector:"configurationUI"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListMessagesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListMessagesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListMessagesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListMessagesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListMessagesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[MessagesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListMessagesStep[IN any](config ListMessagesStepConfig[IN]) sdkgo.QueryStep[IN, ListMessagesInput, MessagesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gmail connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListMessagesInput, MessagesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListMessages(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListMessagesResult] {
+			branches := make([]sdkgo.BranchTarget[ListMessagesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListMessagesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListMessagesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListMessagesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListMessagesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListThreadsBranchListed sdkgo.BranchID = "listed"
+const ListThreadsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListThreadsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListThreadsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListThreadsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listThreads"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListThreadsBranchListed, Description: "Gmail returned the selected thread page."},
+		{ID: ListThreadsBranchProviderRejected, Description: "Gmail conclusively rejected the thread search.", Optional: true},
+		{ID: ListThreadsBranchInvalidResponse, Description: "Gmail returned malformed or oversized thread list JSON.", Optional: true},
+		{ID: ListThreadsBranchDefect, Description: "Local thread search input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListThreadsResult = sdkgo.QueryResult[ThreadsPage]
+
+type ListThreadsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=gmail"`
+	operationID                    struct{}                                       `connector:"operationId=listThreads"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                 `connector:"configurationUI"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListThreadsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListThreadsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListThreadsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListThreadsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListThreadsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ThreadsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListThreadsStep[IN any](config ListThreadsStepConfig[IN]) sdkgo.QueryStep[IN, ListThreadsInput, ThreadsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gmail connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListThreadsInput, ThreadsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListThreads(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListThreadsResult] {
+			branches := make([]sdkgo.BranchTarget[ListThreadsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListThreadsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListThreadsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListThreadsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListThreadsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetThreadBranchFound sdkgo.BranchID = "found"
+const GetThreadBranchNotFound sdkgo.BranchID = "notFound"
+const GetThreadBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetThreadBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetThreadBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetThreadDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getThread"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetThreadBranchFound, Description: "Gmail returned the thread and its messages."},
+		{ID: GetThreadBranchNotFound, Description: "No thread has that ID.", Optional: true},
+		{ID: GetThreadBranchProviderRejected, Description: "Gmail conclusively rejected the thread read.", Optional: true},
+		{ID: GetThreadBranchInvalidResponse, Description: "Gmail returned malformed or oversized thread JSON.", Optional: true},
+		{ID: GetThreadBranchDefect, Description: "Local thread ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetThreadResult = sdkgo.QueryResult[Thread]
+
+type GetThreadStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                  `connector:"connectorId=gmail"`
+	operationID                    struct{}                                  `connector:"operationId=getThread"`
+	StepType                       string                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                     `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI            `connector:"configurationUI"`
+	Connection                     Connection                                `connector:"connection"`
+	ConnectionName                 string                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetThreadInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetThreadResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetThreadResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetThreadResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetThreadResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetThreadResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Thread]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                          `connector:"stepOptionsOverride"`
+}
+
+func NewGetThreadStep[IN any](config GetThreadStepConfig[IN]) sdkgo.QueryStep[IN, GetThreadInput, Thread] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gmail connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetThreadInput, Thread]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetThread(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetThreadResult] {
+			branches := make([]sdkgo.BranchTarget[GetThreadResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetThreadBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetThreadBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetThreadBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetThreadBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetThreadBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListLabelsBranchListed sdkgo.BranchID = "listed"
+const ListLabelsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListLabelsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListLabelsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListLabelsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listLabels"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListLabelsBranchListed, Description: "Gmail returned its labels."},
+		{ID: ListLabelsBranchProviderRejected, Description: "Gmail conclusively rejected the label list.", Optional: true},
+		{ID: ListLabelsBranchInvalidResponse, Description: "Gmail returned malformed or oversized label JSON.", Optional: true},
+		{ID: ListLabelsBranchDefect, Description: "Connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListLabelsResult = sdkgo.QueryResult[LabelsList]
+
+type ListLabelsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=gmail"`
+	operationID                    struct{}                                      `connector:"operationId=listLabels"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                `connector:"configurationUI"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListLabelsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListLabelsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListLabelsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListLabelsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListLabelsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[LabelsList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListLabelsStep[IN any](config ListLabelsStepConfig[IN]) sdkgo.QueryStep[IN, ListLabelsInput, LabelsList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gmail connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListLabelsInput, LabelsList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListLabels(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListLabelsResult] {
+			branches := make([]sdkgo.BranchTarget[ListLabelsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListLabelsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListLabelsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListLabelsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListLabelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetLabelBranchFound sdkgo.BranchID = "found"
+const GetLabelBranchNotFound sdkgo.BranchID = "notFound"
+const GetLabelBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetLabelBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetLabelBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetLabelDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getLabel"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetLabelBranchFound, Description: "Gmail returned the label."},
+		{ID: GetLabelBranchNotFound, Description: "No label has that ID.", Optional: true},
+		{ID: GetLabelBranchProviderRejected, Description: "Gmail conclusively rejected the label read.", Optional: true},
+		{ID: GetLabelBranchInvalidResponse, Description: "Gmail returned malformed or oversized label JSON.", Optional: true},
+		{ID: GetLabelBranchDefect, Description: "Local label ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetLabelResult = sdkgo.QueryResult[Label]
+
+type GetLabelStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                 `connector:"connectorId=gmail"`
+	operationID                    struct{}                                 `connector:"operationId=getLabel"`
+	StepType                       string                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                    `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI           `connector:"configurationUI"`
+	Connection                     Connection                               `connector:"connection"`
+	ConnectionName                 string                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetLabelInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetLabelResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetLabelResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetLabelResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetLabelResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetLabelResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Label]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                         `connector:"stepOptionsOverride"`
+}
+
+func NewGetLabelStep[IN any](config GetLabelStepConfig[IN]) sdkgo.QueryStep[IN, GetLabelInput, Label] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gmail connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetLabelInput, Label]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetLabel(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetLabelResult] {
+			branches := make([]sdkgo.BranchTarget[GetLabelResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetLabelBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetLabelBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetLabelBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetLabelBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetLabelBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }
 

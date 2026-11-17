@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listFileSearchStores/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gemini.FileSearchStoresPage](`{"fileSearchStores":[{"name":"fileSearchStores/team-docs-abc123def456","displayName":"Team docs"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "getFileSearchStore/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gemini.FileSearchStore](`{"name":"fileSearchStores/team-docs-abc123def456","displayName":"Team docs"}`)
+			return err
+		}},
+		{name: "createFileSearchStore/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gemini.FileSearchStore](`{"name":"fileSearchStores/team-docs-abc123def456","displayName":"Team docs"}`)
+			return err
+		}},
+		{name: "deleteFileSearchStore/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gemini.DeleteFileSearchStoreOutput](`{"name":"fileSearchStores/team-docs-abc123def456"}`)
+			return err
+		}},
 		{name: "generateContent/launchSummary/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[gemini.GenerateContentResponse](`{"responseId":"resp-launch-summary","modelVersion":"gemini-3.5-flash-lite","text":"{\"headline\":\"Connector ships\",\"summary\":\"It works. Teams can use typed steps.\",\"keyPoints\":[\"typed\",\"durable\"]}","finishReason":"STOP","usage":{"promptTokens":30,"candidateTokens":12,"totalTokens":42}}`)
 			return err
@@ -38,6 +54,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListFileSearchStores().Definition().Operation.OperationID != "listFileSearchStores" {
+		t.Errorf("listFileSearchStores mock has another definition")
+	}
+	if mock.GetFileSearchStore().Definition().Operation.OperationID != "getFileSearchStore" {
+		t.Errorf("getFileSearchStore mock has another definition")
+	}
+	if mock.CreateFileSearchStore().Definition().Operation.OperationID != "createFileSearchStore" {
+		t.Errorf("createFileSearchStore mock has another definition")
+	}
+	if mock.DeleteFileSearchStore().Definition().Operation.OperationID != "deleteFileSearchStore" {
+		t.Errorf("deleteFileSearchStore mock has another definition")
+	}
 	if mock.GenerateContent().Definition().Operation.OperationID != "generateContent" {
 		t.Errorf("generateContent mock has another definition")
 	}

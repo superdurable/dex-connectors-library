@@ -40,6 +40,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[hubspot.CRMObject](`{"objectType":"deals","id":"9001","properties":{"dealname":"Analytical Engines renewal","dealstage":"qualifiedtobuy","pipeline":"default","hs_object_id":"9001","createdate":"2026-10-01T09:00:00.000Z","hs_lastmodifieddate":"2026-10-25T10:05:00.000Z"},"createdAt":"2026-10-01T09:00:00Z","updatedAt":"2026-10-25T10:05:00Z"}`)
 			return err
 		}},
+		{name: "createObject/createdDeal/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[hubspot.CRMObject](`{"objectType":"deals","id":"9100","properties":{"dealname":"New consulting project","dealstage":"appointmentscheduled","pipeline":"default"},"createdAt":"2026-10-25T10:05:00Z","updatedAt":"2026-10-25T10:05:00Z"}`)
+			return err
+		}},
+		{name: "deleteObject/archivedDeal/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[hubspot.DeletedObject](`{"objectType":"deals","objectId":"9100"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -61,5 +69,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.UpdateObject().Definition().Operation.OperationID != "updateObject" {
 		t.Errorf("updateObject mock has another definition")
+	}
+	if mock.CreateObject().Definition().Operation.OperationID != "createObject" {
+		t.Errorf("createObject mock has another definition")
+	}
+	if mock.DeleteObject().Definition().Operation.OperationID != "deleteObject" {
+		t.Errorf("deleteObject mock has another definition")
 	}
 }

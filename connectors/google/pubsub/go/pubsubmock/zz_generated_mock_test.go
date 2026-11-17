@@ -16,6 +16,54 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "publishMessage/publishedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.PublishedMessage](`{"messageId":"1234567890"}`)
+			return err
+		}},
+		{name: "pullMessages/pulledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.PulledMessages](`{"receivedMessages":[{"ackId":"sample-ack-id","message":{"messageId":"1234567890","data":"ZXZlbnQ="}}]}`)
+			return err
+		}},
+		{name: "acknowledgeMessages/acknowledgedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.AcknowledgedMessages](`{"acknowledgedCount":1}`)
+			return err
+		}},
+		{name: "listSubscriptions/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.SubscriptionsPage](`{"subscriptions":[{"name":"projects/sample-project/subscriptions/events-reader","topic":"projects/sample-project/topics/events","ackDeadlineSeconds":10}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "getSubscription/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.Subscription](`{"name":"projects/sample-project/subscriptions/events-reader","topic":"projects/sample-project/topics/events","ackDeadlineSeconds":10}`)
+			return err
+		}},
+		{name: "createSubscription/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.Subscription](`{"name":"projects/sample-project/subscriptions/events-reader","topic":"projects/sample-project/topics/events","ackDeadlineSeconds":10}`)
+			return err
+		}},
+		{name: "updateSubscriptionLabels/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.Subscription](`{"name":"projects/sample-project/subscriptions/events-reader","topic":"projects/sample-project/topics/events","ackDeadlineSeconds":10,"labels":{"team":"operations"}}`)
+			return err
+		}},
+		{name: "deleteSubscription/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.DeletedSubscription](`{"name":"projects/sample-project/subscriptions/events-reader"}`)
+			return err
+		}},
+		{name: "getTopic/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.Topic](`{"name":"projects/sample-project/topics/events","labels":{"team":"operations"}}`)
+			return err
+		}},
+		{name: "createTopic/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.Topic](`{"name":"projects/sample-project/topics/events","labels":{"team":"operations"}}`)
+			return err
+		}},
+		{name: "updateTopicLabels/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.Topic](`{"name":"projects/sample-project/topics/events","labels":{"team":"operations"}}`)
+			return err
+		}},
+		{name: "deleteTopic/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.DeletedTopic](`{"name":"projects/sample-project/topics/events"}`)
+			return err
+		}},
 		{name: "listTopics/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[pubsub.TopicsPage](`{"topics":[{"name":"projects/sample-project/topics/events"}],"nextPageToken":""}`)
 			return err
@@ -30,6 +78,42 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.PublishMessage().Definition().Operation.OperationID != "publishMessage" {
+		t.Errorf("publishMessage mock has another definition")
+	}
+	if mock.PullMessages().Definition().Operation.OperationID != "pullMessages" {
+		t.Errorf("pullMessages mock has another definition")
+	}
+	if mock.AcknowledgeMessages().Definition().Operation.OperationID != "acknowledgeMessages" {
+		t.Errorf("acknowledgeMessages mock has another definition")
+	}
+	if mock.ListSubscriptions().Definition().Operation.OperationID != "listSubscriptions" {
+		t.Errorf("listSubscriptions mock has another definition")
+	}
+	if mock.GetSubscription().Definition().Operation.OperationID != "getSubscription" {
+		t.Errorf("getSubscription mock has another definition")
+	}
+	if mock.CreateSubscription().Definition().Operation.OperationID != "createSubscription" {
+		t.Errorf("createSubscription mock has another definition")
+	}
+	if mock.UpdateSubscriptionLabels().Definition().Operation.OperationID != "updateSubscriptionLabels" {
+		t.Errorf("updateSubscriptionLabels mock has another definition")
+	}
+	if mock.DeleteSubscription().Definition().Operation.OperationID != "deleteSubscription" {
+		t.Errorf("deleteSubscription mock has another definition")
+	}
+	if mock.GetTopic().Definition().Operation.OperationID != "getTopic" {
+		t.Errorf("getTopic mock has another definition")
+	}
+	if mock.CreateTopic().Definition().Operation.OperationID != "createTopic" {
+		t.Errorf("createTopic mock has another definition")
+	}
+	if mock.UpdateTopicLabels().Definition().Operation.OperationID != "updateTopicLabels" {
+		t.Errorf("updateTopicLabels mock has another definition")
+	}
+	if mock.DeleteTopic().Definition().Operation.OperationID != "deleteTopic" {
+		t.Errorf("deleteTopic mock has another definition")
+	}
 	if mock.ListTopics().Definition().Operation.OperationID != "listTopics" {
 		t.Errorf("listTopics mock has another definition")
 	}

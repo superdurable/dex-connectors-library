@@ -16,10 +16,185 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getCompany/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.CompanyRecord](`{"name":"Meridian","fullDomain":"meridian.harvestapp.com","isActive":true,"wantsTimestampTimers":false,"weeklyCapacitySeconds":144000}`)
+			return err
+		}},
+		{name: "updateCompany/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.CompanyRecord](`{"name":"Meridian","fullDomain":"meridian.harvestapp.com","isActive":true,"wantsTimestampTimers":false,"weeklyCapacitySeconds":144000}`)
+			return err
+		}},
+		{name: "listClients/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ClientPage](`{"clients":[{"id":2001,"name":"Meridian","isActive":true}]}`)
+			return err
+		}},
+		{name: "getClient/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ClientRecord](`{"id":2001,"name":"Meridian","isActive":true}`)
+			return err
+		}},
+		{name: "createClient/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ClientRecord](`{"id":2001,"name":"Meridian","isActive":true}`)
+			return err
+		}},
+		{name: "updateClient/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ClientRecord](`{"id":2001,"name":"Meridian","isActive":true}`)
+			return err
+		}},
+		{name: "deleteClient/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedClient](`{"id":2001}`); return err }},
+		{name: "listContacts/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ContactPage](`{"contacts":[{"id":7001,"clientId":2001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com"}]}`)
+			return err
+		}},
+		{name: "getContact/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ContactRecord](`{"id":7001,"clientId":2001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com"}`)
+			return err
+		}},
+		{name: "createContact/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ContactRecord](`{"id":7001,"clientId":2001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com"}`)
+			return err
+		}},
+		{name: "updateContact/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ContactRecord](`{"id":7001,"clientId":2001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com"}`)
+			return err
+		}},
+		{name: "deleteContact/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedContact](`{"id":7001}`); return err }},
+		{name: "listTasks/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TaskPage](`{"tasks":[{"id":8001,"name":"Planning","isActive":true}]}`)
+			return err
+		}},
+		{name: "getTask/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TaskRecord](`{"id":8001,"name":"Planning","isActive":true}`)
+			return err
+		}},
+		{name: "createTask/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TaskRecord](`{"id":8001,"name":"Planning","isActive":true}`)
+			return err
+		}},
+		{name: "updateTask/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TaskRecord](`{"id":8001,"name":"Planning","isActive":true}`)
+			return err
+		}},
+		{name: "deleteTask/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedTask](`{"id":8001}`); return err }},
+		{name: "listInvoices/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.InvoicePage](`{"invoices":[{"id":9001,"clientId":2001,"number":"INV-1001","subject":"Planning","state":"draft","amount":100}]}`)
+			return err
+		}},
+		{name: "getInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.InvoiceRecord](`{"id":9001,"clientId":2001,"number":"INV-1001","subject":"Planning","state":"draft","amount":100}`)
+			return err
+		}},
+		{name: "createInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.InvoiceRecord](`{"id":9001,"clientId":2001,"number":"INV-1001","subject":"Planning","state":"draft","amount":100}`)
+			return err
+		}},
+		{name: "updateInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.InvoiceRecord](`{"id":9001,"clientId":2001,"number":"INV-1001","subject":"Planning","state":"draft","amount":100}`)
+			return err
+		}},
+		{name: "deleteInvoice/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedInvoice](`{"id":9001}`); return err }},
+		{name: "listExpenses/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ExpensePage](`{"expenses":[{"id":10001,"projectId":3001,"categoryId":11001,"notes":"Team lunch","totalCost":45,"spentDate":"2026-11-01","billable":true}]}`)
+			return err
+		}},
+		{name: "getExpense/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ExpenseRecord](`{"id":10001,"projectId":3001,"categoryId":11001,"notes":"Team lunch","totalCost":45,"spentDate":"2026-11-01","billable":true}`)
+			return err
+		}},
+		{name: "createExpense/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ExpenseRecord](`{"id":10001,"projectId":3001,"categoryId":11001,"notes":"Team lunch","totalCost":45,"spentDate":"2026-11-01","billable":true}`)
+			return err
+		}},
+		{name: "updateExpense/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ExpenseRecord](`{"id":10001,"projectId":3001,"categoryId":11001,"notes":"Team lunch","totalCost":45,"spentDate":"2026-11-01","billable":true}`)
+			return err
+		}},
+		{name: "deleteExpense/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedExpense](`{"id":10001}`); return err }},
+		{name: "listEstimates/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.EstimatePage](`{"estimates":[{"id":12001,"clientId":2001,"number":"EST-1001","subject":"Planning","state":"draft","amount":100}]}`)
+			return err
+		}},
+		{name: "getEstimate/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.EstimateRecord](`{"id":12001,"clientId":2001,"number":"EST-1001","subject":"Planning","state":"draft","amount":100}`)
+			return err
+		}},
+		{name: "createEstimate/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.EstimateRecord](`{"id":12001,"clientId":2001,"number":"EST-1001","subject":"Planning","state":"draft","amount":100}`)
+			return err
+		}},
+		{name: "updateEstimate/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.EstimateRecord](`{"id":12001,"clientId":2001,"number":"EST-1001","subject":"Planning","state":"draft","amount":100}`)
+			return err
+		}},
+		{name: "deleteEstimate/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.DeletedEstimate](`{"id":12001}`)
+			return err
+		}},
+		{name: "listUsers/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.UserPage](`{"users":[{"id":6001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com","isActive":true}]}`)
+			return err
+		}},
+		{name: "getUser/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.UserRecord](`{"id":6001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com","isActive":true}`)
+			return err
+		}},
+		{name: "getCurrentUser/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.UserRecord](`{"id":6001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com","isActive":true}`)
+			return err
+		}},
+		{name: "createUser/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.UserRecord](`{"id":6001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com","isActive":true}`)
+			return err
+		}},
+		{name: "updateUser/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.UserRecord](`{"id":6001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com","isActive":true}`)
+			return err
+		}},
+		{name: "deleteUser/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedUser](`{"id":6001}`); return err }},
 		{name: "listProjects/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[harvest.ProjectPage](`{"projects":[{"id":3001,"name":"Meridian Website","isActive":true}]}`)
 			return err
 		}},
+		{name: "getTimeEntry/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+			return err
+		}},
+		{name: "createTimeEntryByDuration/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+			return err
+		}},
+		{name: "createTimeEntryByStartEnd/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+			return err
+		}},
+		{name: "updateTimeEntry/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+			return err
+		}},
+		{name: "deleteTimeEntry/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.DeletedTimeEntry](`{"id":4001}`)
+			return err
+		}},
+		{name: "deleteTimeEntryExternalReference/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.DeletedTimeEntryExternalReference](`{"id":4001}`)
+			return err
+		}},
+		{name: "stopTimeEntry/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.TimeEntry](`{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}`)
+			return err
+		}},
+		{name: "getProject/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.Project](`{"id":3001,"name":"Meridian Website","isActive":true}`)
+			return err
+		}},
+		{name: "createProject/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.Project](`{"id":3001,"name":"Meridian Website","isActive":true}`)
+			return err
+		}},
+		{name: "updateProject/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.Project](`{"id":3001,"name":"Meridian Website","isActive":true}`)
+			return err
+		}},
+		{name: "deleteProject/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedProject](`{"id":3001}`); return err }},
 		{name: "listTimeEntries/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[harvest.TimeEntryPage](`{"timeEntries":[{"id":4001,"project":{"id":3001},"hours":2.5,"spentDate":"2026-10-28"}]}`)
 			return err
@@ -34,8 +209,155 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetCompany().Definition().Operation.OperationID != "getCompany" {
+		t.Errorf("getCompany mock has another definition")
+	}
+	if mock.UpdateCompany().Definition().Operation.OperationID != "updateCompany" {
+		t.Errorf("updateCompany mock has another definition")
+	}
+	if mock.ListClients().Definition().Operation.OperationID != "listClients" {
+		t.Errorf("listClients mock has another definition")
+	}
+	if mock.GetClient().Definition().Operation.OperationID != "getClient" {
+		t.Errorf("getClient mock has another definition")
+	}
+	if mock.CreateClient().Definition().Operation.OperationID != "createClient" {
+		t.Errorf("createClient mock has another definition")
+	}
+	if mock.UpdateClient().Definition().Operation.OperationID != "updateClient" {
+		t.Errorf("updateClient mock has another definition")
+	}
+	if mock.DeleteClient().Definition().Operation.OperationID != "deleteClient" {
+		t.Errorf("deleteClient mock has another definition")
+	}
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
+		t.Errorf("getContact mock has another definition")
+	}
+	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
+		t.Errorf("createContact mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
+	}
+	if mock.ListTasks().Definition().Operation.OperationID != "listTasks" {
+		t.Errorf("listTasks mock has another definition")
+	}
+	if mock.GetTask().Definition().Operation.OperationID != "getTask" {
+		t.Errorf("getTask mock has another definition")
+	}
+	if mock.CreateTask().Definition().Operation.OperationID != "createTask" {
+		t.Errorf("createTask mock has another definition")
+	}
+	if mock.UpdateTask().Definition().Operation.OperationID != "updateTask" {
+		t.Errorf("updateTask mock has another definition")
+	}
+	if mock.DeleteTask().Definition().Operation.OperationID != "deleteTask" {
+		t.Errorf("deleteTask mock has another definition")
+	}
+	if mock.ListInvoices().Definition().Operation.OperationID != "listInvoices" {
+		t.Errorf("listInvoices mock has another definition")
+	}
+	if mock.GetInvoice().Definition().Operation.OperationID != "getInvoice" {
+		t.Errorf("getInvoice mock has another definition")
+	}
+	if mock.CreateInvoice().Definition().Operation.OperationID != "createInvoice" {
+		t.Errorf("createInvoice mock has another definition")
+	}
+	if mock.UpdateInvoice().Definition().Operation.OperationID != "updateInvoice" {
+		t.Errorf("updateInvoice mock has another definition")
+	}
+	if mock.DeleteInvoice().Definition().Operation.OperationID != "deleteInvoice" {
+		t.Errorf("deleteInvoice mock has another definition")
+	}
+	if mock.ListExpenses().Definition().Operation.OperationID != "listExpenses" {
+		t.Errorf("listExpenses mock has another definition")
+	}
+	if mock.GetExpense().Definition().Operation.OperationID != "getExpense" {
+		t.Errorf("getExpense mock has another definition")
+	}
+	if mock.CreateExpense().Definition().Operation.OperationID != "createExpense" {
+		t.Errorf("createExpense mock has another definition")
+	}
+	if mock.UpdateExpense().Definition().Operation.OperationID != "updateExpense" {
+		t.Errorf("updateExpense mock has another definition")
+	}
+	if mock.DeleteExpense().Definition().Operation.OperationID != "deleteExpense" {
+		t.Errorf("deleteExpense mock has another definition")
+	}
+	if mock.ListEstimates().Definition().Operation.OperationID != "listEstimates" {
+		t.Errorf("listEstimates mock has another definition")
+	}
+	if mock.GetEstimate().Definition().Operation.OperationID != "getEstimate" {
+		t.Errorf("getEstimate mock has another definition")
+	}
+	if mock.CreateEstimate().Definition().Operation.OperationID != "createEstimate" {
+		t.Errorf("createEstimate mock has another definition")
+	}
+	if mock.UpdateEstimate().Definition().Operation.OperationID != "updateEstimate" {
+		t.Errorf("updateEstimate mock has another definition")
+	}
+	if mock.DeleteEstimate().Definition().Operation.OperationID != "deleteEstimate" {
+		t.Errorf("deleteEstimate mock has another definition")
+	}
+	if mock.ListUsers().Definition().Operation.OperationID != "listUsers" {
+		t.Errorf("listUsers mock has another definition")
+	}
+	if mock.GetUser().Definition().Operation.OperationID != "getUser" {
+		t.Errorf("getUser mock has another definition")
+	}
+	if mock.GetCurrentUser().Definition().Operation.OperationID != "getCurrentUser" {
+		t.Errorf("getCurrentUser mock has another definition")
+	}
+	if mock.CreateUser().Definition().Operation.OperationID != "createUser" {
+		t.Errorf("createUser mock has another definition")
+	}
+	if mock.UpdateUser().Definition().Operation.OperationID != "updateUser" {
+		t.Errorf("updateUser mock has another definition")
+	}
+	if mock.DeleteUser().Definition().Operation.OperationID != "deleteUser" {
+		t.Errorf("deleteUser mock has another definition")
+	}
 	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
 		t.Errorf("listProjects mock has another definition")
+	}
+	if mock.GetTimeEntry().Definition().Operation.OperationID != "getTimeEntry" {
+		t.Errorf("getTimeEntry mock has another definition")
+	}
+	if mock.CreateTimeEntryByDuration().Definition().Operation.OperationID != "createTimeEntryByDuration" {
+		t.Errorf("createTimeEntryByDuration mock has another definition")
+	}
+	if mock.CreateTimeEntryByStartEnd().Definition().Operation.OperationID != "createTimeEntryByStartEnd" {
+		t.Errorf("createTimeEntryByStartEnd mock has another definition")
+	}
+	if mock.UpdateTimeEntry().Definition().Operation.OperationID != "updateTimeEntry" {
+		t.Errorf("updateTimeEntry mock has another definition")
+	}
+	if mock.DeleteTimeEntry().Definition().Operation.OperationID != "deleteTimeEntry" {
+		t.Errorf("deleteTimeEntry mock has another definition")
+	}
+	if mock.DeleteTimeEntryExternalReference().Definition().Operation.OperationID != "deleteTimeEntryExternalReference" {
+		t.Errorf("deleteTimeEntryExternalReference mock has another definition")
+	}
+	if mock.StopTimeEntry().Definition().Operation.OperationID != "stopTimeEntry" {
+		t.Errorf("stopTimeEntry mock has another definition")
+	}
+	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
+		t.Errorf("getProject mock has another definition")
+	}
+	if mock.CreateProject().Definition().Operation.OperationID != "createProject" {
+		t.Errorf("createProject mock has another definition")
+	}
+	if mock.UpdateProject().Definition().Operation.OperationID != "updateProject" {
+		t.Errorf("updateProject mock has another definition")
+	}
+	if mock.DeleteProject().Definition().Operation.OperationID != "deleteProject" {
+		t.Errorf("deleteProject mock has another definition")
 	}
 	if mock.ListTimeEntries().Definition().Operation.OperationID != "listTimeEntries" {
 		t.Errorf("listTimeEntries mock has another definition")

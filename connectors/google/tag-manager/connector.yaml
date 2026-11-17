@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-tag-manager
   displayName: Google Tag Manager
-  description: Read accounts, containers, and workspace tags from the Google Tag Manager v2 API.
+  description: Read accounts, containers, workspaces, and workspace tags from the Google Tag Manager v2 API.
   company: Google
   categories: [marketing, analytics]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: google-tag-manager
   languages:
@@ -89,6 +89,326 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: getTag
+      goName: GetTag
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example tag identity is returned.
+          output: {"path":"accounts/123456/containers/987654/workspaces/1/tags/42","name":"Example tag"}
+      inputType: ResourcePathInput
+      outputType: TagManagerResource
+      kind: query
+      description: Read one Tag Manager tags identity without returning configuration or secrets.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned the resource.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The resource path or connection credentials are invalid., optional: true}
+    - name: listTriggers
+      goName: ListTriggers
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example trigger identity is returned.
+          output: {"resources":[{"path":"accounts/123456/containers/987654/workspaces/1/triggers/42","name":"Example trigger"}],"nextPageToken":""}
+      inputType: ListChildResourcesInput
+      outputType: TagManagerResourcesPage
+      kind: query
+      description: List one page of Tag Manager triggers identities without returning configuration or secrets.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned a resource page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The resource path or connection credentials are invalid., optional: true}
+    - name: getTrigger
+      goName: GetTrigger
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example trigger identity is returned.
+          output: {"path":"accounts/123456/containers/987654/workspaces/1/triggers/42","name":"Example trigger"}
+      inputType: ResourcePathInput
+      outputType: TagManagerResource
+      kind: query
+      description: Read one Tag Manager triggers identity without returning configuration or secrets.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned the resource.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The resource path or connection credentials are invalid., optional: true}
+    - name: listVariables
+      goName: ListVariables
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example variable identity is returned.
+          output: {"resources":[{"path":"accounts/123456/containers/987654/workspaces/1/variables/42","name":"Example variable"}],"nextPageToken":""}
+      inputType: ListChildResourcesInput
+      outputType: TagManagerResourcesPage
+      kind: query
+      description: List one page of Tag Manager variables identities without returning configuration or secrets.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned a resource page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The resource path or connection credentials are invalid., optional: true}
+    - name: getVariable
+      goName: GetVariable
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example variable identity is returned.
+          output: {"path":"accounts/123456/containers/987654/workspaces/1/variables/42","name":"Example variable"}
+      inputType: ResourcePathInput
+      outputType: TagManagerResource
+      kind: query
+      description: Read one Tag Manager variables identity without returning configuration or secrets.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned the resource.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The resource path or connection credentials are invalid., optional: true}
+    - name: listFolders
+      goName: ListFolders
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example folder identity is returned.
+          output: {"resources":[{"path":"accounts/123456/containers/987654/workspaces/1/folders/42","name":"Example folder"}],"nextPageToken":""}
+      inputType: ListChildResourcesInput
+      outputType: TagManagerResourcesPage
+      kind: query
+      description: List one page of Tag Manager folders identities without returning configuration or secrets.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned a resource page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The resource path or connection credentials are invalid., optional: true}
+    - name: getFolder
+      goName: GetFolder
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example folder identity is returned.
+          output: {"path":"accounts/123456/containers/987654/workspaces/1/folders/42","name":"Example folder"}
+      inputType: ResourcePathInput
+      outputType: TagManagerResource
+      kind: query
+      description: Read one Tag Manager folders identity without returning configuration or secrets.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned the resource.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The resource path or connection credentials are invalid., optional: true}
+    - name: listTemplates
+      goName: ListTemplates
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example template identity is returned.
+          output: {"resources":[{"path":"accounts/123456/containers/987654/workspaces/1/templates/42","name":"Example template"}],"nextPageToken":""}
+      inputType: ListChildResourcesInput
+      outputType: TagManagerResourcesPage
+      kind: query
+      description: List one page of Tag Manager templates identities without returning configuration or secrets.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned a resource page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The resource path or connection credentials are invalid., optional: true}
+    - name: getTemplate
+      goName: GetTemplate
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example template identity is returned.
+          output: {"path":"accounts/123456/containers/987654/workspaces/1/templates/42","name":"Example template"}
+      inputType: ResourcePathInput
+      outputType: TagManagerResource
+      kind: query
+      description: Read one Tag Manager templates identity without returning configuration or secrets.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned the resource.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The resource path or connection credentials are invalid., optional: true}
+    - name: listEnvironments
+      goName: ListEnvironments
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example environment identity is returned.
+          output: {"resources":[{"path":"accounts/123456/containers/987654/environments/42","name":"Example environment"}],"nextPageToken":""}
+      inputType: ListChildResourcesInput
+      outputType: TagManagerResourcesPage
+      kind: query
+      description: List one page of Tag Manager environments identities without returning configuration or secrets.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned a resource page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The resource path or connection credentials are invalid., optional: true}
+    - name: getEnvironment
+      goName: GetEnvironment
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example environment identity is returned.
+          output: {"path":"accounts/123456/containers/987654/environments/42","name":"Example environment"}
+      inputType: ResourcePathInput
+      outputType: TagManagerResource
+      kind: query
+      description: Read one Tag Manager environments identity without returning configuration or secrets.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned the resource.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The resource path or connection credentials are invalid., optional: true}
+    - name: getVersion
+      goName: GetVersion
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example containerVersion identity is returned.
+          output: {"path":"accounts/123456/containers/987654/versions/42","name":"Example containerVersion"}
+      inputType: ResourcePathInput
+      outputType: TagManagerResource
+      kind: query
+      description: Read one Tag Manager versions identity without returning configuration or secrets.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned the resource.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The resource path or connection credentials are invalid., optional: true}
+    - name: getAccount
+      goName: GetAccount
+      inputType: ResourcePathInput
+      outputType: TagManagerResource
+      kind: query
+      description: Read the name and path of a Tag Manager account returned by listAccounts.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned the account.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the account lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized account JSON., optional: true}
+        - {id: defect, goName: Defect, description: The account path or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example Tag Manager account is returned.
+          output: {path: accounts/123456, name: Example Account}
+    - name: getContainer
+      goName: GetContainer
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example container identity is returned.
+          output: {"path":"accounts/123456/containers/42","name":"Example container"}
+      inputType: ResourcePathInput
+      outputType: TagManagerResource
+      kind: query
+      description: Read the name and path of a container returned by listContainers.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned the container.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the container lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized container JSON., optional: true}
+        - {id: defect, goName: Defect, description: The container path or connection credentials are invalid., optional: true}
+    - name: listWorkspaces
+      goName: ListWorkspaces
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example workspace identity is returned.
+          output: {"resources":[{"path":"accounts/123456/containers/987654/workspaces/42","name":"Example workspace"}],"nextPageToken":""}
+      inputType: ListChildResourcesInput
+      outputType: TagManagerResourcesPage
+      kind: query
+      description: List one page of workspaces in a Tag Manager container.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned a workspace page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the workspace list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized workspace JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The container path, page token, or credentials are invalid.", optional: true}
+    - name: getWorkspace
+      goName: GetWorkspace
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example workspace identity is returned.
+          output: {"path":"accounts/123456/containers/987654/workspaces/42","name":"Example workspace"}
+      inputType: ResourcePathInput
+      outputType: TagManagerResource
+      kind: query
+      description: Read the name and path of a workspace returned by listWorkspaces.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned the workspace.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the workspace lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized workspace JSON., optional: true}
+        - {id: defect, goName: Defect, description: The workspace path or connection credentials are invalid., optional: true}
     - name: listAccounts
       goName: ListAccounts
       inputType: ListAccountsInput

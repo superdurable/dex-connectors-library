@@ -1,6 +1,6 @@
 # YouTube Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/youtube/go@v0.4.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/youtube/go@v0.5.0` after this release is published.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/youtube`.
 
@@ -17,6 +17,8 @@ operation-specific Dex Step factories:
 - `youtube.NewAddPlaylistItemStep` adds a video to a playlist the account owns,
   at most once.
 
+Go also exposes `listChannels`, `updateChannel`, `getPlaylist`, `listPlaylists`, `createPlaylist`, `updatePlaylist`, `deletePlaylist`, `getPlaylistItem`, `deletePlaylistItem`, `listVideos`, `listVideoCategories`, `rateVideo`, `deleteVideo`, and `updateVideo` through their operation-specific `New...Step` factories. `createPlaylist` has a limited send cap of three and checks the owner's playlist listing before a possible resend. The other new writes are absolute replacements, ratings, or deletes and use the safe repeat tier. Video uploads and channel-banner uploads require binary transfer and are outside this Go expansion.
+
 ## Scopes
 
 Manifest scopes are per authorization method, not per operation, so the
@@ -25,10 +27,10 @@ whose scope it needs:
 
 | Method | Connection kind | Scope | Operations |
 | --- | --- | --- | --- |
-| `google-oauth-readonly` (default, recommended) | `google-youtube-readonly-oauth` | `youtube.readonly` | `searchVideos`, `getVideo`, `getChannel`, `listPlaylistItems` |
-| `google-oauth-manage` | `google-youtube-oauth` | `youtube` | `addPlaylistItem`, and every read |
+| `google-oauth-readonly` (default, recommended) | `google-youtube-readonly-oauth` | `youtube.readonly` | Every Query, including channel, playlist, video, playlist-item, and category reads |
+| `google-oauth-manage` | `google-youtube-oauth` | `youtube` | Every Mutation and every Query |
 
-`addPlaylistItem` on a read-only connection selects `providerRejected` with an
+Any Mutation on a read-only connection selects `providerRejected` with an
 `AUTHORIZATION` failure before any YouTube call. A refreshed token must carry
 its method's scope; `youtube` also satisfies the read-only method. The constants
 `youtube.ReadOnlyAuthMethodID` and `youtube.ManageAuthMethodID` name the
@@ -63,10 +65,12 @@ when it is not, because the listing can lag behind the insert. Wire
 An interrupted attempt that leaves no checkpoint also leads to this read-back.
 The operation cannot intentionally add a video a playlist already holds.
 
+`createPlaylist` uses a bounded single-dispatch fence with `maxSends: 3`. After an unknown create outcome, it reads the first page of owned playlists and confirms a unique exact match on title, description, and privacy. An incomplete or ambiguous listing selects `uncertain`; a confirmed absence permits another send while the cap remains. Applications should choose a distinctive title and description and reconcile `uncertain` before starting another Flow for the same playlist.
+
 ## Agent tools
 
-All five operations carry a reviewed `agent` block, so an agent host may offer
-them as tools. The four reads change nothing, so each optional branch is
+The original five operations carry a reviewed `agent` block, so an agent host may offer
+them as tools. The original four reads change nothing, so each optional branch is
 `rejected`. `addPlaylistItem` recommends approval because it changes a playlist
 that other people may see. It does not claim `retry: safe`, and its
 `invalidResponse` and `uncertain` branches are `unknown`, so a host reports
@@ -76,8 +80,8 @@ them as unconfirmed instead of letting a model repeat the call.
 
 Every operation uses `defect` for invalid local input or missing credentials,
 `quotaExhausted` when the project's daily quota (10,000 units by default) is
-spent, `providerRejected` for conclusive refusals such as HTTP 403 or 400, and
-`invalidResponse` for malformed or oversized responses. Reads of an unknown
+spent, and `providerRejected` for conclusive refusals such as HTTP 403 or 400.
+Most operations use `invalidResponse` for malformed or oversized responses; `createPlaylist` retries an unconfirmed 2xx response and can ultimately select `uncertain`. Reads of an unknown
 video, channel, or playlist use `notFound`. Rate limits, timeouts, and HTTP 5xx
 retry instead of producing a branch; for `addPlaylistItem`, see
 [Idempotency](#idempotency) for when a retry only reads the playlist back and
@@ -109,6 +113,7 @@ inputs.
 [`examples/playlist-curator`](go/examples/playlist-curator) is a runnable Dex Web
 **Start Flow** example that adds a channel's newest matching video to a
 playlist and reads the playlist back to confirm.
+Its Worker also registers `PlaylistInspectionFlow`, which reads one playlist with `getPlaylist` and is exercised by a mock-backed real Dex integration test.
 
 ## Python package
 

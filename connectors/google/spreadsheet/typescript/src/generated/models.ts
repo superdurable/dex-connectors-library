@@ -18,6 +18,8 @@ export interface Config {
   pollIntervalMs?: number;
   /** Rows after the last processed row that one rowAdded poll request reads, from 1 to 500; a poll that finds only blank rows in this window waits there, so increase it when people leave runs of blank rows below the data, not for busy tabs, since further rows are read by an immediate follow-up request. */
   pollPageSize?: number;
+  /** Google Drive API HTTPS origin for deleting a spreadsheet file. Blank uses the displayed Google endpoint; override only for a trusted test gateway. */
+  driveBaseUrl?: string;
 }
 
 /** Runtime schema for manifest configuration. */
@@ -27,6 +29,7 @@ export const ConfigSchema = z.object({
   "maxRows": z.number().int().optional(),
   "pollIntervalMs": z.number().int().optional(),
   "pollPageSize": z.number().int().optional(),
+  "driveBaseUrl": z.string().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

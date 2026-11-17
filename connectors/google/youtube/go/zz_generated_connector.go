@@ -43,6 +43,20 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListChannels() sdkgo.Query[ListChannelsInput, ChannelsPage]
+	UpdateChannel() sdkgo.Mutation[UpdateChannelInput, UpdatedChannelDescription]
+	ListVideos() sdkgo.Query[ListVideosInput, VideosPage]
+	ListVideoCategories() sdkgo.Query[ListVideoCategoriesInput, VideoCategoriesPage]
+	RateVideo() sdkgo.Mutation[RateVideoInput, RatedVideo]
+	DeleteVideo() sdkgo.Mutation[GetVideoInput, DeletedVideo]
+	UpdateVideo() sdkgo.Mutation[UpdateVideoInput, UpdatedVideo]
+	CreatePlaylist() sdkgo.Mutation[CreatePlaylistInput, Playlist]
+	GetPlaylistItem() sdkgo.Query[PlaylistItemIDInput, PlaylistItem]
+	DeletePlaylistItem() sdkgo.Mutation[PlaylistItemIDInput, DeletedPlaylistItem]
+	GetPlaylist() sdkgo.Query[GetPlaylistInput, Playlist]
+	ListPlaylists() sdkgo.Query[ListPlaylistsInput, PlaylistsPage]
+	UpdatePlaylist() sdkgo.Mutation[UpdatePlaylistInput, Playlist]
+	DeletePlaylist() sdkgo.Mutation[GetPlaylistInput, DeletedPlaylist]
 	SearchVideos() sdkgo.Query[SearchVideosInput, VideoSearchPage]
 	GetVideo() sdkgo.Query[GetVideoInput, Video]
 	GetChannel() sdkgo.Query[GetChannelInput, Channel]
@@ -52,6 +66,48 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListChannels() sdkgo.Query[ListChannelsInput, ChannelsPage] {
+	return operations.client.ListChannels()
+}
+func (operations clientOperations) UpdateChannel() sdkgo.Mutation[UpdateChannelInput, UpdatedChannelDescription] {
+	return operations.client.UpdateChannel()
+}
+func (operations clientOperations) ListVideos() sdkgo.Query[ListVideosInput, VideosPage] {
+	return operations.client.ListVideos()
+}
+func (operations clientOperations) ListVideoCategories() sdkgo.Query[ListVideoCategoriesInput, VideoCategoriesPage] {
+	return operations.client.ListVideoCategories()
+}
+func (operations clientOperations) RateVideo() sdkgo.Mutation[RateVideoInput, RatedVideo] {
+	return operations.client.RateVideo()
+}
+func (operations clientOperations) DeleteVideo() sdkgo.Mutation[GetVideoInput, DeletedVideo] {
+	return operations.client.DeleteVideo()
+}
+func (operations clientOperations) UpdateVideo() sdkgo.Mutation[UpdateVideoInput, UpdatedVideo] {
+	return operations.client.UpdateVideo()
+}
+func (operations clientOperations) CreatePlaylist() sdkgo.Mutation[CreatePlaylistInput, Playlist] {
+	return operations.client.CreatePlaylist()
+}
+func (operations clientOperations) GetPlaylistItem() sdkgo.Query[PlaylistItemIDInput, PlaylistItem] {
+	return operations.client.GetPlaylistItem()
+}
+func (operations clientOperations) DeletePlaylistItem() sdkgo.Mutation[PlaylistItemIDInput, DeletedPlaylistItem] {
+	return operations.client.DeletePlaylistItem()
+}
+func (operations clientOperations) GetPlaylist() sdkgo.Query[GetPlaylistInput, Playlist] {
+	return operations.client.GetPlaylist()
+}
+func (operations clientOperations) ListPlaylists() sdkgo.Query[ListPlaylistsInput, PlaylistsPage] {
+	return operations.client.ListPlaylists()
+}
+func (operations clientOperations) UpdatePlaylist() sdkgo.Mutation[UpdatePlaylistInput, Playlist] {
+	return operations.client.UpdatePlaylist()
+}
+func (operations clientOperations) DeletePlaylist() sdkgo.Mutation[GetPlaylistInput, DeletedPlaylist] {
+	return operations.client.DeletePlaylist()
+}
 func (operations clientOperations) SearchVideos() sdkgo.Query[SearchVideosInput, VideoSearchPage] {
 	return operations.client.SearchVideos()
 }
@@ -297,6 +353,1174 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential auth_method is invalid")
 	}
 	return nil
+}
+
+const ListChannelsBranchListed sdkgo.BranchID = "listed"
+const ListChannelsBranchNotFound sdkgo.BranchID = "notFound"
+const ListChannelsBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
+const ListChannelsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListChannelsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListChannelsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListChannelsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listChannels"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListChannelsBranchListed, Description: "YouTube confirmed the channel listed result."},
+		{ID: ListChannelsBranchNotFound, Description: "The selected channel is not visible.", Optional: true},
+		{ID: ListChannelsBranchQuotaExhausted, Description: "YouTube daily quota is exhausted.", Optional: true},
+		{ID: ListChannelsBranchProviderRejected, Description: "YouTube definitively rejected the request.", Optional: true},
+		{ID: ListChannelsBranchInvalidResponse, Description: "YouTube returned malformed or oversized JSON.", Optional: true},
+		{ID: ListChannelsBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListChannelsResult = sdkgo.QueryResult[ChannelsPage]
+
+type ListChannelsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=google-youtube"`
+	operationID                    struct{}                                        `connector:"operationId=listChannels"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListChannelsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListChannelsResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListChannelsResult]                `connector:"branch=notFound,optional"`
+	QuotaExhausted                 sdkgo.Target[ListChannelsResult]                `connector:"branch=quotaExhausted,optional"`
+	ProviderRejected               sdkgo.Target[ListChannelsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListChannelsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListChannelsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ChannelsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListChannelsStep[IN any](config ListChannelsStepConfig[IN]) sdkgo.QueryStep[IN, ListChannelsInput, ChannelsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-youtube connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListChannelsInput, ChannelsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListChannels(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListChannelsResult] {
+			branches := make([]sdkgo.BranchTarget[ListChannelsResult], 0, 6)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListChannelsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListChannelsBranchNotFound))
+			}
+			if config.QuotaExhausted.HasStep() {
+				branches = append(branches, config.QuotaExhausted.BranchTarget(ListChannelsBranchQuotaExhausted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListChannelsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListChannelsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListChannelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateChannelBranchUpdated sdkgo.BranchID = "updated"
+const UpdateChannelBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateChannelBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
+const UpdateChannelBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateChannelBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateChannelBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateChannelDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateChannel"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateChannelBranchUpdated, Description: "YouTube confirmed the channel updated result."},
+		{ID: UpdateChannelBranchNotFound, Description: "The selected channel is not visible.", Optional: true},
+		{ID: UpdateChannelBranchQuotaExhausted, Description: "YouTube daily quota is exhausted.", Optional: true},
+		{ID: UpdateChannelBranchProviderRejected, Description: "YouTube definitively rejected the request.", Optional: true},
+		{ID: UpdateChannelBranchInvalidResponse, Description: "YouTube returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateChannelBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateChannelResult = sdkgo.MutationResult[UpdatedChannelDescription]
+
+type UpdateChannelStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                        `connector:"connectorId=google-youtube"`
+	operationID                       struct{}                                                        `connector:"operationId=updateChannel"`
+	StepType                          string                                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                           `connector:"annotations"`
+	Connection                        Connection                                                      `connector:"connection"`
+	ConnectionName                    string                                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateChannelInput                                     `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateChannelResult]                               `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateChannelResult]                               `connector:"branch=notFound,optional"`
+	QuotaExhausted                    sdkgo.Target[UpdateChannelResult]                               `connector:"branch=quotaExhausted,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateChannelResult]                               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateChannelResult]                               `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateChannelResult]                               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedChannelDescription]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateChannelStep[IN any](config UpdateChannelStepConfig[IN]) sdkgo.MutationStep[IN, UpdateChannelInput, UpdatedChannelDescription] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-youtube connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateChannelInput, UpdatedChannelDescription]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateChannel(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateChannelResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateChannelResult], 0, 6)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateChannelBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateChannelBranchNotFound))
+			}
+			if config.QuotaExhausted.HasStep() {
+				branches = append(branches, config.QuotaExhausted.BranchTarget(UpdateChannelBranchQuotaExhausted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateChannelBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateChannelBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateChannelBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListVideosBranchListed sdkgo.BranchID = "listed"
+const ListVideosBranchNotFound sdkgo.BranchID = "notFound"
+const ListVideosBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
+const ListVideosBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListVideosBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListVideosBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListVideosDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listVideos"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListVideosBranchListed, Description: "YouTube confirmed the listVideos result."},
+		{ID: ListVideosBranchNotFound, Description: "The selected video is not visible.", Optional: true},
+		{ID: ListVideosBranchQuotaExhausted, Description: "YouTube daily quota is exhausted.", Optional: true},
+		{ID: ListVideosBranchProviderRejected, Description: "YouTube definitively rejected the request.", Optional: true},
+		{ID: ListVideosBranchInvalidResponse, Description: "YouTube returned malformed or oversized JSON.", Optional: true},
+		{ID: ListVideosBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListVideosResult = sdkgo.QueryResult[VideosPage]
+
+type ListVideosStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=google-youtube"`
+	operationID                    struct{}                                      `connector:"operationId=listVideos"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListVideosInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListVideosResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListVideosResult]                `connector:"branch=notFound,optional"`
+	QuotaExhausted                 sdkgo.Target[ListVideosResult]                `connector:"branch=quotaExhausted,optional"`
+	ProviderRejected               sdkgo.Target[ListVideosResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListVideosResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListVideosResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[VideosPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListVideosStep[IN any](config ListVideosStepConfig[IN]) sdkgo.QueryStep[IN, ListVideosInput, VideosPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-youtube connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListVideosInput, VideosPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListVideos(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListVideosResult] {
+			branches := make([]sdkgo.BranchTarget[ListVideosResult], 0, 6)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListVideosBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListVideosBranchNotFound))
+			}
+			if config.QuotaExhausted.HasStep() {
+				branches = append(branches, config.QuotaExhausted.BranchTarget(ListVideosBranchQuotaExhausted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListVideosBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListVideosBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListVideosBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListVideoCategoriesBranchListed sdkgo.BranchID = "listed"
+const ListVideoCategoriesBranchNotFound sdkgo.BranchID = "notFound"
+const ListVideoCategoriesBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
+const ListVideoCategoriesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListVideoCategoriesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListVideoCategoriesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListVideoCategoriesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listVideoCategories"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListVideoCategoriesBranchListed, Description: "YouTube confirmed the listVideoCategories result."},
+		{ID: ListVideoCategoriesBranchNotFound, Description: "The selected video is not visible.", Optional: true},
+		{ID: ListVideoCategoriesBranchQuotaExhausted, Description: "YouTube daily quota is exhausted.", Optional: true},
+		{ID: ListVideoCategoriesBranchProviderRejected, Description: "YouTube definitively rejected the request.", Optional: true},
+		{ID: ListVideoCategoriesBranchInvalidResponse, Description: "YouTube returned malformed or oversized JSON.", Optional: true},
+		{ID: ListVideoCategoriesBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListVideoCategoriesResult = sdkgo.QueryResult[VideoCategoriesPage]
+
+type ListVideoCategoriesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=google-youtube"`
+	operationID                    struct{}                                               `connector:"operationId=listVideoCategories"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListVideoCategoriesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListVideoCategoriesResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListVideoCategoriesResult]                `connector:"branch=notFound,optional"`
+	QuotaExhausted                 sdkgo.Target[ListVideoCategoriesResult]                `connector:"branch=quotaExhausted,optional"`
+	ProviderRejected               sdkgo.Target[ListVideoCategoriesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListVideoCategoriesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListVideoCategoriesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[VideoCategoriesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewListVideoCategoriesStep[IN any](config ListVideoCategoriesStepConfig[IN]) sdkgo.QueryStep[IN, ListVideoCategoriesInput, VideoCategoriesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-youtube connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListVideoCategoriesInput, VideoCategoriesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListVideoCategories(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListVideoCategoriesResult] {
+			branches := make([]sdkgo.BranchTarget[ListVideoCategoriesResult], 0, 6)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListVideoCategoriesBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListVideoCategoriesBranchNotFound))
+			}
+			if config.QuotaExhausted.HasStep() {
+				branches = append(branches, config.QuotaExhausted.BranchTarget(ListVideoCategoriesBranchQuotaExhausted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListVideoCategoriesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListVideoCategoriesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListVideoCategoriesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RateVideoBranchRated sdkgo.BranchID = "rated"
+const RateVideoBranchNotFound sdkgo.BranchID = "notFound"
+const RateVideoBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
+const RateVideoBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RateVideoBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const RateVideoBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RateVideoDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "rateVideo"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RateVideoBranchRated, Description: "YouTube confirmed the rateVideo result."},
+		{ID: RateVideoBranchNotFound, Description: "The selected video is not visible.", Optional: true},
+		{ID: RateVideoBranchQuotaExhausted, Description: "YouTube daily quota is exhausted.", Optional: true},
+		{ID: RateVideoBranchProviderRejected, Description: "YouTube definitively rejected the request.", Optional: true},
+		{ID: RateVideoBranchInvalidResponse, Description: "YouTube returned malformed or oversized JSON.", Optional: true},
+		{ID: RateVideoBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RateVideoResult = sdkgo.MutationResult[RatedVideo]
+
+type RateVideoStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                         `connector:"connectorId=google-youtube"`
+	operationID                       struct{}                                         `connector:"operationId=rateVideo"`
+	StepType                          string                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                        Connection                                       `connector:"connection"`
+	ConnectionName                    string                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) RateVideoInput                          `connector:"mapToOperationInput"`
+	Rated                             sdkgo.Target[RateVideoResult]                    `connector:"branch=rated"`
+	NotFound                          sdkgo.Target[RateVideoResult]                    `connector:"branch=notFound,optional"`
+	QuotaExhausted                    sdkgo.Target[RateVideoResult]                    `connector:"branch=quotaExhausted,optional"`
+	ProviderRejected                  sdkgo.Target[RateVideoResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[RateVideoResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[RateVideoResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[RatedVideo]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewRateVideoStep[IN any](config RateVideoStepConfig[IN]) sdkgo.MutationStep[IN, RateVideoInput, RatedVideo] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-youtube connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RateVideoInput, RatedVideo]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RateVideo(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RateVideoResult] {
+			branches := make([]sdkgo.BranchTarget[RateVideoResult], 0, 6)
+			if config.Rated.HasStep() {
+				branches = append(branches, config.Rated.BranchTarget(RateVideoBranchRated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(RateVideoBranchNotFound))
+			}
+			if config.QuotaExhausted.HasStep() {
+				branches = append(branches, config.QuotaExhausted.BranchTarget(RateVideoBranchQuotaExhausted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RateVideoBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RateVideoBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RateVideoBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteVideoBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteVideoBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteVideoBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
+const DeleteVideoBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteVideoBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteVideoBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteVideoDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteVideo"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteVideoBranchDeleted, Description: "YouTube confirmed the deleteVideo result."},
+		{ID: DeleteVideoBranchNotFound, Description: "The selected video is not visible.", Optional: true},
+		{ID: DeleteVideoBranchQuotaExhausted, Description: "YouTube daily quota is exhausted.", Optional: true},
+		{ID: DeleteVideoBranchProviderRejected, Description: "YouTube definitively rejected the request.", Optional: true},
+		{ID: DeleteVideoBranchInvalidResponse, Description: "YouTube returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteVideoBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteVideoResult = sdkgo.MutationResult[DeletedVideo]
+
+type DeleteVideoStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=google-youtube"`
+	operationID                       struct{}                                           `connector:"operationId=deleteVideo"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetVideoInput                             `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteVideoResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteVideoResult]                    `connector:"branch=notFound,optional"`
+	QuotaExhausted                    sdkgo.Target[DeleteVideoResult]                    `connector:"branch=quotaExhausted,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteVideoResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteVideoResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteVideoResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedVideo]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteVideoStep[IN any](config DeleteVideoStepConfig[IN]) sdkgo.MutationStep[IN, GetVideoInput, DeletedVideo] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-youtube connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetVideoInput, DeletedVideo]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteVideo(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteVideoResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteVideoResult], 0, 6)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteVideoBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteVideoBranchNotFound))
+			}
+			if config.QuotaExhausted.HasStep() {
+				branches = append(branches, config.QuotaExhausted.BranchTarget(DeleteVideoBranchQuotaExhausted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteVideoBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteVideoBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteVideoBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateVideoBranchUpdated sdkgo.BranchID = "updated"
+const UpdateVideoBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateVideoBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
+const UpdateVideoBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateVideoBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateVideoBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateVideoDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateVideo"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateVideoBranchUpdated, Description: "YouTube confirmed the updateVideo result."},
+		{ID: UpdateVideoBranchNotFound, Description: "The selected video is not visible.", Optional: true},
+		{ID: UpdateVideoBranchQuotaExhausted, Description: "YouTube daily quota is exhausted.", Optional: true},
+		{ID: UpdateVideoBranchProviderRejected, Description: "YouTube definitively rejected the request.", Optional: true},
+		{ID: UpdateVideoBranchInvalidResponse, Description: "YouTube returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateVideoBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateVideoResult = sdkgo.MutationResult[UpdatedVideo]
+
+type UpdateVideoStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=google-youtube"`
+	operationID                       struct{}                                           `connector:"operationId=updateVideo"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateVideoInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateVideoResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateVideoResult]                    `connector:"branch=notFound,optional"`
+	QuotaExhausted                    sdkgo.Target[UpdateVideoResult]                    `connector:"branch=quotaExhausted,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateVideoResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateVideoResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateVideoResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedVideo]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateVideoStep[IN any](config UpdateVideoStepConfig[IN]) sdkgo.MutationStep[IN, UpdateVideoInput, UpdatedVideo] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-youtube connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateVideoInput, UpdatedVideo]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateVideo(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateVideoResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateVideoResult], 0, 6)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateVideoBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateVideoBranchNotFound))
+			}
+			if config.QuotaExhausted.HasStep() {
+				branches = append(branches, config.QuotaExhausted.BranchTarget(UpdateVideoBranchQuotaExhausted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateVideoBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateVideoBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateVideoBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreatePlaylistBranchCreated sdkgo.BranchID = "created"
+const CreatePlaylistBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
+const CreatePlaylistBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreatePlaylistBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreatePlaylistBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreatePlaylistDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createPlaylist"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreatePlaylistBranchCreated, Description: "YouTube confirmed the created playlist."},
+		{ID: CreatePlaylistBranchQuotaExhausted, Description: "YouTube daily quota is exhausted.", Optional: true},
+		{ID: CreatePlaylistBranchProviderRejected, Description: "YouTube definitively rejected the request.", Optional: true},
+		{ID: CreatePlaylistBranchUncertain, Description: "A prior create may have succeeded but could not be confirmed.", Optional: true},
+		{ID: CreatePlaylistBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreatePlaylistResult = sdkgo.MutationResult[Playlist]
+
+type CreatePlaylistStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                       `connector:"connectorId=google-youtube"`
+	operationID                       struct{}                                       `connector:"operationId=createPlaylist"`
+	StepType                          string                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                        Connection                                     `connector:"connection"`
+	ConnectionName                    string                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreatePlaylistInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreatePlaylistResult]             `connector:"branch=created"`
+	QuotaExhausted                    sdkgo.Target[CreatePlaylistResult]             `connector:"branch=quotaExhausted,optional"`
+	ProviderRejected                  sdkgo.Target[CreatePlaylistResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreatePlaylistResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreatePlaylistResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Playlist]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreatePlaylistStep[IN any](config CreatePlaylistStepConfig[IN]) sdkgo.MutationStep[IN, CreatePlaylistInput, Playlist] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-youtube connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreatePlaylistInput, Playlist]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreatePlaylist(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreatePlaylistResult] {
+			branches := make([]sdkgo.BranchTarget[CreatePlaylistResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreatePlaylistBranchCreated))
+			}
+			if config.QuotaExhausted.HasStep() {
+				branches = append(branches, config.QuotaExhausted.BranchTarget(CreatePlaylistBranchQuotaExhausted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreatePlaylistBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreatePlaylistBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreatePlaylistBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetPlaylistItemBranchFound sdkgo.BranchID = "found"
+const GetPlaylistItemBranchNotFound sdkgo.BranchID = "notFound"
+const GetPlaylistItemBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
+const GetPlaylistItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPlaylistItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPlaylistItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPlaylistItemDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPlaylistItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPlaylistItemBranchFound, Description: "YouTube confirmed the item found result."},
+		{ID: GetPlaylistItemBranchNotFound, Description: "The item is not visible.", Optional: true},
+		{ID: GetPlaylistItemBranchQuotaExhausted, Description: "YouTube daily quota is exhausted.", Optional: true},
+		{ID: GetPlaylistItemBranchProviderRejected, Description: "YouTube definitively rejected the request.", Optional: true},
+		{ID: GetPlaylistItemBranchInvalidResponse, Description: "YouTube returned malformed or oversized JSON.", Optional: true},
+		{ID: GetPlaylistItemBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPlaylistItemResult = sdkgo.QueryResult[PlaylistItem]
+
+type GetPlaylistItemStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=google-youtube"`
+	operationID                    struct{}                                        `connector:"operationId=getPlaylistItem"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) PlaylistItemIDInput                    `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPlaylistItemResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPlaylistItemResult]             `connector:"branch=notFound,optional"`
+	QuotaExhausted                 sdkgo.Target[GetPlaylistItemResult]             `connector:"branch=quotaExhausted,optional"`
+	ProviderRejected               sdkgo.Target[GetPlaylistItemResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPlaylistItemResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPlaylistItemResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PlaylistItem]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetPlaylistItemStep[IN any](config GetPlaylistItemStepConfig[IN]) sdkgo.QueryStep[IN, PlaylistItemIDInput, PlaylistItem] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-youtube connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, PlaylistItemIDInput, PlaylistItem]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPlaylistItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPlaylistItemResult] {
+			branches := make([]sdkgo.BranchTarget[GetPlaylistItemResult], 0, 6)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPlaylistItemBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPlaylistItemBranchNotFound))
+			}
+			if config.QuotaExhausted.HasStep() {
+				branches = append(branches, config.QuotaExhausted.BranchTarget(GetPlaylistItemBranchQuotaExhausted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPlaylistItemBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPlaylistItemBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPlaylistItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeletePlaylistItemBranchDeleted sdkgo.BranchID = "deleted"
+const DeletePlaylistItemBranchNotFound sdkgo.BranchID = "notFound"
+const DeletePlaylistItemBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
+const DeletePlaylistItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeletePlaylistItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeletePlaylistItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeletePlaylistItemDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deletePlaylistItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeletePlaylistItemBranchDeleted, Description: "YouTube confirmed the item deleted result."},
+		{ID: DeletePlaylistItemBranchNotFound, Description: "The item is not visible.", Optional: true},
+		{ID: DeletePlaylistItemBranchQuotaExhausted, Description: "YouTube daily quota is exhausted.", Optional: true},
+		{ID: DeletePlaylistItemBranchProviderRejected, Description: "YouTube definitively rejected the request.", Optional: true},
+		{ID: DeletePlaylistItemBranchInvalidResponse, Description: "YouTube returned malformed or oversized JSON.", Optional: true},
+		{ID: DeletePlaylistItemBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeletePlaylistItemResult = sdkgo.MutationResult[DeletedPlaylistItem]
+
+type DeletePlaylistItemStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=google-youtube"`
+	operationID                       struct{}                                                  `connector:"operationId=deletePlaylistItem"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) PlaylistItemIDInput                              `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeletePlaylistItemResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeletePlaylistItemResult]                    `connector:"branch=notFound,optional"`
+	QuotaExhausted                    sdkgo.Target[DeletePlaylistItemResult]                    `connector:"branch=quotaExhausted,optional"`
+	ProviderRejected                  sdkgo.Target[DeletePlaylistItemResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeletePlaylistItemResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeletePlaylistItemResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedPlaylistItem]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewDeletePlaylistItemStep[IN any](config DeletePlaylistItemStepConfig[IN]) sdkgo.MutationStep[IN, PlaylistItemIDInput, DeletedPlaylistItem] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-youtube connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PlaylistItemIDInput, DeletedPlaylistItem]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeletePlaylistItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeletePlaylistItemResult] {
+			branches := make([]sdkgo.BranchTarget[DeletePlaylistItemResult], 0, 6)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeletePlaylistItemBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeletePlaylistItemBranchNotFound))
+			}
+			if config.QuotaExhausted.HasStep() {
+				branches = append(branches, config.QuotaExhausted.BranchTarget(DeletePlaylistItemBranchQuotaExhausted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeletePlaylistItemBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeletePlaylistItemBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeletePlaylistItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetPlaylistBranchFound sdkgo.BranchID = "found"
+const GetPlaylistBranchNotFound sdkgo.BranchID = "notFound"
+const GetPlaylistBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
+const GetPlaylistBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPlaylistBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPlaylistBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPlaylistDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPlaylist"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPlaylistBranchFound, Description: "YouTube confirmed the getPlaylist result."},
+		{ID: GetPlaylistBranchNotFound, Description: "The selected playlist is not visible.", Optional: true},
+		{ID: GetPlaylistBranchQuotaExhausted, Description: "YouTube daily quota is exhausted.", Optional: true},
+		{ID: GetPlaylistBranchProviderRejected, Description: "YouTube definitively rejected the request.", Optional: true},
+		{ID: GetPlaylistBranchInvalidResponse, Description: "YouTube returned malformed or oversized JSON.", Optional: true},
+		{ID: GetPlaylistBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPlaylistResult = sdkgo.QueryResult[Playlist]
+
+type GetPlaylistStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=google-youtube"`
+	operationID                    struct{}                                    `connector:"operationId=getPlaylist"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetPlaylistInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPlaylistResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPlaylistResult]             `connector:"branch=notFound,optional"`
+	QuotaExhausted                 sdkgo.Target[GetPlaylistResult]             `connector:"branch=quotaExhausted,optional"`
+	ProviderRejected               sdkgo.Target[GetPlaylistResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPlaylistResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPlaylistResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Playlist]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewGetPlaylistStep[IN any](config GetPlaylistStepConfig[IN]) sdkgo.QueryStep[IN, GetPlaylistInput, Playlist] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-youtube connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPlaylistInput, Playlist]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPlaylist(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPlaylistResult] {
+			branches := make([]sdkgo.BranchTarget[GetPlaylistResult], 0, 6)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPlaylistBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPlaylistBranchNotFound))
+			}
+			if config.QuotaExhausted.HasStep() {
+				branches = append(branches, config.QuotaExhausted.BranchTarget(GetPlaylistBranchQuotaExhausted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPlaylistBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPlaylistBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPlaylistBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListPlaylistsBranchListed sdkgo.BranchID = "listed"
+const ListPlaylistsBranchNotFound sdkgo.BranchID = "notFound"
+const ListPlaylistsBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
+const ListPlaylistsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPlaylistsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPlaylistsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPlaylistsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPlaylists"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPlaylistsBranchListed, Description: "YouTube confirmed the listPlaylists result."},
+		{ID: ListPlaylistsBranchNotFound, Description: "The selected playlist is not visible.", Optional: true},
+		{ID: ListPlaylistsBranchQuotaExhausted, Description: "YouTube daily quota is exhausted.", Optional: true},
+		{ID: ListPlaylistsBranchProviderRejected, Description: "YouTube definitively rejected the request.", Optional: true},
+		{ID: ListPlaylistsBranchInvalidResponse, Description: "YouTube returned malformed or oversized JSON.", Optional: true},
+		{ID: ListPlaylistsBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPlaylistsResult = sdkgo.QueryResult[PlaylistsPage]
+
+type ListPlaylistsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=google-youtube"`
+	operationID                    struct{}                                         `connector:"operationId=listPlaylists"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPlaylistsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPlaylistsResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListPlaylistsResult]                `connector:"branch=notFound,optional"`
+	QuotaExhausted                 sdkgo.Target[ListPlaylistsResult]                `connector:"branch=quotaExhausted,optional"`
+	ProviderRejected               sdkgo.Target[ListPlaylistsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPlaylistsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPlaylistsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PlaylistsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListPlaylistsStep[IN any](config ListPlaylistsStepConfig[IN]) sdkgo.QueryStep[IN, ListPlaylistsInput, PlaylistsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-youtube connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPlaylistsInput, PlaylistsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListPlaylists(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPlaylistsResult] {
+			branches := make([]sdkgo.BranchTarget[ListPlaylistsResult], 0, 6)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPlaylistsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListPlaylistsBranchNotFound))
+			}
+			if config.QuotaExhausted.HasStep() {
+				branches = append(branches, config.QuotaExhausted.BranchTarget(ListPlaylistsBranchQuotaExhausted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPlaylistsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPlaylistsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPlaylistsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdatePlaylistBranchUpdated sdkgo.BranchID = "updated"
+const UpdatePlaylistBranchNotFound sdkgo.BranchID = "notFound"
+const UpdatePlaylistBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
+const UpdatePlaylistBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdatePlaylistBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdatePlaylistBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdatePlaylistDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updatePlaylist"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdatePlaylistBranchUpdated, Description: "YouTube confirmed the updatePlaylist result."},
+		{ID: UpdatePlaylistBranchNotFound, Description: "The selected playlist is not visible.", Optional: true},
+		{ID: UpdatePlaylistBranchQuotaExhausted, Description: "YouTube daily quota is exhausted.", Optional: true},
+		{ID: UpdatePlaylistBranchProviderRejected, Description: "YouTube definitively rejected the request.", Optional: true},
+		{ID: UpdatePlaylistBranchInvalidResponse, Description: "YouTube returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdatePlaylistBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdatePlaylistResult = sdkgo.MutationResult[Playlist]
+
+type UpdatePlaylistStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                       `connector:"connectorId=google-youtube"`
+	operationID                       struct{}                                       `connector:"operationId=updatePlaylist"`
+	StepType                          string                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                        Connection                                     `connector:"connection"`
+	ConnectionName                    string                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdatePlaylistInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdatePlaylistResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdatePlaylistResult]             `connector:"branch=notFound,optional"`
+	QuotaExhausted                    sdkgo.Target[UpdatePlaylistResult]             `connector:"branch=quotaExhausted,optional"`
+	ProviderRejected                  sdkgo.Target[UpdatePlaylistResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdatePlaylistResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdatePlaylistResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Playlist]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewUpdatePlaylistStep[IN any](config UpdatePlaylistStepConfig[IN]) sdkgo.MutationStep[IN, UpdatePlaylistInput, Playlist] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-youtube connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdatePlaylistInput, Playlist]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdatePlaylist(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdatePlaylistResult] {
+			branches := make([]sdkgo.BranchTarget[UpdatePlaylistResult], 0, 6)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdatePlaylistBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdatePlaylistBranchNotFound))
+			}
+			if config.QuotaExhausted.HasStep() {
+				branches = append(branches, config.QuotaExhausted.BranchTarget(UpdatePlaylistBranchQuotaExhausted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdatePlaylistBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdatePlaylistBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdatePlaylistBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeletePlaylistBranchDeleted sdkgo.BranchID = "deleted"
+const DeletePlaylistBranchNotFound sdkgo.BranchID = "notFound"
+const DeletePlaylistBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
+const DeletePlaylistBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeletePlaylistBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeletePlaylistBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeletePlaylistDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deletePlaylist"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeletePlaylistBranchDeleted, Description: "YouTube confirmed the deletePlaylist result."},
+		{ID: DeletePlaylistBranchNotFound, Description: "The selected playlist is not visible.", Optional: true},
+		{ID: DeletePlaylistBranchQuotaExhausted, Description: "YouTube daily quota is exhausted.", Optional: true},
+		{ID: DeletePlaylistBranchProviderRejected, Description: "YouTube definitively rejected the request.", Optional: true},
+		{ID: DeletePlaylistBranchInvalidResponse, Description: "YouTube returned malformed or oversized JSON.", Optional: true},
+		{ID: DeletePlaylistBranchDefect, Description: "Input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeletePlaylistResult = sdkgo.MutationResult[DeletedPlaylist]
+
+type DeletePlaylistStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=google-youtube"`
+	operationID                       struct{}                                              `connector:"operationId=deletePlaylist"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetPlaylistInput                             `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeletePlaylistResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeletePlaylistResult]                    `connector:"branch=notFound,optional"`
+	QuotaExhausted                    sdkgo.Target[DeletePlaylistResult]                    `connector:"branch=quotaExhausted,optional"`
+	ProviderRejected                  sdkgo.Target[DeletePlaylistResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeletePlaylistResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeletePlaylistResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedPlaylist]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewDeletePlaylistStep[IN any](config DeletePlaylistStepConfig[IN]) sdkgo.MutationStep[IN, GetPlaylistInput, DeletedPlaylist] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-youtube connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetPlaylistInput, DeletedPlaylist]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeletePlaylist(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeletePlaylistResult] {
+			branches := make([]sdkgo.BranchTarget[DeletePlaylistResult], 0, 6)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeletePlaylistBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeletePlaylistBranchNotFound))
+			}
+			if config.QuotaExhausted.HasStep() {
+				branches = append(branches, config.QuotaExhausted.BranchTarget(DeletePlaylistBranchQuotaExhausted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeletePlaylistBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeletePlaylistBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeletePlaylistBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const SearchVideosBranchSearched sdkgo.BranchID = "searched"
@@ -649,6 +1873,8 @@ var AddPlaylistItemDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type AddPlaylistItemResult = sdkgo.MutationResult[AddedPlaylistItem]
@@ -671,6 +1897,8 @@ type AddPlaylistItemStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[AddPlaylistItemResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AddedPlaylistItem]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewAddPlaylistItemStep[IN any](config AddPlaylistItemStepConfig[IN]) sdkgo.MutationStep[IN, AddPlaylistItemInput, AddedPlaylistItem] {
@@ -711,5 +1939,6 @@ func NewAddPlaylistItemStep[IN any](config AddPlaylistItemStepConfig[IN]) sdkgo.
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

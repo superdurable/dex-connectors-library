@@ -301,6 +301,640 @@
       },
       "name": "setUserProperties-transportFailure",
       "operation": "setUserProperties"
+    },
+    {
+      "callId": "ef0dddf8-a597-5cb5-b0a2-ef925f500da2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/track",
+          "requestBody": {
+            "app_id": "12345",
+            "event": "Purchase",
+            "idempotency_key": "a86b80dae653fd4eef972b1df43ce4efdaf945a57c75991df0ed7c95be419207",
+            "identity": "member-1",
+            "properties": {
+              "Plan": "Pro"
+            },
+            "timestamp": "2026-11-01T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "tracked",
+        "failureKind": "",
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a86b80dae653fd4eef972b1df43ce4efdaf945a57c75991df0ed7c95be419207",
+      "input": {
+        "event": "Purchase",
+        "identity": "member-1",
+        "properties": {
+          "Plan": "Pro"
+        },
+        "timestamp": "2026-11-01T12:00:00Z"
+      },
+      "name": "trackEvent-tracked",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "ef0dddf8-a597-5cb5-b0a2-ef925f500da2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/track",
+          "requestBody": {
+            "app_id": "12345",
+            "event": "Purchase",
+            "idempotency_key": "a86b80dae653fd4eef972b1df43ce4efdaf945a57c75991df0ed7c95be419207",
+            "identity": "member-1",
+            "properties": {
+              "Plan": "Pro"
+            },
+            "timestamp": "2026-11-01T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a86b80dae653fd4eef972b1df43ce4efdaf945a57c75991df0ed7c95be419207",
+      "input": {
+        "event": "Purchase",
+        "identity": "member-1",
+        "properties": {
+          "Plan": "Pro"
+        },
+        "timestamp": "2026-11-01T12:00:00Z"
+      },
+      "name": "trackEvent-providerRejected",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "ef0dddf8-a597-5cb5-b0a2-ef925f500da2",
+      "exchanges": [
+        {
+          "body": "0123456789",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/track",
+          "requestBody": {
+            "app_id": "12345",
+            "event": "Purchase",
+            "idempotency_key": "a86b80dae653fd4eef972b1df43ce4efdaf945a57c75991df0ed7c95be419207",
+            "identity": "member-1",
+            "properties": {
+              "Plan": "Pro"
+            },
+            "timestamp": "2026-11-01T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a86b80dae653fd4eef972b1df43ce4efdaf945a57c75991df0ed7c95be419207",
+      "input": {
+        "event": "Purchase",
+        "identity": "member-1",
+        "properties": {
+          "Plan": "Pro"
+        },
+        "timestamp": "2026-11-01T12:00:00Z"
+      },
+      "name": "trackEvent-invalidResponse",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "ef0dddf8-a597-5cb5-b0a2-ef925f500da2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a86b80dae653fd4eef972b1df43ce4efdaf945a57c75991df0ed7c95be419207",
+      "input": {
+        "event": "Purchase",
+        "identity": "",
+        "properties": {
+          "Plan": "Pro"
+        },
+        "timestamp": "2026-11-01T12:00:00Z"
+      },
+      "name": "trackEvent-defect",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "ef0dddf8-a597-5cb5-b0a2-ef925f500da2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/track",
+          "requestBody": {
+            "app_id": "12345",
+            "event": "Purchase",
+            "idempotency_key": "a86b80dae653fd4eef972b1df43ce4efdaf945a57c75991df0ed7c95be419207",
+            "identity": "member-1",
+            "properties": {
+              "Plan": "Pro"
+            },
+            "timestamp": "2026-11-01T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a86b80dae653fd4eef972b1df43ce4efdaf945a57c75991df0ed7c95be419207",
+      "input": {
+        "event": "Purchase",
+        "identity": "member-1",
+        "properties": {
+          "Plan": "Pro"
+        },
+        "timestamp": "2026-11-01T12:00:00Z"
+      },
+      "name": "trackEvent-rateLimit",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "ef0dddf8-a597-5cb5-b0a2-ef925f500da2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/track",
+          "requestBody": {
+            "app_id": "12345",
+            "event": "Purchase",
+            "idempotency_key": "a86b80dae653fd4eef972b1df43ce4efdaf945a57c75991df0ed7c95be419207",
+            "identity": "member-1",
+            "properties": {
+              "Plan": "Pro"
+            },
+            "timestamp": "2026-11-01T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a86b80dae653fd4eef972b1df43ce4efdaf945a57c75991df0ed7c95be419207",
+      "input": {
+        "event": "Purchase",
+        "identity": "member-1",
+        "properties": {
+          "Plan": "Pro"
+        },
+        "timestamp": "2026-11-01T12:00:00Z"
+      },
+      "name": "trackEvent-serverUnavailable",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "ef0dddf8-a597-5cb5-b0a2-ef925f500da2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/track",
+          "requestBody": {
+            "app_id": "12345",
+            "event": "Purchase",
+            "idempotency_key": "a86b80dae653fd4eef972b1df43ce4efdaf945a57c75991df0ed7c95be419207",
+            "identity": "member-1",
+            "properties": {
+              "Plan": "Pro"
+            },
+            "timestamp": "2026-11-01T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a86b80dae653fd4eef972b1df43ce4efdaf945a57c75991df0ed7c95be419207",
+      "input": {
+        "event": "Purchase",
+        "identity": "member-1",
+        "properties": {
+          "Plan": "Pro"
+        },
+        "timestamp": "2026-11-01T12:00:00Z"
+      },
+      "name": "trackEvent-transportFailure",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "1e7bda17-637b-54a5-baa5-f060f30508ac",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/add_account_properties",
+          "requestBody": {
+            "account_id": "account-1",
+            "app_id": "12345",
+            "properties": {
+              "Plan": "Pro"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b532781e1d440ebba5861a7b75e43d10669191dc1ed4bd4d2027b45414554bb9",
+      "input": {
+        "accountId": "account-1",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setAccountProperties-accepted",
+      "operation": "setAccountProperties"
+    },
+    {
+      "callId": "1e7bda17-637b-54a5-baa5-f060f30508ac",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/add_account_properties",
+          "requestBody": {
+            "account_id": "account-1",
+            "app_id": "12345",
+            "properties": {
+              "Plan": "Pro"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b532781e1d440ebba5861a7b75e43d10669191dc1ed4bd4d2027b45414554bb9",
+      "input": {
+        "accountId": "account-1",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setAccountProperties-providerRejected",
+      "operation": "setAccountProperties"
+    },
+    {
+      "callId": "1e7bda17-637b-54a5-baa5-f060f30508ac",
+      "exchanges": [
+        {
+          "body": "0123456789",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/add_account_properties",
+          "requestBody": {
+            "account_id": "account-1",
+            "app_id": "12345",
+            "properties": {
+              "Plan": "Pro"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b532781e1d440ebba5861a7b75e43d10669191dc1ed4bd4d2027b45414554bb9",
+      "input": {
+        "accountId": "account-1",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setAccountProperties-invalidResponse",
+      "operation": "setAccountProperties"
+    },
+    {
+      "callId": "1e7bda17-637b-54a5-baa5-f060f30508ac",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b532781e1d440ebba5861a7b75e43d10669191dc1ed4bd4d2027b45414554bb9",
+      "input": {
+        "accountId": "",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setAccountProperties-defect",
+      "operation": "setAccountProperties"
+    },
+    {
+      "callId": "1e7bda17-637b-54a5-baa5-f060f30508ac",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/add_account_properties",
+          "requestBody": {
+            "account_id": "account-1",
+            "app_id": "12345",
+            "properties": {
+              "Plan": "Pro"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b532781e1d440ebba5861a7b75e43d10669191dc1ed4bd4d2027b45414554bb9",
+      "input": {
+        "accountId": "account-1",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setAccountProperties-rateLimit",
+      "operation": "setAccountProperties"
+    },
+    {
+      "callId": "1e7bda17-637b-54a5-baa5-f060f30508ac",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/add_account_properties",
+          "requestBody": {
+            "account_id": "account-1",
+            "app_id": "12345",
+            "properties": {
+              "Plan": "Pro"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b532781e1d440ebba5861a7b75e43d10669191dc1ed4bd4d2027b45414554bb9",
+      "input": {
+        "accountId": "account-1",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setAccountProperties-serverUnavailable",
+      "operation": "setAccountProperties"
+    },
+    {
+      "callId": "1e7bda17-637b-54a5-baa5-f060f30508ac",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/add_account_properties",
+          "requestBody": {
+            "account_id": "account-1",
+            "app_id": "12345",
+            "properties": {
+              "Plan": "Pro"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b532781e1d440ebba5861a7b75e43d10669191dc1ed4bd4d2027b45414554bb9",
+      "input": {
+        "accountId": "account-1",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setAccountProperties-transportFailure",
+      "operation": "setAccountProperties"
     }
   ],
   "schemaVersion": 1

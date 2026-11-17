@@ -32,11 +32,25 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"searchVideos":      newConformanceQueryInvocation(t, scenario.Input, context, client.SearchVideos(), youtubeConnection),
-		"getVideo":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetVideo(), youtubeConnection),
-		"getChannel":        newConformanceQueryInvocation(t, scenario.Input, context, client.GetChannel(), youtubeConnection),
-		"listPlaylistItems": newConformanceQueryInvocation(t, scenario.Input, context, client.ListPlaylistItems(), youtubeConnection),
-		"addPlaylistItem":   newConformanceMutationInvocation(t, scenario.Input, context, client.AddPlaylistItem(), youtubeConnection, scenario.CallID),
+		"searchVideos":        newConformanceQueryInvocation(t, scenario.Input, context, client.SearchVideos(), youtubeConnection),
+		"getVideo":            newConformanceQueryInvocation(t, scenario.Input, context, client.GetVideo(), youtubeConnection),
+		"getChannel":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetChannel(), youtubeConnection),
+		"listPlaylistItems":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListPlaylistItems(), youtubeConnection),
+		"addPlaylistItem":     newConformanceMutationInvocation(t, scenario.Input, context, client.AddPlaylistItem(), youtubeConnection, scenario.CallID),
+		"getPlaylist":         newConformanceQueryInvocation(t, scenario.Input, context, client.GetPlaylist(), youtubeConnection),
+		"listPlaylists":       newConformanceQueryInvocation(t, scenario.Input, context, client.ListPlaylists(), youtubeConnection),
+		"updatePlaylist":      newConformanceMutationInvocation(t, scenario.Input, context, client.UpdatePlaylist(), youtubeConnection, scenario.CallID),
+		"deletePlaylist":      newConformanceMutationInvocation(t, scenario.Input, context, client.DeletePlaylist(), youtubeConnection, scenario.CallID),
+		"getPlaylistItem":     newConformanceQueryInvocation(t, scenario.Input, context, client.GetPlaylistItem(), youtubeConnection),
+		"deletePlaylistItem":  newConformanceMutationInvocation(t, scenario.Input, context, client.DeletePlaylistItem(), youtubeConnection, scenario.CallID),
+		"createPlaylist":      newConformanceMutationInvocation(t, scenario.Input, context, client.CreatePlaylist(), youtubeConnection, scenario.CallID),
+		"listVideos":          newConformanceQueryInvocation(t, scenario.Input, context, client.ListVideos(), youtubeConnection),
+		"listVideoCategories": newConformanceQueryInvocation(t, scenario.Input, context, client.ListVideoCategories(), youtubeConnection),
+		"rateVideo":           newConformanceMutationInvocation(t, scenario.Input, context, client.RateVideo(), youtubeConnection, scenario.CallID),
+		"deleteVideo":         newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteVideo(), youtubeConnection, scenario.CallID),
+		"updateVideo":         newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateVideo(), youtubeConnection, scenario.CallID),
+		"listChannels":        newConformanceQueryInvocation(t, scenario.Input, context, client.ListChannels(), youtubeConnection),
+		"updateChannel":       newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateChannel(), youtubeConnection, scenario.CallID),
 	}}
 }
 

@@ -15,6 +15,7 @@ class Config:
     max_rows: int = 10000
     poll_interval_seconds: float = 30
     poll_page_size: int = 100
+    drive_base_url: str = "https://www.googleapis.com"
 
 setattr(Config, '__module__', 'dex_connectors.google_spreadsheet.client')
 
