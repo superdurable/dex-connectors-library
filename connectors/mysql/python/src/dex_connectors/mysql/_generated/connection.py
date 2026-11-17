@@ -9,29 +9,33 @@ from dex_connectors.sdk import ConnectionRef, Mutation, Query, Call, SecretStrin
 from dex_connectors.sdk.projectconfig import ConnectionKey, LoadedProject
 
 from ..client import Client, Config, Credentials
-from .definitions import CONNECTOR_ID, EXECUTE_DEFINITION, QUERY_DEFINITION
+from .definitions import CONNECTOR_ID, EXECUTE_DEFINITION, EXECUTE_NON_IDEMPOTENT_DEFINITION, QUERY_DEFINITION
 from ..models import ExecuteStatementInput, QueryRowsInput, RowSet, StatementExecution
 
 class Connection:
 
-    __slots__ = ('_query', '_execute', '_client', 'reference')
+    __slots__ = ('_query', '_execute', '_execute_non_idempotent', '_client', 'reference')
 
     def __init__(self,
         reference: ConnectionRef,
         query: Query[QueryRowsInput, RowSet],
         execute: Mutation[ExecuteStatementInput, StatementExecution],
+        execute_non_idempotent: Mutation[ExecuteStatementInput, StatementExecution],
         client: Client | None = None,
     ) -> None:
         reference.validate()
-        if reference.provider != CONNECTOR_ID or query is None or execute is None:
+        if reference.provider != CONNECTOR_ID or query is None or execute is None or execute_non_idempotent is None:
             raise ValueError("MySQL connection provider and operations are required")
         if query.definition().operation != QUERY_DEFINITION.operation:
             raise ValueError("MySQL connection operation identity differs")
         if execute.definition().operation != EXECUTE_DEFINITION.operation:
             raise ValueError("MySQL connection operation identity differs")
+        if execute_non_idempotent.definition().operation != EXECUTE_NON_IDEMPOTENT_DEFINITION.operation:
+            raise ValueError("MySQL connection operation identity differs")
         self.reference = reference
         self._query = query
         self._execute = execute
+        self._execute_non_idempotent = execute_non_idempotent
         self._client = client
 
     def query(self) -> Query[QueryRowsInput, RowSet]:
@@ -39,6 +43,9 @@ class Connection:
 
     def execute(self) -> Mutation[ExecuteStatementInput, StatementExecution]:
         return self._execute
+
+    def execute_non_idempotent(self) -> Mutation[ExecuteStatementInput, StatementExecution]:
+        return self._execute_non_idempotent
 
     async def aclose(self) -> None:
         if self._client is not None:
@@ -56,7 +63,7 @@ setattr(Connection, '__module__', 'dex_connectors.mysql.connection')
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
     if client is None:
         raise ValueError("MySQL client is required")
-    return Connection(reference, client.query(), client.execute(), client)
+    return Connection(reference, client.query(), client.execute(), client.execute_non_idempotent(), client)
 
 setattr(new_connection, '__module__', 'dex_connectors.mysql.connection')
 
@@ -64,9 +71,10 @@ setattr(new_connection, '__module__', 'dex_connectors.mysql.connection')
 def new_connection_with_operations(
     query: Query[QueryRowsInput, RowSet],
     execute: Mutation[ExecuteStatementInput, StatementExecution],
+    execute_non_idempotent: Mutation[ExecuteStatementInput, StatementExecution],
     reference: ConnectionRef,
 ) -> Connection:
-    return Connection(reference, query, execute)
+    return Connection(reference, query, execute, execute_non_idempotent)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.mysql.connection')
 

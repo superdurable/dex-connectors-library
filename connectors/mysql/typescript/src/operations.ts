@@ -3,9 +3,10 @@
 
 import type { Connection as RawConnection, FieldPacket } from 'mysql2';
 import type { Socket } from 'node:net';
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import type { Connection } from 'mysql2/promise';
-import { ExecuteStatementDefinition, QueryRowsDefinition } from './generated/definitions.js';
+import { ExecuteStatementDefinition, ExecuteStatementNonIdempotentDefinition, QueryRowsDefinition } from './generated/definitions.js';
 import { ExecuteStatementInputSchema, QueryRowsInputSchema, type Column, type ExecuteStatementInput, type QueryRowsInput, type RowSet, type StatementExecution } from './generated/models.js';
 import { classifyDriverError, type ClassifiedFailure, type SessionPhase } from './failures.js';
 import { MySQLSessionSetupError, type MySQLClient } from './client.js';
@@ -109,57 +110,133 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
   /** Bind one client. */ constructor(private readonly client: MySQLClient) {}
   /** Stable mutation definition. */ definition() { return ExecuteStatementDefinition; }
   /** Use Dex's stable call ID as the write key. */ idempotencyKey(callId: string): string { return callId; }
-  /** Run and classify one write operation. */
+  /** Run one repeat-safe write; an unknown COMMIT outcome returns Retry, never uncertain. */
   async invoke(call: Call, input: ExecuteStatementInput): Promise<MutationAttempt<StatementExecution>> {
-    const parameters = [...(input.parameters ?? [])];
-    if (!ExecuteStatementInputSchema.safeParse(input).success || !validStatement(input.statement, writeKeywords) || !validParameters(parameters) || (input.maxRowsAffected !== undefined && (!Number.isSafeInteger(input.maxRowsAffected) || input.maxRowsAffected < 0)) || (input.idempotencyKeyPlaceholder !== undefined && input.idempotencyKeyPlaceholder !== 0 && input.idempotencyKeyPlaceholder !== parameters.length + 1) || countPlaceholders(input.statement) !== parameters.length + (input.idempotencyKeyPlaceholder ? 1 : 0)) return executeDefect('execute input or placeholder count is invalid');
-    if (input.idempotencyKeyPlaceholder) parameters.push(call.idempotencyKey ?? call.id);
+    const parameters = bindExecuteParameters(call, input);
+    if (!parameters) return writeDefect('execute', 'execute input or placeholder count is invalid');
     const password = await this.client.resolvePassword(call);
-    if (!password) return executeDefect('MySQL connection credentials are unavailable', 'AUTHENTICATION');
-    let connection: Connection | undefined;
-    let connectionId = '', serverVersion = '';
-    let phase: SessionPhase = 'connect';
-    const deadline = new SessionDeadline(this.client.config.connectTimeoutMs + this.client.config.statementTimeoutMs + 5000);
-    try {
-      const session = await deadline.wait(this.client.openSession(password, connected => { phase = 'begin'; deadline.bind(connected); }));
-      ({ connection, connectionId, serverVersion } = session);
-      phase = 'begin';
-      await deadline.wait(connection.query('START TRANSACTION'));
-      phase = 'statement';
-      const rows = await deadline.wait(readPreparedRows(connection, input.statement, parameters, this.client.config.maxRows, this.client.config.maxResponseBytes));
-      if (rows.truncated) return newMutationBranch('limitExceeded', emptyExecution(), this.client.receipt(call, connectionId, serverVersion), failure('execute', 'RESPONSE_TOO_LARGE', 'RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction was rolled back'));
-      const [outcome] = await deadline.wait(connection.query('SELECT ROW_COUNT(), LAST_INSERT_ID(), @@warning_count'));
-      const outcomeRow = (outcome as unknown[][])[0];
-      if (!outcomeRow || outcomeRow.length !== 3) throw new InvalidRowsError('the server returned an unreadable ROW_COUNT(), LAST_INSERT_ID(), or @@warning_count');
-      const affected = Number(outcomeRow[0]) < 0 ? (rows.rows?.length ?? 0) : Number(outcomeRow[0]);
-      const lastInsertId = String(outcomeRow[1]);
-      const warningCount = Number(outcomeRow[2]);
-      if (!Number.isSafeInteger(affected) || !/^\d+$/.test(lastInsertId) || !Number.isSafeInteger(warningCount)) throw new InvalidRowsError('the server returned an unreadable ROW_COUNT(), LAST_INSERT_ID(), or @@warning_count');
-      if (input.maxRowsAffected !== undefined && affected > input.maxRowsAffected) return newMutationBranch('limitExceeded', emptyExecution(), this.client.receipt(call, connectionId, serverVersion), failure('execute', 'CONFLICT', `the statement affected ${affected} rows but maxRowsAffected is ${input.maxRowsAffected}, so the transaction was rolled back`));
-      const rawConnection = (connection as Connection & { connection?: DriverConnection }).connection;
-      if (rawConnection && rawConnection.state !== 'authenticated') return newMutationRetry(failure('execute', 'TRANSPORT', 'the connection closed before COMMIT could be sent'));
-      phase = 'commit';
-      await deadline.wait(connection.query('COMMIT'));
-      return newMutationBranch('completed', { rowsAffected: affected, lastInsertId, warningCount, columns: rows.columns, rows: rows.rows }, this.client.receipt(call, connectionId, serverVersion));
-    } catch (error) {
-      if (error instanceof DuplicateColumnsError) return executeDefect(error.message);
-      if (error instanceof InvalidRowsError) return newMutationBranch('invalidResponse', emptyExecution(), this.client.receipt(call, connectionId, serverVersion), failure('execute', 'PROTOCOL', error.message));
-      if (error instanceof TypeError) return executeDefect(error.message);
-      const classified = classifyDriverError(error instanceof MySQLSessionSetupError ? error.driverError : error, error instanceof MySQLSessionSetupError ? 'begin' : phase);
-      const receipt = this.client.receipt(call, connectionId, serverVersion, classified.errorNumber, classified.sqlState);
-      return mutationFailure(classified, receipt);
-    } finally { deadline.close(); }
+    if (!password) return writeDefect('execute', 'MySQL connection credentials are unavailable', 'AUTHENTICATION');
+    const outcome = await runWrite(this.client, call, input, parameters, password, (connection, deadline) => commit(connection, deadline));
+    if (!outcome.failure) return newMutationBranch('completed', outcome.value, outcome.receipt);
+    // The statement is repeat-safe, so an unknown COMMIT outcome runs it again.
+    const classified: ClassifiedFailure = outcome.failure.disposition === 'uncertain' ? { ...outcome.failure, disposition: 'retry' } : outcome.failure;
+    return writeAttempt('execute', classified, outcome.receipt);
   }
 }
 
-function mutationFailure(classified: ClassifiedFailure, receipt: ReceiptDraft): MutationAttempt<StatementExecution> {
-  const detailed = failure('execute', classified.kind, classified.message);
+/** Run a single transactional write that must not run twice, committing it at most once behind a single-dispatch fence. */
+export class ExecuteStatementNonIdempotentOperation implements Mutation<ExecuteStatementInput, StatementExecution> {
+  /** Bind one client. */ constructor(private readonly client: MySQLClient) {}
+  /** Stable mutation definition. */ definition() { return ExecuteStatementNonIdempotentDefinition; }
+  /** Use Dex's stable call ID as the write key. */ idempotencyKey(callId: string): string { return callId; }
+  /**
+   * Commit at most once; an unknown COMMIT outcome selects uncertain.
+   *
+   * A later attempt after a possibly sent COMMIT, or after a lost Worker, selects uncertain without
+   * connecting. A proven rollback returns Retry, and an unreadable checkpoint returns Retry without connecting.
+   */
+  async invoke(call: Call, input: ExecuteStatementInput): Promise<MutationAttempt<StatementExecution>> {
+    const parameters = bindExecuteParameters(call, input);
+    if (!parameters) return writeDefect('executeNonIdempotent', 'execute input or placeholder count is invalid');
+    let fence: Fence;
+    try { fence = newFence(call, ExecuteStatementNonIdempotentDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { writeWindowFraction: nonIdempotentWriteWindow, maxSends: definitionMaxSends(ExecuteStatementNonIdempotentDefinition) }); }
+    catch { return writeDefect('executeNonIdempotent', 'MySQL dispatch fence could not be constructed', 'LOCAL_DEFECT'); }
+    const decision = fence.decide();
+    if (decision.kind === 'failClosed') return newMutationRetry(failure('executeNonIdempotent', 'AVAILABILITY', 'the dispatch checkpoint could not be read, so nothing was sent in this attempt'));
+    if (decision.kind !== 'sendAllowed') return newMutationUncertain(emptyExecution(), failure('executeNonIdempotent', 'TRANSPORT', 'an earlier attempt may have committed the statement, and executeNonIdempotent never runs it again'), this.client.receipt(call, '', ''));
+    // Overcounts when an earlier attempt proved its COMMIT unsent, which only costs a rejection branch.
+    const hasPossibleEarlierSend = (decision.priorSendUpperBound ?? 0) > 0;
+    const password = await this.client.resolvePassword(call);
+    const outcome: WriteOutcome = password
+      ? await runWrite(this.client, call, input, parameters, password, async (connection, deadline) => {
+        try { await fence.dispatch(() => commit(connection, deadline)); }
+        catch (error) {
+          if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || error instanceof AggregateError) throw new CommitNotSentError();
+          throw error;
+        }
+      })
+      : { failure: { disposition: 'defect', kind: 'AUTHENTICATION', message: 'MySQL connection credentials are unavailable' }, receipt: {}, value: emptyExecution(), isCommitPhase: false };
+    if (!outcome.failure) return newMutationBranch('completed', outcome.value, outcome.receipt);
+    let classified = outcome.failure;
+    if (!outcome.isCommitPhase) {
+      // A lost notSent checkpoint only makes the next attempt select uncertain, never send twice.
+      await fence.recordNotSent().catch(() => undefined);
+    } else if (classified.disposition !== 'uncertain') {
+      // The server rolled the transaction back; a lost checkpoint only makes a later attempt uncertain.
+      await fence.recordCanResend().catch(() => undefined);
+    }
+    if (classified.disposition !== 'retry' && classified.disposition !== 'uncertain' && hasPossibleEarlierSend) classified = { ...classified, disposition: 'uncertain' };
+    return writeAttempt('executeNonIdempotent', classified, outcome.receipt);
+  }
+}
+
+/** Nothing is read back, so the request may use most of the attempt. */
+const nonIdempotentWriteWindow = 5 / 6;
+
+type WriteOperation = 'execute' | 'executeNonIdempotent';
+
+/** A committed write, or a failure and whether it happened at COMMIT. */
+interface WriteOutcome { failure?: ClassifiedFailure; receipt: ReceiptDraft; value: StatementExecution; isCommitPhase: boolean }
+
+class CommitNotSentError extends Error { constructor() { super('COMMIT was not sent'); this.name = 'CommitNotSentError'; } }
+
+/** Run one statement in its own transaction and commit it through `commitTransaction`; failures before it commit nothing. */
+async function runWrite(client: MySQLClient, call: Call, input: ExecuteStatementInput, parameters: unknown[], password: string, commitTransaction: (connection: Connection, deadline: SessionDeadline) => Promise<void>): Promise<WriteOutcome> {
+  let connection: Connection | undefined;
+  let connectionId = '', serverVersion = '';
+  let phase: SessionPhase = 'connect';
+  const deadline = new SessionDeadline(client.config.connectTimeoutMs + client.config.statementTimeoutMs + 5000);
+  const failed = (classified: ClassifiedFailure, receipt: ReceiptDraft): WriteOutcome => ({ failure: classified, receipt, value: emptyExecution(), isCommitPhase: phase === 'commit' });
+  try {
+    const session = await deadline.wait(client.openSession(password, connected => { phase = 'begin'; deadline.bind(connected); }));
+    ({ connection, connectionId, serverVersion } = session);
+    phase = 'begin';
+    await deadline.wait(connection.query('START TRANSACTION'));
+    phase = 'statement';
+    const rows = await deadline.wait(readPreparedRows(connection, input.statement, parameters, client.config.maxRows, client.config.maxResponseBytes));
+    if (rows.truncated) return failed({ disposition: 'limitExceeded', kind: 'RESPONSE_TOO_LARGE', message: 'RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction was rolled back' }, client.receipt(call, connectionId, serverVersion));
+    const [outcome] = await deadline.wait(connection.query('SELECT ROW_COUNT(), LAST_INSERT_ID(), @@warning_count'));
+    const outcomeRow = (outcome as unknown[][])[0];
+    if (!outcomeRow || outcomeRow.length !== 3) throw new InvalidRowsError('the server returned an unreadable ROW_COUNT(), LAST_INSERT_ID(), or @@warning_count');
+    const affected = Number(outcomeRow[0]) < 0 ? (rows.rows?.length ?? 0) : Number(outcomeRow[0]);
+    const lastInsertId = String(outcomeRow[1]);
+    const warningCount = Number(outcomeRow[2]);
+    if (!Number.isSafeInteger(affected) || !/^\d+$/.test(lastInsertId) || !Number.isSafeInteger(warningCount)) throw new InvalidRowsError('the server returned an unreadable ROW_COUNT(), LAST_INSERT_ID(), or @@warning_count');
+    if (input.maxRowsAffected !== undefined && affected > input.maxRowsAffected) return failed({ disposition: 'limitExceeded', kind: 'CONFLICT', message: `the statement affected ${affected} rows but maxRowsAffected is ${input.maxRowsAffected}, so the transaction was rolled back` }, client.receipt(call, connectionId, serverVersion));
+    const rawConnection = (connection as Connection & { connection?: DriverConnection }).connection;
+    if (rawConnection && rawConnection.state !== 'authenticated') return failed({ disposition: 'retry', kind: 'TRANSPORT', message: 'the connection closed before COMMIT could be sent' }, {});
+    phase = 'commit';
+    await commitTransaction(connection, deadline);
+    return { receipt: client.receipt(call, connectionId, serverVersion), value: { rowsAffected: affected, lastInsertId, warningCount, columns: rows.columns, rows: rows.rows }, isCommitPhase: true };
+  } catch (error) {
+    if (error instanceof DuplicateColumnsError || error instanceof TypeError) return failed({ disposition: 'defect', kind: 'VALIDATION', message: error.message }, {});
+    if (error instanceof InvalidRowsError) return failed({ disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message }, client.receipt(call, connectionId, serverVersion));
+    if (error instanceof CommitNotSentError) return failed({ disposition: 'retry', kind: 'AVAILABILITY', message: 'COMMIT was not sent because the dispatch checkpoint failed or too little time remained, so the transaction rolled back' }, {});
+    const classified = classifyDriverError(error instanceof MySQLSessionSetupError ? error.driverError : error, error instanceof MySQLSessionSetupError ? 'begin' : phase);
+    return failed(classified, client.receipt(call, connectionId, serverVersion, classified.errorNumber, classified.sqlState));
+  } finally { deadline.close(); }
+}
+
+async function commit(connection: Connection, deadline: SessionDeadline): Promise<void> {
+  await deadline.wait(connection.query('COMMIT'));
+}
+
+function bindExecuteParameters(call: Call, input: ExecuteStatementInput): unknown[] | undefined {
+  const parameters: unknown[] = [...(input.parameters ?? [])];
+  if (!ExecuteStatementInputSchema.safeParse(input).success || !validStatement(input.statement, writeKeywords) || !validParameters(parameters) || (input.maxRowsAffected !== undefined && (!Number.isSafeInteger(input.maxRowsAffected) || input.maxRowsAffected < 0)) || (input.idempotencyKeyPlaceholder !== undefined && input.idempotencyKeyPlaceholder !== 0 && input.idempotencyKeyPlaceholder !== parameters.length + 1) || countPlaceholders(input.statement) !== parameters.length + (input.idempotencyKeyPlaceholder ? 1 : 0)) return undefined;
+  if (input.idempotencyKeyPlaceholder) parameters.push(call.idempotencyKey ?? call.id);
+  return parameters;
+}
+
+/** Map a failure to an attempt; both write operations share their branch IDs. */
+function writeAttempt(operation: WriteOperation, classified: ClassifiedFailure, receipt: ReceiptDraft): MutationAttempt<StatementExecution> {
+  const detailed = failure(operation, classified.kind, classified.message);
   if (classified.disposition === 'retry') return newMutationRetry(detailed);
   if (classified.disposition === 'uncertain') return newMutationUncertain(emptyExecution(), detailed, receipt);
   return newMutationBranch(classified.disposition, emptyExecution(), receipt, detailed);
 }
 function queryDefect(message: string, kind: Failure['kind'] = 'VALIDATION'): QueryAttempt<RowSet> { return newQueryBranch('defect', emptyRows(), {}, failure('query', kind, message)); }
-function executeDefect(message: string, kind: Failure['kind'] = 'VALIDATION'): MutationAttempt<StatementExecution> { return newMutationBranch('defect', emptyExecution(), {}, failure('execute', kind, message)); }
+function writeDefect(operation: WriteOperation, message: string, kind: Failure['kind'] = 'VALIDATION'): MutationAttempt<StatementExecution> { return writeAttempt(operation, { disposition: 'defect', kind, message }, {}); }
 function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { provider: 'mysql', operation, kind, message }; }
 
 function validStatement(statement: string, allowed: Set<string>): boolean {

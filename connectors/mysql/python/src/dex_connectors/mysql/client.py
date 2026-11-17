@@ -11,6 +11,7 @@ import re
 import socket
 import ssl
 import struct
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import ROUND_HALF_EVEN, Decimal, localcontext
@@ -30,6 +31,13 @@ from dex_connectors.sdk import (
     QueryDefinition,
     Receipt,
 )
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    DecisionKind,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
+)
 
 from mysql.connector import Error as MySQLError
 from mysql.connector.connection import MySQLConnection
@@ -43,6 +51,10 @@ from ._generated.definitions import (
     COMPLETED,
     DEFECT,
     EXECUTE_DEFINITION,
+    EXECUTE_NON_IDEMPOTENT_DEFINITION,
+    EXECUTE_NON_IDEMPOTENT_OPERATION_ID,
+    EXECUTE_OPERATION_ID,
+    INVALID_RESPONSE,
     LIMIT_EXCEEDED,
     PROVIDER_REJECTED,
     QUERY_DEFINITION,
@@ -56,6 +68,8 @@ _SQL_MODE = (
     "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,"
     "ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
 )
+# Nothing is read back, so the request may use most of the attempt.
+_NON_IDEMPOTENT_WRITE_WINDOW = 5 / 6
 _RETRY_CONFLICT = frozenset({1205, 1213})
 _RETRY_AVAILABILITY = frozenset(
     {1021, 1037, 1040, 1041, 1053, 1158, 1159, 1160, 1161, 1203, 1615, 1637, 1927, 4031}
@@ -299,11 +313,104 @@ class Client:
         return QueryRowsOperation(self)
 
     def execute(self) -> "ExecuteStatementOperation":
-        """Bind the transactional write operation."""
+        """Bind the repeat-safe transactional write operation."""
         return ExecuteStatementOperation(self)
+
+    def execute_non_idempotent(self) -> "ExecuteStatementNonIdempotentOperation":
+        """Bind the fenced transactional write operation, which never runs its statement twice."""
+        return ExecuteStatementNonIdempotentOperation(self)
 
     async def aclose(self) -> None:
         """Release no resources: each invocation closes its own connection."""
+
+    async def _resolve_password(self, call: Call) -> str | None:
+        try:
+            password = (await self.credentials.resolve(call)).password.reveal()
+        except (ValueError, LookupError, OSError):
+            return None
+        return password or None
+
+    async def _run_write(
+        self,
+        call: Call,
+        input: ExecuteStatementInput,
+        parameters: tuple[Any, ...],
+        password: str,
+        commit: Callable[[Any], Awaitable[None]],
+    ) -> "_WriteOutcome":
+        """Run one statement in its own transaction and commit it through `commit`.
+
+        Every failure before `commit` is called leaves nothing committed.
+        """
+        prepared = await asyncio.to_thread(
+            self._run_statement_before_commit, call, input, parameters, password
+        )
+        if isinstance(prepared, _WriteOutcome):
+            return prepared
+        try:
+            await commit(prepared.connection)
+            return _WriteOutcome(None, _receipt(call, prepared.metadata), prepared.value)
+        except Exception as error:
+            disposition = _classify(error, "commit")
+            metadata = {**prepared.metadata, **_error_metadata(disposition)}
+            return _failed_write(disposition, _receipt(call, metadata), is_commit_phase=True)
+        finally:
+            await asyncio.to_thread(_close_connection, prepared.connection)
+
+    def _run_statement_before_commit(
+        self, call: Call, input: ExecuteStatementInput, parameters: tuple[Any, ...], password: str
+    ) -> "_PendingCommit | _WriteOutcome":
+        """Start the transaction and run the statement; a returned outcome has closed the connection."""
+        connection = None
+        metadata: dict[str, str] = {}
+        phase = "connect"
+        is_pending = False
+        try:
+            connection = self._open(password)
+            phase = "begin"
+            identity, version = self._session(connection)
+            metadata.update(connectionId=identity, serverVersion=version)
+            connection.start_transaction()
+            phase = "statement"
+            prepared_cursor = connection.cursor(prepared=True)
+            _execute_prepared(prepared_cursor, input.statement, parameters)
+            columns, rows, truncated = _read_rows(prepared_cursor, self.config)
+            if truncated:
+                return _failed_write(
+                    _Disposition(
+                        "limitExceeded",
+                        FailureKind.RESPONSE_TOO_LARGE,
+                        "RETURNING rows exceeded maxRows or maxResponseBytes, "
+                        "so the transaction was rolled back",
+                    ),
+                    _receipt(call, metadata),
+                )
+            affected = prepared_cursor.rowcount
+            last_insert_id = prepared_cursor.lastrowid
+            warning_count = prepared_cursor.warning_count
+            prepared_cursor.close()
+            if affected < 0:
+                affected = len(rows)
+            if input.max_rows_affected is not None and affected > input.max_rows_affected:
+                return _failed_write(
+                    _Disposition(
+                        "limitExceeded",
+                        FailureKind.CONFLICT,
+                        f"the statement affected {affected} rows but maxRowsAffected is "
+                        f"{input.max_rows_affected}, so the transaction was rolled back",
+                    ),
+                    _receipt(call, metadata),
+                )
+            value = StatementExecution(affected, str(last_insert_id or 0), warning_count, columns, rows)
+            is_pending = True
+            return _PendingCommit(connection, value, metadata)
+        except Exception as error:
+            disposition = _classify(error, phase)
+            metadata.update(_error_metadata(disposition))
+            return _failed_write(disposition, _receipt(call, metadata))
+        finally:
+            if connection is not None and not is_pending:
+                _close_connection(connection)
 
     def _open(self, password: str) -> Any:
         config = self.config
@@ -458,95 +565,186 @@ class ExecuteStatementOperation:
         return IdempotencyKey(str(call_id))
 
     async def invoke(self, call: Call, input: ExecuteStatementInput) -> MutationAttempt[StatementExecution]:
-        """Classify one write, including a possibly received COMMIT."""
+        """Commit a repeat-safe write; an unknown COMMIT outcome returns Retry, never uncertain."""
         try:
-            parameters = _validate_statement(input.statement, input.parameters, _WRITE_WORDS)
-            if input.max_rows_affected is not None and input.max_rows_affected < 0:
-                raise ValueError("maxRowsAffected cannot be negative")
-            if input.idempotency_key_placeholder not in {0, len(parameters) + 1}:
-                raise ValueError("idempotencyKeyPlaceholder must be the last placeholder")
-            if input.idempotency_key_placeholder:
-                parameters += (str(call.idempotency_key),)
+            parameters = _bind_execute_parameters(call, input)
         except ValueError as error:
-            return _execute_branch(DEFECT, FailureKind.VALIDATION, str(error))
-        try:
-            password = (await self.client.credentials.resolve(call)).password.reveal()
-            if not password:
-                raise ValueError("empty password")
-        except (ValueError, LookupError, OSError):
-            return _execute_branch(
-                DEFECT, FailureKind.AUTHENTICATION, "MySQL connection credentials are unavailable"
+            return _write_defect(EXECUTE_OPERATION_ID, FailureKind.VALIDATION, str(error))
+        password = await self.client._resolve_password(call)
+        if password is None:
+            return _write_defect(
+                EXECUTE_OPERATION_ID,
+                FailureKind.AUTHENTICATION,
+                "MySQL connection credentials are unavailable",
             )
-        return await asyncio.to_thread(self._invoke_sync, call, input, parameters, password)
+        outcome = await self.client._run_write(call, input, parameters, password, _commit_in_thread)
+        if outcome.failure is None:
+            return MutationAttempt.branch_result(COMPLETED, outcome.value, outcome.receipt)
+        failure = outcome.failure
+        if failure.branch == "uncertain":
+            # The statement is repeat-safe, so an unknown COMMIT outcome runs it again.
+            failure = replace(failure, branch="retry")
+        return _write_attempt(EXECUTE_OPERATION_ID, failure, outcome.receipt)
 
-    def _invoke_sync(
-        self, call: Call, input: ExecuteStatementInput, parameters: tuple[Any, ...], password: str
-    ) -> MutationAttempt[StatementExecution]:
-        connection = None
-        metadata: dict[str, str] = {}
-        phase = "connect"
+
+class ExecuteStatementNonIdempotentOperation:
+    """Run one prepared write that must not run twice, committing it at most once."""
+
+    def __init__(self, client: Client) -> None:
+        self.client = client
+
+    def definition(self) -> MutationDefinition:
+        """Return the manifest's mutation identity and branches."""
+        return EXECUTE_NON_IDEMPOTENT_DEFINITION
+
+    def idempotency_key(self, call_id: CallID, input: ExecuteStatementInput) -> IdempotencyKey:
+        """Keep the Call ID stable across retries of one Step execution."""
+        return IdempotencyKey(str(call_id))
+
+    async def invoke(self, call: Call, input: ExecuteStatementInput) -> MutationAttempt[StatementExecution]:
+        """Commit at most once behind a single-dispatch fence; an unknown COMMIT selects uncertain.
+
+        A later attempt after a possibly sent COMMIT, or after a lost Worker, selects uncertain
+        without connecting. A proven rollback before or at COMMIT returns Retry, and an
+        unreadable checkpoint returns Retry without connecting.
+        """
         try:
-            connection = self.client._open(password)
-            phase = "begin"
-            identity, version = self.client._session(connection)
-            metadata.update(connectionId=identity, serverVersion=version)
-            connection.start_transaction()
-            phase = "statement"
-            prepared_cursor = connection.cursor(prepared=True)
-            _execute_prepared(prepared_cursor, input.statement, parameters)
-            columns, rows, truncated = _read_rows(prepared_cursor, self.client.config)
-            if truncated:
-                return _execute_branch(
-                    LIMIT_EXCEEDED,
-                    FailureKind.RESPONSE_TOO_LARGE,
-                    "RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction was rolled back",
-                    _receipt(call, metadata),
-                )
-            affected = prepared_cursor.rowcount
-            last_insert_id = prepared_cursor.lastrowid
-            warning_count = prepared_cursor.warning_count
-            prepared_cursor.close()
-            if affected < 0:
-                affected = len(rows)
-            if input.max_rows_affected is not None and affected > input.max_rows_affected:
-                return _execute_branch(
-                    LIMIT_EXCEEDED,
-                    FailureKind.CONFLICT,
-                    (
-                        f"the statement affected {affected} rows but maxRowsAffected is "
-                        f"{input.max_rows_affected}, so the transaction was rolled back"
-                    ),
-                    _receipt(call, metadata),
-                )
-            phase = "commit"
-            _commit_transaction(connection)
-            result = StatementExecution(affected, str(last_insert_id or 0), warning_count, columns, rows)
-            return MutationAttempt.branch_result(COMPLETED, result, _receipt(call, metadata))
-        except Exception as error:
-            disposition = _classify(error, phase)
-            metadata.update(_error_metadata(disposition))
-            failure = _failure("execute", disposition.kind, disposition.message)
-            if disposition.branch == "retry":
-                return MutationAttempt.retry(failure)
-            if disposition.branch == "uncertain":
-                return MutationAttempt.uncertain(_empty_execution(), failure, _receipt(call, metadata))
-            branch = (
-                "invalidResponse"
-                if disposition.branch == "invalidResponse"
-                else "defect"
-                if disposition.branch == "defect"
-                else PROVIDER_REJECTED
+            parameters = _bind_execute_parameters(call, input)
+        except ValueError as error:
+            return _write_defect(EXECUTE_NON_IDEMPOTENT_OPERATION_ID, FailureKind.VALIDATION, str(error))
+        try:
+            fence = Fence(
+                call,
+                EXECUTE_NON_IDEMPOTENT_DEFINITION.step_defaults.execute_method_timeout,
+                write_window_fraction=_NON_IDEMPOTENT_WRITE_WINDOW,
+                max_sends=call.max_sends,
             )
-            return MutationAttempt.branch_result(
-                branch, _empty_execution(), _receipt(call, metadata), failure
+        except ValueError:
+            return _write_defect(
+                EXECUTE_NON_IDEMPOTENT_OPERATION_ID,
+                FailureKind.LOCAL_DEFECT,
+                "MySQL dispatch fence could not be constructed",
             )
-        finally:
-            if connection is not None:
-                try:
-                    connection.close()
-                except (MySQLError, OSError):
-                    # A failed close cannot change an already classified operation result.
-                    pass
+        decision = await fence.decide()
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            return MutationAttempt.retry(
+                _failure(
+                    EXECUTE_NON_IDEMPOTENT_OPERATION_ID,
+                    FailureKind.AVAILABILITY,
+                    "the dispatch checkpoint could not be read, so nothing was sent in this attempt",
+                )
+            )
+        if decision.kind != DecisionKind.SEND_ALLOWED:
+            return MutationAttempt.uncertain(
+                _empty_execution(),
+                _failure(
+                    EXECUTE_NON_IDEMPOTENT_OPERATION_ID,
+                    FailureKind.TRANSPORT,
+                    "an earlier attempt may have committed the statement, and executeNonIdempotent "
+                    "never runs it again",
+                ),
+                _receipt(call, {}),
+            )
+        # Overcounts when an earlier attempt proved its COMMIT unsent, which only costs a rejection branch.
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
+        password = await self.client._resolve_password(call)
+        if password is None:
+            failure = _Disposition(
+                "defect", FailureKind.AUTHENTICATION, "MySQL connection credentials are unavailable"
+            )
+            return await _settle_before_commit(fence, has_possible_earlier_send, failure, Receipt())
+
+        async def commit_once(connection: Any) -> None:
+            async def send(_write_deadline: datetime) -> None:
+                await _commit_in_thread(connection)
+
+            try:
+                await fence.dispatch(send)
+            except (CheckpointError, DispatchNotAllowedError, InsufficientAttemptTimeError) as error:
+                raise _CommitNotSent() from error
+
+        outcome = await self.client._run_write(call, input, parameters, password, commit_once)
+        if outcome.failure is None:
+            return MutationAttempt.branch_result(COMPLETED, outcome.value, outcome.receipt)
+        if not outcome.is_commit_phase:
+            return await _settle_before_commit(
+                fence, has_possible_earlier_send, outcome.failure, outcome.receipt
+            )
+        failure = outcome.failure
+        if failure.branch != "uncertain":
+            # The server rolled the transaction back; a lost checkpoint only makes a later attempt uncertain.
+            try:
+                await fence.record_can_resend()
+            except Exception:
+                pass
+            if failure.branch != "retry" and has_possible_earlier_send:
+                failure = replace(failure, branch="uncertain")
+        return _write_attempt(EXECUTE_NON_IDEMPOTENT_OPERATION_ID, failure, outcome.receipt)
+
+
+@dataclass(frozen=True)
+class _PendingCommit:
+    """An open transaction whose statement ran within every bound."""
+
+    connection: Any
+    value: StatementExecution
+    metadata: dict[str, str]
+
+
+@dataclass(frozen=True)
+class _WriteOutcome:
+    """A committed write, or a failure and whether it happened at COMMIT."""
+
+    failure: _Disposition | None
+    receipt: Receipt
+    value: StatementExecution
+    is_commit_phase: bool = False
+
+
+def _failed_write(
+    disposition: _Disposition, receipt: Receipt, *, is_commit_phase: bool = False
+) -> _WriteOutcome:
+    return _WriteOutcome(disposition, receipt, _empty_execution(), is_commit_phase)
+
+
+async def _commit_in_thread(connection: Any) -> None:
+    await asyncio.to_thread(_commit_transaction, connection)
+
+
+def _close_connection(connection: Any) -> None:
+    try:
+        connection.close()
+    except (MySQLError, OSError):
+        # A failed close cannot change an already classified operation result.
+        pass
+
+
+async def _settle_before_commit(
+    fence: Fence, has_possible_earlier_send: bool, failure: _Disposition, receipt: Receipt
+) -> MutationAttempt[StatementExecution]:
+    """Record that this attempt sent no COMMIT, then report the failure.
+
+    A refusal after a possible earlier send selects uncertain, since that send may have committed.
+    """
+    # A lost notSent checkpoint only makes the next attempt select uncertain, never send twice.
+    try:
+        await fence.record_not_sent()
+    except Exception:
+        pass
+    if failure.branch != "retry" and has_possible_earlier_send:
+        failure = replace(failure, branch="uncertain")
+    return _write_attempt(EXECUTE_NON_IDEMPOTENT_OPERATION_ID, failure, receipt)
+
+
+def _bind_execute_parameters(call: Call, input: ExecuteStatementInput) -> tuple[Any, ...]:
+    parameters = _validate_statement(input.statement, input.parameters, _WRITE_WORDS)
+    if input.max_rows_affected is not None and input.max_rows_affected < 0:
+        raise ValueError("maxRowsAffected cannot be negative")
+    if input.idempotency_key_placeholder not in {0, len(parameters) + 1}:
+        raise ValueError("idempotencyKeyPlaceholder must be the last placeholder")
+    if input.idempotency_key_placeholder:
+        parameters += (str(call.idempotency_key),)
+    return parameters
 
 
 def _is_ipv6(host: str) -> bool:
@@ -995,9 +1193,25 @@ def _empty_execution() -> StatementExecution:
     return StatementExecution(last_insert_id="0")
 
 
-def _execute_branch(
-    branch: str, kind: FailureKind, message: str, receipt: Receipt | None = None
+_WRITE_BRANCHES = {
+    "limitExceeded": LIMIT_EXCEEDED,
+    "invalidResponse": INVALID_RESPONSE,
+    "defect": DEFECT,
+}
+
+
+def _write_attempt(
+    operation: str, disposition: _Disposition, receipt: Receipt
 ) -> MutationAttempt[StatementExecution]:
-    return MutationAttempt.branch_result(
-        branch, _empty_execution(), receipt or Receipt(), _failure("execute", kind, message)
-    )
+    """Map a failure to an attempt; both write operations share their branch IDs."""
+    failure = _failure(operation, disposition.kind, disposition.message)
+    if disposition.branch == "retry":
+        return MutationAttempt.retry(failure)
+    if disposition.branch == "uncertain":
+        return MutationAttempt.uncertain(_empty_execution(), failure, receipt)
+    branch = _WRITE_BRANCHES.get(disposition.branch, PROVIDER_REJECTED)
+    return MutationAttempt.branch_result(branch, _empty_execution(), receipt, failure)
+
+
+def _write_defect(operation: str, kind: FailureKind, message: str) -> MutationAttempt[StatementExecution]:
+    return _write_attempt(operation, _Disposition("defect", kind, message), Receipt())

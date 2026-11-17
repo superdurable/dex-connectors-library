@@ -80,22 +80,23 @@ func TestResolveRefundOutcomeTellsThisFlowsRowFromAnotherFlowsRow(t *testing.T) 
 	require.NoError(t, err)
 	require.True(t, outcome.WasReconciled, "a replay that changed nothing is confirmed by the read-back")
 
-	uncertain := mysql.ExecuteStatementResult{Branch: mysql.ExecuteStatementBranchUncertain, Value: mysql.StatementExecution{LastInsertID: "0"}, Receipt: inserted.Receipt}
-	outcome, err = resolveRefundOutcome(uncertain, readBack)
-	require.NoError(t, err)
-	require.Equal(t, StatusRecorded, outcome.Status)
-	require.True(t, outcome.WasReconciled)
-
 	otherFlow := mysql.QueryRowsResult{Branch: mysql.QueryRowsBranchCompleted, Value: mysql.RowSet{Rows: []map[string]any{refundLedgerRow("9", otherFlowKey)}}}
 	outcome, err = resolveRefundOutcome(replayed, otherFlow)
 	require.NoError(t, err)
 	require.Equal(t, StatusAlreadyRecorded, outcome.Status, "ON DUPLICATE KEY UPDATE matched another Flow's order_id")
 	require.Equal(t, otherFlowKey, outcome.Refund.IdempotencyKey)
 
-	_, err = resolveRefundOutcome(uncertain, mysql.QueryRowsResult{Branch: mysql.QueryRowsBranchCompleted})
-	require.ErrorIs(t, err, errRefundNotFound, "an uncertain insert without a row stops for review")
-	_, err = resolveRefundOutcome(uncertain, otherFlow)
-	require.ErrorIs(t, err, errRefundNotFound, "an uncertain insert never claims another Flow's row")
+	_, err = resolveRefundOutcome(replayed, mysql.QueryRowsResult{Branch: mysql.QueryRowsBranchCompleted})
+	require.ErrorIs(t, err, errRefundNotFound, "a replayed insert without a row stops for review")
+}
+
+func TestMapToAddRefundToDailyTotalInputAddsTheRecordedAmount(t *testing.T) {
+	flow := NewFlow(mysql.Connection{})
+	input := flow.MapToAddRefundToDailyTotalInput(Outcome{Status: StatusRecorded, Refund: Refund{AmountUSD: "250.00"}})
+	require.Equal(t, AddRefundToDailyTotalStatement, input.Statement)
+	require.Equal(t, []any{"250.00"}, input.Parameters)
+	require.Zero(t, input.IdempotencyKeyPlaceholder)
+	require.Equal(t, int64(2), *input.MaxRowsAffected, "ON DUPLICATE KEY UPDATE counts an updated row twice")
 }
 
 func TestRecordRefundRequestRejectsInvalidInputBeforeTheDatabase(t *testing.T) {
