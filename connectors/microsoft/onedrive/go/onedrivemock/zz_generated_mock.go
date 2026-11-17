@@ -18,6 +18,10 @@ import (
 // Mock is a scripted microsoft-onedrive connection. Script each operation through its accessor.
 type Mock struct {
 	connection   onedrive.Connection
+	deleteItem   *connectormock.Mutation[onedrive.DeleteItemInput, onedrive.DeleteItemOutput]
+	renameItem   *connectormock.Mutation[onedrive.RenameItemInput, onedrive.RenameItemOutput]
+	moveItem     *connectormock.Mutation[onedrive.MoveItemInput, onedrive.MoveItemOutput]
+	copyFile     *connectormock.Mutation[onedrive.CopyFileInput, onedrive.CopyFileOutput]
 	searchFiles  *connectormock.Query[onedrive.SearchFilesInput, onedrive.SearchFilesOutput]
 	getFile      *connectormock.Query[onedrive.GetFileInput, onedrive.DriveItem]
 	readFileText *connectormock.Query[onedrive.ReadFileTextInput, onedrive.ReadFileTextOutput]
@@ -30,12 +34,20 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		deleteItem:   connectormock.NewMutation[onedrive.DeleteItemInput, onedrive.DeleteItemOutput](t, onedrive.DeleteItemDefinition),
+		renameItem:   connectormock.NewMutation[onedrive.RenameItemInput, onedrive.RenameItemOutput](t, onedrive.RenameItemDefinition),
+		moveItem:     connectormock.NewMutation[onedrive.MoveItemInput, onedrive.MoveItemOutput](t, onedrive.MoveItemDefinition),
+		copyFile:     connectormock.NewMutation[onedrive.CopyFileInput, onedrive.CopyFileOutput](t, onedrive.CopyFileDefinition),
 		searchFiles:  connectormock.NewQuery[onedrive.SearchFilesInput, onedrive.SearchFilesOutput](t, onedrive.SearchFilesDefinition),
 		getFile:      connectormock.NewQuery[onedrive.GetFileInput, onedrive.DriveItem](t, onedrive.GetFileDefinition),
 		readFileText: connectormock.NewQuery[onedrive.ReadFileTextInput, onedrive.ReadFileTextOutput](t, onedrive.ReadFileTextDefinition),
 		uploadFile:   connectormock.NewMutation[onedrive.UploadFileInput, onedrive.UploadFileOutput](t, onedrive.UploadFileDefinition),
 		createFolder: connectormock.NewMutation[onedrive.CreateFolderInput, onedrive.CreateFolderOutput](t, onedrive.CreateFolderDefinition),
 	}
+	mock.deleteItem.Default(DeleteItemDefault())
+	mock.renameItem.Default(RenameItemDefault())
+	mock.moveItem.Default(MoveItemDefault())
+	mock.copyFile.Default(CopyFileDefault())
 	mock.searchFiles.Default(SearchFilesDefault())
 	mock.getFile.Default(GetFileDefault())
 	mock.readFileText.Default(ReadFileTextDefault())
@@ -51,6 +63,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() onedrive.Connection { return mock.connection }
+
+// DeleteItem returns the deleteItem script.
+func (mock *Mock) DeleteItem() *connectormock.Mutation[onedrive.DeleteItemInput, onedrive.DeleteItemOutput] {
+	return mock.deleteItem
+}
+
+// RenameItem returns the renameItem script.
+func (mock *Mock) RenameItem() *connectormock.Mutation[onedrive.RenameItemInput, onedrive.RenameItemOutput] {
+	return mock.renameItem
+}
+
+// MoveItem returns the moveItem script.
+func (mock *Mock) MoveItem() *connectormock.Mutation[onedrive.MoveItemInput, onedrive.MoveItemOutput] {
+	return mock.moveItem
+}
+
+// CopyFile returns the copyFile script.
+func (mock *Mock) CopyFile() *connectormock.Mutation[onedrive.CopyFileInput, onedrive.CopyFileOutput] {
+	return mock.copyFile
+}
 
 // SearchFiles returns the searchFiles script.
 func (mock *Mock) SearchFiles() *connectormock.Query[onedrive.SearchFilesInput, onedrive.SearchFilesOutput] {
@@ -79,6 +111,18 @@ func (mock *Mock) CreateFolder() *connectormock.Mutation[onedrive.CreateFolderIn
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) DeleteItem() sdkgo.Mutation[onedrive.DeleteItemInput, onedrive.DeleteItemOutput] {
+	return operations.mock.deleteItem
+}
+func (operations mockOperations) RenameItem() sdkgo.Mutation[onedrive.RenameItemInput, onedrive.RenameItemOutput] {
+	return operations.mock.renameItem
+}
+func (operations mockOperations) MoveItem() sdkgo.Mutation[onedrive.MoveItemInput, onedrive.MoveItemOutput] {
+	return operations.mock.moveItem
+}
+func (operations mockOperations) CopyFile() sdkgo.Mutation[onedrive.CopyFileInput, onedrive.CopyFileOutput] {
+	return operations.mock.copyFile
+}
 func (operations mockOperations) SearchFiles() sdkgo.Query[onedrive.SearchFilesInput, onedrive.SearchFilesOutput] {
 	return operations.mock.searchFiles
 }
@@ -94,6 +138,151 @@ func (operations mockOperations) UploadFile() sdkgo.Mutation[onedrive.UploadFile
 func (operations mockOperations) CreateFolder() sdkgo.Mutation[onedrive.CreateFolderInput, onedrive.CreateFolderOutput] {
 	return operations.mock.createFolder
 }
+
+// DeleteItemDeleted selects the deleted branch: The item is absent from the drive.
+func DeleteItemDeleted(value onedrive.DeleteItemOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.DeleteItemOutput] {
+	return connectormock.Branch(onedrive.DeleteItemBranchDeleted, value, failure)
+}
+
+// DeleteItemProviderRejected selects the providerRejected branch: Graph rejected deletion of the item.
+func DeleteItemProviderRejected(value onedrive.DeleteItemOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.DeleteItemOutput] {
+	return connectormock.Branch(onedrive.DeleteItemBranchProviderRejected, value, failure)
+}
+
+// DeleteItemDefect selects the defect branch: The input or connection is invalid.
+func DeleteItemDefect(value onedrive.DeleteItemOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.DeleteItemOutput] {
+	return connectormock.Branch(onedrive.DeleteItemBranchDefect, value, failure)
+}
+
+// DeleteItemRetry asks Dex to retry the deleteItem Step, after the delay when it is positive.
+func DeleteItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onedrive.DeleteItemOutput] {
+	return connectormock.Retry[onedrive.DeleteItemOutput](failure, after)
+}
+
+// DeleteItemRemovedCopy is the manifest mock removedCopy: The copied file was moved to the recycle bin.
+func DeleteItemRemovedCopy() connectormock.Case[onedrive.DeleteItemOutput] {
+	value := connectormock.MustDecodeOutput[onedrive.DeleteItemOutput](`{"itemId":"copy-file-1"}`)
+	return connectormock.Branch(onedrive.DeleteItemBranchDeleted, value, nil)
+}
+
+// DeleteItemDefault is the manifest default, removedCopy, which New installs.
+func DeleteItemDefault() connectormock.Case[onedrive.DeleteItemOutput] {
+	return DeleteItemRemovedCopy()
+}
+
+// RenameItemRenamed selects the renamed branch: The item has the requested name.
+func RenameItemRenamed(value onedrive.RenameItemOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.RenameItemOutput] {
+	return connectormock.Branch(onedrive.RenameItemBranchRenamed, value, failure)
+}
+
+// RenameItemNotFound selects the notFound branch: The item was not found.
+func RenameItemNotFound(value onedrive.RenameItemOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.RenameItemOutput] {
+	return connectormock.Branch(onedrive.RenameItemBranchNotFound, value, failure)
+}
+
+// RenameItemProviderRejected selects the providerRejected branch: Graph rejected the rename.
+func RenameItemProviderRejected(value onedrive.RenameItemOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.RenameItemOutput] {
+	return connectormock.Branch(onedrive.RenameItemBranchProviderRejected, value, failure)
+}
+
+// RenameItemDefect selects the defect branch: The input or connection is invalid.
+func RenameItemDefect(value onedrive.RenameItemOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.RenameItemOutput] {
+	return connectormock.Branch(onedrive.RenameItemBranchDefect, value, failure)
+}
+
+// RenameItemRetry asks Dex to retry the renameItem Step, after the delay when it is positive.
+func RenameItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onedrive.RenameItemOutput] {
+	return connectormock.Retry[onedrive.RenameItemOutput](failure, after)
+}
+
+// RenameItemRenamedCopy is the manifest mock renamedCopy: The copied text file has its final name.
+func RenameItemRenamedCopy() connectormock.Case[onedrive.RenameItemOutput] {
+	value := connectormock.MustDecodeOutput[onedrive.RenameItemOutput](`{"item":{"id":"copy-file-1","name":"Ops-Policy-Final.txt","driveId":"b!financeLibrary-2","parentFolderId":"copy-folder-1","mimeType":"text/plain","sizeBytes":44}}`)
+	return connectormock.Branch(onedrive.RenameItemBranchRenamed, value, nil)
+}
+
+// RenameItemDefault is the manifest default, renamedCopy, which New installs.
+func RenameItemDefault() connectormock.Case[onedrive.RenameItemOutput] {
+	return RenameItemRenamedCopy()
+}
+
+// MoveItemMoved selects the moved branch: The item is in the requested parent folder.
+func MoveItemMoved(value onedrive.MoveItemOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.MoveItemOutput] {
+	return connectormock.Branch(onedrive.MoveItemBranchMoved, value, failure)
+}
+
+// MoveItemNotFound selects the notFound branch: The item or parent folder was not found.
+func MoveItemNotFound(value onedrive.MoveItemOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.MoveItemOutput] {
+	return connectormock.Branch(onedrive.MoveItemBranchNotFound, value, failure)
+}
+
+// MoveItemProviderRejected selects the providerRejected branch: Graph rejected the move.
+func MoveItemProviderRejected(value onedrive.MoveItemOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.MoveItemOutput] {
+	return connectormock.Branch(onedrive.MoveItemBranchProviderRejected, value, failure)
+}
+
+// MoveItemDefect selects the defect branch: The input or connection is invalid.
+func MoveItemDefect(value onedrive.MoveItemOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.MoveItemOutput] {
+	return connectormock.Branch(onedrive.MoveItemBranchDefect, value, failure)
+}
+
+// MoveItemRetry asks Dex to retry the moveItem Step, after the delay when it is positive.
+func MoveItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onedrive.MoveItemOutput] {
+	return connectormock.Retry[onedrive.MoveItemOutput](failure, after)
+}
+
+// MoveItemMovedCopy is the manifest mock movedCopy: The copied text file is in the archive folder.
+func MoveItemMovedCopy() connectormock.Case[onedrive.MoveItemOutput] {
+	value := connectormock.MustDecodeOutput[onedrive.MoveItemOutput](`{"item":{"id":"copy-file-1","name":"Ops-Policy-Final.txt","driveId":"b!financeLibrary-2","parentFolderId":"archive-folder-1","mimeType":"text/plain","sizeBytes":44}}`)
+	return connectormock.Branch(onedrive.MoveItemBranchMoved, value, nil)
+}
+
+// MoveItemDefault is the manifest default, movedCopy, which New installs.
+func MoveItemDefault() connectormock.Case[onedrive.MoveItemOutput] { return MoveItemMovedCopy() }
+
+// CopyFileQueued selects the queued branch: Graph accepted the copy job or the destination was found after an earlier send.
+func CopyFileQueued(value onedrive.CopyFileOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.CopyFileOutput] {
+	return connectormock.Branch(onedrive.CopyFileBranchQueued, value, failure)
+}
+
+// CopyFileNameConflict selects the nameConflict branch: The destination path existed before the first send.
+func CopyFileNameConflict(value onedrive.CopyFileOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.CopyFileOutput] {
+	return connectormock.Branch(onedrive.CopyFileBranchNameConflict, value, failure)
+}
+
+// CopyFileProviderRejected selects the providerRejected branch: Graph rejected the copy.
+func CopyFileProviderRejected(value onedrive.CopyFileOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.CopyFileOutput] {
+	return connectormock.Branch(onedrive.CopyFileBranchProviderRejected, value, failure)
+}
+
+// CopyFileInvalidResponse selects the invalidResponse branch: Graph returned invalid destination metadata.
+func CopyFileInvalidResponse(value onedrive.CopyFileOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.CopyFileOutput] {
+	return connectormock.Branch(onedrive.CopyFileBranchInvalidResponse, value, failure)
+}
+
+// CopyFileUncertain returns an uncertain copyFile outcome.
+func CopyFileUncertain(value onedrive.CopyFileOutput, failure sdkgo.Failure) connectormock.Case[onedrive.CopyFileOutput] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CopyFileDefect selects the defect branch: The input or connection is invalid.
+func CopyFileDefect(value onedrive.CopyFileOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.CopyFileOutput] {
+	return connectormock.Branch(onedrive.CopyFileBranchDefect, value, failure)
+}
+
+// CopyFileRetry asks Dex to retry the copyFile Step, after the delay when it is positive.
+func CopyFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onedrive.CopyFileOutput] {
+	return connectormock.Retry[onedrive.CopyFileOutput](failure, after)
+}
+
+// CopyFileQueuedPolicyCopy is the manifest mock queuedPolicyCopy: Graph accepted the policy copy to the destination folder.
+func CopyFileQueuedPolicyCopy() connectormock.Case[onedrive.CopyFileOutput] {
+	value := connectormock.MustDecodeOutput[onedrive.CopyFileOutput](`{"destinationDriveId":"b!financeLibrary-2","destinationFolderId":"copy-folder-1","name":"Ops-Policy-Copy.txt","isQueued":true}`)
+	return connectormock.Branch(onedrive.CopyFileBranchQueued, value, nil)
+}
+
+// CopyFileDefault is the manifest default, queuedPolicyCopy, which New installs.
+func CopyFileDefault() connectormock.Case[onedrive.CopyFileOutput] { return CopyFileQueuedPolicyCopy() }
 
 // SearchFilesFound selects the found branch: Microsoft Graph returned matching items or reported that more pages remain.
 func SearchFilesFound(value onedrive.SearchFilesOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.SearchFilesOutput] {

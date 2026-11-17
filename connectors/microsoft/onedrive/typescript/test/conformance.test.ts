@@ -8,7 +8,8 @@ import { OneDriveClient } from '../src/client.js';
 import { CreateFolderInputSchema, GetFileInputSchema, ReadFileTextInputSchema, SearchFilesInputSchema, UploadFileInputSchema, type Credentials } from '../src/models.js';
 import { answerRecordedRequest, ExchangeRecorder, HeartbeatContext, invokeProductionMutation, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/microsoft/onedrive/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/microsoft/onedrive/scenarios.json', import.meta.url))
+  .filter(scenario => ['searchFiles', 'getFile', 'readFileText', 'uploadFile', 'createFolder'].includes(scenario.operation));
 const connection = { provider: 'microsoft', name: 'onedrive-files' };
 const credentials: Credentials = { accessToken: new SecretString('graph-token-SENTINEL') };
 

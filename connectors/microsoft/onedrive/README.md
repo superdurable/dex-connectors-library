@@ -19,11 +19,16 @@ Graph v1.0. Its operations mirror the Google Drive connector's names:
   an explicit `fail` or `replace` conflict behavior.
 - `onedrive.NewCreateFolderStep` ensures one folder with a name exists in a
   parent folder.
+- `onedrive.NewDeleteItemStep` moves a file or folder to the recycle bin; an
+  already absent item is a completed deletion.
+- `onedrive.NewRenameItemStep` replaces a file or folder name by item ID.
+- `onedrive.NewMoveItemStep` moves a file or folder to another parent in its drive.
+- `onedrive.NewCopyFileStep` queues an asynchronous file copy after checking the
+  destination path; `isQueued` means Graph accepted the job, not that it finished.
 
 Every operation takes a `driveId`. Blank means the signed-in user's OneDrive
 (`/me/drive`); a SharePoint document library is chosen with the drive picker.
-The connector does not move, rename, share, or delete items, and this release
-has no Triggers (see [Triggers](#triggers)).
+This release has no Triggers (see [Triggers](#triggers)).
 
 ## Authorization
 
@@ -303,8 +308,9 @@ for push delivery.
 ## Not in this release
 
 - Personal Microsoft accounts (see [Authorization](#authorization)).
-- Large uploads through upload sessions, moves, renames, copies, sharing
-  links, permissions, deletes, versions, and check-in or check-out.
+- Large uploads through upload sessions, sharing links, permissions, versions,
+  and check-in or check-out. Graph sharing links grant bearer access, so the
+  connector cannot return them in Flow Results without exposing a secret.
 - Office conversions such as `?format=pdf` and reading Word or Excel content;
   the Excel connector owns workbook data.
 - National clouds (`graph.microsoft.us`, `microsoftgraph.chinacloudapi.cn`),
@@ -362,4 +368,4 @@ mock := onedrivemock.New(t, ConnectionName)
 harness := newTextCopyHarnessWithConnection(t, mock.Connection(), "source-folder", "destination-folder")
 ```
 
-Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/go@v0.24.0`.
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/go@v0.25.0`.
