@@ -2,6 +2,604 @@
   "connector": "ashby",
   "scenarios": [
     {
+      "callId": "dbece584-dc67-513d-b770-b24f639d401a",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"e9ed20fd-d45f-4aad-8a00-a19bfba0083e\",\"name\":\"Example Candidate\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"updatedAt\":\"2024-01-16T10:30:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.addTag",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2024-01-15T10:30:00.000Z",
+          "id": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+          "name": "Example Candidate",
+          "updatedAt": "2024-01-16T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbece584-dc67-513d-b770-b24f639d401a",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+      },
+      "name": "addCandidateTag-success",
+      "operation": "addCandidateTag"
+    },
+    {
+      "callId": "dbece584-dc67-513d-b770-b24f639d401a",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"tag_not_found\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.addTag",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbece584-dc67-513d-b770-b24f639d401a",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+      },
+      "name": "addCandidateTag-providerRejected",
+      "operation": "addCandidateTag"
+    },
+    {
+      "callId": "dbece584-dc67-513d-b770-b24f639d401a",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.addTag",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbece584-dc67-513d-b770-b24f639d401a",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+      },
+      "name": "addCandidateTag-invalidResponse",
+      "operation": "addCandidateTag"
+    },
+    {
+      "callId": "dbece584-dc67-513d-b770-b24f639d401a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbece584-dc67-513d-b770-b24f639d401a",
+      "input": {
+        "candidateId": "bad-id",
+        "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+      },
+      "name": "addCandidateTag-defect",
+      "operation": "addCandidateTag"
+    },
+    {
+      "callId": "dbece584-dc67-513d-b770-b24f639d401a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.addTag",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbece584-dc67-513d-b770-b24f639d401a",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+      },
+      "name": "addCandidateTag-rateLimit",
+      "operation": "addCandidateTag"
+    },
+    {
+      "callId": "dbece584-dc67-513d-b770-b24f639d401a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.addTag",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbece584-dc67-513d-b770-b24f639d401a",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+      },
+      "name": "addCandidateTag-unavailable",
+      "operation": "addCandidateTag"
+    },
+    {
+      "callId": "dbece584-dc67-513d-b770-b24f639d401a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.addTag",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbece584-dc67-513d-b770-b24f639d401a",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+      },
+      "name": "addCandidateTag-transportFailure",
+      "operation": "addCandidateTag"
+    },
+    {
+      "callId": "1d50916c-8cac-5aa9-b102-91d3c9afd09a",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"e9ed20fd-d45f-4aad-8a00-a19bfba0083e\",\"name\":\"Example Candidate\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"updatedAt\":\"2024-01-16T10:30:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.removeTag",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2024-01-15T10:30:00.000Z",
+          "id": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+          "name": "Example Candidate",
+          "updatedAt": "2024-01-16T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d50916c-8cac-5aa9-b102-91d3c9afd09a",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+      },
+      "name": "removeCandidateTag-success",
+      "operation": "removeCandidateTag"
+    },
+    {
+      "callId": "1d50916c-8cac-5aa9-b102-91d3c9afd09a",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"tag_not_found\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.removeTag",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d50916c-8cac-5aa9-b102-91d3c9afd09a",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+      },
+      "name": "removeCandidateTag-providerRejected",
+      "operation": "removeCandidateTag"
+    },
+    {
+      "callId": "1d50916c-8cac-5aa9-b102-91d3c9afd09a",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.removeTag",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d50916c-8cac-5aa9-b102-91d3c9afd09a",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+      },
+      "name": "removeCandidateTag-invalidResponse",
+      "operation": "removeCandidateTag"
+    },
+    {
+      "callId": "1d50916c-8cac-5aa9-b102-91d3c9afd09a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "name": "",
+          "updatedAt": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d50916c-8cac-5aa9-b102-91d3c9afd09a",
+      "input": {
+        "candidateId": "bad-id",
+        "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+      },
+      "name": "removeCandidateTag-defect",
+      "operation": "removeCandidateTag"
+    },
+    {
+      "callId": "1d50916c-8cac-5aa9-b102-91d3c9afd09a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.removeTag",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d50916c-8cac-5aa9-b102-91d3c9afd09a",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+      },
+      "name": "removeCandidateTag-rateLimit",
+      "operation": "removeCandidateTag"
+    },
+    {
+      "callId": "1d50916c-8cac-5aa9-b102-91d3c9afd09a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.removeTag",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d50916c-8cac-5aa9-b102-91d3c9afd09a",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+      },
+      "name": "removeCandidateTag-unavailable",
+      "operation": "removeCandidateTag"
+    },
+    {
+      "callId": "1d50916c-8cac-5aa9-b102-91d3c9afd09a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.removeTag",
+          "requestBody": {
+            "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+            "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d50916c-8cac-5aa9-b102-91d3c9afd09a",
+      "input": {
+        "candidateId": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+        "tagId": "38430ede-5bd2-41fc-b474-87591cb98cbc"
+      },
+      "name": "removeCandidateTag-transportFailure",
+      "operation": "removeCandidateTag"
+    },
+    {
       "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
       "exchanges": [
         {

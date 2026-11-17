@@ -17,10 +17,12 @@ import (
 
 // Mock is a scripted ashby connection. Script each operation through its accessor.
 type Mock struct {
-	connection      ashby.Connection
-	listCandidates  *connectormock.Query[ashby.ListCandidatesInput, ashby.CandidatePage]
-	updateCandidate *connectormock.Mutation[ashby.UpdateCandidateInput, ashby.CandidateProfile]
-	getCandidate    *connectormock.Query[ashby.GetCandidateInput, ashby.CandidateProfile]
+	connection         ashby.Connection
+	addCandidateTag    *connectormock.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile]
+	removeCandidateTag *connectormock.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile]
+	listCandidates     *connectormock.Query[ashby.ListCandidatesInput, ashby.CandidatePage]
+	updateCandidate    *connectormock.Mutation[ashby.UpdateCandidateInput, ashby.CandidateProfile]
+	getCandidate       *connectormock.Query[ashby.GetCandidateInput, ashby.CandidateProfile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -28,10 +30,14 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listCandidates:  connectormock.NewQuery[ashby.ListCandidatesInput, ashby.CandidatePage](t, ashby.ListCandidatesDefinition),
-		updateCandidate: connectormock.NewMutation[ashby.UpdateCandidateInput, ashby.CandidateProfile](t, ashby.UpdateCandidateDefinition),
-		getCandidate:    connectormock.NewQuery[ashby.GetCandidateInput, ashby.CandidateProfile](t, ashby.GetCandidateDefinition),
+		addCandidateTag:    connectormock.NewMutation[ashby.CandidateTagInput, ashby.CandidateProfile](t, ashby.AddCandidateTagDefinition),
+		removeCandidateTag: connectormock.NewMutation[ashby.CandidateTagInput, ashby.CandidateProfile](t, ashby.RemoveCandidateTagDefinition),
+		listCandidates:     connectormock.NewQuery[ashby.ListCandidatesInput, ashby.CandidatePage](t, ashby.ListCandidatesDefinition),
+		updateCandidate:    connectormock.NewMutation[ashby.UpdateCandidateInput, ashby.CandidateProfile](t, ashby.UpdateCandidateDefinition),
+		getCandidate:       connectormock.NewQuery[ashby.GetCandidateInput, ashby.CandidateProfile](t, ashby.GetCandidateDefinition),
 	}
+	mock.addCandidateTag.Default(AddCandidateTagDefault())
+	mock.removeCandidateTag.Default(RemoveCandidateTagDefault())
 	mock.listCandidates.Default(ListCandidatesDefault())
 	mock.updateCandidate.Default(UpdateCandidateDefault())
 	mock.getCandidate.Default(GetCandidateDefault())
@@ -45,6 +51,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() ashby.Connection { return mock.connection }
+
+// AddCandidateTag returns the addCandidateTag script.
+func (mock *Mock) AddCandidateTag() *connectormock.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile] {
+	return mock.addCandidateTag
+}
+
+// RemoveCandidateTag returns the removeCandidateTag script.
+func (mock *Mock) RemoveCandidateTag() *connectormock.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile] {
+	return mock.removeCandidateTag
+}
 
 // ListCandidates returns the listCandidates script.
 func (mock *Mock) ListCandidates() *connectormock.Query[ashby.ListCandidatesInput, ashby.CandidatePage] {
@@ -63,6 +79,12 @@ func (mock *Mock) GetCandidate() *connectormock.Query[ashby.GetCandidateInput, a
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) AddCandidateTag() sdkgo.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile] {
+	return operations.mock.addCandidateTag
+}
+func (operations mockOperations) RemoveCandidateTag() sdkgo.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile] {
+	return operations.mock.removeCandidateTag
+}
 func (operations mockOperations) ListCandidates() sdkgo.Query[ashby.ListCandidatesInput, ashby.CandidatePage] {
 	return operations.mock.listCandidates
 }
@@ -71,6 +93,78 @@ func (operations mockOperations) UpdateCandidate() sdkgo.Mutation[ashby.UpdateCa
 }
 func (operations mockOperations) GetCandidate() sdkgo.Query[ashby.GetCandidateInput, ashby.CandidateProfile] {
 	return operations.mock.getCandidate
+}
+
+// AddCandidateTagAdded selects the added branch: Ashby returned the tagged candidate.
+func AddCandidateTagAdded(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.AddCandidateTagBranchAdded, value, failure)
+}
+
+// AddCandidateTagProviderRejected selects the providerRejected branch: Ashby definitively rejected the tag addition.
+func AddCandidateTagProviderRejected(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.AddCandidateTagBranchProviderRejected, value, failure)
+}
+
+// AddCandidateTagInvalidResponse selects the invalidResponse branch: Ashby returned malformed or oversized JSON.
+func AddCandidateTagInvalidResponse(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.AddCandidateTagBranchInvalidResponse, value, failure)
+}
+
+// AddCandidateTagDefect selects the defect branch: Candidate or tag ID or credentials are invalid.
+func AddCandidateTagDefect(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.AddCandidateTagBranchDefect, value, failure)
+}
+
+// AddCandidateTagRetry asks Dex to retry the addCandidateTag Step, after the delay when it is positive.
+func AddCandidateTagRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Retry[ashby.CandidateProfile](failure, after)
+}
+
+// AddCandidateTagAddedDefault is the manifest mock addedDefault: A sample tag is added to one candidate.
+func AddCandidateTagAddedDefault() connectormock.Case[ashby.CandidateProfile] {
+	value := connectormock.MustDecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+	return connectormock.Branch(ashby.AddCandidateTagBranchAdded, value, nil)
+}
+
+// AddCandidateTagDefault is the manifest default, addedDefault, which New installs.
+func AddCandidateTagDefault() connectormock.Case[ashby.CandidateProfile] {
+	return AddCandidateTagAddedDefault()
+}
+
+// RemoveCandidateTagRemoved selects the removed branch: Ashby returned the untagged candidate.
+func RemoveCandidateTagRemoved(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.RemoveCandidateTagBranchRemoved, value, failure)
+}
+
+// RemoveCandidateTagProviderRejected selects the providerRejected branch: Ashby definitively rejected the tag removal.
+func RemoveCandidateTagProviderRejected(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.RemoveCandidateTagBranchProviderRejected, value, failure)
+}
+
+// RemoveCandidateTagInvalidResponse selects the invalidResponse branch: Ashby returned malformed or oversized JSON.
+func RemoveCandidateTagInvalidResponse(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.RemoveCandidateTagBranchInvalidResponse, value, failure)
+}
+
+// RemoveCandidateTagDefect selects the defect branch: Candidate or tag ID or credentials are invalid.
+func RemoveCandidateTagDefect(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.RemoveCandidateTagBranchDefect, value, failure)
+}
+
+// RemoveCandidateTagRetry asks Dex to retry the removeCandidateTag Step, after the delay when it is positive.
+func RemoveCandidateTagRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Retry[ashby.CandidateProfile](failure, after)
+}
+
+// RemoveCandidateTagRemovedDefault is the manifest mock removedDefault: A sample tag is removed from one candidate.
+func RemoveCandidateTagRemovedDefault() connectormock.Case[ashby.CandidateProfile] {
+	value := connectormock.MustDecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+	return connectormock.Branch(ashby.RemoveCandidateTagBranchRemoved, value, nil)
+}
+
+// RemoveCandidateTagDefault is the manifest default, removedDefault, which New installs.
+func RemoveCandidateTagDefault() connectormock.Case[ashby.CandidateProfile] {
+	return RemoveCandidateTagRemovedDefault()
 }
 
 // ListCandidatesListed selects the listed branch: Ashby returned the candidate page.

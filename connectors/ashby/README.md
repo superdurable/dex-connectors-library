@@ -4,6 +4,8 @@ The Go, Python, and TypeScript `getCandidate` Query reads one candidate's ID, na
 
 Go also provides `listCandidates` to page through candidate identities and `updateCandidate` to replace one candidate's display name. Both use the default one-hour retry budget; reads and absolute name replacement are safe to repeat. The Python and TypeScript packages retain only `getCandidate`.
 
+Go also provides `addCandidateTag` and `removeCandidateTag` for existing candidate tags. Both set an absolute membership state and use the safe repeat tier. Find the non-secret tag UUID under **Admin > Organization Settings > Candidate Tags**, or through `candidateTag.list` with additional **Hiring Process read** permission; pass it as `tagId` with a candidate UUID. Blank IDs are invalid. The returned profile omits contact and resume details. See [candidate.addTag](https://developers.ashbyhq.com/reference/candidateaddtag) and [candidate.removeTag](https://developers.ashbyhq.com/reference/candidateremovetag).
+
 ## Connect
 
 In [Ashby](https://app.ashbyhq.com), an administrator opens **Admin > API Keys** and creates an API key with **Candidates read** permission, plus **Candidates write** for `updateCandidate`. Copy the complete opaque secret into the Dex Web connection's `api_key` field. The connector sends it as the HTTP Basic username with an empty password. Revoke or rotate the key from the same page. Confidential candidates require the additional confidential jobs/projects permission. See [Ashby authentication](https://developers.ashbyhq.com/reference/authentication).
@@ -12,4 +14,4 @@ Leave `baseUrl` blank for `https://api.ashbyhq.com`. `timeout` is a per-request 
 
 ## Examples and verification
 
-Run the [Go](go/examples/candidate-inspection/README.md), [Python](python/examples/candidate_inspection/README.md), or [TypeScript](typescript/examples/candidate-inspection/README.md) candidate inspection Flow with the static `ashby` connection. Go-recorded conformance checks exact requests, branches, retries, and outputs for each implemented language capability. Local integration tests exercise real Dex with fixture providers. Real Ashby authorization, listing, retrieval, and updating remain unverified.
+Run the [Go](go/examples/candidate-inspection/README.md), [Python](python/examples/candidate_inspection/README.md), or [TypeScript](typescript/examples/candidate-inspection/README.md) candidate inspection Flow with the static `ashby` connection. Go-recorded conformance checks exact requests, branches, retries, and outputs for each implemented language capability. Local integration tests exercise real Dex with fixture providers. Real Ashby authorization, listing, retrieval, updating, and tag writes remain unverified.

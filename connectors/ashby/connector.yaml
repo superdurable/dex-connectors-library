@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: ashby
   displayName: Ashby
-  description: Read candidate identities and replace candidate display names in Ashby.
+  description: Read candidate identities, replace names, and manage candidate tags in Ashby.
   company: Ashby
   categories: [hr-recruiting]
   version: v0.2.0
@@ -53,8 +53,48 @@ spec:
       startURL: https://app.ashbyhq.com
       steps:
         - In Ashby, open Admin > API Keys and create or select an API key with Candidates read/write permissions for these operations. Copy the complete opaque secret into Dex Web api_key; blank is invalid. Revoke or rotate it on the same page. Confidential candidates require the separate confidential jobs and projects permission.
-        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret candidate UUID in Ashby or from candidate.list and pass it as candidateId; blank is invalid. This operation does not return email, phone, or resume data.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret candidate UUID in Ashby or from candidate.list and pass it as candidateId; blank is invalid. For tag operations, find the non-secret tag UUID in Ashby Admin > Organization Settings > Candidate Tags or candidateTag.list (which additionally needs Hiring Process read permission) and pass it as tagId; blank is invalid. Results omit email, phone, and resume data.
   operations:
+    - name: addCandidateTag
+      goName: AddCandidateTag
+      inputType: CandidateTagInput
+      outputType: CandidateProfile
+      kind: mutation
+      description: Add an existing tag to a candidate.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: added, goName: Added, description: Ashby returned the tagged candidate.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby definitively rejected the tag addition., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Candidate or tag ID or credentials are invalid., optional: true}
+      mocks:
+        - name: addedDefault
+          branch: added
+          default: true
+          description: A sample tag is added to one candidate.
+          output: {id: e9ed20fd-d45f-4aad-8a00-a19bfba0083e, name: Example Candidate, createdAt: '2024-01-15T10:30:00.000Z', updatedAt: '2024-01-16T10:30:00.000Z'}
+    - name: removeCandidateTag
+      goName: RemoveCandidateTag
+      inputType: CandidateTagInput
+      outputType: CandidateProfile
+      kind: mutation
+      description: Remove an existing tag from a candidate.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: removed, goName: Removed, description: Ashby returned the untagged candidate.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby definitively rejected the tag removal., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Candidate or tag ID or credentials are invalid., optional: true}
+      mocks:
+        - name: removedDefault
+          branch: removed
+          default: true
+          description: A sample tag is removed from one candidate.
+          output: {id: e9ed20fd-d45f-4aad-8a00-a19bfba0083e, name: Example Candidate, createdAt: '2024-01-15T10:30:00.000Z', updatedAt: '2024-01-16T10:30:00.000Z'}
     - name: listCandidates
       goName: ListCandidates
       inputType: ListCandidatesInput
