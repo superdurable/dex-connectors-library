@@ -252,6 +252,7 @@
         "failureKind": "",
         "heartbeat": {
           "outlookMailDraftMessageId": "draft1",
+          "outlookMailSendCount": 1,
           "outlookMailSendPhase": "sendDispatched"
         },
         "output": {
@@ -400,6 +401,7 @@
         "failureKind": "",
         "heartbeat": {
           "outlookMailDraftMessageId": "draft1",
+          "outlookMailSendCount": 1,
           "outlookMailSendPhase": "sendDispatched"
         },
         "output": {
@@ -1983,7 +1985,7 @@
         "attempt": 1,
         "value": {
           "outlookMailDraftMessageId": "draft1",
-          "outlookMailSendConfirmations": 2,
+          "outlookMailSendCount": 3,
           "outlookMailSendPhase": "sendDispatched"
         }
       }
@@ -2199,7 +2201,7 @@
         "attempt": 1,
         "value": {
           "outlookMailDraftMessageId": "draft1",
-          "outlookMailSendConfirmations": 2,
+          "outlookMailSendCount": 3,
           "outlookMailSendPhase": "sendDispatched"
         }
       }
@@ -3025,6 +3027,7 @@
         "failureKind": "",
         "heartbeat": {
           "outlookMailDraftMessageId": "draft1",
+          "outlookMailSendCount": 1,
           "outlookMailSendPhase": "sendDispatched"
         },
         "output": {
@@ -3254,6 +3257,7 @@
           "failureKind": "TRANSPORT",
           "heartbeat": {
             "outlookMailDraftMessageId": "draft1",
+            "outlookMailSendCount": 1,
             "outlookMailSendPhase": "sendDispatched"
           },
           "retryAfterMs": 3000
@@ -3604,6 +3608,7 @@
           "failureKind": "TRANSPORT",
           "heartbeat": {
             "outlookMailDraftMessageId": "draft1",
+            "outlookMailSendCount": 1,
             "outlookMailSendPhase": "sendDispatched"
           },
           "retryAfterMs": 3000
@@ -4220,6 +4225,7 @@
         "failureKind": "",
         "heartbeat": {
           "outlookMailDraftMessageId": "AAMkAGI2MDEyMzQ1DRAFT001",
+          "outlookMailSendCount": 1,
           "outlookMailSendPhase": "sendDispatched"
         },
         "output": {
@@ -4368,6 +4374,7 @@
         "failureKind": "",
         "heartbeat": {
           "outlookMailDraftMessageId": "AAMkAGI2MDEyMzQ1DRAFT001",
+          "outlookMailSendCount": 1,
           "outlookMailSendPhase": "sendDispatched"
         },
         "output": {
@@ -6525,7 +6532,7 @@
         "attempt": 1,
         "value": {
           "outlookMailDraftMessageId": "AAMkAGI2MDEyMzQ1DRAFT001",
-          "outlookMailSendConfirmations": 2,
+          "outlookMailSendCount": 3,
           "outlookMailSendPhase": "sendDispatched"
         }
       }
@@ -6586,7 +6593,7 @@
         "attempt": 1,
         "value": {
           "outlookMailDraftMessageId": "AAMkAGI2MDEyMzQ1DRAFT001",
-          "outlookMailSendConfirmations": 2,
+          "outlookMailSendCount": 3,
           "outlookMailSendPhase": "sendDispatched"
         }
       }
@@ -6822,6 +6829,1426 @@
       },
       "name": "searchMessages-nonobject-item-614",
       "operation": "searchMessages"
+    },
+    {
+      "attempts": 2,
+      "callId": "7804e272-780d-51f7-a524-8ab33185028d",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-7804e272-780d-51f7-a524-8ab33185028d')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"draft1\", \"isDraft\": true, \"subject\": \"Hello\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"jane@example.com\"}}], \"createdDateTime\": \"2026-01-01T12:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages",
+          "requestBody": {
+            "bccRecipients": [
+              {
+                "emailAddress": {
+                  "address": "bcc@example.com",
+                  "name": ""
+                }
+              }
+            ],
+            "body": {
+              "content": "Body",
+              "contentType": "text"
+            },
+            "ccRecipients": [
+              {
+                "emailAddress": {
+                  "address": "cc@example.com",
+                  "name": ""
+                }
+              }
+            ],
+            "replyTo": [
+              {
+                "emailAddress": {
+                  "address": "reply@example.com",
+                  "name": ""
+                }
+              }
+            ],
+            "singleValueExtendedProperties": [
+              {
+                "id": "String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey",
+                "value": "dex-7804e272-780d-51f7-a524-8ab33185028d"
+              }
+            ],
+            "subject": "Hello",
+            "toRecipients": [
+              {
+                "emailAddress": {
+                  "address": "jane@example.com",
+                  "name": ""
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"error\":{\"code\":\"UnknownError\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/draft1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 504
+        },
+        {
+          "body": "{\"id\": \"draft1\", \"isDraft\": true, \"subject\": \"Hello\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"jane@example.com\"}}], \"createdDateTime\": \"2026-01-01T12:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/draft1",
+          "query": {
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/draft1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "outlookMailDraftMessageId": "draft1",
+          "outlookMailSendCount": 2,
+          "outlookMailSendPhase": "sendDispatched"
+        },
+        "output": {
+          "idempotencyMarker": "dex-7804e272-780d-51f7-a524-8ab33185028d",
+          "messageId": "draft1",
+          "recipients": [
+            "jane@example.com"
+          ],
+          "subject": "Hello"
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7804e272-780d-51f7-a524-8ab33185028d",
+      "input": {
+        "bcc": [
+          "bcc@example.com"
+        ],
+        "cc": [
+          "cc@example.com"
+        ],
+        "replyTo": [
+          "reply@example.com"
+        ],
+        "subject": "Hello",
+        "text": "Body",
+        "to": [
+          "jane@example.com"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "outlookMailDraftMessageId": "draft1",
+            "outlookMailSendCount": 1,
+            "outlookMailSendPhase": "sendDispatched"
+          },
+          "retryAfterMs": 3000
+        }
+      ],
+      "name": "sendMessage-unknown-send-read-back-then-resent",
+      "operation": "sendMessage"
+    },
+    {
+      "attempts": 4,
+      "callId": "7804e272-780d-51f7-a524-8ab33185028d",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-7804e272-780d-51f7-a524-8ab33185028d')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"draft1\", \"isDraft\": true, \"subject\": \"Hello\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"jane@example.com\"}}], \"createdDateTime\": \"2026-01-01T12:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages",
+          "requestBody": {
+            "bccRecipients": [
+              {
+                "emailAddress": {
+                  "address": "bcc@example.com",
+                  "name": ""
+                }
+              }
+            ],
+            "body": {
+              "content": "Body",
+              "contentType": "text"
+            },
+            "ccRecipients": [
+              {
+                "emailAddress": {
+                  "address": "cc@example.com",
+                  "name": ""
+                }
+              }
+            ],
+            "replyTo": [
+              {
+                "emailAddress": {
+                  "address": "reply@example.com",
+                  "name": ""
+                }
+              }
+            ],
+            "singleValueExtendedProperties": [
+              {
+                "id": "String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey",
+                "value": "dex-7804e272-780d-51f7-a524-8ab33185028d"
+              }
+            ],
+            "subject": "Hello",
+            "toRecipients": [
+              {
+                "emailAddress": {
+                  "address": "jane@example.com",
+                  "name": ""
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"error\":{\"code\":\"UnknownError\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/draft1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\": \"draft1\", \"isDraft\": true, \"subject\": \"Hello\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"jane@example.com\"}}], \"createdDateTime\": \"2026-01-01T12:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/draft1",
+          "query": {
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"ErrorItemSave\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/draft1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\": \"draft1\", \"isDraft\": true, \"subject\": \"Hello\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"jane@example.com\"}}], \"createdDateTime\": \"2026-01-01T12:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/draft1",
+          "query": {
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/draft1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"id\": \"draft1\", \"isDraft\": true, \"subject\": \"Hello\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"jane@example.com\"}}], \"createdDateTime\": \"2026-01-01T12:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/draft1",
+          "query": {
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "idempotencyMarker": "dex-7804e272-780d-51f7-a524-8ab33185028d",
+          "messageId": "draft1",
+          "recipients": [
+            "jane@example.com"
+          ],
+          "subject": "Hello"
+        },
+        "requestCount": 8,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7804e272-780d-51f7-a524-8ab33185028d",
+      "input": {
+        "bcc": [
+          "bcc@example.com"
+        ],
+        "cc": [
+          "cc@example.com"
+        ],
+        "replyTo": [
+          "reply@example.com"
+        ],
+        "subject": "Hello",
+        "text": "Body",
+        "to": [
+          "jane@example.com"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "outlookMailDraftMessageId": "draft1",
+            "outlookMailSendCount": 1,
+            "outlookMailSendPhase": "sendDispatched"
+          },
+          "retryAfterMs": 3000
+        },
+        {
+          "exchangeCount": 5,
+          "failureKind": "CONFLICT",
+          "heartbeat": {
+            "outlookMailDraftMessageId": "draft1",
+            "outlookMailSendCount": 2,
+            "outlookMailSendPhase": "sendDispatched"
+          },
+          "retryAfterMs": 3000
+        },
+        {
+          "exchangeCount": 7,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "outlookMailDraftMessageId": "draft1",
+            "outlookMailSendCount": 3,
+            "outlookMailSendPhase": "sendDispatched"
+          },
+          "retryAfterMs": 3000
+        }
+      ],
+      "name": "sendMessage-send-cap-reached-uncertain",
+      "operation": "sendMessage"
+    },
+    {
+      "attempts": 3,
+      "callId": "7804e272-780d-51f7-a524-8ab33185028d",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-7804e272-780d-51f7-a524-8ab33185028d')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"draft1\", \"isDraft\": true, \"subject\": \"Hello\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"jane@example.com\"}}], \"createdDateTime\": \"2026-01-01T12:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages",
+          "requestBody": {
+            "bccRecipients": [
+              {
+                "emailAddress": {
+                  "address": "bcc@example.com",
+                  "name": ""
+                }
+              }
+            ],
+            "body": {
+              "content": "Body",
+              "contentType": "text"
+            },
+            "ccRecipients": [
+              {
+                "emailAddress": {
+                  "address": "cc@example.com",
+                  "name": ""
+                }
+              }
+            ],
+            "replyTo": [
+              {
+                "emailAddress": {
+                  "address": "reply@example.com",
+                  "name": ""
+                }
+              }
+            ],
+            "singleValueExtendedProperties": [
+              {
+                "id": "String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey",
+                "value": "dex-7804e272-780d-51f7-a524-8ab33185028d"
+              }
+            ],
+            "subject": "Hello",
+            "toRecipients": [
+              {
+                "emailAddress": {
+                  "address": "jane@example.com",
+                  "name": ""
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"error\":{\"code\":\"UnknownError\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/draft1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"id\": \"draft1\", \"isDraft\": true, \"subject\": \"Hello\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"jane@example.com\"}}], \"createdDateTime\": \"2026-01-01T12:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/draft1",
+          "query": {
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"ErrorAccessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/draft1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 403
+        },
+        {
+          "body": "{\"id\": \"draft1\", \"isDraft\": false, \"subject\": \"Hello\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"jane@example.com\"}}], \"createdDateTime\": \"2026-01-01T12:00:00Z\", \"sentDateTime\": \"2026-01-01T12:01:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/draft1",
+          "query": {
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "idempotencyMarker": "dex-7804e272-780d-51f7-a524-8ab33185028d",
+          "messageId": "draft1",
+          "recipients": [
+            "jane@example.com"
+          ],
+          "subject": "Hello",
+          "wasAlreadySent": true
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7804e272-780d-51f7-a524-8ab33185028d",
+      "input": {
+        "bcc": [
+          "bcc@example.com"
+        ],
+        "cc": [
+          "cc@example.com"
+        ],
+        "replyTo": [
+          "reply@example.com"
+        ],
+        "subject": "Hello",
+        "text": "Body",
+        "to": [
+          "jane@example.com"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "outlookMailDraftMessageId": "draft1",
+            "outlookMailSendCount": 1,
+            "outlookMailSendPhase": "sendDispatched"
+          },
+          "retryAfterMs": 3000
+        },
+        {
+          "exchangeCount": 5,
+          "failureKind": "AUTHORIZATION",
+          "heartbeat": {
+            "outlookMailDraftMessageId": "draft1",
+            "outlookMailSendCount": 2,
+            "outlookMailSendPhase": "sendDispatched"
+          },
+          "retryAfterMs": 3000
+        }
+      ],
+      "name": "sendMessage-refusal-after-unknown-send-read-back",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "7804e272-780d-51f7-a524-8ab33185028d",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-7804e272-780d-51f7-a524-8ab33185028d')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"draft1\", \"isDraft\": true, \"subject\": \"Hello\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"jane@example.com\"}}], \"createdDateTime\": \"2026-01-01T12:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages",
+          "requestBody": {
+            "bccRecipients": [
+              {
+                "emailAddress": {
+                  "address": "bcc@example.com",
+                  "name": ""
+                }
+              }
+            ],
+            "body": {
+              "content": "Body",
+              "contentType": "text"
+            },
+            "ccRecipients": [
+              {
+                "emailAddress": {
+                  "address": "cc@example.com",
+                  "name": ""
+                }
+              }
+            ],
+            "replyTo": [
+              {
+                "emailAddress": {
+                  "address": "reply@example.com",
+                  "name": ""
+                }
+              }
+            ],
+            "singleValueExtendedProperties": [
+              {
+                "id": "String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey",
+                "value": "dex-7804e272-780d-51f7-a524-8ab33185028d"
+              }
+            ],
+            "subject": "Hello",
+            "toRecipients": [
+              {
+                "emailAddress": {
+                  "address": "jane@example.com",
+                  "name": ""
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"error\":{\"code\":\"ErrorInvalidRecipients\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/draft1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "outlookMailDraftMessageId": "draft1",
+          "outlookMailSendPhase": "draftReady"
+        },
+        "output": {
+          "idempotencyMarker": "dex-7804e272-780d-51f7-a524-8ab33185028d",
+          "messageId": "draft1",
+          "recipients": [
+            "jane@example.com"
+          ],
+          "subject": "Hello"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7804e272-780d-51f7-a524-8ab33185028d",
+      "input": {
+        "bcc": [
+          "bcc@example.com"
+        ],
+        "cc": [
+          "cc@example.com"
+        ],
+        "replyTo": [
+          "reply@example.com"
+        ],
+        "subject": "Hello",
+        "text": "Body",
+        "to": [
+          "jane@example.com"
+        ]
+      },
+      "name": "sendMessage-first-send-refused",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "7804e272-780d-51f7-a524-8ab33185028d",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"draft1\", \"isDraft\": true, \"subject\": \"Hello\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"jane@example.com\"}}], \"createdDateTime\": \"2026-01-01T12:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/draft1",
+          "query": {
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/draft1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "outlookMailDraftMessageId": "draft1",
+          "outlookMailSendCount": 2,
+          "outlookMailSendPhase": "sendDispatched"
+        },
+        "output": {
+          "idempotencyMarker": "dex-7804e272-780d-51f7-a524-8ab33185028d",
+          "messageId": "draft1",
+          "recipients": [
+            "jane@example.com"
+          ],
+          "subject": "Hello"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7804e272-780d-51f7-a524-8ab33185028d",
+      "input": {
+        "bcc": [
+          "bcc@example.com"
+        ],
+        "cc": [
+          "cc@example.com"
+        ],
+        "replyTo": [
+          "reply@example.com"
+        ],
+        "subject": "Hello",
+        "text": "Body",
+        "to": [
+          "jane@example.com"
+        ]
+      },
+      "name": "sendMessage-legacy-dispatch-read-back-then-resent",
+      "operation": "sendMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "outlookMailDraftMessageId": "draft1",
+          "outlookMailSendConfirmations": 1,
+          "outlookMailSendPhase": "sendDispatched"
+        }
+      }
+    },
+    {
+      "callId": "7804e272-780d-51f7-a524-8ab33185028d",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7804e272-780d-51f7-a524-8ab33185028d",
+      "input": {
+        "bcc": [
+          "bcc@example.com"
+        ],
+        "cc": [
+          "cc@example.com"
+        ],
+        "replyTo": [
+          "reply@example.com"
+        ],
+        "subject": "Hello",
+        "text": "Body",
+        "to": [
+          "jane@example.com"
+        ]
+      },
+      "name": "sendMessage-unreadable-checkpoint-retries",
+      "operation": "sendMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "outlookMailSendPhase": "somethingElse"
+        }
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-e767fef3-fd0a-5a47-89d2-83d0869c6afd')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"draft1\", \"isDraft\": true, \"subject\": \"Hello\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"jane@example.com\"}}], \"createdDateTime\": \"2026-01-01T12:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/message1/createReplyAll",
+          "requestBody": {
+            "comment": "Reply"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/me/messages/draft1",
+          "requestBody": {
+            "singleValueExtendedProperties": [
+              {
+                "id": "String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey",
+                "value": "dex-e767fef3-fd0a-5a47-89d2-83d0869c6afd"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"UnknownError\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/draft1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 504
+        },
+        {
+          "body": "{\"id\": \"draft1\", \"isDraft\": true, \"subject\": \"Hello\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"jane@example.com\"}}], \"createdDateTime\": \"2026-01-01T12:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/draft1",
+          "query": {
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/draft1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "outlookMailDraftMessageId": "draft1",
+          "outlookMailSendCount": 2,
+          "outlookMailSendPhase": "sendDispatched"
+        },
+        "output": {
+          "idempotencyMarker": "dex-e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+          "messageId": "draft1",
+          "recipients": [
+            "jane@example.com"
+          ],
+          "subject": "Hello"
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "input": {
+        "isReplyAll": true,
+        "messageId": "message1",
+        "text": "Reply"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 4,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "outlookMailDraftMessageId": "draft1",
+            "outlookMailSendCount": 1,
+            "outlookMailSendPhase": "sendDispatched"
+          },
+          "retryAfterMs": 3000
+        }
+      ],
+      "name": "replyToMessage-unknown-send-read-back-then-resent",
+      "operation": "replyToMessage"
+    },
+    {
+      "callId": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"message1\",\"subject\":\"Hello\",\"parentFolderId\":\"inbox1\",\"receivedDateTime\":\"2026-01-01T12:00:00Z\",\"isRead\":false,\"flag\":{\"flagStatus\":\"notFlagged\"},\"categories\":[],\"hasAttachments\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/message1",
+          "query": {
+            "$select": [
+              "id,parentFolderId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"archive1\",\"displayName\":\"Archive\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/mailFolders/archive",
+          "query": {
+            "$select": [
+              "id,displayName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"NotImplemented\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/message1/move",
+          "requestBody": {
+            "destinationId": "archive1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 501
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROVIDER_REJECTION",
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "input": {
+        "destinationFolder": "archive",
+        "messageId": "message1"
+      },
+      "name": "moveMessage-unknown-move-retries",
+      "operation": "moveMessage"
+    },
+    {
+      "callId": "df82e228-805e-5cac-92d4-957881469890",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"message1\",\"subject\":\"Hello\",\"parentFolderId\":\"inbox1\",\"receivedDateTime\":\"2026-01-01T12:00:00Z\",\"isRead\":false,\"flag\":{\"flagStatus\":\"notFlagged\"},\"categories\":[],\"hasAttachments\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/message1",
+          "query": {
+            "$select": [
+              "id,isRead,flag,categories"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"ErrorInvalidRequest\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/me/messages/message1",
+          "requestBody": {
+            "categories": [
+              "Customer"
+            ],
+            "flag": {
+              "flagStatus": "flagged"
+            },
+            "isRead": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROVIDER_REJECTION",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df82e228-805e-5cac-92d4-957881469890",
+      "input": {
+        "categories": [
+          "Customer"
+        ],
+        "flagStatus": "flagged",
+        "isRead": true,
+        "messageId": "message1"
+      },
+      "name": "setMessageFlags-unknown-update-retries",
+      "operation": "setMessageFlags"
     }
   ],
   "schemaVersion": 1

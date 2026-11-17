@@ -1,8 +1,8 @@
 # Microsoft Outlook Mail Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go@v0.24.1`.
 
-The Python package `dex-connector-microsoft-outlook-mail==0.1.0` implements all
+The Python package `dex-connector-microsoft-outlook-mail==0.1.1` implements all
 six operations with the same branch identities and a generated OAuth refresh
 declaration. See the [Python package](python/README.md) and its
 [support reply example](python/examples/support_reply/README.md). TypeScript
@@ -10,7 +10,7 @@ support remains a separate release.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail`.
 
-The TypeScript package `@superdurable/connector-microsoft-outlook-mail@0.1.0` implements all six operations with Connector SDK 0.7.0. See its [package guide](typescript/README.md) and [runnable Dex Flow](typescript/examples/read-message/flow.ts). The TypeScript port replays Go-recorded provider conformance scenarios; live Microsoft 365 authorization and delivery have not been verified for this port.
+The TypeScript package `@superdurable/connector-microsoft-outlook-mail@0.1.1` implements all six operations with Connector SDK 0.12.0. See its [package guide](typescript/README.md) and [runnable Dex Flow](typescript/examples/read-message/flow.ts). The TypeScript port replays Go-recorded provider conformance scenarios; live Microsoft 365 authorization and delivery have not been verified for this port.
 
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack, through Dex Web and real-Dex tests, against a local Microsoft Graph stand-in; no Microsoft 365 tenant was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
@@ -262,11 +262,13 @@ up. Dex may replay a Step after Worker loss or before an async result commit,
 so each operation takes one of these positions:
 
 - **searchMessages** and **getMessage** only read.
-- **moveMessage** and **setMessageFlags** keep async durability: both read
-  before they write, the immutable ID survives the move, and the flags are
-  absolute. Every unconfirmed outcome, including a 5xx or a dropped
-  connection, is retried. The example drops a move answer after Graph applies
-  the write and confirms that the message is archived once.
+- **moveMessage** and **setMessageFlags** keep async durability and declare
+  `repeatOnUnknown: safe`: both read before they write, the immutable ID
+  survives the move, and the flags are absolute. Every unconfirmed outcome,
+  including a 5xx, a 409, any status outside 400, 401, 403, 404, 411, 413,
+  414, 415, and 422, or a dropped connection, is retried. The example drops a
+  move answer after Graph applies the write and confirms that the message is
+  archived once.
 - **sendMessage** and **replyToMessage** send through a draft and run with
   sync durability. The design combines a marker with a checkpoint:
   1. A draft carries the single-value extended property
@@ -279,15 +281,21 @@ so each operation takes one of these positions:
      answer to the draft creation never creates a second draft.
   3. After creating a draft, the attempt records a Dex heartbeat checkpoint
      with the draft ID, and before sending it records a second checkpoint,
-     `sendDispatched`. A later attempt that finds `sendDispatched` never
-     sends again: it reads the draft by its immutable ID, reports `sent` with
-     `wasAlreadySent` once the Sent Items copy appears, and otherwise retries
-     the read up to three times, three seconds apart, before selecting
-     `uncertain` with the draft's ID and marker for a person to inspect.
-  4. Only a provable refusal returns the checkpoint to the draft: a 429 or
-     another answer Graph sends before doing anything is retried with the
-     same draft, and a 4xx such as an invalid recipient selects
-     `providerRejected` and leaves the unsent draft in Drafts.
+     `sendDispatched`, that counts the possible sends. An unknown answer, such
+     as a 5xx, a 408, a 409, or a dropped connection, retries three seconds
+     later. The next attempt reads the draft back by its immutable ID first:
+     it reports `sent` with `wasAlreadySent` once the Sent Items copy appears,
+     and sends a still-unsent draft again while the possible sends stay below
+     the send cap (`maxSends`, default 3). When the cap is reached and the
+     read-back still finds only the draft, it selects `uncertain` with the
+     draft's ID and marker for a person to inspect.
+  4. Only an answer proving Graph did not process the send returns the
+     checkpoint to the draft: a 429, a 503, or a connection that never reached
+     Graph is retried with the same draft. A definite refusal (400, 401, 403,
+     404, 411, 413, 414, 415, or 422) of a first send selects
+     `providerRejected` and leaves the unsent draft in Drafts; after an
+     earlier possible send it reads the draft back instead. An unreadable
+     checkpoint retries without contacting Graph.
 
 Sync durability persists the result before the Flow advances; async durability
 can replay a result lost before its batched commit. Both modes use the same
@@ -300,8 +308,10 @@ Residual risks: Dex's `RecordHeartbeat` returns once the checkpoint enters
 the Worker's stream, so a Worker lost in that instant could still allow one
 repeated send of the same draft. A lost `createReply` answer leaves one
 unmarked, unsent reply draft in Drafts, because that draft cannot be found
-again; the retry drafts and sends once. Whether Exchange delivers twice when
-the same draft is sent twice is undocumented and unverified.
+again; the retry drafts and sends once. A resend after a lost answer can
+deliver a duplicate when Exchange accepted the first send but had not yet moved
+the draft to Sent Items; the send cap bounds that. Whether Exchange delivers
+twice when the same draft is sent twice is undocumented and unverified.
 
 The marker is chosen over Graph's other options: `sendMail` and `reply` return
 no ID, a custom `x-` Internet header would reach recipients, and an
@@ -317,16 +327,18 @@ carries Graph's `request-id`.
 
 | Answer | Reads | moveMessage and setMessageFlags | sendMessage and replyToMessage |
 | --- | --- | --- | --- |
-| 429 or 509 | Retry after `Retry-After` | Retry | Retry; a refused send keeps the same draft |
-| 408, 409, 423 | Retry | Retry | Retry |
-| 500, 502, 503, 504, dropped connection after dispatch | Retry after `Retry-After` | Retry | Retry before the send; after it, confirm from the draft, then `uncertain` |
+| 429 | Retry after `Retry-After` | Retry | Retry; a throttled send keeps the same draft |
+| 509 | Retry after `Retry-After` | Retry | Retry before the send; after it, read the draft back, resend below the send cap, then `uncertain` |
+| 408, 409, 423 | Retry | Retry | Retry before the send; after it, read the draft back, resend below the send cap, then `uncertain` |
+| 503 | Retry after `Retry-After` | Retry | Retry; an unavailable send keeps the same draft |
+| 500, 502, 504, dropped connection after dispatch | Retry after `Retry-After` | Retry | Retry before the send; after it, read the draft back, resend below the send cap, then `uncertain` |
 | Connection refused | Retry | Retry | Retry |
 | 401 | `providerRejected`, `AUTHENTICATION`, after one refresh and resend only when the stored token has expired | same | same |
 | 403 | `providerRejected`, `AUTHORIZATION` (`QUOTA_EXHAUSTED` for a quota code) | same | same; nothing sent |
 | 404 `ErrorItemNotFound`, 400 `ErrorInvalidIdMalformed` | `notFound` | `notFound` | `notFound` for the reply original |
 | other 404, such as an unknown mailbox | `providerRejected`, `NOT_FOUND` | same | same |
-| 507 | `providerRejected`, `QUOTA_EXHAUSTED` | same | same |
-| other 4xx, 501, 3xx | `providerRejected` | same | same; nothing sent |
+| 507 | `providerRejected`, `QUOTA_EXHAUSTED` | Retry | `providerRejected` before the send; after it, read the draft back |
+| other 4xx, 501, 3xx | `providerRejected` | 400, 411, 413, 414, 415, 422: `providerRejected`; others Retry | before the send, `providerRejected`; after it, 400, 411, 413, 414, 415, 422 refuse a first send, others read the draft back |
 | Oversized, malformed, or token-reflecting 2xx | `invalidResponse` | Retry | Retry before the send; a reply draft answer is `providerRejected` |
 | Revoked grant (`invalid_grant`, `invalid_client`, `interaction_required`, ...) | `providerRejected`, `AUTHENTICATION` | same | same |
 | Token endpoint outage | Retry | Retry | Retry |

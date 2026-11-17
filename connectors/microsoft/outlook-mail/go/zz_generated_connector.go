@@ -465,7 +465,7 @@ var SendMessageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendMessageBranchSent, Description: "Microsoft Graph accepted the draft for sending, now or in an earlier attempt of this Step execution that this attempt confirmed."},
 		{ID: SendMessageBranchProviderRejected, Description: "Microsoft Graph conclusively refused the draft or the send, such as a revoked authorization, a mailbox without send permission, or an invalid recipient, so nothing was sent.", Optional: true},
-		{ID: SendMessageBranchUncertain, Description: "The send was dispatched but its answer was lost and the draft has not appeared as sent, so the message may have been sent; the connector never sends it again, and the Result names the draft to inspect.", Optional: true},
+		{ID: SendMessageBranchUncertain, Description: "The send cap was reached while the draft had still not appeared as sent after a lost answer, so the message may have been sent; the connector does not send it again, and the Result names the draft to inspect.", Optional: true},
 		{ID: SendMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -473,6 +473,8 @@ var SendMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 8, TotalDuration: time.Duration(600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type SendMessageResult = sdkgo.MutationResult[SentMessage]
@@ -493,6 +495,8 @@ type SendMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SendMessageResult]                   `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendMessageInput, SentMessage] {
@@ -525,6 +529,7 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -540,7 +545,7 @@ var ReplyToMessageDefinition = sdkgo.MutationDefinition{
 		{ID: ReplyToMessageBranchSent, Description: "Microsoft Graph accepted the reply draft for sending, now or in an earlier attempt of this Step execution that this attempt confirmed."},
 		{ID: ReplyToMessageBranchNotFound, Description: "No message with the ID exists in the mailbox, so no reply was drafted or sent.", Optional: true},
 		{ID: ReplyToMessageBranchProviderRejected, Description: "Microsoft Graph conclusively refused the reply draft or the send, such as a revoked authorization, a mailbox without send permission, or an original without a usable reply address, so nothing was sent.", Optional: true},
-		{ID: ReplyToMessageBranchUncertain, Description: "The send was dispatched but its answer was lost and the draft has not appeared as sent, so the reply may have been sent; the connector never sends it again, and the Result names the draft to inspect.", Optional: true},
+		{ID: ReplyToMessageBranchUncertain, Description: "The send cap was reached while the reply draft had still not appeared as sent after a lost answer, so the reply may have been sent; the connector does not send it again, and the Result names the draft to inspect.", Optional: true},
 		{ID: ReplyToMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -548,6 +553,8 @@ var ReplyToMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 8, TotalDuration: time.Duration(600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type ReplyToMessageResult = sdkgo.MutationResult[SentMessage]
@@ -569,6 +576,8 @@ type ReplyToMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ReplyToMessageResult]                `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.MutationStep[IN, ReplyToMessageInput, SentMessage] {
@@ -604,6 +613,7 @@ func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.Mu
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -625,6 +635,7 @@ var MoveMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type MoveMessageResult = sdkgo.MutationResult[MovedMessage]
@@ -698,6 +709,7 @@ var SetMessageFlagsDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type SetMessageFlagsResult = sdkgo.MutationResult[MessageFlags]

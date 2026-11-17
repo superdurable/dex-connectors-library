@@ -76,7 +76,7 @@ export interface SendMessageStepConfig<StepInput, OperationInput = SendMessageIn
   sent: StepTarget<MutationResult<OperationOutput>>;
   /** Microsoft Graph conclusively refused the draft or the send, such as a revoked authorization, a mailbox without send permission, or an invalid recipient, so nothing was sent. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send was dispatched but its answer was lost and the draft has not appeared as sent, so the message may have been sent; the connector never sends it again, and the Result names the draft to inspect. */
+  /** The send cap was reached while the draft had still not appeared as sent after a lost answer, so the message may have been sent; the connector does not send it again, and the Result names the draft to inspect. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -106,7 +106,7 @@ export interface ReplyToMessageStepConfig<StepInput, OperationInput = ReplyToMes
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Microsoft Graph conclusively refused the reply draft or the send, such as a revoked authorization, a mailbox without send permission, or an original without a usable reply address, so nothing was sent. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send was dispatched but its answer was lost and the draft has not appeared as sent, so the reply may have been sent; the connector never sends it again, and the Result names the draft to inspect. */
+  /** The send cap was reached while the reply draft had still not appeared as sent after a lost answer, so the reply may have been sent; the connector does not send it again, and the Result names the draft to inspect. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

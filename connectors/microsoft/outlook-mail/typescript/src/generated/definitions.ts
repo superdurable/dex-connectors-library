@@ -82,7 +82,7 @@ export const SendMessageBranch = {
 export const SendMessageBranchSent = SendMessageBranch.Sent;
 /** Microsoft Graph conclusively refused the draft or the send, such as a revoked authorization, a mailbox without send permission, or an invalid recipient, so nothing was sent. */
 export const SendMessageBranchProviderRejected = SendMessageBranch.ProviderRejected;
-/** The send was dispatched but its answer was lost and the draft has not appeared as sent, so the message may have been sent; the connector never sends it again, and the Result names the draft to inspect. */
+/** The send cap was reached while the draft had still not appeared as sent after a lost answer, so the message may have been sent; the connector does not send it again, and the Result names the draft to inspect. */
 export const SendMessageBranchUncertain = SendMessageBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const SendMessageBranchDefect = SendMessageBranch.Defect;
@@ -92,10 +92,12 @@ export const SendMessageDefinition: MutationDefinition = {
   branches: [
     { id: "sent", description: "Microsoft Graph accepted the draft for sending, now or in an earlier attempt of this Step execution that this attempt confirmed." },
     { id: "providerRejected", description: "Microsoft Graph conclusively refused the draft or the send, such as a revoked authorization, a mailbox without send permission, or an invalid recipient, so nothing was sent.", optional: true },
-    { id: "uncertain", description: "The send was dispatched but its answer was lost and the draft has not appeared as sent, so the message may have been sent; the connector never sends it again, and the Result names the draft to inspect.", optional: true },
+    { id: "uncertain", description: "The send cap was reached while the draft had still not appeared as sent after a lost answer, so the message may have been sent; the connector does not send it again, and the Result names the draft to inspect.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 90000, executeDurability: "sync", executeRetry: { initialIntervalMs: 2000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 8, totalDurationMs: 600000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for sendMessage. */
 export const SendMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -114,7 +116,7 @@ export const ReplyToMessageBranchSent = ReplyToMessageBranch.Sent;
 export const ReplyToMessageBranchNotFound = ReplyToMessageBranch.NotFound;
 /** Microsoft Graph conclusively refused the reply draft or the send, such as a revoked authorization, a mailbox without send permission, or an original without a usable reply address, so nothing was sent. */
 export const ReplyToMessageBranchProviderRejected = ReplyToMessageBranch.ProviderRejected;
-/** The send was dispatched but its answer was lost and the draft has not appeared as sent, so the reply may have been sent; the connector never sends it again, and the Result names the draft to inspect. */
+/** The send cap was reached while the reply draft had still not appeared as sent after a lost answer, so the reply may have been sent; the connector does not send it again, and the Result names the draft to inspect. */
 export const ReplyToMessageBranchUncertain = ReplyToMessageBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const ReplyToMessageBranchDefect = ReplyToMessageBranch.Defect;
@@ -125,10 +127,12 @@ export const ReplyToMessageDefinition: MutationDefinition = {
     { id: "sent", description: "Microsoft Graph accepted the reply draft for sending, now or in an earlier attempt of this Step execution that this attempt confirmed." },
     { id: "notFound", description: "No message with the ID exists in the mailbox, so no reply was drafted or sent.", optional: true },
     { id: "providerRejected", description: "Microsoft Graph conclusively refused the reply draft or the send, such as a revoked authorization, a mailbox without send permission, or an original without a usable reply address, so nothing was sent.", optional: true },
-    { id: "uncertain", description: "The send was dispatched but its answer was lost and the draft has not appeared as sent, so the reply may have been sent; the connector never sends it again, and the Result names the draft to inspect.", optional: true },
+    { id: "uncertain", description: "The send cap was reached while the reply draft had still not appeared as sent after a lost answer, so the reply may have been sent; the connector does not send it again, and the Result names the draft to inspect.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 90000, executeDurability: "sync", executeRetry: { initialIntervalMs: 2000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 8, totalDurationMs: 600000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for replyToMessage. */
 export const ReplyToMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -158,6 +162,7 @@ export const MoveMessageDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for moveMessage. */
 export const MoveMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -187,6 +192,7 @@ export const SetMessageFlagsDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for setMessageFlags. */
 export const SetMessageFlagsMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

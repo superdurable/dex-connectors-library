@@ -10,8 +10,9 @@
 //
 // Graph has no idempotency key for mail. SendMessage and ReplyToMessage therefore create a draft that
 // carries a marker derived from the Step's idempotency key, record a Dex heartbeat checkpoint, and send
-// that draft. A retry finds its own draft by the marker instead of creating another, never sends a
-// dispatched draft again, and confirms a lost answer by reading the draft's Sent Items copy. Both run
+// that draft. A retry finds its own draft by the marker instead of creating another and confirms a lost
+// answer by reading the draft's Sent Items copy. A draft still unsent after a lost answer is sent again
+// while the possible sends stay below the Step's send cap; at the cap it selects uncertain. Both run
 // with sync durability, so Dex never runs two attempts at once.
 //
 // A connection authenticates with delegated Microsoft OAuth, whose rotating refresh token
@@ -519,6 +520,12 @@ func updateAttemptForExchange[OUT any](result graphExchange, receipt sdkgo.Recei
 		return sdkgo.MutationAttempt[OUT]{}, false
 	case graphRetry, graphAmbiguous, graphInvalid:
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
+	}
+	// Only a definite refusal status ends the write; any other provider answer is an unknown outcome.
+	if result.statusCode != 0 && !isDefiniteRefusalStatus(result.statusCode) {
+		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
+	}
+	switch result.outcome {
 	case graphNotFound:
 		return sdkgo.NewMutationBranch(branches.notFound, empty, &result.failure, receipt), true
 	case graphDefect:
@@ -526,6 +533,17 @@ func updateAttemptForExchange[OUT any](result graphExchange, receipt sdkgo.Recei
 	default:
 		return sdkgo.NewMutationBranch(branches.providerRejected, empty, &result.failure, receipt), true
 	}
+}
+
+// isDefiniteRefusalStatus reports a status that proves Graph refused a write without applying it.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 // validateMailbox accepts an SMTP address or user principal name, or an Entra object ID.
