@@ -1,6 +1,6 @@
 # Google Contacts connector
 
-The Go, Python, and TypeScript connectors list, get, and create contacts through the [Google People API](https://developers.google.com/people/api/rest). Their runnable [Go](go/examples/contacts/README.md), [Python](python/examples/contacts/README.md), and [TypeScript](typescript/examples/contacts/README.md) list Flows and corresponding creation Flows use the static `google-contacts` Dex Web connection.
+The Go connector lists, gets, creates, updates, and deletes contacts through the [Google People API](https://developers.google.com/people/api/rest). Python and TypeScript continue to list, get, and create contacts. The runnable [Go](go/examples/contacts/README.md), [Python](python/examples/contacts/README.md), and [TypeScript](typescript/examples/contacts/README.md) examples use the static `google-contacts` Dex Web connection.
 
 ## Connection setup
 
@@ -11,3 +11,5 @@ In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), se
 The [connections.list](https://developers.google.com/people/api/rest/v1/people.connections/list) and [people.get](https://developers.google.com/people/api/rest/v1/people/get) methods define these read operations. Live Google authorization and API behavior have not been verified in this checkout.
 
 `createContact` requires a given name and accepts optional family name and email address, which callers may omit. It sends one People API create request. Since Google does not offer a create-contact idempotency key, a durable single-dispatch fence prevents a second send after an ambiguous response. A confirmed 429 or 503 can retry. An `uncertain` result means the user should inspect Contacts before creating another. The [people.createContact](https://developers.google.com/people/api/rest/v1/people/createContact) method defines the write request.
+
+Go `getContactRevision` reads a contact's current `CONTACT` source etag. Pass its `resourceName` and `etag` to `updateContact` with the replacement given name, optional family name, and optional email address. Blank family name clears that name part; blank email removes the contact email. A stale etag selects `staleRevision`, so read the latest contact and decide whether to retry with its new etag. `deleteContact` accepts the same `people/{id}` resource name and treats an already absent contact as deleted. [people.updateContact](https://developers.google.com/people/api/rest/v1/people/updateContact) and [people.deleteContact](https://developers.google.com/people/api/rest/v1/people/deleteContact) define these requests. Live Google update/delete and Dex Web form rendering remain unverified without provider authorization.

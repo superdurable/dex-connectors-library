@@ -24,3 +24,14 @@ func TestContactsFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestContactUpdateFlowIdentityAndRegistration(t *testing.T) {
+	input := contacts.UpdateContactInput{ResourceName: "people/c123", Etag: "etag-1", GivenName: "Ada"}
+	require.Equal(t, input, mapUpdateInput(input))
+	mock := contactsmock.New(t, ConnectionName)
+	flow := NewUpdateFlow(mock.Connection())
+	require.Equal(t, UpdateFlowType, dex.GetFinalFlowType(flow))
+	require.Equal(t, "StartUpdateContact", dex.GetFinalStepType[contacts.UpdateContactInput](startContactUpdate{}))
+	_, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+}
