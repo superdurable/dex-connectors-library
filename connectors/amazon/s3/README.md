@@ -23,6 +23,9 @@ specific to the Go package described above.
 | `listBuckets` | Query | `GET /?max-buckets=...` | async | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | `createBucket` | Mutation | `PUT /{bucket}` | sync | `created` | `providerRejected`, `defect` |
 | `deleteBucket` | Mutation | `DELETE /{bucket}` | async | `deleted` | `providerRejected`, `defect` |
+| `createFolder` | Mutation | `PUT /{prefix}/` | async | `created` | `providerRejected`, `defect` |
+| `deleteFolder` | Mutation | repeated `GET /?list-type=2` and `DELETE /{key}` | async | `deleted` | `providerRejected`, `invalidResponse`, `defect` |
+| `listFolders` | Query | `GET /?list-type=2&delimiter=/` | async | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `listObjects` | Query | `GET /?list-type=2` (ListObjectsV2) | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `headObject` | Query | `HEAD /{key}` | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `getObjectText` | Query | `GET /{key}` | async | `read` | `notFound`, `unsupportedContent`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
@@ -189,6 +192,13 @@ possible sends to three and checks the destination marker after an ambiguous
 response. `sourceETag` can pin the source version. Copying needs `s3:GetObject`
 on the source and `s3:PutObject` on the destination.
 
+`createFolder` writes an empty marker at a prefix ending in `/`. `listFolders`
+returns immediate child prefixes with opaque pagination. `deleteFolder`
+repeatedly lists up to 100 keys beneath a prefix, deletes each current object,
+then lists again until the prefix is empty. A retry resumes from remaining
+keys after a partial deletion; the operation can take several retries for a
+large prefix. It needs `s3:ListBucket` and `s3:DeleteObject` permissions.
+
 Every operation bounds its requests by 25 seconds in total and each exchange
 by 12 seconds, below the 30-second Execute timeout. Transport failures, 408,
 429, 503 `SlowDown`, other 5xx except 501, 400 `RequestTimeout`, 307
@@ -337,6 +347,10 @@ that lists one page of buckets with `listBuckets`; its mock-backed Dex test
 exercises the new operation without changing the report Flow's IAM needs.
 `AmazonS3ObjectCopy` copies a source to a destination and reads the copied
 bytes back with `getObjectBytes`; its mock-backed Dex test exercises both Steps.
+`AmazonS3FolderLifecycle` creates a temporary folder marker and deletes its
+prefix; its mock-backed Dex test exercises both folder mutations. Run it only
+with a temporary prefix, because deletion removes every current object beneath
+that prefix.
 
 The [TypeScript package](typescript/) implements all four operations at its
 independent `v0.1.0` package version. Its [report archive

@@ -36,6 +36,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[s3.DeletedBucket](`{"bucket":"acme-reports"}`)
 			return err
 		}},
+		{name: "createFolder/createdFolder/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.CreatedFolder](`{"bucket":"acme-reports","prefix":"reports/2026/"}`)
+			return err
+		}},
+		{name: "deleteFolder/deletedFolder/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.DeletedFolder](`{"bucket":"acme-reports","prefix":"reports/2026/"}`)
+			return err
+		}},
+		{name: "listFolders/childFolders/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.ListFoldersOutput](`{"bucket":"acme-reports","parentPrefix":"reports/","folders":["reports/2024/"],"isTruncated":true,"nextContinuationToken":"folders-page-2"}`)
+			return err
+		}},
+		{name: "listFolders/childFolders/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.ListFoldersOutput](`{"bucket":"acme-reports","parentPrefix":"reports/","folders":["reports/2025/"],"isTruncated":true,"nextContinuationToken":"folders-page-3"}`)
+			return err
+		}},
+		{name: "listFolders/childFolders/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[s3.ListFoldersOutput](`{"bucket":"acme-reports","parentPrefix":"reports/","folders":["reports/2026/"],"isTruncated":false}`)
+			return err
+		}},
 		{name: "listObjects/archivedReports/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[s3.ListObjectsOutput](`{"bucket":"acme-reports","prefix":"reports/","objects":[{"key":"reports/ops-weekly.md","sizeBytes":72,"eTag":"\"eccaf41434e0ed82b7154a7fd586cc58\"","lastModified":"2026-10-25T09:00:00Z"}],"isTruncated":true,"nextContinuationToken":"page-2"}`)
 			return err
@@ -118,6 +138,15 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteBucket().Definition().Operation.OperationID != "deleteBucket" {
 		t.Errorf("deleteBucket mock has another definition")
+	}
+	if mock.CreateFolder().Definition().Operation.OperationID != "createFolder" {
+		t.Errorf("createFolder mock has another definition")
+	}
+	if mock.DeleteFolder().Definition().Operation.OperationID != "deleteFolder" {
+		t.Errorf("deleteFolder mock has another definition")
+	}
+	if mock.ListFolders().Definition().Operation.OperationID != "listFolders" {
+		t.Errorf("listFolders mock has another definition")
 	}
 	if mock.ListObjects().Definition().Operation.OperationID != "listObjects" {
 		t.Errorf("listObjects mock has another definition")

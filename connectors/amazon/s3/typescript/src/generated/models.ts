@@ -52,7 +52,7 @@ export interface Config {
   defaultBucket?: string;
   /** Number of keys and common prefixes listObjects requests per page when its input leaves maxKeys at zero, as a whole number from 1 up to the Amazon S3 page limit of 1,000. Smaller pages keep each Result small; larger pages need fewer Steps. Blank uses the displayed default. */
   listPageSize?: number;
-  /** Maximum complete listObjects response or getObjectBytes payload in bytes, as a positive integer. A larger list page selects invalidResponse; a larger binary object selects tooLarge. Lower maxKeys or use smaller objects before raising this, because content is stored in Dex Flow state. Blank uses the displayed default. */
+  /** Maximum complete listObjects/listFolders/deleteFolder page or getObjectBytes payload in bytes, as a positive integer. A larger list page selects invalidResponse; a larger binary object selects tooLarge. Lower maxKeys or use smaller objects before raising this, because content is stored in Dex Flow state. Blank uses the displayed default. */
   maxResponseBytes?: number;
   /** Maximum object size in bytes that getObjectText returns as text, as a positive integer. A larger object selects tooLarge without reading its content. Text is stored in Dex Flow state, so raise it cautiously. Blank uses the displayed default. */
   maxTextBytes?: number;

@@ -56,7 +56,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Maximum complete listObjects response or getObjectBytes payload in bytes, as a positive integer. A larger list page selects invalidResponse; a larger binary object selects tooLarge. Lower maxKeys or use smaller objects before raising this, because content is stored in Dex Flow state. Blank uses the displayed default."
+        description: "Maximum complete listObjects/listFolders/deleteFolder page or getObjectBytes payload in bytes, as a positive integer. A larger list page selects invalidResponse; a larger binary object selects tooLarge. Lower maxKeys or use smaller objects before raising this, because content is stored in Dex Flow state. Blank uses the displayed default."
         required: false
         default: 4194304
       - name: maxTextBytes
@@ -98,6 +98,7 @@ spec:
         - "Set region to the bucket's AWS Region from https://console.aws.amazon.com/s3/buckets and leave endpoint blank. Optionally set defaultBucket so operations can leave bucket blank."
         - "For listBuckets, optionally grant s3:ListAllMyBuckets on arn:aws:s3:::*. For createBucket and deleteBucket, optionally grant s3:CreateBucket and s3:DeleteBucket on the intended bucket ARNs; deletion requires an empty bucket. These grants are additional to the report-archive example's object permissions. Review the globally unique bucket name before creation."
         - "For copyObject, grant s3:GetObject on the source object ARN and s3:PutObject on the destination object ARN. Its contentType and metadata replace source metadata; sourceETag may pin the source version. getObjectBytes needs s3:GetObject and keeps at most maxResponseBytes in Flow state."
+        - "createFolder writes an empty object under a slash-ending prefix and needs s3:PutObject. listFolders needs s3:ListBucket. deleteFolder recursively removes every current key beneath the chosen prefix and needs both s3:ListBucket and s3:DeleteObject; use a narrowly scoped temporary prefix for the example Flow."
         - "Cloudflare R2: open https://dash.cloudflare.com > R2 object storage > Account Details > API Tokens > Manage, choose Create Account API token with Object Read & Write scoped to the bucket, and copy the Access Key ID and Secret Access Key shown once. Set endpoint to https://<ACCOUNT_ID>.r2.cloudflarestorage.com and region to auto."
         - "MinIO: create a user or service account with a policy limited to the bucket, then set endpoint to the server's API address, keep addressingStyle at auto so requests use path addressing, and set region to the server's Region, which a default server leaves at us-east-1."
         - "To rotate, create a second access key, save it here, run a Flow, then open Actions > Deactivate and Actions > Delete on the old key. This release does not use IAM roles, instance profiles, or SSO; temporary credentials pasted with session_token stop working when they expire."
@@ -174,6 +175,79 @@ spec:
           default: true
           description: An empty reports bucket was removed.
           output: {bucket: acme-reports}
+    - name: createFolder
+      goName: CreateFolder
+      inputType: CreateFolderInput
+      outputType: CreatedFolder
+      kind: mutation
+      description: Create or replace a zero-byte folder marker at a key ending in a slash.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: The folder marker was stored.}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 conclusively refused the marker write., optional: true}
+        - {id: defect, goName: Defect, description: The bucket or folder prefix is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: createdFolder
+          branch: created
+          default: true
+          description: A reports folder marker was stored.
+          output: {bucket: acme-reports, prefix: reports/2026/}
+    - name: deleteFolder
+      goName: DeleteFolder
+      inputType: DeleteFolderInput
+      outputType: DeletedFolder
+      kind: mutation
+      description: Repeatedly list and delete all current objects under a folder prefix in bounded pages.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: No current object remains under the prefix.}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 conclusively refused a list or delete., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: S3 returned an invalid or oversized list page., optional: true}
+        - {id: defect, goName: Defect, description: The bucket or folder prefix is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: deletedFolder
+          branch: deleted
+          default: true
+          description: All current objects under reports/2026/ are absent.
+          output: {bucket: acme-reports, prefix: reports/2026/}
+    - name: listFolders
+      goName: ListFolders
+      inputType: ListFoldersInput
+      outputType: ListFoldersOutput
+      kind: query
+      description: List one bounded page of immediate child folder prefixes beneath a parent prefix.
+      idempotency: none
+      authorization: required
+      pagination: {inputField: continuationToken, nextField: nextContinuationToken}
+      branches:
+        - {id: listed, goName: Listed, description: One or more child folders or another page exists.}
+        - {id: notFound, goName: NotFound, description: No child folder matched and no page remains., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 conclusively refused the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: S3 returned an invalid or oversized page., optional: true}
+        - {id: defect, goName: Defect, description: The bucket or prefix is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: childFolders
+          branch: listed
+          default: true
+          description: Three pages of report child folders are available.
+          pages:
+            - {bucket: acme-reports, parentPrefix: reports/, folders: [reports/2024/], isTruncated: true, nextContinuationToken: folders-page-2}
+            - {bucket: acme-reports, parentPrefix: reports/, folders: [reports/2025/], isTruncated: true, nextContinuationToken: folders-page-3}
+            - {bucket: acme-reports, parentPrefix: reports/, folders: [reports/2026/], isTruncated: false}
     - name: listObjects
       goName: ListObjects
       inputType: ListObjectsInput

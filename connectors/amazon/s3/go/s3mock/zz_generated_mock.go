@@ -21,6 +21,9 @@ type Mock struct {
 	listBuckets    *connectormock.Query[s3.ListBucketsInput, s3.ListBucketsOutput]
 	createBucket   *connectormock.Mutation[s3.CreateBucketInput, s3.CreatedBucket]
 	deleteBucket   *connectormock.Mutation[s3.DeleteBucketInput, s3.DeletedBucket]
+	createFolder   *connectormock.Mutation[s3.CreateFolderInput, s3.CreatedFolder]
+	deleteFolder   *connectormock.Mutation[s3.DeleteFolderInput, s3.DeletedFolder]
+	listFolders    *connectormock.Query[s3.ListFoldersInput, s3.ListFoldersOutput]
 	listObjects    *connectormock.Query[s3.ListObjectsInput, s3.ListObjectsOutput]
 	headObject     *connectormock.Query[s3.HeadObjectInput, s3.ObjectMetadata]
 	getObjectText  *connectormock.Query[s3.GetObjectTextInput, s3.ObjectText]
@@ -38,6 +41,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		listBuckets:    connectormock.NewQuery[s3.ListBucketsInput, s3.ListBucketsOutput](t, s3.ListBucketsDefinition),
 		createBucket:   connectormock.NewMutation[s3.CreateBucketInput, s3.CreatedBucket](t, s3.CreateBucketDefinition),
 		deleteBucket:   connectormock.NewMutation[s3.DeleteBucketInput, s3.DeletedBucket](t, s3.DeleteBucketDefinition),
+		createFolder:   connectormock.NewMutation[s3.CreateFolderInput, s3.CreatedFolder](t, s3.CreateFolderDefinition),
+		deleteFolder:   connectormock.NewMutation[s3.DeleteFolderInput, s3.DeletedFolder](t, s3.DeleteFolderDefinition),
+		listFolders:    connectormock.NewQuery[s3.ListFoldersInput, s3.ListFoldersOutput](t, s3.ListFoldersDefinition),
 		listObjects:    connectormock.NewQuery[s3.ListObjectsInput, s3.ListObjectsOutput](t, s3.ListObjectsDefinition),
 		headObject:     connectormock.NewQuery[s3.HeadObjectInput, s3.ObjectMetadata](t, s3.HeadObjectDefinition),
 		getObjectText:  connectormock.NewQuery[s3.GetObjectTextInput, s3.ObjectText](t, s3.GetObjectTextDefinition),
@@ -49,6 +55,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listBuckets.Default(ListBucketsDefault())
 	mock.createBucket.Default(CreateBucketDefault())
 	mock.deleteBucket.Default(DeleteBucketDefault())
+	mock.createFolder.Default(CreateFolderDefault())
+	mock.deleteFolder.Default(DeleteFolderDefault())
+	mock.listFolders.Default(ListFoldersDefault())
 	mock.listObjects.Default(ListObjectsDefault())
 	mock.headObject.Default(HeadObjectDefault())
 	mock.getObjectText.Default(GetObjectTextDefault())
@@ -80,6 +89,21 @@ func (mock *Mock) CreateBucket() *connectormock.Mutation[s3.CreateBucketInput, s
 // DeleteBucket returns the deleteBucket script.
 func (mock *Mock) DeleteBucket() *connectormock.Mutation[s3.DeleteBucketInput, s3.DeletedBucket] {
 	return mock.deleteBucket
+}
+
+// CreateFolder returns the createFolder script.
+func (mock *Mock) CreateFolder() *connectormock.Mutation[s3.CreateFolderInput, s3.CreatedFolder] {
+	return mock.createFolder
+}
+
+// DeleteFolder returns the deleteFolder script.
+func (mock *Mock) DeleteFolder() *connectormock.Mutation[s3.DeleteFolderInput, s3.DeletedFolder] {
+	return mock.deleteFolder
+}
+
+// ListFolders returns the listFolders script.
+func (mock *Mock) ListFolders() *connectormock.Query[s3.ListFoldersInput, s3.ListFoldersOutput] {
+	return mock.listFolders
 }
 
 // ListObjects returns the listObjects script.
@@ -127,6 +151,15 @@ func (operations mockOperations) CreateBucket() sdkgo.Mutation[s3.CreateBucketIn
 }
 func (operations mockOperations) DeleteBucket() sdkgo.Mutation[s3.DeleteBucketInput, s3.DeletedBucket] {
 	return operations.mock.deleteBucket
+}
+func (operations mockOperations) CreateFolder() sdkgo.Mutation[s3.CreateFolderInput, s3.CreatedFolder] {
+	return operations.mock.createFolder
+}
+func (operations mockOperations) DeleteFolder() sdkgo.Mutation[s3.DeleteFolderInput, s3.DeletedFolder] {
+	return operations.mock.deleteFolder
+}
+func (operations mockOperations) ListFolders() sdkgo.Query[s3.ListFoldersInput, s3.ListFoldersOutput] {
+	return operations.mock.listFolders
 }
 func (operations mockOperations) ListObjects() sdkgo.Query[s3.ListObjectsInput, s3.ListObjectsOutput] {
 	return operations.mock.listObjects
@@ -246,6 +279,113 @@ func DeleteBucketDeletedBucket() connectormock.Case[s3.DeletedBucket] {
 
 // DeleteBucketDefault is the manifest default, deletedBucket, which New installs.
 func DeleteBucketDefault() connectormock.Case[s3.DeletedBucket] { return DeleteBucketDeletedBucket() }
+
+// CreateFolderCreated selects the created branch: The folder marker was stored.
+func CreateFolderCreated(value s3.CreatedFolder, failure *sdkgo.Failure) connectormock.Case[s3.CreatedFolder] {
+	return connectormock.Branch(s3.CreateFolderBranchCreated, value, failure)
+}
+
+// CreateFolderProviderRejected selects the providerRejected branch: S3 conclusively refused the marker write.
+func CreateFolderProviderRejected(value s3.CreatedFolder, failure *sdkgo.Failure) connectormock.Case[s3.CreatedFolder] {
+	return connectormock.Branch(s3.CreateFolderBranchProviderRejected, value, failure)
+}
+
+// CreateFolderDefect selects the defect branch: The bucket or folder prefix is invalid.
+func CreateFolderDefect(value s3.CreatedFolder, failure *sdkgo.Failure) connectormock.Case[s3.CreatedFolder] {
+	return connectormock.Branch(s3.CreateFolderBranchDefect, value, failure)
+}
+
+// CreateFolderRetry asks Dex to retry the createFolder Step, after the delay when it is positive.
+func CreateFolderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[s3.CreatedFolder] {
+	return connectormock.Retry[s3.CreatedFolder](failure, after)
+}
+
+// CreateFolderCreatedFolder is the manifest mock createdFolder: A reports folder marker was stored.
+func CreateFolderCreatedFolder() connectormock.Case[s3.CreatedFolder] {
+	value := connectormock.MustDecodeOutput[s3.CreatedFolder](`{"bucket":"acme-reports","prefix":"reports/2026/"}`)
+	return connectormock.Branch(s3.CreateFolderBranchCreated, value, nil)
+}
+
+// CreateFolderDefault is the manifest default, createdFolder, which New installs.
+func CreateFolderDefault() connectormock.Case[s3.CreatedFolder] { return CreateFolderCreatedFolder() }
+
+// DeleteFolderDeleted selects the deleted branch: No current object remains under the prefix.
+func DeleteFolderDeleted(value s3.DeletedFolder, failure *sdkgo.Failure) connectormock.Case[s3.DeletedFolder] {
+	return connectormock.Branch(s3.DeleteFolderBranchDeleted, value, failure)
+}
+
+// DeleteFolderProviderRejected selects the providerRejected branch: S3 conclusively refused a list or delete.
+func DeleteFolderProviderRejected(value s3.DeletedFolder, failure *sdkgo.Failure) connectormock.Case[s3.DeletedFolder] {
+	return connectormock.Branch(s3.DeleteFolderBranchProviderRejected, value, failure)
+}
+
+// DeleteFolderInvalidResponse selects the invalidResponse branch: S3 returned an invalid or oversized list page.
+func DeleteFolderInvalidResponse(value s3.DeletedFolder, failure *sdkgo.Failure) connectormock.Case[s3.DeletedFolder] {
+	return connectormock.Branch(s3.DeleteFolderBranchInvalidResponse, value, failure)
+}
+
+// DeleteFolderDefect selects the defect branch: The bucket or folder prefix is invalid.
+func DeleteFolderDefect(value s3.DeletedFolder, failure *sdkgo.Failure) connectormock.Case[s3.DeletedFolder] {
+	return connectormock.Branch(s3.DeleteFolderBranchDefect, value, failure)
+}
+
+// DeleteFolderRetry asks Dex to retry the deleteFolder Step, after the delay when it is positive.
+func DeleteFolderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[s3.DeletedFolder] {
+	return connectormock.Retry[s3.DeletedFolder](failure, after)
+}
+
+// DeleteFolderDeletedFolder is the manifest mock deletedFolder: All current objects under reports/2026/ are absent.
+func DeleteFolderDeletedFolder() connectormock.Case[s3.DeletedFolder] {
+	value := connectormock.MustDecodeOutput[s3.DeletedFolder](`{"bucket":"acme-reports","prefix":"reports/2026/"}`)
+	return connectormock.Branch(s3.DeleteFolderBranchDeleted, value, nil)
+}
+
+// DeleteFolderDefault is the manifest default, deletedFolder, which New installs.
+func DeleteFolderDefault() connectormock.Case[s3.DeletedFolder] { return DeleteFolderDeletedFolder() }
+
+// ListFoldersListed selects the listed branch: One or more child folders or another page exists.
+func ListFoldersListed(value s3.ListFoldersOutput, failure *sdkgo.Failure) connectormock.Case[s3.ListFoldersOutput] {
+	return connectormock.Branch(s3.ListFoldersBranchListed, value, failure)
+}
+
+// ListFoldersNotFound selects the notFound branch: No child folder matched and no page remains.
+func ListFoldersNotFound(value s3.ListFoldersOutput, failure *sdkgo.Failure) connectormock.Case[s3.ListFoldersOutput] {
+	return connectormock.Branch(s3.ListFoldersBranchNotFound, value, failure)
+}
+
+// ListFoldersProviderRejected selects the providerRejected branch: S3 conclusively refused the listing.
+func ListFoldersProviderRejected(value s3.ListFoldersOutput, failure *sdkgo.Failure) connectormock.Case[s3.ListFoldersOutput] {
+	return connectormock.Branch(s3.ListFoldersBranchProviderRejected, value, failure)
+}
+
+// ListFoldersInvalidResponse selects the invalidResponse branch: S3 returned an invalid or oversized page.
+func ListFoldersInvalidResponse(value s3.ListFoldersOutput, failure *sdkgo.Failure) connectormock.Case[s3.ListFoldersOutput] {
+	return connectormock.Branch(s3.ListFoldersBranchInvalidResponse, value, failure)
+}
+
+// ListFoldersDefect selects the defect branch: The bucket or prefix is invalid.
+func ListFoldersDefect(value s3.ListFoldersOutput, failure *sdkgo.Failure) connectormock.Case[s3.ListFoldersOutput] {
+	return connectormock.Branch(s3.ListFoldersBranchDefect, value, failure)
+}
+
+// ListFoldersRetry asks Dex to retry the listFolders Step, after the delay when it is positive.
+func ListFoldersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[s3.ListFoldersOutput] {
+	return connectormock.Retry[s3.ListFoldersOutput](failure, after)
+}
+
+// ListFoldersChildFolders is the manifest mock childFolders: Three pages of report child folders are available.
+func ListFoldersChildFolders() connectormock.Case[s3.ListFoldersOutput] {
+	pages := []s3.ListFoldersOutput{
+		connectormock.MustDecodeOutput[s3.ListFoldersOutput](`{"bucket":"acme-reports","parentPrefix":"reports/","folders":["reports/2024/"],"isTruncated":true,"nextContinuationToken":"folders-page-2"}`),
+		connectormock.MustDecodeOutput[s3.ListFoldersOutput](`{"bucket":"acme-reports","parentPrefix":"reports/","folders":["reports/2025/"],"isTruncated":true,"nextContinuationToken":"folders-page-3"}`),
+		connectormock.MustDecodeOutput[s3.ListFoldersOutput](`{"bucket":"acme-reports","parentPrefix":"reports/","folders":["reports/2026/"],"isTruncated":false}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[s3.ListFoldersInput]("continuationToken", "nextContinuationToken", pages)
+	return connectormock.Paged(s3.ListFoldersBranchListed, pageNumber, pages...)
+}
+
+// ListFoldersDefault is the manifest default, childFolders, which New installs.
+func ListFoldersDefault() connectormock.Case[s3.ListFoldersOutput] { return ListFoldersChildFolders() }
 
 // ListObjectsFound selects the found branch: The page holds objects or common prefixes, or more pages remain.
 func ListObjectsFound(value s3.ListObjectsOutput, failure *sdkgo.Failure) connectormock.Case[s3.ListObjectsOutput] {

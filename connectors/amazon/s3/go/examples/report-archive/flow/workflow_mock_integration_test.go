@@ -96,3 +96,21 @@ func TestObjectCopyReadsBytesWithMockAndRealDex(t *testing.T) {
 	require.Len(t, mock.CopyObject().Calls(), 1)
 	require.Len(t, mock.GetObjectBytes().Calls(), 1)
 }
+
+func TestFolderLifecycleUsesMockWithRealDex(t *testing.T) {
+	mock := s3mock.New(t, ConnectionName)
+	_, harness := newReportArchiveHarnessWithConnection(t, mock.Connection())
+	flow := NewFolderLifecycleFlow(mock.Connection())
+	flowID := "mock-folder-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	ctx := integrationContext(t)
+	_, err := harness.client.StartFlow(ctx, flow, flowID, FolderLifecycleInput{Prefix: "reports/2026/"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status)
+	var deleted s3.DeletedFolder
+	require.NoError(t, result.DecodeSingleOutput(&deleted))
+	require.Equal(t, "reports/2026/", deleted.Prefix)
+	require.Len(t, mock.CreateFolder().Calls(), 1)
+	require.Len(t, mock.DeleteFolder().Calls(), 1)
+}

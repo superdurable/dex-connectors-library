@@ -107,7 +107,7 @@ func TestNoStudioPickerTriggerOrPresignOperationIsDeclared(t *testing.T) {
 	for _, operation := range manifest.Spec.Operations {
 		operations = append(operations, operation.Name)
 	}
-	require.Equal(t, []string{"listBuckets", "createBucket", "deleteBucket", "listObjects", "headObject", "getObjectText", "getObjectBytes", "putObject", "copyObject", "deleteObject"}, operations)
+	require.Equal(t, []string{"listBuckets", "createBucket", "deleteBucket", "createFolder", "deleteFolder", "listFolders", "listObjects", "headObject", "getObjectText", "getObjectBytes", "putObject", "copyObject", "deleteObject"}, operations)
 	_, err := os.Stat("../ui")
 	require.True(t, os.IsNotExist(err), "a connector without Studio units ships no UI bundle")
 }

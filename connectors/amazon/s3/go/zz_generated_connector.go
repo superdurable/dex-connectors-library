@@ -58,6 +58,9 @@ type Operations interface {
 	ListBuckets() sdkgo.Query[ListBucketsInput, ListBucketsOutput]
 	CreateBucket() sdkgo.Mutation[CreateBucketInput, CreatedBucket]
 	DeleteBucket() sdkgo.Mutation[DeleteBucketInput, DeletedBucket]
+	CreateFolder() sdkgo.Mutation[CreateFolderInput, CreatedFolder]
+	DeleteFolder() sdkgo.Mutation[DeleteFolderInput, DeletedFolder]
+	ListFolders() sdkgo.Query[ListFoldersInput, ListFoldersOutput]
 	ListObjects() sdkgo.Query[ListObjectsInput, ListObjectsOutput]
 	HeadObject() sdkgo.Query[HeadObjectInput, ObjectMetadata]
 	GetObjectText() sdkgo.Query[GetObjectTextInput, ObjectText]
@@ -77,6 +80,15 @@ func (operations clientOperations) CreateBucket() sdkgo.Mutation[CreateBucketInp
 }
 func (operations clientOperations) DeleteBucket() sdkgo.Mutation[DeleteBucketInput, DeletedBucket] {
 	return operations.client.DeleteBucket()
+}
+func (operations clientOperations) CreateFolder() sdkgo.Mutation[CreateFolderInput, CreatedFolder] {
+	return operations.client.CreateFolder()
+}
+func (operations clientOperations) DeleteFolder() sdkgo.Mutation[DeleteFolderInput, DeletedFolder] {
+	return operations.client.DeleteFolder()
+}
+func (operations clientOperations) ListFolders() sdkgo.Query[ListFoldersInput, ListFoldersOutput] {
+	return operations.client.ListFolders()
 }
 func (operations clientOperations) ListObjects() sdkgo.Query[ListObjectsInput, ListObjectsOutput] {
 	return operations.client.ListObjects()
@@ -466,6 +478,221 @@ func NewDeleteBucketStep[IN any](config DeleteBucketStepConfig[IN]) sdkgo.Mutati
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteBucketBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateFolderBranchCreated sdkgo.BranchID = "created"
+const CreateFolderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateFolderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateFolderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createFolder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateFolderBranchCreated, Description: "The folder marker was stored."},
+		{ID: CreateFolderBranchProviderRejected, Description: "S3 conclusively refused the marker write.", Optional: true},
+		{ID: CreateFolderBranchDefect, Description: "The bucket or folder prefix is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CreateFolderResult = sdkgo.MutationResult[CreatedFolder]
+
+type CreateFolderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=amazon-s3"`
+	operationID                       struct{}                                            `connector:"operationId=createFolder"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateFolderInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateFolderResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateFolderResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateFolderResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedFolder]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewCreateFolderStep[IN any](config CreateFolderStepConfig[IN]) sdkgo.MutationStep[IN, CreateFolderInput, CreatedFolder] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-s3 connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateFolderInput, CreatedFolder]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateFolder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateFolderResult] {
+			branches := make([]sdkgo.BranchTarget[CreateFolderResult], 0, 3)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateFolderBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateFolderBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateFolderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteFolderBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteFolderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteFolderBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteFolderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteFolderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteFolder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteFolderBranchDeleted, Description: "No current object remains under the prefix."},
+		{ID: DeleteFolderBranchProviderRejected, Description: "S3 conclusively refused a list or delete.", Optional: true},
+		{ID: DeleteFolderBranchInvalidResponse, Description: "S3 returned an invalid or oversized list page.", Optional: true},
+		{ID: DeleteFolderBranchDefect, Description: "The bucket or folder prefix is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteFolderResult = sdkgo.MutationResult[DeletedFolder]
+
+type DeleteFolderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=amazon-s3"`
+	operationID                       struct{}                                            `connector:"operationId=deleteFolder"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteFolderInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteFolderResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteFolderResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteFolderResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteFolderResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedFolder]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteFolderStep[IN any](config DeleteFolderStepConfig[IN]) sdkgo.MutationStep[IN, DeleteFolderInput, DeletedFolder] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-s3 connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteFolderInput, DeletedFolder]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteFolder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteFolderResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteFolderResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteFolderBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteFolderBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteFolderBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteFolderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListFoldersBranchListed sdkgo.BranchID = "listed"
+const ListFoldersBranchNotFound sdkgo.BranchID = "notFound"
+const ListFoldersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListFoldersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListFoldersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListFoldersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listFolders"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListFoldersBranchListed, Description: "One or more child folders or another page exists."},
+		{ID: ListFoldersBranchNotFound, Description: "No child folder matched and no page remains.", Optional: true},
+		{ID: ListFoldersBranchProviderRejected, Description: "S3 conclusively refused the listing.", Optional: true},
+		{ID: ListFoldersBranchInvalidResponse, Description: "S3 returned an invalid or oversized page.", Optional: true},
+		{ID: ListFoldersBranchDefect, Description: "The bucket or prefix is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListFoldersResult = sdkgo.QueryResult[ListFoldersOutput]
+
+type ListFoldersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=amazon-s3"`
+	operationID                    struct{}                                             `connector:"operationId=listFolders"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListFoldersInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListFoldersResult]                      `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListFoldersResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListFoldersResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListFoldersResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListFoldersResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListFoldersOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewListFoldersStep[IN any](config ListFoldersStepConfig[IN]) sdkgo.QueryStep[IN, ListFoldersInput, ListFoldersOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-s3 connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListFoldersInput, ListFoldersOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListFolders(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListFoldersResult] {
+			branches := make([]sdkgo.BranchTarget[ListFoldersResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListFoldersBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListFoldersBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListFoldersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListFoldersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListFoldersBranchDefect))
 			}
 			return branches
 		}(),

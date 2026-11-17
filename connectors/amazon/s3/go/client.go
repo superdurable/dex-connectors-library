@@ -289,6 +289,15 @@ func (client *Client) DeleteBucket() DeleteBucketOperation {
 	return DeleteBucketOperation{client: client}
 }
 
+// CreateFolder returns the createFolder Mutation bound to this client.
+func (client *Client) CreateFolder() CreateFolderOperation { return CreateFolderOperation{client: client} }
+
+// DeleteFolder returns the deleteFolder Mutation bound to this client.
+func (client *Client) DeleteFolder() DeleteFolderOperation { return DeleteFolderOperation{client: client} }
+
+// ListFolders returns the listFolders Query bound to this client.
+func (client *Client) ListFolders() ListFoldersOperation { return ListFoldersOperation{client: client} }
+
 // startSession resolves the credential, reread before every call; the caller must call the returned cancel.
 func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sdkgo.Failure) {
 	credentials, err := client.credentials.Resolve(call)
