@@ -4171,6 +4171,302 @@
       },
       "name": "deleteCompany-transportFailure",
       "operation": "deleteCompany"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000300",
+      "exchanges": [
+        {
+          "body": "[{\"id\":331240,\"name\":\"Email\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customer_sources",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "sources": [
+            {
+              "id": 331240,
+              "name": "Email"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCustomerSources-success",
+      "operation": "listCustomerSources"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000301",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"Forbidden\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customer_sources",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "sources": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCustomerSources-providerRejected",
+      "operation": "listCustomerSources"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000302",
+      "exchanges": [
+        {
+          "body": "{\"unexpected\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customer_sources",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "sources": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCustomerSources-invalidResponse",
+      "operation": "listCustomerSources"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000303",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "sources": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCustomerSources-defect",
+      "operation": "listCustomerSources"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000304",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"Rate limited\"}]}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customer_sources",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCustomerSources-rateLimit",
+      "operation": "listCustomerSources"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000305",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"Unavailable\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customer_sources",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCustomerSources-serverUnavailable",
+      "operation": "listCustomerSources"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000306",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customer_sources",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCustomerSources-transportFailure",
+      "operation": "listCustomerSources"
     }
   ],
   "schemaVersion": 1

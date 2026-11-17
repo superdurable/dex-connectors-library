@@ -56,6 +56,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[copper.DeletePersonOutput](`{"id":26443553,"deleted":true}`)
 			return err
 		}},
+		{name: "listCustomerSources/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.CustomerSourcesList](`{"sources":[{"id":331240,"name":"Email"}]}`)
+			return err
+		}},
 		{name: "listLeadStatuses/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[copper.LeadStatusesList](`{"statuses":[{"id":208231,"name":"New"}]}`)
 			return err
@@ -103,6 +107,9 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeletePerson().Definition().Operation.OperationID != "deletePerson" {
 		t.Errorf("deletePerson mock has another definition")
+	}
+	if mock.ListCustomerSources().Definition().Operation.OperationID != "listCustomerSources" {
+		t.Errorf("listCustomerSources mock has another definition")
 	}
 	if mock.ListLeadStatuses().Definition().Operation.OperationID != "listLeadStatuses" {
 		t.Errorf("listLeadStatuses mock has another definition")

@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: copper
   displayName: Copper CRM
-  description: Read Copper leads and manage people and companies without custom fields.
+  description: Read Copper lead metadata and customer sources, and manage people and companies without custom fields.
   company: Copper
   categories: [crm-sales]
   version: v0.2.0
@@ -262,6 +262,26 @@ spec:
           default: true
           description: A sample person is deleted.
           output: {id: 26443553, deleted: true}
+    - name: listCustomerSources
+      goName: ListCustomerSources
+      inputType: ListCustomerSourcesInput
+      outputType: CustomerSourcesList
+      kind: query
+      description: List stable IDs and names of Copper customer sources.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Copper returned customer sources.}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Copper returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample customer source is listed.
+          output: {sources: [{id: 331240, name: Email}]}
     - name: listLeadStatuses
       goName: ListLeadStatuses
       inputType: ListLeadStatusesInput

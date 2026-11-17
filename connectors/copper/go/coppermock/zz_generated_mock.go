@@ -17,19 +17,20 @@ import (
 
 // Mock is a scripted copper connection. Script each operation through its accessor.
 type Mock struct {
-	connection       copper.Connection
-	createCompany    *connectormock.Mutation[copper.CreateCompanyInput, copper.CompanyMetadata]
-	getCompany       *connectormock.Query[copper.GetCompanyInput, copper.CompanyMetadata]
-	listCompanies    *connectormock.Query[copper.ListCompaniesInput, copper.CompaniesPage]
-	updateCompany    *connectormock.Mutation[copper.UpdateCompanyInput, copper.CompanyMetadata]
-	deleteCompany    *connectormock.Mutation[copper.DeleteCompanyInput, copper.DeleteCompanyOutput]
-	createPerson     *connectormock.Mutation[copper.CreatePersonInput, copper.PersonMetadata]
-	getPerson        *connectormock.Query[copper.GetPersonInput, copper.PersonMetadata]
-	listPeople       *connectormock.Query[copper.ListPeopleInput, copper.PeoplePage]
-	updatePerson     *connectormock.Mutation[copper.UpdatePersonInput, copper.PersonMetadata]
-	deletePerson     *connectormock.Mutation[copper.DeletePersonInput, copper.DeletePersonOutput]
-	listLeadStatuses *connectormock.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList]
-	getLead          *connectormock.Query[copper.GetLeadInput, copper.LeadMetadata]
+	connection          copper.Connection
+	createCompany       *connectormock.Mutation[copper.CreateCompanyInput, copper.CompanyMetadata]
+	getCompany          *connectormock.Query[copper.GetCompanyInput, copper.CompanyMetadata]
+	listCompanies       *connectormock.Query[copper.ListCompaniesInput, copper.CompaniesPage]
+	updateCompany       *connectormock.Mutation[copper.UpdateCompanyInput, copper.CompanyMetadata]
+	deleteCompany       *connectormock.Mutation[copper.DeleteCompanyInput, copper.DeleteCompanyOutput]
+	createPerson        *connectormock.Mutation[copper.CreatePersonInput, copper.PersonMetadata]
+	getPerson           *connectormock.Query[copper.GetPersonInput, copper.PersonMetadata]
+	listPeople          *connectormock.Query[copper.ListPeopleInput, copper.PeoplePage]
+	updatePerson        *connectormock.Mutation[copper.UpdatePersonInput, copper.PersonMetadata]
+	deletePerson        *connectormock.Mutation[copper.DeletePersonInput, copper.DeletePersonOutput]
+	listCustomerSources *connectormock.Query[copper.ListCustomerSourcesInput, copper.CustomerSourcesList]
+	listLeadStatuses    *connectormock.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList]
+	getLead             *connectormock.Query[copper.GetLeadInput, copper.LeadMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -37,18 +38,19 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createCompany:    connectormock.NewMutation[copper.CreateCompanyInput, copper.CompanyMetadata](t, copper.CreateCompanyDefinition),
-		getCompany:       connectormock.NewQuery[copper.GetCompanyInput, copper.CompanyMetadata](t, copper.GetCompanyDefinition),
-		listCompanies:    connectormock.NewQuery[copper.ListCompaniesInput, copper.CompaniesPage](t, copper.ListCompaniesDefinition),
-		updateCompany:    connectormock.NewMutation[copper.UpdateCompanyInput, copper.CompanyMetadata](t, copper.UpdateCompanyDefinition),
-		deleteCompany:    connectormock.NewMutation[copper.DeleteCompanyInput, copper.DeleteCompanyOutput](t, copper.DeleteCompanyDefinition),
-		createPerson:     connectormock.NewMutation[copper.CreatePersonInput, copper.PersonMetadata](t, copper.CreatePersonDefinition),
-		getPerson:        connectormock.NewQuery[copper.GetPersonInput, copper.PersonMetadata](t, copper.GetPersonDefinition),
-		listPeople:       connectormock.NewQuery[copper.ListPeopleInput, copper.PeoplePage](t, copper.ListPeopleDefinition),
-		updatePerson:     connectormock.NewMutation[copper.UpdatePersonInput, copper.PersonMetadata](t, copper.UpdatePersonDefinition),
-		deletePerson:     connectormock.NewMutation[copper.DeletePersonInput, copper.DeletePersonOutput](t, copper.DeletePersonDefinition),
-		listLeadStatuses: connectormock.NewQuery[copper.ListLeadStatusesInput, copper.LeadStatusesList](t, copper.ListLeadStatusesDefinition),
-		getLead:          connectormock.NewQuery[copper.GetLeadInput, copper.LeadMetadata](t, copper.GetLeadDefinition),
+		createCompany:       connectormock.NewMutation[copper.CreateCompanyInput, copper.CompanyMetadata](t, copper.CreateCompanyDefinition),
+		getCompany:          connectormock.NewQuery[copper.GetCompanyInput, copper.CompanyMetadata](t, copper.GetCompanyDefinition),
+		listCompanies:       connectormock.NewQuery[copper.ListCompaniesInput, copper.CompaniesPage](t, copper.ListCompaniesDefinition),
+		updateCompany:       connectormock.NewMutation[copper.UpdateCompanyInput, copper.CompanyMetadata](t, copper.UpdateCompanyDefinition),
+		deleteCompany:       connectormock.NewMutation[copper.DeleteCompanyInput, copper.DeleteCompanyOutput](t, copper.DeleteCompanyDefinition),
+		createPerson:        connectormock.NewMutation[copper.CreatePersonInput, copper.PersonMetadata](t, copper.CreatePersonDefinition),
+		getPerson:           connectormock.NewQuery[copper.GetPersonInput, copper.PersonMetadata](t, copper.GetPersonDefinition),
+		listPeople:          connectormock.NewQuery[copper.ListPeopleInput, copper.PeoplePage](t, copper.ListPeopleDefinition),
+		updatePerson:        connectormock.NewMutation[copper.UpdatePersonInput, copper.PersonMetadata](t, copper.UpdatePersonDefinition),
+		deletePerson:        connectormock.NewMutation[copper.DeletePersonInput, copper.DeletePersonOutput](t, copper.DeletePersonDefinition),
+		listCustomerSources: connectormock.NewQuery[copper.ListCustomerSourcesInput, copper.CustomerSourcesList](t, copper.ListCustomerSourcesDefinition),
+		listLeadStatuses:    connectormock.NewQuery[copper.ListLeadStatusesInput, copper.LeadStatusesList](t, copper.ListLeadStatusesDefinition),
+		getLead:             connectormock.NewQuery[copper.GetLeadInput, copper.LeadMetadata](t, copper.GetLeadDefinition),
 	}
 	mock.createCompany.Default(CreateCompanyDefault())
 	mock.getCompany.Default(GetCompanyDefault())
@@ -60,6 +62,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listPeople.Default(ListPeopleDefault())
 	mock.updatePerson.Default(UpdatePersonDefault())
 	mock.deletePerson.Default(DeletePersonDefault())
+	mock.listCustomerSources.Default(ListCustomerSourcesDefault())
 	mock.listLeadStatuses.Default(ListLeadStatusesDefault())
 	mock.getLead.Default(GetLeadDefault())
 	connection, err := copper.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "copper", Name: connectionName})
@@ -123,6 +126,11 @@ func (mock *Mock) DeletePerson() *connectormock.Mutation[copper.DeletePersonInpu
 	return mock.deletePerson
 }
 
+// ListCustomerSources returns the listCustomerSources script.
+func (mock *Mock) ListCustomerSources() *connectormock.Query[copper.ListCustomerSourcesInput, copper.CustomerSourcesList] {
+	return mock.listCustomerSources
+}
+
 // ListLeadStatuses returns the listLeadStatuses script.
 func (mock *Mock) ListLeadStatuses() *connectormock.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList] {
 	return mock.listLeadStatuses
@@ -164,6 +172,9 @@ func (operations mockOperations) UpdatePerson() sdkgo.Mutation[copper.UpdatePers
 }
 func (operations mockOperations) DeletePerson() sdkgo.Mutation[copper.DeletePersonInput, copper.DeletePersonOutput] {
 	return operations.mock.deletePerson
+}
+func (operations mockOperations) ListCustomerSources() sdkgo.Query[copper.ListCustomerSourcesInput, copper.CustomerSourcesList] {
+	return operations.mock.listCustomerSources
 }
 func (operations mockOperations) ListLeadStatuses() sdkgo.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList] {
 	return operations.mock.listLeadStatuses
@@ -534,6 +545,42 @@ func DeletePersonDeletedDefault() connectormock.Case[copper.DeletePersonOutput] 
 // DeletePersonDefault is the manifest default, deletedDefault, which New installs.
 func DeletePersonDefault() connectormock.Case[copper.DeletePersonOutput] {
 	return DeletePersonDeletedDefault()
+}
+
+// ListCustomerSourcesListed selects the listed branch: Copper returned customer sources.
+func ListCustomerSourcesListed(value copper.CustomerSourcesList, failure *sdkgo.Failure) connectormock.Case[copper.CustomerSourcesList] {
+	return connectormock.Branch(copper.ListCustomerSourcesBranchListed, value, failure)
+}
+
+// ListCustomerSourcesProviderRejected selects the providerRejected branch: Copper conclusively rejected the request.
+func ListCustomerSourcesProviderRejected(value copper.CustomerSourcesList, failure *sdkgo.Failure) connectormock.Case[copper.CustomerSourcesList] {
+	return connectormock.Branch(copper.ListCustomerSourcesBranchProviderRejected, value, failure)
+}
+
+// ListCustomerSourcesInvalidResponse selects the invalidResponse branch: Copper returned malformed or oversized JSON.
+func ListCustomerSourcesInvalidResponse(value copper.CustomerSourcesList, failure *sdkgo.Failure) connectormock.Case[copper.CustomerSourcesList] {
+	return connectormock.Branch(copper.ListCustomerSourcesBranchInvalidResponse, value, failure)
+}
+
+// ListCustomerSourcesDefect selects the defect branch: Connection credentials are invalid.
+func ListCustomerSourcesDefect(value copper.CustomerSourcesList, failure *sdkgo.Failure) connectormock.Case[copper.CustomerSourcesList] {
+	return connectormock.Branch(copper.ListCustomerSourcesBranchDefect, value, failure)
+}
+
+// ListCustomerSourcesRetry asks Dex to retry the listCustomerSources Step, after the delay when it is positive.
+func ListCustomerSourcesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.CustomerSourcesList] {
+	return connectormock.Retry[copper.CustomerSourcesList](failure, after)
+}
+
+// ListCustomerSourcesListedDefault is the manifest mock listedDefault: One sample customer source is listed.
+func ListCustomerSourcesListedDefault() connectormock.Case[copper.CustomerSourcesList] {
+	value := connectormock.MustDecodeOutput[copper.CustomerSourcesList](`{"sources":[{"id":331240,"name":"Email"}]}`)
+	return connectormock.Branch(copper.ListCustomerSourcesBranchListed, value, nil)
+}
+
+// ListCustomerSourcesDefault is the manifest default, listedDefault, which New installs.
+func ListCustomerSourcesDefault() connectormock.Case[copper.CustomerSourcesList] {
+	return ListCustomerSourcesListedDefault()
 }
 
 // ListLeadStatusesListed selects the listed branch: Copper returned lead statuses.

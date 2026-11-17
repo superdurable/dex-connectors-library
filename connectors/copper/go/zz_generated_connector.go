@@ -51,6 +51,7 @@ type Operations interface {
 	ListPeople() sdkgo.Query[ListPeopleInput, PeoplePage]
 	UpdatePerson() sdkgo.Mutation[UpdatePersonInput, PersonMetadata]
 	DeletePerson() sdkgo.Mutation[DeletePersonInput, DeletePersonOutput]
+	ListCustomerSources() sdkgo.Query[ListCustomerSourcesInput, CustomerSourcesList]
 	ListLeadStatuses() sdkgo.Query[ListLeadStatusesInput, LeadStatusesList]
 	GetLead() sdkgo.Query[GetLeadInput, LeadMetadata]
 }
@@ -86,6 +87,9 @@ func (operations clientOperations) UpdatePerson() sdkgo.Mutation[UpdatePersonInp
 }
 func (operations clientOperations) DeletePerson() sdkgo.Mutation[DeletePersonInput, DeletePersonOutput] {
 	return operations.client.DeletePerson()
+}
+func (operations clientOperations) ListCustomerSources() sdkgo.Query[ListCustomerSourcesInput, CustomerSourcesList] {
+	return operations.client.ListCustomerSources()
 }
 func (operations clientOperations) ListLeadStatuses() sdkgo.Query[ListLeadStatusesInput, LeadStatusesList] {
 	return operations.client.ListLeadStatuses()
@@ -964,6 +968,77 @@ func NewDeletePersonStep[IN any](config DeletePersonStepConfig[IN]) sdkgo.Mutati
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeletePersonBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCustomerSourcesBranchListed sdkgo.BranchID = "listed"
+const ListCustomerSourcesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCustomerSourcesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCustomerSourcesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCustomerSourcesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCustomerSources"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCustomerSourcesBranchListed, Description: "Copper returned customer sources."},
+		{ID: ListCustomerSourcesBranchProviderRejected, Description: "Copper conclusively rejected the request.", Optional: true},
+		{ID: ListCustomerSourcesBranchInvalidResponse, Description: "Copper returned malformed or oversized JSON.", Optional: true},
+		{ID: ListCustomerSourcesBranchDefect, Description: "Connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCustomerSourcesResult = sdkgo.QueryResult[CustomerSourcesList]
+
+type ListCustomerSourcesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=copper"`
+	operationID                    struct{}                                               `connector:"operationId=listCustomerSources"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCustomerSourcesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCustomerSourcesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCustomerSourcesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCustomerSourcesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCustomerSourcesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CustomerSourcesList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewListCustomerSourcesStep[IN any](config ListCustomerSourcesStepConfig[IN]) sdkgo.QueryStep[IN, ListCustomerSourcesInput, CustomerSourcesList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("copper connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCustomerSourcesInput, CustomerSourcesList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCustomerSources(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCustomerSourcesResult] {
+			branches := make([]sdkgo.BranchTarget[ListCustomerSourcesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCustomerSourcesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCustomerSourcesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCustomerSourcesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCustomerSourcesBranchDefect))
 			}
 			return branches
 		}(),

@@ -1,6 +1,6 @@
 # Copper lead status discovery Flow
 
-This runnable Flow calls `listLeadStatuses` with the static `copper` Dex Web connection. It stores status IDs and names in an Attribute and completes with the typed result. Optional branches are unwired and fail the Flow when selected. Credentials do not enter Flow state.
+These runnable Flows call `listLeadStatuses` and `listCustomerSources` with the static `copper` Dex Web connection. Each stores IDs and names in an Attribute and completes with the typed result. Optional branches are unwired and fail the Flow when selected. Credentials do not enter Flow state.
 
 ## Strict FDG 2.0 generation
 
@@ -8,6 +8,7 @@ From `connectors/copper/go`, run:
 
 ```bash
 dexcli visualize ./examples/lead-status-discovery/flow/workflow.go --schema-version 2.0 --lint app --json --out /tmp/copper-lead-status-discovery-fdg
+dexcli visualize ./examples/lead-status-discovery/flow/customer_sources.go --schema-version 2.0 --lint app --json --out /tmp/copper-customer-sources-fdg
 ```
 
 The command must report `valid: true`. Before the first release, `connector_release_required` warns that automatic Dex Web configuration requires a published release.
@@ -23,5 +24,7 @@ GOWORK=off go run ./examples/lead-status-discovery
 ```
 
 Start `CopperLeadStatusDiscovery` with a unique Flow ID and input `{}`. The Worker has no inbound listener. The provider connection name is fixed in `flow/workflow.go`.
+
+Start `CopperCustomerSourcesDiscovery` with a unique Flow ID and input `{}` to read the account's customer source IDs and names for leads or opportunities.
 
 With `dexcli dev` serving at `127.0.0.1:8905`, run `DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8905 GOWORK=off go test -race -tags=integration ./examples/lead-status-discovery/flow -count=1`. Live provider authorization remains unverified.

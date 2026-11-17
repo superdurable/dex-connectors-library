@@ -19,7 +19,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	t.Helper()
 	reference := sdkgo.ConnectionRef{Provider: "copper", Name: "copper"}
 	credentials := sdkgo.StaticCredentialProvider[Credentials]{reference: {APIKey: sdkgo.NewSecretString("test-token"), UserEmail: sdkgo.NewSecretString("user@example.com")}}
-	if scenario.Name == "listLeadStatuses-defect" {
+	if scenario.Name == "listLeadStatuses-defect" || scenario.Name == "listCustomerSources-defect" {
 		credentials = sdkgo.StaticCredentialProvider[Credentials]{}
 	}
 	client, err := New(Config{BaseURL: endpoint}, credentials, WithHTTPClient(transport))
@@ -38,18 +38,19 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.attempt = int32(attempt)
 		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"createCompany":    newConformanceMutationInvocation(t, scenario.Input, context, client.CreateCompany(), reference, scenario.CallID),
-		"getCompany":       newConformanceQueryInvocation(t, scenario.Input, context, client.GetCompany(), reference),
-		"listCompanies":    newConformanceQueryInvocation(t, scenario.Input, context, client.ListCompanies(), reference),
-		"updateCompany":    newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateCompany(), reference, scenario.CallID),
-		"deleteCompany":    newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteCompany(), reference, scenario.CallID),
-		"listLeadStatuses": newConformanceQueryInvocation(t, scenario.Input, context, client.ListLeadStatuses(), reference),
-		"getLead":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetLead(), reference),
-		"createPerson":     newConformanceMutationInvocation(t, scenario.Input, context, client.CreatePerson(), reference, scenario.CallID),
-		"getPerson":        newConformanceQueryInvocation(t, scenario.Input, context, client.GetPerson(), reference),
-		"listPeople":       newConformanceQueryInvocation(t, scenario.Input, context, client.ListPeople(), reference),
-		"updatePerson":     newConformanceMutationInvocation(t, scenario.Input, context, client.UpdatePerson(), reference, scenario.CallID),
-		"deletePerson":     newConformanceMutationInvocation(t, scenario.Input, context, client.DeletePerson(), reference, scenario.CallID),
+		"listCustomerSources": newConformanceQueryInvocation(t, scenario.Input, context, client.ListCustomerSources(), reference),
+		"createCompany":       newConformanceMutationInvocation(t, scenario.Input, context, client.CreateCompany(), reference, scenario.CallID),
+		"getCompany":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetCompany(), reference),
+		"listCompanies":       newConformanceQueryInvocation(t, scenario.Input, context, client.ListCompanies(), reference),
+		"updateCompany":       newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateCompany(), reference, scenario.CallID),
+		"deleteCompany":       newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteCompany(), reference, scenario.CallID),
+		"listLeadStatuses":    newConformanceQueryInvocation(t, scenario.Input, context, client.ListLeadStatuses(), reference),
+		"getLead":             newConformanceQueryInvocation(t, scenario.Input, context, client.GetLead(), reference),
+		"createPerson":        newConformanceMutationInvocation(t, scenario.Input, context, client.CreatePerson(), reference, scenario.CallID),
+		"getPerson":           newConformanceQueryInvocation(t, scenario.Input, context, client.GetPerson(), reference),
+		"listPeople":          newConformanceQueryInvocation(t, scenario.Input, context, client.ListPeople(), reference),
+		"updatePerson":        newConformanceMutationInvocation(t, scenario.Input, context, client.UpdatePerson(), reference, scenario.CallID),
+		"deletePerson":        newConformanceMutationInvocation(t, scenario.Input, context, client.DeletePerson(), reference, scenario.CallID),
 	}}
 }
 
