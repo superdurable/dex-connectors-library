@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "updatePost/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[facebookpages.ChangedPost](`{"postId":"123456789_987654321"}`)
+			return err
+		}},
+		{name: "deletePost/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[facebookpages.ChangedPost](`{"postId":"123456789_987654321"}`)
+			return err
+		}},
 		{name: "listPosts/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[facebookpages.PagePostsPage](`{"posts":[{"id":"123456789_987654321","message":"Welcome to our Page","createdTime":"2026-11-08T10:00:00+0000","permalinkUrl":"https://www.facebook.com/123456789/posts/987654321"}],"nextCursor":""}`)
 			return err
@@ -38,6 +46,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.UpdatePost().Definition().Operation.OperationID != "updatePost" {
+		t.Errorf("updatePost mock has another definition")
+	}
+	if mock.DeletePost().Definition().Operation.OperationID != "deletePost" {
+		t.Errorf("deletePost mock has another definition")
+	}
 	if mock.ListPosts().Definition().Operation.OperationID != "listPosts" {
 		t.Errorf("listPosts mock has another definition")
 	}
