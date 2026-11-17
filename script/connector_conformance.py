@@ -406,17 +406,24 @@ def mutation_self_test(connectors: list[Path]) -> None:
             raise ValueError(f"{relative} has no completed provider scenario to mutate")
         commands = {"go": (["go", "test", ".", "-run", "^TestConnectorConformance$", "-count=1"],
                            connector / "go")}
+        supported_operations = {"go": set(declared_operations)}
         python_package = connector / "python"
         if (python_package / "pyproject.toml").is_file():
             subprocess.run(["uv", "sync", "--locked", "--project", str(python_package)], cwd=ROOT, check=True)
             commands["python"] = (["uv", "run", "--project", str(python_package), "pytest",
                                     str(python_package / "tests/test_conformance.py"), "-q"], ROOT)
+            python_descriptor, = (python_package / "src/dex_connectors").glob("*/dex-connector.json")
+            supported_operations["python"] = {factory["operationId"] for factory in
+                                              json.loads(python_descriptor.read_text())["factories"]}
         typescript_package = connector / "typescript"
         if (typescript_package / "package.json").is_file():
             subprocess.run(["npm", "ci", "--prefix", str(typescript_package)], cwd=ROOT, check=True)
             subprocess.run(["npm", "run", "build", "--prefix", str(typescript_package)], cwd=ROOT, check=True)
             commands["typescript"] = ([str(typescript_package / "node_modules/.bin/vitest"), "run",
                                         "test/conformance.test.ts"], typescript_package)
+            typescript_descriptor = typescript_package / "dex-connector.json"
+            supported_operations["typescript"] = {factory["operationId"] for factory in
+                                                  json.loads(typescript_descriptor.read_text())["factories"]}
         mutation_sources = [("classification", scenario), ("exchange", scenario),
                             ("wrong-output-field", scenario), ("pending-passing-go", scenario)]
         list_output_scenario = next((item for item in original["scenarios"]
@@ -593,8 +600,12 @@ def mutation_self_test(connectors: list[Path]) -> None:
             with tempfile.TemporaryDirectory(prefix="connector-conformance-") as directory:
                 fixture = Path(directory) / "scenarios.json"
                 fixture.write_text(json.dumps(document))
-                selected_commands = ({language: value for language, value in commands.items() if language != "go"}
-                                     if mutation in ("port-heartbeat-shape", "present-null-for-clear", "extra-heartbeat") else commands)
+                selected_commands = {
+                    language: value for language, value in commands.items()
+                    if changed["operation"] in supported_operations[language]
+                    and (mutation not in ("port-heartbeat-shape", "present-null-for-clear", "extra-heartbeat")
+                         or language != "go")
+                }
                 for language, (command, cwd) in selected_commands.items():
                     result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=False,
                                             env={**os.environ, "GOWORK": "off",
