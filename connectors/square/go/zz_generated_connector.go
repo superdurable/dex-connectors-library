@@ -59,6 +59,11 @@ type Operations interface {
 	GetOrder() sdkgo.Query[GetOrderInput, Order]
 	CreateOrder() sdkgo.Mutation[CreateOrderInput, Order]
 	UpdateOrder() sdkgo.Mutation[UpdateOrderInput, Order]
+	ListCatalogObjects() sdkgo.Query[ListCatalogObjectsInput, CatalogPage]
+	SearchCatalogObjects() sdkgo.Query[SearchCatalogObjectsInput, CatalogPage]
+	GetCatalogObject() sdkgo.Query[GetCatalogObjectInput, CatalogObject]
+	UpsertCatalogObject() sdkgo.Mutation[UpsertCatalogObjectInput, CatalogObject]
+	DeleteCatalogObject() sdkgo.Mutation[DeleteCatalogObjectInput, DeletedCatalogObjects]
 }
 
 type clientOperations struct{ client *Client }
@@ -119,6 +124,21 @@ func (operations clientOperations) CreateOrder() sdkgo.Mutation[CreateOrderInput
 }
 func (operations clientOperations) UpdateOrder() sdkgo.Mutation[UpdateOrderInput, Order] {
 	return operations.client.UpdateOrder()
+}
+func (operations clientOperations) ListCatalogObjects() sdkgo.Query[ListCatalogObjectsInput, CatalogPage] {
+	return operations.client.ListCatalogObjects()
+}
+func (operations clientOperations) SearchCatalogObjects() sdkgo.Query[SearchCatalogObjectsInput, CatalogPage] {
+	return operations.client.SearchCatalogObjects()
+}
+func (operations clientOperations) GetCatalogObject() sdkgo.Query[GetCatalogObjectInput, CatalogObject] {
+	return operations.client.GetCatalogObject()
+}
+func (operations clientOperations) UpsertCatalogObject() sdkgo.Mutation[UpsertCatalogObjectInput, CatalogObject] {
+	return operations.client.UpsertCatalogObject()
+}
+func (operations clientOperations) DeleteCatalogObject() sdkgo.Mutation[DeleteCatalogObjectInput, DeletedCatalogObjects] {
+	return operations.client.DeleteCatalogObject()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1665,6 +1685,373 @@ func NewUpdateOrderStep[IN any](config UpdateOrderStepConfig[IN]) sdkgo.Mutation
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(UpdateOrderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCatalogObjectsBranchListed sdkgo.BranchID = "listed"
+const ListCatalogObjectsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCatalogObjectsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCatalogObjectsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCatalogObjectsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCatalogObjects"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCatalogObjectsBranchListed, Description: "List one page of Square catalog items."},
+		{ID: ListCatalogObjectsBranchProviderRejected, Description: "Square conclusively rejected the request.", Optional: true},
+		{ID: ListCatalogObjectsBranchInvalidResponse, Description: "Square returned malformed or oversized JSON.", Optional: true},
+		{ID: ListCatalogObjectsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCatalogObjectsResult = sdkgo.QueryResult[CatalogPage]
+
+type ListCatalogObjectsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=square"`
+	operationID                    struct{}                                       `connector:"operationId=listCatalogObjects"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCatalogObjectsInput               `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCatalogObjectsResult]         `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCatalogObjectsResult]         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCatalogObjectsResult]         `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCatalogObjectsResult]         `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CatalogPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListCatalogObjectsStep[IN any](config ListCatalogObjectsStepConfig[IN]) sdkgo.QueryStep[IN, ListCatalogObjectsInput, CatalogPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("square connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCatalogObjectsInput, CatalogPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCatalogObjects(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCatalogObjectsResult] {
+			branches := make([]sdkgo.BranchTarget[ListCatalogObjectsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCatalogObjectsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCatalogObjectsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCatalogObjectsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCatalogObjectsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SearchCatalogObjectsBranchListed sdkgo.BranchID = "listed"
+const SearchCatalogObjectsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchCatalogObjectsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchCatalogObjectsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchCatalogObjectsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchCatalogObjects"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchCatalogObjectsBranchListed, Description: "Search Square catalog items by text."},
+		{ID: SearchCatalogObjectsBranchProviderRejected, Description: "Square conclusively rejected the request.", Optional: true},
+		{ID: SearchCatalogObjectsBranchInvalidResponse, Description: "Square returned malformed or oversized JSON.", Optional: true},
+		{ID: SearchCatalogObjectsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchCatalogObjectsResult = sdkgo.QueryResult[CatalogPage]
+
+type SearchCatalogObjectsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=square"`
+	operationID                    struct{}                                       `connector:"operationId=searchCatalogObjects"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchCatalogObjectsInput             `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[SearchCatalogObjectsResult]       `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[SearchCatalogObjectsResult]       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchCatalogObjectsResult]       `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchCatalogObjectsResult]       `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CatalogPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewSearchCatalogObjectsStep[IN any](config SearchCatalogObjectsStepConfig[IN]) sdkgo.QueryStep[IN, SearchCatalogObjectsInput, CatalogPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("square connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchCatalogObjectsInput, CatalogPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchCatalogObjects(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchCatalogObjectsResult] {
+			branches := make([]sdkgo.BranchTarget[SearchCatalogObjectsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(SearchCatalogObjectsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchCatalogObjectsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchCatalogObjectsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchCatalogObjectsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCatalogObjectBranchFound sdkgo.BranchID = "found"
+const GetCatalogObjectBranchNotFound sdkgo.BranchID = "notFound"
+const GetCatalogObjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCatalogObjectBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCatalogObjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCatalogObjectDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCatalogObject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCatalogObjectBranchFound, Description: "Read one Square catalog object."},
+		{ID: GetCatalogObjectBranchNotFound, Description: "The catalog object was not found.", Optional: true},
+		{ID: GetCatalogObjectBranchProviderRejected, Description: "Square conclusively rejected the request.", Optional: true},
+		{ID: GetCatalogObjectBranchInvalidResponse, Description: "Square returned malformed or oversized JSON.", Optional: true},
+		{ID: GetCatalogObjectBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCatalogObjectResult = sdkgo.QueryResult[CatalogObject]
+
+type GetCatalogObjectStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=square"`
+	operationID                    struct{}                                         `connector:"operationId=getCatalogObject"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCatalogObjectInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCatalogObjectResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCatalogObjectResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCatalogObjectResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCatalogObjectResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCatalogObjectResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CatalogObject]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetCatalogObjectStep[IN any](config GetCatalogObjectStepConfig[IN]) sdkgo.QueryStep[IN, GetCatalogObjectInput, CatalogObject] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("square connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCatalogObjectInput, CatalogObject]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCatalogObject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCatalogObjectResult] {
+			branches := make([]sdkgo.BranchTarget[GetCatalogObjectResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCatalogObjectBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCatalogObjectBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCatalogObjectBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCatalogObjectBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCatalogObjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpsertCatalogObjectBranchUpserted sdkgo.BranchID = "upserted"
+const UpsertCatalogObjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpsertCatalogObjectBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpsertCatalogObjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpsertCatalogObjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "upsertCatalogObject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpsertCatalogObjectBranchUpserted, Description: "Create or fully replace one Square catalog item with a stable idempotency key."},
+		{ID: UpsertCatalogObjectBranchProviderRejected, Description: "Square conclusively rejected the request.", Optional: true},
+		{ID: UpsertCatalogObjectBranchInvalidResponse, Description: "Square returned malformed or oversized JSON.", Optional: true},
+		{ID: UpsertCatalogObjectBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpsertCatalogObjectResult = sdkgo.MutationResult[CatalogObject]
+
+type UpsertCatalogObjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=square"`
+	operationID                       struct{}                                            `connector:"operationId=upsertCatalogObject"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpsertCatalogObjectInput                   `connector:"mapToOperationInput"`
+	Upserted                          sdkgo.Target[UpsertCatalogObjectResult]             `connector:"branch=upserted"`
+	ProviderRejected                  sdkgo.Target[UpsertCatalogObjectResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpsertCatalogObjectResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpsertCatalogObjectResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CatalogObject]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewUpsertCatalogObjectStep[IN any](config UpsertCatalogObjectStepConfig[IN]) sdkgo.MutationStep[IN, UpsertCatalogObjectInput, CatalogObject] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("square connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpsertCatalogObjectInput, CatalogObject]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpsertCatalogObject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpsertCatalogObjectResult] {
+			branches := make([]sdkgo.BranchTarget[UpsertCatalogObjectResult], 0, 4)
+			if config.Upserted.HasStep() {
+				branches = append(branches, config.Upserted.BranchTarget(UpsertCatalogObjectBranchUpserted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpsertCatalogObjectBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpsertCatalogObjectBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpsertCatalogObjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteCatalogObjectBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteCatalogObjectBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteCatalogObjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteCatalogObjectBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteCatalogObjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteCatalogObjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteCatalogObject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteCatalogObjectBranchDeleted, Description: "Delete one Square catalog item and its dependent variations."},
+		{ID: DeleteCatalogObjectBranchNotFound, Description: "The catalog object was not found.", Optional: true},
+		{ID: DeleteCatalogObjectBranchProviderRejected, Description: "Square conclusively rejected the request.", Optional: true},
+		{ID: DeleteCatalogObjectBranchInvalidResponse, Description: "Square returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteCatalogObjectBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteCatalogObjectResult = sdkgo.MutationResult[DeletedCatalogObjects]
+
+type DeleteCatalogObjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=square"`
+	operationID                       struct{}                                                    `connector:"operationId=deleteCatalogObject"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteCatalogObjectInput                           `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteCatalogObjectResult]                     `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteCatalogObjectResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteCatalogObjectResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteCatalogObjectResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteCatalogObjectResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedCatalogObjects]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteCatalogObjectStep[IN any](config DeleteCatalogObjectStepConfig[IN]) sdkgo.MutationStep[IN, DeleteCatalogObjectInput, DeletedCatalogObjects] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("square connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteCatalogObjectInput, DeletedCatalogObjects]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteCatalogObject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteCatalogObjectResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteCatalogObjectResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteCatalogObjectBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteCatalogObjectBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteCatalogObjectBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteCatalogObjectBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteCatalogObjectBranchDefect))
 			}
 			return branches
 		}(),

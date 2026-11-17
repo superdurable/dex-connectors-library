@@ -18,7 +18,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	t.Helper()
 	connection := sdkgo.ConnectionRef{Provider: "square", Name: "square"}
 	credentials := Credentials{AccessToken: sdkgo.NewSecretString("test-token")}
-	if scenario.Name == "listPayments-defect" || scenario.Name == "listRefunds-defect" || scenario.Name == "listCustomers-defect" {
+	if scenario.Name == "listPayments-defect" || scenario.Name == "listRefunds-defect" || scenario.Name == "listCustomers-defect" || scenario.Name == "listCatalogObjects-defect" {
 		credentials = Credentials{}
 	}
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{connection: credentials}, WithHTTPClient(transport))
@@ -43,5 +43,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"getOrder": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetOrder(), connection),
 		"createOrder": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateOrder(), connection, scenario.CallID),
 		"updateOrder": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateOrder(), connection, scenario.CallID),
+		"listCatalogObjects": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCatalogObjects(), connection),
+		"searchCatalogObjects": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchCatalogObjects(), connection),
+		"getCatalogObject": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCatalogObject(), connection),
+		"upsertCatalogObject": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpsertCatalogObject(), connection, scenario.CallID),
+		"deleteCatalogObject": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCatalogObject(), connection, scenario.CallID),
 	}}
 }

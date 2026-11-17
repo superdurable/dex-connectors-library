@@ -128,4 +128,19 @@ func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 	require.Equal(t, orderFlowID, orderCalls[0].FlowID)
 	require.Equal(t, square.CreateOrderInput{LocationID: "loc_101", LineItemName: "Coffee", Quantity: "2", BasePriceMoney: orderInput.AmountMoney}, orderCalls[0].Input)
 	require.Equal(t, square.CreateOrderBranchCreated, orderCalls[0].Branch)
+	catalogFlowID := "square-catalog-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	catalogInput := Request{CatalogItemName: "Coffee"}
+	_, err = client.StartFlow(ctx, flow, catalogFlowID, catalogInput, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	catalogResult, err := client.WaitForFlow(ctx, catalogFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, catalogResult.Status, catalogResult.ErrorMessage)
+	var catalogOutcome Outcome
+	require.NoError(t, catalogResult.DecodeSingleOutput(&catalogOutcome))
+	require.Equal(t, "item_101", catalogOutcome.CatalogObject.Object["id"])
+	catalogCalls := mock.UpsertCatalogObject().Calls()
+	require.Len(t, catalogCalls, 1)
+	require.Equal(t, catalogFlowID, catalogCalls[0].FlowID)
+	require.Equal(t, MapToUpsertCatalogObjectInput(catalogInput), catalogCalls[0].Input)
+	require.Equal(t, square.UpsertCatalogObjectBranchUpserted, catalogCalls[0].Branch)
 }

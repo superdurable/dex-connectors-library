@@ -21,6 +21,7 @@ const (
 	refundPaymentStepType  = "RefundSquarePayment"
 	createCustomerStepType = "CreateSquareCustomer"
 	createOrderStepType    = "CreateSquareOrder"
+	upsertCatalogStepType  = "CreateSquareCatalogItem"
 )
 
 // Request is the typed start input for this example.
@@ -45,6 +46,8 @@ type Request struct {
 	OrderLineItemName string `json:"orderLineItemName,omitempty"`
 	// OrderQuantity is a positive decimal count for the new order.
 	OrderQuantity string `json:"orderQuantity,omitempty"`
+	// CatalogItemName creates a catalog item when set.
+	CatalogItemName string `json:"catalogItemName,omitempty"`
 }
 
 // Outcome is the completed resource read.
@@ -59,6 +62,8 @@ type Outcome struct {
 	Customer square.Customer `json:"customer,omitempty"`
 	// Order is the created Square order when OrderLocationID was set.
 	Order square.Order `json:"order,omitempty"`
+	// CatalogObject is the created Square catalog item when CatalogItemName was set.
+	CatalogObject square.CatalogObject `json:"catalogObject,omitempty"`
 }
 
 var outcomeAttribute = dex.DefineAttribute[Outcome]("square-resource-read-outcome")
@@ -108,11 +113,18 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: MapToCreateOrderInput,
 			Created:             sdkgo.GoTo(completeOrder{}),
 		})),
+		dex.DefineStep(square.NewUpsertCatalogObjectStep(square.UpsertCatalogObjectStepConfig[Request]{
+			StepType: upsertCatalogStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "square", GroupLabel: "Square", Explanation: "Create the requested catalog item."},
+			MapToOperationInput: MapToUpsertCatalogObjectInput,
+			Upserted:            sdkgo.GoTo(completeCatalogItem{}),
+		})),
 		dex.DefineStep(completeRead{}),
 		dex.DefineStep(completeCashPayment{}),
 		dex.DefineStep(completeRefund{}),
 		dex.DefineStep(completeCustomer{}),
 		dex.DefineStep(completeOrder{}),
+		dex.DefineStep(completeCatalogItem{}),
 	}
 }
 
@@ -165,6 +177,16 @@ func MapToCreateOrderInput(request Request) square.CreateOrderInput {
 	return square.CreateOrderInput{LocationID: request.OrderLocationID, LineItemName: request.OrderLineItemName, Quantity: request.OrderQuantity, BasePriceMoney: request.AmountMoney}
 }
 
+// MapToUpsertCatalogObjectInput builds a complete new ITEM with one variable-priced variation.
+func MapToUpsertCatalogObjectInput(request Request) square.UpsertCatalogObjectInput {
+	return square.UpsertCatalogObjectInput{Object: map[string]any{
+		"id": "#dex-item", "type": "ITEM",
+		"item_data": map[string]any{"name": request.CatalogItemName, "variations": []any{
+			map[string]any{"id": "#dex-variation", "type": "ITEM_VARIATION", "item_variation_data": map[string]any{"item_id": "#dex-item", "name": "Regular", "pricing_type": "VARIABLE_PRICING"}},
+		}},
+	}}
+}
+
 // PrepareRequest rejects invalid local input before a provider call.
 func PrepareRequest(request Request) (Request, error) {
 	if request.RecordCashPayment && (request.AmountMoney.Amount <= 0 || request.AmountMoney.Currency == "") {
@@ -180,17 +202,20 @@ func PrepareRequest(request Request) (Request, error) {
 		if request.CustomerGivenName == "" && request.CustomerEmailAddress == "" {
 			return Request{}, errors.New("customer given name or email address is required")
 		}
-		if request.RecordCashPayment || request.RefundPaymentID != "" || request.OrderLocationID != "" {
+		if request.RecordCashPayment || request.RefundPaymentID != "" || request.OrderLocationID != "" || request.CatalogItemName != "" {
 			return Request{}, errors.New("choose one Square action")
 		}
 	}
 	if request.OrderLocationID != "" {
-		if request.RecordCashPayment || request.RefundPaymentID != "" || request.CreateCustomer {
+		if request.RecordCashPayment || request.RefundPaymentID != "" || request.CreateCustomer || request.CatalogItemName != "" {
 			return Request{}, errors.New("choose one Square action")
 		}
 		if request.OrderLineItemName == "" || request.OrderQuantity == "" || request.AmountMoney.Currency == "" {
 			return Request{}, errors.New("order item, quantity, and currency are required")
 		}
+	}
+	if request.CatalogItemName != "" && (request.RecordCashPayment || request.RefundPaymentID != "" || request.CreateCustomer || request.OrderLocationID != "") {
+		return Request{}, errors.New("choose one Square action")
 	}
 	return request, nil
 }
@@ -219,6 +244,9 @@ func (prepareRequest) Execute(ctx dex.Context, request Request) (*dex.StepDecisi
 	}
 	if prepared.OrderLocationID != "" {
 		return dex.GoTo(sdkgo.StepRef[Request](createOrderStepType), prepared), nil
+	}
+	if prepared.CatalogItemName != "" {
+		return dex.GoTo(sdkgo.StepRef[Request](upsertCatalogStepType), prepared), nil
 	}
 	return dex.GoTo(sdkgo.StepRef[Request](readStepType), prepared), nil
 }
@@ -292,6 +320,21 @@ type completeOrder struct {
 func (completeOrder) GetStepType() string { return "CompleteOrder" }
 func (completeOrder) Execute(ctx dex.Context, result square.CreateOrderResult) (*dex.StepDecision, error) {
 	outcome := Outcome{Order: result.Value}
+	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:resource-result group-label:"Resource result"
+// dex:explanation text:"Persist the created catalog item as the Flow outcome."
+type completeCatalogItem struct {
+	dex.StepDefaultsNoWaitFor[square.UpsertCatalogObjectResult]
+}
+
+func (completeCatalogItem) GetStepType() string { return "CompleteCatalogItem" }
+func (completeCatalogItem) Execute(ctx dex.Context, result square.UpsertCatalogObjectResult) (*dex.StepDecision, error) {
+	outcome := Outcome{CatalogObject: result.Value}
 	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

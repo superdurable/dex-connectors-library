@@ -92,6 +92,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[square.Order](`{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}`)
 			return err
 		}},
+		{name: "listCatalogObjects/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.CatalogPage](`{"objects":[{"id":"item_101","type":"ITEM","version":1,"item_data":{"name":"Coffee"}}],"cursor":""}`)
+			return err
+		}},
+		{name: "searchCatalogObjects/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.CatalogPage](`{"objects":[{"id":"item_101","type":"ITEM","version":1,"item_data":{"name":"Coffee"}}],"cursor":""}`)
+			return err
+		}},
+		{name: "getCatalogObject/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.CatalogObject](`{"object":{"id":"item_101","type":"ITEM","version":1,"item_data":{"name":"Coffee"}}}`)
+			return err
+		}},
+		{name: "upsertCatalogObject/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.CatalogObject](`{"object":{"id":"item_101","type":"ITEM","version":1,"item_data":{"name":"Coffee"}}}`)
+			return err
+		}},
+		{name: "deleteCatalogObject/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.DeletedCatalogObjects](`{"deletedObjectIds":["item_101"]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -158,5 +178,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.UpdateOrder().Definition().Operation.OperationID != "updateOrder" {
 		t.Errorf("updateOrder mock has another definition")
+	}
+	if mock.ListCatalogObjects().Definition().Operation.OperationID != "listCatalogObjects" {
+		t.Errorf("listCatalogObjects mock has another definition")
+	}
+	if mock.SearchCatalogObjects().Definition().Operation.OperationID != "searchCatalogObjects" {
+		t.Errorf("searchCatalogObjects mock has another definition")
+	}
+	if mock.GetCatalogObject().Definition().Operation.OperationID != "getCatalogObject" {
+		t.Errorf("getCatalogObject mock has another definition")
+	}
+	if mock.UpsertCatalogObject().Definition().Operation.OperationID != "upsertCatalogObject" {
+		t.Errorf("upsertCatalogObject mock has another definition")
+	}
+	if mock.DeleteCatalogObject().Definition().Operation.OperationID != "deleteCatalogObject" {
+		t.Errorf("deleteCatalogObject mock has another definition")
 	}
 }

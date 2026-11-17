@@ -34,6 +34,11 @@ The Python package is [`dex-connector-square`](python/README.md), imported as
 | `GetOrder` | `GetOrderInput` | `Order` | `found` |
 | `CreateOrder` | `CreateOrderInput` | `Order` | `created` |
 | `UpdateOrder` | `UpdateOrderInput` | `Order` | `updated` |
+| `ListCatalogObjects` | `ListCatalogObjectsInput` | `CatalogPage` | `listed` |
+| `SearchCatalogObjects` | `SearchCatalogObjectsInput` | `CatalogPage` | `listed` |
+| `GetCatalogObject` | `GetCatalogObjectInput` | `CatalogObject` | `found` |
+| `UpsertCatalogObject` | `UpsertCatalogObjectInput` | `CatalogObject` | `upserted` |
+| `DeleteCatalogObject` | `DeleteCatalogObjectInput` | `DeletedCatalogObjects` | `deleted` |
 
 Each operation has optional `providerRejected`, `invalidResponse`, and `defect` branches; reads and payment actions also have optional `notFound` where applicable. Unwired optional branches fail the Flow. Reads and writes use async Execute durability and the default one-hour retry budget. All writes use the `safe` repeat tier. `CreatePayment`, `UpdatePayment`, and `RefundPayment` pass a stable Square idempotency key in the request body. `CancelPayment` and `CompletePayment` read the payment status after an unknown response before repeating the action.
 
@@ -42,6 +47,8 @@ Each operation has optional `providerRejected`, `invalidResponse`, and `defect` 
 Customer operations require `CUSTOMERS_READ` or `CUSTOMERS_WRITE` on the token as appropriate. `SearchCustomers` matches exact email and/or external reference, returning one page. `CreateCustomer` supplies a stable provider idempotency key. `UpdateCustomer` applies nonblank fields as absolute values; blank fields mean no change. `DeleteCustomer` takes a Square customer ID and reports it on success.
 
 Order operations require `ORDERS_READ` or `ORDERS_WRITE`. `SearchOrders` returns one page for a seller location. `CreateOrder` creates one custom-priced line item from a location ID, item name, positive decimal quantity, and minor-unit price. `UpdateOrder` changes the external reference of an open order using its current `version`. Both writes use Square's idempotency key in the request body.
+
+Catalog operations require `ITEMS_READ` or `ITEMS_WRITE`. List and text search return one page of `ITEM` objects. `GetCatalogObject` returns the complete provider object. `UpsertCatalogObject` creates or **fully replaces** an `ITEM`; its `Object` must include every field and child variation to retain. Retrieve the current object before an update, change the desired fields, and pass the complete object with its version. Square clears any omitted fields during replacement. The connector derives the provider idempotency key. `DeleteCatalogObject` deletes the item and dependent variations; the output lists every deleted object ID.
 
 ## Authentication and configuration
 
@@ -82,6 +89,7 @@ flow := resourceread.NewFlow(mock.Connection())
 - [https://developer.squareup.com/reference/square/refunds-api/refund-payment](https://developer.squareup.com/reference/square/refunds-api/refund-payment)
 - [https://developer.squareup.com/reference/square/customers-api](https://developer.squareup.com/reference/square/customers-api)
 - [https://developer.squareup.com/reference/square/orders](https://developer.squareup.com/reference/square/orders)
+- [https://developer.squareup.com/reference/square/catalog](https://developer.squareup.com/reference/square/catalog)
 - [https://developer.squareup.com/docs/payments-api/retrieve-payments](https://developer.squareup.com/docs/payments-api/retrieve-payments)
 
 ## Unverified live behavior

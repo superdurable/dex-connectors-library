@@ -1,6 +1,6 @@
 # Square resource-read example
 
-This Flow uses the static `square` connection. By default, `square.NewListPaymentsStep` reads payments. With `recordCashPayment: true`, `square.NewCreatePaymentStep` records a cash payment. With `refundPaymentId`, `square.NewRefundPaymentStep` refunds a completed payment. With `createCustomer: true`, `square.NewCreateCustomerStep` creates a customer. With `orderLocationId`, `square.NewCreateOrderStep` creates an order. Start input is typed as `Request`; the result is `Outcome`. Optional error branches are unwired and fail the Flow.
+This Flow uses the static `square` connection. By default, `square.NewListPaymentsStep` reads payments. With `recordCashPayment: true`, `square.NewCreatePaymentStep` records a cash payment. With `refundPaymentId`, `square.NewRefundPaymentStep` refunds a completed payment. With `createCustomer: true`, `square.NewCreateCustomerStep` creates a customer. With `orderLocationId`, `square.NewCreateOrderStep` creates an order. With `catalogItemName`, `square.NewUpsertCatalogObjectStep` creates a catalog item. Start input is typed as `Request`; the result is `Outcome`. Optional error branches are unwired and fail the Flow.
 
 ## Generate strict FDG 2.0
 
@@ -46,4 +46,6 @@ To create a customer, enable `CUSTOMERS_WRITE` and start with `{"createCustomer"
 
 To create an order, enable `ORDERS_WRITE`, find the seller location ID in Square Dashboard > Account & Settings > Business > Locations, and start with `{"orderLocationId":"loc_101","orderLineItemName":"Coffee","orderQuantity":"2","amountMoney":{"amount":500,"currency":"USD"}}`. The price is in the currency's minor unit. The connector derives a stable idempotency key.
 
-The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs read, cash write, refund, customer create, and order create paths through a real Dex Worker using manifest mocks.
+To create a catalog item, enable `ITEMS_WRITE` and start with `{"catalogItemName":"Coffee"}`. The example builds a complete ITEM object with one variable-priced variation and derives a stable idempotency key. For updates outside this example, pass a complete object to `UpsertCatalogObject`; omitted fields and child variations are cleared by Square.
+
+The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs read, cash write, refund, customer create, order create, and catalog create paths through a real Dex Worker using manifest mocks.

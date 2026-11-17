@@ -46,12 +46,12 @@ spec:
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: "Secret Square production access token from https://developer.squareup.com/apps > application > Credentials > Production. It is an opaque bearer token; enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, and ORDERS_READ/WRITE for the corresponding operations. Blank prevents calls. Use the matching sandbox baseUrl with a sandbox token."
+        description: "Secret Square production access token from https://developer.squareup.com/apps > application > Credentials > Production. It is an opaque bearer token; enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, and ITEMS_READ/WRITE for the corresponding operations. Blank prevents calls. Use the matching sandbox baseUrl with a sandbox token."
         required: true
     guide:
       startURL: https://developer.squareup.com/apps
       steps:
-        - "At https://developer.squareup.com/apps create or choose an application, open Credentials > Production and copy the secret access token into access_token. Enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, and ORDERS_READ/WRITE for the corresponding operation families. For sandbox testing use its Sandbox token and override baseUrl with https://connect.squareupsandbox.com/v2. Blank prevents calls."
+        - "At https://developer.squareup.com/apps create or choose an application, open Credentials > Production and copy the secret access token into access_token. Enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, and ITEMS_READ/WRITE for the corresponding operation families. For sandbox testing use its Sandbox token and override baseUrl with https://connect.squareupsandbox.com/v2. Blank prevents calls."
         - "Set baseUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
   operations:
     - name: listPayments
@@ -449,3 +449,105 @@ spec:
           description: A synthetic Square order response.
           default: true
           output: {id: order_101, location_id: loc_101, state: OPEN, version: 1}
+    - name: listCatalogObjects
+      goName: ListCatalogObjects
+      inputType: ListCatalogObjectsInput
+      outputType: CatalogPage
+      kind: query
+      description: List one page of Square catalog items.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: List one page of Square catalog items.}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: A synthetic Square catalog response.
+          default: true
+          output: {objects: [{id: item_101, type: ITEM, version: 1, item_data: {name: Coffee}}], cursor: ""}
+    - name: searchCatalogObjects
+      goName: SearchCatalogObjects
+      inputType: SearchCatalogObjectsInput
+      outputType: CatalogPage
+      kind: query
+      description: Search Square catalog items by text.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Search Square catalog items by text.}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: A synthetic Square catalog response.
+          default: true
+          output: {objects: [{id: item_101, type: ITEM, version: 1, item_data: {name: Coffee}}], cursor: ""}
+    - name: getCatalogObject
+      goName: GetCatalogObject
+      inputType: GetCatalogObjectInput
+      outputType: CatalogObject
+      kind: query
+      description: Read one Square catalog object.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Read one Square catalog object.}
+        - {id: notFound, goName: NotFound, description: The catalog object was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: A synthetic Square catalog response.
+          default: true
+          output: {object: {id: item_101, type: ITEM, version: 1, item_data: {name: Coffee}}}
+    - name: upsertCatalogObject
+      goName: UpsertCatalogObject
+      inputType: UpsertCatalogObjectInput
+      outputType: CatalogObject
+      kind: mutation
+      description: Create or fully replace one Square catalog item with a stable idempotency key.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: upserted, goName: Upserted, description: Create or fully replace one Square catalog item with a stable idempotency key.}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: upserted
+          description: A synthetic Square catalog response.
+          default: true
+          output: {object: {id: item_101, type: ITEM, version: 1, item_data: {name: Coffee}}}
+    - name: deleteCatalogObject
+      goName: DeleteCatalogObject
+      inputType: DeleteCatalogObjectInput
+      outputType: DeletedCatalogObjects
+      kind: mutation
+      description: Delete one Square catalog item and its dependent variations.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: Delete one Square catalog item and its dependent variations.}
+        - {id: notFound, goName: NotFound, description: The catalog object was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          description: A synthetic Square catalog response.
+          default: true
+          output: {deletedObjectIds: [item_101]}
