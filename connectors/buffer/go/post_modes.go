@@ -14,22 +14,26 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
-// CreateScheduledPostInput creates a text post at a specific UTC time.
+// CreateScheduledPostInput creates a post at a specific UTC time.
 type CreateScheduledPostInput struct {
 	// ChannelID is the connected channel ID.
 	ChannelID string `json:"channelId"`
-	// Text is nonempty post content.
+	// Text is post content; at least one asset is required when blank.
 	Text string `json:"text"`
+	// Assets are publicly hosted images, videos, or documents.
+	Assets []PostAsset `json:"assets,omitempty"`
 	// DueAt is the publish time as an RFC 3339 timestamp with a UTC offset.
 	DueAt string `json:"dueAt"`
 }
 
-// PublishPostNowInput creates a text post for immediate publishing.
+// PublishPostNowInput creates a post for immediate publishing.
 type PublishPostNowInput struct {
 	// ChannelID is the connected channel ID.
 	ChannelID string `json:"channelId"`
-	// Text is nonempty post content.
+	// Text is post content; at least one asset is required when blank.
 	Text string `json:"text"`
+	// Assets are publicly hosted images, videos, or documents.
+	Assets []PostAsset `json:"assets,omitempty"`
 }
 
 // CreateScheduledPostOperation schedules one text post.
@@ -69,26 +73,34 @@ func (PublishPostNowOperation) IdempotencyKey(callID sdkgo.CallID, _ PublishPost
 // Invoke schedules one text post with bounded resend after an unknown outcome.
 func (operation CreateScheduledPostOperation) Invoke(call sdkgo.Call, input CreateScheduledPostInput) sdkgo.MutationAttempt[PostProfile] {
 	const name = "createScheduledPost"
-	if !validGraphQLID(input.ChannelID) || strings.TrimSpace(input.Text) == "" {
-		return bufferMutationBranch(CreateScheduledPostBranchDefect, PostProfile{}, name, sdkgo.FailureValidation, "channel ID and text are required")
+	if !validGraphQLID(input.ChannelID) || strings.TrimSpace(input.Text) == "" && len(input.Assets) == 0 {
+		return bufferMutationBranch(CreateScheduledPostBranchDefect, PostProfile{}, name, sdkgo.FailureValidation, "channel ID and text or assets are required")
 	}
 	dueAt, err := time.Parse(time.RFC3339Nano, input.DueAt)
 	if err != nil || dueAt.IsZero() {
 		return bufferMutationBranch(CreateScheduledPostBranchDefect, PostProfile{}, name, sdkgo.FailureValidation, "dueAt must be an RFC 3339 timestamp")
 	}
-	return operation.client.createPostWithMode(call, name, input.ChannelID, input.Text, "customScheduled", dueAt.UTC().Format(time.RFC3339Nano), CreateScheduledPostDefinition, CreateScheduledPostBranchCreated, CreateScheduledPostBranchProviderRejected, CreateScheduledPostBranchDefect)
+	mediaInputs, mediaErr := bufferPostAssetInputs(input.Assets)
+	if mediaErr != nil {
+		return bufferMutationBranch(CreateScheduledPostBranchDefect, PostProfile{}, name, sdkgo.FailureValidation, mediaErr.Error())
+	}
+	return operation.client.createPostWithMode(call, name, input.ChannelID, input.Text, "customScheduled", dueAt.UTC().Format(time.RFC3339Nano), mediaInputs, CreateScheduledPostDefinition, CreateScheduledPostBranchCreated, CreateScheduledPostBranchProviderRejected, CreateScheduledPostBranchDefect)
 }
 
 // Invoke creates one text post for immediate publishing with bounded resend.
 func (operation PublishPostNowOperation) Invoke(call sdkgo.Call, input PublishPostNowInput) sdkgo.MutationAttempt[PostProfile] {
 	const name = "publishPostNow"
-	if !validGraphQLID(input.ChannelID) || strings.TrimSpace(input.Text) == "" {
-		return bufferMutationBranch(PublishPostNowBranchDefect, PostProfile{}, name, sdkgo.FailureValidation, "channel ID and text are required")
+	if !validGraphQLID(input.ChannelID) || strings.TrimSpace(input.Text) == "" && len(input.Assets) == 0 {
+		return bufferMutationBranch(PublishPostNowBranchDefect, PostProfile{}, name, sdkgo.FailureValidation, "channel ID and text or assets are required")
 	}
-	return operation.client.createPostWithMode(call, name, input.ChannelID, input.Text, "shareNow", "", PublishPostNowDefinition, PublishPostNowBranchCreated, PublishPostNowBranchProviderRejected, PublishPostNowBranchDefect)
+	mediaInputs, mediaErr := bufferPostAssetInputs(input.Assets)
+	if mediaErr != nil {
+		return bufferMutationBranch(PublishPostNowBranchDefect, PostProfile{}, name, sdkgo.FailureValidation, mediaErr.Error())
+	}
+	return operation.client.createPostWithMode(call, name, input.ChannelID, input.Text, "shareNow", "", mediaInputs, PublishPostNowDefinition, PublishPostNowBranchCreated, PublishPostNowBranchProviderRejected, PublishPostNowBranchDefect)
 }
 
-func (client *Client) createPostWithMode(call sdkgo.Call, name, channelID, text, mode, dueAt string, definition sdkgo.MutationDefinition, created, rejected, defect sdkgo.BranchID) sdkgo.MutationAttempt[PostProfile] {
+func (client *Client) createPostWithMode(call sdkgo.Call, name, channelID, text, mode, dueAt string, mediaInputs []map[string]any, definition sdkgo.MutationDefinition, created, rejected, defect sdkgo.BranchID) sdkgo.MutationAttempt[PostProfile] {
 	fence, err := singledispatch.NewFence(call, definition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
 	if err != nil {
 		return bufferMutationBranch(defect, PostProfile{}, name, sdkgo.FailureLocalDefect, "post dispatch fence could not be constructed")
@@ -100,6 +112,9 @@ func (client *Client) createPostWithMode(call sdkgo.Call, name, channelID, text,
 	postInput := map[string]any{"channelId": channelID, "text": text, "mode": mode, "schedulingType": "automatic"}
 	if dueAt != "" {
 		postInput["dueAt"] = dueAt
+	}
+	if mediaInputs != nil {
+		postInput["assets"] = mediaInputs
 	}
 	var response providerResponse
 	err = fence.Dispatch(func(ctx context.Context) error {

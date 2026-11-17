@@ -6,6 +6,8 @@ The same Worker also registers `BufferIdeaCreate`. Start it with an organization
 
 The Worker also registers `BufferScheduledPostCreate`. Supply a channel ID, text, and RFC 3339 UTC time, for example `{"channelId":"channel-1","text":"A launch post","dueAt":"2030-01-01T10:00:00Z"}`. It calls `createScheduledPost` and returns the scheduled post. Its integration test runs with the Buffer mock through a real Dex Worker and Client.
 
+Post creation and editing also accept `assets` with publicly hosted image, video, or document URLs. For an image post, add `"assets":[{"type":"image","url":"https://example.com/photo.jpg"}]` to the start input. The scheduled-post integration test exercises this typed input through Dex.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/buffer/go`, run:

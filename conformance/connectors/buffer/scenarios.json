@@ -2,6 +2,304 @@
   "connector": "buffer",
   "scenarios": [
     {
+      "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"createPost\":{\"__typename\":\"PostActionSuccess\",\"post\":{\"id\":\"post-image\",\"text\":\"Image post\",\"channelId\":\"channel-1\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "assets": [
+                  {
+                    "image": {
+                      "url": "https://example.com/photo.jpg"
+                    }
+                  }
+                ],
+                "channelId": "channel-1",
+                "mode": "addToQueue",
+                "schedulingType": "automatic",
+                "text": "Image post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4436e451-53f8-55a1-a205-ba34984bb382",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "channelId": "channel-1",
+          "id": "post-image",
+          "text": "Image post"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4436e451-53f8-55a1-a205-ba34984bb382",
+      "input": {
+        "assets": [
+          {
+            "type": "image",
+            "url": "https://example.com/photo.jpg"
+          }
+        ],
+        "channelId": "channel-1",
+        "text": "Image post"
+      },
+      "name": "createPost-media",
+      "operation": "createPost"
+    },
+    {
+      "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"createPost\":{\"__typename\":\"PostActionSuccess\",\"post\":{\"id\":\"post-video\",\"text\":\"Video post\",\"channelId\":\"channel-1\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "assets": [
+                  {
+                    "video": {
+                      "metadata": {
+                        "thumbnailOffset": 2000
+                      },
+                      "url": "https://example.com/video.mp4"
+                    }
+                  }
+                ],
+                "channelId": "channel-1",
+                "dueAt": "2030-01-01T10:00:00Z",
+                "mode": "customScheduled",
+                "schedulingType": "automatic",
+                "text": "Video post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "channelId": "channel-1",
+          "id": "post-video",
+          "text": "Video post"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "input": {
+        "assets": [
+          {
+            "thumbnailOffsetMs": 2000,
+            "type": "video",
+            "url": "https://example.com/video.mp4"
+          }
+        ],
+        "channelId": "channel-1",
+        "dueAt": "2030-01-01T10:00:00Z",
+        "text": "Video post"
+      },
+      "name": "createScheduledPost-media",
+      "operation": "createScheduledPost"
+    },
+    {
+      "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"createPost\":{\"__typename\":\"PostActionSuccess\",\"post\":{\"id\":\"post-document\",\"text\":\"Document post\",\"channelId\":\"channel-1\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "assets": [
+                  {
+                    "document": {
+                      "thumbnailUrl": "https://example.com/cover.jpg",
+                      "title": "Report",
+                      "url": "https://example.com/report.pdf"
+                    }
+                  }
+                ],
+                "channelId": "channel-1",
+                "mode": "shareNow",
+                "schedulingType": "automatic",
+                "text": "Document post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "channelId": "channel-1",
+          "id": "post-document",
+          "text": "Document post"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "input": {
+        "assets": [
+          {
+            "thumbnailUrl": "https://example.com/cover.jpg",
+            "title": "Report",
+            "type": "document",
+            "url": "https://example.com/report.pdf"
+          }
+        ],
+        "channelId": "channel-1",
+        "text": "Document post"
+      },
+      "name": "publishPostNow-media",
+      "operation": "publishPostNow"
+    },
+    {
+      "callId": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"editPost\":{\"__typename\":\"PostActionSuccess\",\"post\":{\"id\":\"post-1\",\"text\":\"Edited image\",\"channelId\":\"channel-1\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation EditPost($input: EditPostInput!) { editPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "assets": [
+                  {
+                    "image": {
+                      "url": "https://example.com/edited.jpg"
+                    }
+                  }
+                ],
+                "id": "post-1",
+                "text": "Edited image"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "channelId": "channel-1",
+          "id": "post-1",
+          "text": "Edited image"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9b55cea-0e73-5040-8cd4-be1b66e8d13e",
+      "input": {
+        "assets": [
+          {
+            "type": "image",
+            "url": "https://example.com/edited.jpg"
+          }
+        ],
+        "postId": "post-1",
+        "text": "Edited image"
+      },
+      "name": "editPost-media",
+      "operation": "editPost"
+    },
+    {
       "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
       "exchanges": [
         {

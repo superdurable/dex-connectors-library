@@ -125,7 +125,7 @@ func TestScheduledPostUsesDefaultMockWithRealDex(t *testing.T) {
 	defer cancel()
 	require.NoError(t, worker.WaitPullRegistered(ctx))
 	flowID := "buffer-scheduled-post-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	_, err = client.StartFlow(ctx, flow, flowID, buffer.CreateScheduledPostInput{ChannelID: "channel-1", Text: "Scheduled post", DueAt: "2030-01-01T10:00:00Z"}, dex.StartFlowOptions{})
+	_, err = client.StartFlow(ctx, flow, flowID, buffer.CreateScheduledPostInput{ChannelID: "channel-1", Text: "Scheduled post", DueAt: "2030-01-01T10:00:00Z", Assets: []buffer.PostAsset{{Type: "image", URL: "https://example.com/photo.jpg"}}}, dex.StartFlowOptions{})
 	require.NoError(t, err)
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)

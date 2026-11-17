@@ -81,20 +81,24 @@ type PostsList struct {
 	HasNextPage bool `json:"hasNextPage"`
 }
 
-// CreatePostInput queues one text-only post on a connected channel.
+// CreatePostInput queues a post with text or public media on a connected channel.
 type CreatePostInput struct {
 	// ChannelID is the target channel ID.
 	ChannelID string `json:"channelId"`
-	// Text is nonempty post content; network-specific limits still apply.
+	// Text is post content; at least one asset is required when blank.
 	Text string `json:"text"`
+	// Assets are publicly hosted images, videos, or documents.
+	Assets []PostAsset `json:"assets,omitempty"`
 }
 
 // EditPostInput replaces the text of one Buffer post.
 type EditPostInput struct {
 	// PostID is the post to edit.
 	PostID string `json:"postId"`
-	// Text is the replacement text.
+	// Text is replacement content; at least one asset is required when blank.
 	Text string `json:"text"`
+	// Assets replace attached media when nonnil.
+	Assets []PostAsset `json:"assets,omitempty"`
 }
 
 // DeletePostInput selects one post for deletion from Buffer.
@@ -310,8 +314,12 @@ func (operation ListPostsOperation) Invoke(call sdkgo.Call, input ListPostsInput
 // Invoke queues one text-only post with bounded resend after uncertain dispatch.
 func (operation CreatePostOperation) Invoke(call sdkgo.Call, input CreatePostInput) sdkgo.MutationAttempt[PostProfile] {
 	const name = "createPost"
-	if !validGraphQLID(input.ChannelID) || strings.TrimSpace(input.Text) == "" {
-		return bufferMutationBranch(CreatePostBranchDefect, PostProfile{}, name, sdkgo.FailureValidation, "channel ID and text are required")
+	if !validGraphQLID(input.ChannelID) || strings.TrimSpace(input.Text) == "" && len(input.Assets) == 0 {
+		return bufferMutationBranch(CreatePostBranchDefect, PostProfile{}, name, sdkgo.FailureValidation, "channel ID and text or assets are required")
+	}
+	mediaInputs, mediaErr := bufferPostAssetInputs(input.Assets)
+	if mediaErr != nil {
+		return bufferMutationBranch(CreatePostBranchDefect, PostProfile{}, name, sdkgo.FailureValidation, mediaErr.Error())
 	}
 	fence, err := singledispatch.NewFence(call, CreatePostDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
 	if err != nil {
@@ -321,7 +329,11 @@ func (operation CreatePostOperation) Invoke(call sdkgo.Call, input CreatePostInp
 	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(PostProfile{}, bufferFailure(name, sdkgo.FailureTransport, "an earlier post may have been created"), sdkgo.Receipt{})
 	}
-	variables := map[string]any{"input": map[string]any{"channelId": input.ChannelID, "text": input.Text, "mode": "addToQueue", "schedulingType": "automatic"}}
+	postInput := map[string]any{"channelId": input.ChannelID, "text": input.Text, "mode": "addToQueue", "schedulingType": "automatic"}
+	if mediaInputs != nil {
+		postInput["assets"] = mediaInputs
+	}
+	variables := map[string]any{"input": postInput}
 	var response providerResponse
 	err = fence.Dispatch(func(ctx context.Context) error {
 		response = operation.client.executeGraphQLWithContext(ctx, call, createPostGraphQL, variables)
@@ -380,10 +392,18 @@ func hasUnconfirmedCreatePostResponse(response providerResponse) bool {
 // Invoke replaces the text of one existing post.
 func (operation EditPostOperation) Invoke(call sdkgo.Call, input EditPostInput) sdkgo.MutationAttempt[PostProfile] {
 	const name = "editPost"
-	if !validGraphQLID(input.PostID) || strings.TrimSpace(input.Text) == "" {
-		return bufferMutationBranch(EditPostBranchDefect, PostProfile{}, name, sdkgo.FailureValidation, "post ID and replacement text are required")
+	if !validGraphQLID(input.PostID) || strings.TrimSpace(input.Text) == "" && len(input.Assets) == 0 {
+		return bufferMutationBranch(EditPostBranchDefect, PostProfile{}, name, sdkgo.FailureValidation, "post ID and text or assets are required")
 	}
-	response := operation.client.executeGraphQL(call, editPostGraphQL, map[string]any{"input": map[string]any{"id": input.PostID, "text": input.Text}})
+	mediaInputs, mediaErr := bufferPostAssetInputs(input.Assets)
+	if mediaErr != nil {
+		return bufferMutationBranch(EditPostBranchDefect, PostProfile{}, name, sdkgo.FailureValidation, mediaErr.Error())
+	}
+	postInput := map[string]any{"id": input.PostID, "text": input.Text}
+	if mediaInputs != nil {
+		postInput["assets"] = mediaInputs
+	}
+	response := operation.client.executeGraphQL(call, editPostGraphQL, map[string]any{"input": postInput})
 	return classifyPostMutation(response, name, "editPost", "", EditPostBranchUpdated, EditPostBranchProviderRejected, sdkgo.BranchID("invalidResponse"), EditPostBranchDefect)
 }
 
