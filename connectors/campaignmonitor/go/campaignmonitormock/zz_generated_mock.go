@@ -18,6 +18,10 @@ import (
 // Mock is a scripted campaignmonitor connection. Script each operation through its accessor.
 type Mock struct {
 	connection          campaignmonitor.Connection
+	getList             *connectormock.Query[campaignmonitor.GetListInput, campaignmonitor.ListProfile]
+	createList          *connectormock.Mutation[campaignmonitor.CreateListInput, campaignmonitor.ListIdentity]
+	updateList          *connectormock.Mutation[campaignmonitor.UpdateListInput, campaignmonitor.ListIdentity]
+	deleteList          *connectormock.Mutation[campaignmonitor.DeleteListInput, campaignmonitor.ListIdentity]
 	listSubscribers     *connectormock.Query[campaignmonitor.ListSubscribersInput, campaignmonitor.SubscribersPage]
 	listSubscriberLists *connectormock.Query[campaignmonitor.ListSubscriberListsInput, campaignmonitor.SubscriberLists]
 	getSubscriber       *connectormock.Query[campaignmonitor.GetSubscriberInput, campaignmonitor.SubscriberProfile]
@@ -32,6 +36,10 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getList:             connectormock.NewQuery[campaignmonitor.GetListInput, campaignmonitor.ListProfile](t, campaignmonitor.GetListDefinition),
+		createList:          connectormock.NewMutation[campaignmonitor.CreateListInput, campaignmonitor.ListIdentity](t, campaignmonitor.CreateListDefinition),
+		updateList:          connectormock.NewMutation[campaignmonitor.UpdateListInput, campaignmonitor.ListIdentity](t, campaignmonitor.UpdateListDefinition),
+		deleteList:          connectormock.NewMutation[campaignmonitor.DeleteListInput, campaignmonitor.ListIdentity](t, campaignmonitor.DeleteListDefinition),
 		listSubscribers:     connectormock.NewQuery[campaignmonitor.ListSubscribersInput, campaignmonitor.SubscribersPage](t, campaignmonitor.ListSubscribersDefinition),
 		listSubscriberLists: connectormock.NewQuery[campaignmonitor.ListSubscriberListsInput, campaignmonitor.SubscriberLists](t, campaignmonitor.ListSubscriberListsDefinition),
 		getSubscriber:       connectormock.NewQuery[campaignmonitor.GetSubscriberInput, campaignmonitor.SubscriberProfile](t, campaignmonitor.GetSubscriberDefinition),
@@ -40,6 +48,10 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteSubscriber:    connectormock.NewMutation[campaignmonitor.DeleteSubscriberInput, campaignmonitor.SubscriberIdentity](t, campaignmonitor.DeleteSubscriberDefinition),
 		listClients:         connectormock.NewQuery[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList](t, campaignmonitor.ListClientsDefinition),
 	}
+	mock.getList.Default(GetListDefault())
+	mock.createList.Default(CreateListDefault())
+	mock.updateList.Default(UpdateListDefault())
+	mock.deleteList.Default(DeleteListDefault())
 	mock.listSubscribers.Default(ListSubscribersDefault())
 	mock.listSubscriberLists.Default(ListSubscriberListsDefault())
 	mock.getSubscriber.Default(GetSubscriberDefault())
@@ -57,6 +69,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() campaignmonitor.Connection { return mock.connection }
+
+// GetList returns the getList script.
+func (mock *Mock) GetList() *connectormock.Query[campaignmonitor.GetListInput, campaignmonitor.ListProfile] {
+	return mock.getList
+}
+
+// CreateList returns the createList script.
+func (mock *Mock) CreateList() *connectormock.Mutation[campaignmonitor.CreateListInput, campaignmonitor.ListIdentity] {
+	return mock.createList
+}
+
+// UpdateList returns the updateList script.
+func (mock *Mock) UpdateList() *connectormock.Mutation[campaignmonitor.UpdateListInput, campaignmonitor.ListIdentity] {
+	return mock.updateList
+}
+
+// DeleteList returns the deleteList script.
+func (mock *Mock) DeleteList() *connectormock.Mutation[campaignmonitor.DeleteListInput, campaignmonitor.ListIdentity] {
+	return mock.deleteList
+}
 
 // ListSubscribers returns the listSubscribers script.
 func (mock *Mock) ListSubscribers() *connectormock.Query[campaignmonitor.ListSubscribersInput, campaignmonitor.SubscribersPage] {
@@ -95,6 +127,18 @@ func (mock *Mock) ListClients() *connectormock.Query[campaignmonitor.ListClients
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetList() sdkgo.Query[campaignmonitor.GetListInput, campaignmonitor.ListProfile] {
+	return operations.mock.getList
+}
+func (operations mockOperations) CreateList() sdkgo.Mutation[campaignmonitor.CreateListInput, campaignmonitor.ListIdentity] {
+	return operations.mock.createList
+}
+func (operations mockOperations) UpdateList() sdkgo.Mutation[campaignmonitor.UpdateListInput, campaignmonitor.ListIdentity] {
+	return operations.mock.updateList
+}
+func (operations mockOperations) DeleteList() sdkgo.Mutation[campaignmonitor.DeleteListInput, campaignmonitor.ListIdentity] {
+	return operations.mock.deleteList
+}
 func (operations mockOperations) ListSubscribers() sdkgo.Query[campaignmonitor.ListSubscribersInput, campaignmonitor.SubscribersPage] {
 	return operations.mock.listSubscribers
 }
@@ -115,6 +159,158 @@ func (operations mockOperations) DeleteSubscriber() sdkgo.Mutation[campaignmonit
 }
 func (operations mockOperations) ListClients() sdkgo.Query[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList] {
 	return operations.mock.listClients
+}
+
+// GetListFound selects the found branch: Campaign Monitor returned the list.
+func GetListFound(value campaignmonitor.ListProfile, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListProfile] {
+	return connectormock.Branch(campaignmonitor.GetListBranchFound, value, failure)
+}
+
+// GetListNotFound selects the notFound branch: Campaign Monitor did not find the list.
+func GetListNotFound(value campaignmonitor.ListProfile, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListProfile] {
+	return connectormock.Branch(campaignmonitor.GetListBranchNotFound, value, failure)
+}
+
+// GetListProviderRejected selects the providerRejected branch: Campaign Monitor rejected the lookup.
+func GetListProviderRejected(value campaignmonitor.ListProfile, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListProfile] {
+	return connectormock.Branch(campaignmonitor.GetListBranchProviderRejected, value, failure)
+}
+
+// GetListInvalidResponse selects the invalidResponse branch: Campaign Monitor returned invalid JSON.
+func GetListInvalidResponse(value campaignmonitor.ListProfile, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListProfile] {
+	return connectormock.Branch(campaignmonitor.GetListBranchInvalidResponse, value, failure)
+}
+
+// GetListDefect selects the defect branch: Local input or credentials are invalid.
+func GetListDefect(value campaignmonitor.ListProfile, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListProfile] {
+	return connectormock.Branch(campaignmonitor.GetListBranchDefect, value, failure)
+}
+
+// GetListRetry asks Dex to retry the getList Step, after the delay when it is positive.
+func GetListRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.ListProfile] {
+	return connectormock.Retry[campaignmonitor.ListProfile](failure, after)
+}
+
+// GetListFoundDefault is the manifest mock foundDefault: Sample subscriber list settings.
+func GetListFoundDefault() connectormock.Case[campaignmonitor.ListProfile] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.ListProfile](`{"id":"list-1","title":"Newsletter","unsubscribeSetting":"AllClientLists","confirmedOptIn":false}`)
+	return connectormock.Branch(campaignmonitor.GetListBranchFound, value, nil)
+}
+
+// GetListDefault is the manifest default, foundDefault, which New installs.
+func GetListDefault() connectormock.Case[campaignmonitor.ListProfile] { return GetListFoundDefault() }
+
+// CreateListCreated selects the created branch: Campaign Monitor created the list.
+func CreateListCreated(value campaignmonitor.ListIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Branch(campaignmonitor.CreateListBranchCreated, value, failure)
+}
+
+// CreateListProviderRejected selects the providerRejected branch: Campaign Monitor rejected list creation.
+func CreateListProviderRejected(value campaignmonitor.ListIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Branch(campaignmonitor.CreateListBranchProviderRejected, value, failure)
+}
+
+// CreateListUncertain returns an uncertain createList outcome.
+func CreateListUncertain(value campaignmonitor.ListIdentity, failure sdkgo.Failure) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateListDefect selects the defect branch: Local input or credentials are invalid.
+func CreateListDefect(value campaignmonitor.ListIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Branch(campaignmonitor.CreateListBranchDefect, value, failure)
+}
+
+// CreateListRetry asks Dex to retry the createList Step, after the delay when it is positive.
+func CreateListRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Retry[campaignmonitor.ListIdentity](failure, after)
+}
+
+// CreateListCreatedDefault is the manifest mock createdDefault: Sample created list.
+func CreateListCreatedDefault() connectormock.Case[campaignmonitor.ListIdentity] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.ListIdentity](`{"id":"list-2","title":"Campaign updates"}`)
+	return connectormock.Branch(campaignmonitor.CreateListBranchCreated, value, nil)
+}
+
+// CreateListDefault is the manifest default, createdDefault, which New installs.
+func CreateListDefault() connectormock.Case[campaignmonitor.ListIdentity] {
+	return CreateListCreatedDefault()
+}
+
+// UpdateListUpdated selects the updated branch: Campaign Monitor updated the list.
+func UpdateListUpdated(value campaignmonitor.ListIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Branch(campaignmonitor.UpdateListBranchUpdated, value, failure)
+}
+
+// UpdateListNotFound selects the notFound branch: Campaign Monitor did not find the list.
+func UpdateListNotFound(value campaignmonitor.ListIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Branch(campaignmonitor.UpdateListBranchNotFound, value, failure)
+}
+
+// UpdateListProviderRejected selects the providerRejected branch: Campaign Monitor rejected the update.
+func UpdateListProviderRejected(value campaignmonitor.ListIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Branch(campaignmonitor.UpdateListBranchProviderRejected, value, failure)
+}
+
+// UpdateListInvalidResponse selects the invalidResponse branch: Campaign Monitor returned an oversized response.
+func UpdateListInvalidResponse(value campaignmonitor.ListIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Branch(campaignmonitor.UpdateListBranchInvalidResponse, value, failure)
+}
+
+// UpdateListDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateListDefect(value campaignmonitor.ListIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Branch(campaignmonitor.UpdateListBranchDefect, value, failure)
+}
+
+// UpdateListRetry asks Dex to retry the updateList Step, after the delay when it is positive.
+func UpdateListRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Retry[campaignmonitor.ListIdentity](failure, after)
+}
+
+// UpdateListUpdatedDefault is the manifest mock updatedDefault: Sample updated list.
+func UpdateListUpdatedDefault() connectormock.Case[campaignmonitor.ListIdentity] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.ListIdentity](`{"id":"list-1","title":"Updated newsletter"}`)
+	return connectormock.Branch(campaignmonitor.UpdateListBranchUpdated, value, nil)
+}
+
+// UpdateListDefault is the manifest default, updatedDefault, which New installs.
+func UpdateListDefault() connectormock.Case[campaignmonitor.ListIdentity] {
+	return UpdateListUpdatedDefault()
+}
+
+// DeleteListDeleted selects the deleted branch: Campaign Monitor deleted the list.
+func DeleteListDeleted(value campaignmonitor.ListIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Branch(campaignmonitor.DeleteListBranchDeleted, value, failure)
+}
+
+// DeleteListProviderRejected selects the providerRejected branch: Campaign Monitor rejected deletion.
+func DeleteListProviderRejected(value campaignmonitor.ListIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Branch(campaignmonitor.DeleteListBranchProviderRejected, value, failure)
+}
+
+// DeleteListInvalidResponse selects the invalidResponse branch: Campaign Monitor returned an oversized response.
+func DeleteListInvalidResponse(value campaignmonitor.ListIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Branch(campaignmonitor.DeleteListBranchInvalidResponse, value, failure)
+}
+
+// DeleteListDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteListDefect(value campaignmonitor.ListIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Branch(campaignmonitor.DeleteListBranchDefect, value, failure)
+}
+
+// DeleteListRetry asks Dex to retry the deleteList Step, after the delay when it is positive.
+func DeleteListRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.ListIdentity] {
+	return connectormock.Retry[campaignmonitor.ListIdentity](failure, after)
+}
+
+// DeleteListDeletedDefault is the manifest mock deletedDefault: Sample deleted list.
+func DeleteListDeletedDefault() connectormock.Case[campaignmonitor.ListIdentity] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.ListIdentity](`{"id":"list-1","title":""}`)
+	return connectormock.Branch(campaignmonitor.DeleteListBranchDeleted, value, nil)
+}
+
+// DeleteListDefault is the manifest default, deletedDefault, which New installs.
+func DeleteListDefault() connectormock.Case[campaignmonitor.ListIdentity] {
+	return DeleteListDeletedDefault()
 }
 
 // ListSubscribersListed selects the listed branch: Campaign Monitor returned a subscriber page.

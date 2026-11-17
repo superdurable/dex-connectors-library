@@ -40,6 +40,10 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetList() sdkgo.Query[GetListInput, ListProfile]
+	CreateList() sdkgo.Mutation[CreateListInput, ListIdentity]
+	UpdateList() sdkgo.Mutation[UpdateListInput, ListIdentity]
+	DeleteList() sdkgo.Mutation[DeleteListInput, ListIdentity]
 	ListSubscribers() sdkgo.Query[ListSubscribersInput, SubscribersPage]
 	ListSubscriberLists() sdkgo.Query[ListSubscriberListsInput, SubscriberLists]
 	GetSubscriber() sdkgo.Query[GetSubscriberInput, SubscriberProfile]
@@ -51,6 +55,18 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetList() sdkgo.Query[GetListInput, ListProfile] {
+	return operations.client.GetList()
+}
+func (operations clientOperations) CreateList() sdkgo.Mutation[CreateListInput, ListIdentity] {
+	return operations.client.CreateList()
+}
+func (operations clientOperations) UpdateList() sdkgo.Mutation[UpdateListInput, ListIdentity] {
+	return operations.client.UpdateList()
+}
+func (operations clientOperations) DeleteList() sdkgo.Mutation[DeleteListInput, ListIdentity] {
+	return operations.client.DeleteList()
+}
 func (operations clientOperations) ListSubscribers() sdkgo.Query[ListSubscribersInput, SubscribersPage] {
 	return operations.client.ListSubscribers()
 }
@@ -208,6 +224,309 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const GetListBranchFound sdkgo.BranchID = "found"
+const GetListBranchNotFound sdkgo.BranchID = "notFound"
+const GetListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetListDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetListBranchFound, Description: "Campaign Monitor returned the list."},
+		{ID: GetListBranchNotFound, Description: "Campaign Monitor did not find the list.", Optional: true},
+		{ID: GetListBranchProviderRejected, Description: "Campaign Monitor rejected the lookup.", Optional: true},
+		{ID: GetListBranchInvalidResponse, Description: "Campaign Monitor returned invalid JSON.", Optional: true},
+		{ID: GetListBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetListResult = sdkgo.QueryResult[ListProfile]
+
+type GetListStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=campaignmonitor"`
+	operationID                    struct{}                                       `connector:"operationId=getList"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetListInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetListResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetListResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetListResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetListResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetListResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetListStep[IN any](config GetListStepConfig[IN]) sdkgo.QueryStep[IN, GetListInput, ListProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("campaignmonitor connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetListInput, ListProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetListResult] {
+			branches := make([]sdkgo.BranchTarget[GetListResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetListBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetListBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetListBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetListBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateListBranchCreated sdkgo.BranchID = "created"
+const CreateListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateListBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateListDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateListBranchCreated, Description: "Campaign Monitor created the list."},
+		{ID: CreateListBranchProviderRejected, Description: "Campaign Monitor rejected list creation.", Optional: true},
+		{ID: CreateListBranchUncertain, Description: "A list may have been created but cannot be confirmed.", Optional: true},
+		{ID: CreateListBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateListResult = sdkgo.MutationResult[ListIdentity]
+
+type CreateListStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=campaignmonitor"`
+	operationID                       struct{}                                           `connector:"operationId=createList"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateListInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateListResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateListResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateListResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateListResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ListIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateListStep[IN any](config CreateListStepConfig[IN]) sdkgo.MutationStep[IN, CreateListInput, ListIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("campaignmonitor connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateListInput, ListIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateListResult] {
+			branches := make([]sdkgo.BranchTarget[CreateListResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateListBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateListBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateListBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateListBranchUpdated sdkgo.BranchID = "updated"
+const UpdateListBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateListDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateListBranchUpdated, Description: "Campaign Monitor updated the list."},
+		{ID: UpdateListBranchNotFound, Description: "Campaign Monitor did not find the list.", Optional: true},
+		{ID: UpdateListBranchProviderRejected, Description: "Campaign Monitor rejected the update.", Optional: true},
+		{ID: UpdateListBranchInvalidResponse, Description: "Campaign Monitor returned an oversized response.", Optional: true},
+		{ID: UpdateListBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateListResult = sdkgo.MutationResult[ListIdentity]
+
+type UpdateListStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=campaignmonitor"`
+	operationID                       struct{}                                           `connector:"operationId=updateList"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateListInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateListResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateListResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateListResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateListResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateListResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ListIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateListStep[IN any](config UpdateListStepConfig[IN]) sdkgo.MutationStep[IN, UpdateListInput, ListIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("campaignmonitor connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateListInput, ListIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateListResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateListResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateListBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateListBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateListBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateListBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteListBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteListDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteListBranchDeleted, Description: "Campaign Monitor deleted the list."},
+		{ID: DeleteListBranchProviderRejected, Description: "Campaign Monitor rejected deletion.", Optional: true},
+		{ID: DeleteListBranchInvalidResponse, Description: "Campaign Monitor returned an oversized response.", Optional: true},
+		{ID: DeleteListBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteListResult = sdkgo.MutationResult[ListIdentity]
+
+type DeleteListStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=campaignmonitor"`
+	operationID                       struct{}                                           `connector:"operationId=deleteList"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteListInput                           `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteListResult]                     `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteListResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteListResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteListResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ListIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteListStep[IN any](config DeleteListStepConfig[IN]) sdkgo.MutationStep[IN, DeleteListInput, ListIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("campaignmonitor connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteListInput, ListIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteListResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteListResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteListBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteListBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteListBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListSubscribersBranchListed sdkgo.BranchID = "listed"
@@ -447,6 +766,7 @@ var UpsertSubscriberDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpsertSubscriberResult = sdkgo.MutationResult[SubscriberIdentity]
@@ -520,6 +840,7 @@ var UpdateSubscriberDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateSubscriberResult = sdkgo.MutationResult[SubscriberIdentity]
@@ -595,6 +916,7 @@ var DeleteSubscriberDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteSubscriberResult = sdkgo.MutationResult[SubscriberIdentity]

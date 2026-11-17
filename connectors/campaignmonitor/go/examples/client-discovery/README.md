@@ -2,6 +2,8 @@
 
 This runnable Flow calls `listClients`, then `listSubscriberLists` for the first returned client, then `listSubscribers` for the first returned list, with the static `campaignmonitor` Dex Web connection. It stores client IDs and names in an Attribute and completes with the typed client result. An account with no clients or lists completes without the later calls. Optional branches are unwired and fail the Flow when selected. The API key does not enter Flow state.
 
+The same Worker registers `CampaignMonitorListCreate`. Start it with a client ID returned by `listClients`, a unique title, and an unsubscribe setting, for example `{"clientId":"client-1","title":"Campaign updates","unsubscribeSetting":"AllClientLists"}`. It calls `createList` and returns the new list ID. Its mock-backed integration test runs through a real Dex Worker and Client.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/campaignmonitor/go`, run:

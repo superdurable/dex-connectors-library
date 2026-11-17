@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getList/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.ListProfile](`{"id":"list-1","title":"Newsletter","unsubscribeSetting":"AllClientLists","confirmedOptIn":false}`)
+			return err
+		}},
+		{name: "createList/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.ListIdentity](`{"id":"list-2","title":"Campaign updates"}`)
+			return err
+		}},
+		{name: "updateList/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.ListIdentity](`{"id":"list-1","title":"Updated newsletter"}`)
+			return err
+		}},
+		{name: "deleteList/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.ListIdentity](`{"id":"list-1","title":""}`)
+			return err
+		}},
 		{name: "listSubscribers/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[campaignmonitor.SubscribersPage](`{"subscribers":[{"email":"subscriber@example.com","name":"Sample Subscriber","state":"Active"}],"pageNumber":1,"pageSize":100,"totalRecords":1,"numberOfPages":1}`)
 			return err
@@ -54,6 +70,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetList().Definition().Operation.OperationID != "getList" {
+		t.Errorf("getList mock has another definition")
+	}
+	if mock.CreateList().Definition().Operation.OperationID != "createList" {
+		t.Errorf("createList mock has another definition")
+	}
+	if mock.UpdateList().Definition().Operation.OperationID != "updateList" {
+		t.Errorf("updateList mock has another definition")
+	}
+	if mock.DeleteList().Definition().Operation.OperationID != "deleteList" {
+		t.Errorf("deleteList mock has another definition")
+	}
 	if mock.ListSubscribers().Definition().Operation.OperationID != "listSubscribers" {
 		t.Errorf("listSubscribers mock has another definition")
 	}

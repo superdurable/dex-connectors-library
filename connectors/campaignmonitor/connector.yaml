@@ -55,6 +55,88 @@ spec:
         - Save the key in secret api_key. Dex sends it as the HTTP Basic username with a blank password. Rotate it on the same page when access should end.
         - This key is for an account you control. Public integrations should use Campaign Monitor OAuth. Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
   operations:
+    - name: getList
+      goName: GetList
+      inputType: GetListInput
+      outputType: ListProfile
+      kind: query
+      description: Read one subscriber list's settings.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Campaign Monitor returned the list.}
+        - {id: notFound, goName: NotFound, description: Campaign Monitor did not find the list., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample subscriber list settings.
+          output: {id: list-1, title: Newsletter, unsubscribeSetting: AllClientLists, confirmedOptIn: false}
+    - name: createList
+      goName: CreateList
+      inputType: CreateListInput
+      outputType: ListIdentity
+      kind: mutation
+      description: Create a subscriber list for one client.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Campaign Monitor created the list.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected list creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A list may have been created but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample created list.
+          output: {id: list-2, title: Campaign updates}
+    - name: updateList
+      goName: UpdateList
+      inputType: UpdateListInput
+      outputType: ListIdentity
+      kind: mutation
+      description: Replace one list's basic settings without suppression-list scrubbing.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Campaign Monitor updated the list.}
+        - {id: notFound, goName: NotFound, description: Campaign Monitor did not find the list., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned an oversized response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample updated list.
+          output: {id: list-1, title: Updated newsletter}
+    - name: deleteList
+      goName: DeleteList
+      inputType: DeleteListInput
+      outputType: ListIdentity
+      kind: mutation
+      description: Delete one subscriber list by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Campaign Monitor deleted the list.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned an oversized response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample deleted list.
+          output: {id: list-1, title: ""}
     - name: listSubscribers
       goName: ListSubscribers
       inputType: ListSubscribersInput

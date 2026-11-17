@@ -2,6 +2,1530 @@
   "connector": "campaignmonitor",
   "scenarios": [
     {
+      "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "exchanges": [
+        {
+          "body": "[{\"ListID\":\"list-2\",\"Name\":\"Campaign updates\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/lists.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "list-2",
+          "title": "Campaign updates"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "input": {
+        "clientId": "client-1",
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "title": "Campaign updates",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "createList-confirmedReadback",
+      "operation": "createList",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"ListID\":\"list-1\",\"Title\":\"Newsletter\",\"UnsubscribeSetting\":\"AllClientLists\",\"ConfirmedOptIn\":false,\"UnsubscribePage\":\"\",\"ConfirmationSuccessPage\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "confirmedOptIn": false,
+          "id": "list-1",
+          "title": "Newsletter",
+          "unsubscribeSetting": "AllClientLists"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "getList-success",
+      "operation": "getList"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "confirmedOptIn": false,
+          "id": "",
+          "title": "",
+          "unsubscribeSetting": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "getList-notFound",
+      "operation": "getList"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "confirmedOptIn": false,
+          "id": "",
+          "title": "",
+          "unsubscribeSetting": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "getList-providerRejected",
+      "operation": "getList"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "confirmedOptIn": false,
+          "id": "",
+          "title": "",
+          "unsubscribeSetting": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "getList-invalidResponse",
+      "operation": "getList"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "getList-429",
+      "operation": "getList"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "getList-503",
+      "operation": "getList"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "getList-500",
+      "operation": "getList"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "getList-transportFailure",
+      "operation": "getList"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "confirmedOptIn": false,
+          "id": "",
+          "title": "",
+          "unsubscribeSetting": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": ""
+      },
+      "name": "getList-defect",
+      "operation": "getList"
+    },
+    {
+      "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "exchanges": [
+        {
+          "body": "\"list-2\"",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/client-1.json",
+          "requestBody": {
+            "ConfirmationSuccessPage": "https://example.com/joined",
+            "ConfirmedOptIn": true,
+            "Title": "Campaign updates",
+            "UnsubscribePage": "https://example.com/unsubscribed",
+            "UnsubscribeSetting": "AllClientLists"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "list-2",
+          "title": "Campaign updates"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "input": {
+        "clientId": "client-1",
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": true,
+        "title": "Campaign updates",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "createList-success",
+      "operation": "createList"
+    },
+    {
+      "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/client-1.json",
+          "requestBody": {
+            "ConfirmationSuccessPage": "https://example.com/joined",
+            "ConfirmedOptIn": false,
+            "Title": "Campaign updates",
+            "UnsubscribePage": "https://example.com/unsubscribed",
+            "UnsubscribeSetting": "AllClientLists"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "input": {
+        "clientId": "client-1",
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "title": "Campaign updates",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "createList-providerRejected",
+      "operation": "createList"
+    },
+    {
+      "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/client-1.json",
+          "requestBody": {
+            "ConfirmationSuccessPage": "https://example.com/joined",
+            "ConfirmedOptIn": false,
+            "Title": "Campaign updates",
+            "UnsubscribePage": "https://example.com/unsubscribed",
+            "UnsubscribeSetting": "AllClientLists"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "input": {
+        "clientId": "client-1",
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "title": "Campaign updates",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "createList-429",
+      "operation": "createList"
+    },
+    {
+      "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/client-1.json",
+          "requestBody": {
+            "ConfirmationSuccessPage": "https://example.com/joined",
+            "ConfirmedOptIn": false,
+            "Title": "Campaign updates",
+            "UnsubscribePage": "https://example.com/unsubscribed",
+            "UnsubscribeSetting": "AllClientLists"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "input": {
+        "clientId": "client-1",
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "title": "Campaign updates",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "createList-503",
+      "operation": "createList"
+    },
+    {
+      "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/client-1.json",
+          "requestBody": {
+            "ConfirmationSuccessPage": "https://example.com/joined",
+            "ConfirmedOptIn": false,
+            "Title": "Campaign updates",
+            "UnsubscribePage": "https://example.com/unsubscribed",
+            "UnsubscribeSetting": "AllClientLists"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "input": {
+        "clientId": "client-1",
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "title": "Campaign updates",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "createList-500",
+      "operation": "createList"
+    },
+    {
+      "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/client-1.json",
+          "requestBody": {
+            "ConfirmationSuccessPage": "https://example.com/joined",
+            "ConfirmedOptIn": false,
+            "Title": "Campaign updates",
+            "UnsubscribePage": "https://example.com/unsubscribed",
+            "UnsubscribeSetting": "AllClientLists"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "input": {
+        "clientId": "client-1",
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "title": "Campaign updates",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "createList-transportFailure",
+      "operation": "createList"
+    },
+    {
+      "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "input": {
+        "clientId": "",
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "title": "Campaign updates",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "createList-defect",
+      "operation": "createList"
+    },
+    {
+      "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/lists.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+      "input": {
+        "clientId": "client-1",
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "title": "Campaign updates",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "createList-uncertainAfterSendCap",
+      "operation": "createList",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/list-1.json",
+          "requestBody": {
+            "AddUnsubscribesToSuppList": false,
+            "ConfirmationSuccessPage": "https://example.com/joined",
+            "ConfirmedOptIn": true,
+            "ScrubActiveWithSuppList": false,
+            "Title": "Updated newsletter",
+            "UnsubscribePage": "https://example.com/unsubscribed",
+            "UnsubscribeSetting": "AllClientLists"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "list-1",
+          "title": "Updated newsletter"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "input": {
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": true,
+        "listId": "list-1",
+        "title": "Updated newsletter",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "updateList-success",
+      "operation": "updateList"
+    },
+    {
+      "callId": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/list-1.json",
+          "requestBody": {
+            "AddUnsubscribesToSuppList": false,
+            "ConfirmationSuccessPage": "https://example.com/joined",
+            "ConfirmedOptIn": false,
+            "ScrubActiveWithSuppList": false,
+            "Title": "Updated newsletter",
+            "UnsubscribePage": "https://example.com/unsubscribed",
+            "UnsubscribeSetting": "AllClientLists"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "input": {
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "listId": "list-1",
+        "title": "Updated newsletter",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "updateList-providerRejected",
+      "operation": "updateList"
+    },
+    {
+      "callId": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/list-1.json",
+          "requestBody": {
+            "AddUnsubscribesToSuppList": false,
+            "ConfirmationSuccessPage": "https://example.com/joined",
+            "ConfirmedOptIn": false,
+            "ScrubActiveWithSuppList": false,
+            "Title": "Updated newsletter",
+            "UnsubscribePage": "https://example.com/unsubscribed",
+            "UnsubscribeSetting": "AllClientLists"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "input": {
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "listId": "list-1",
+        "title": "Updated newsletter",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "updateList-429",
+      "operation": "updateList"
+    },
+    {
+      "callId": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/list-1.json",
+          "requestBody": {
+            "AddUnsubscribesToSuppList": false,
+            "ConfirmationSuccessPage": "https://example.com/joined",
+            "ConfirmedOptIn": false,
+            "ScrubActiveWithSuppList": false,
+            "Title": "Updated newsletter",
+            "UnsubscribePage": "https://example.com/unsubscribed",
+            "UnsubscribeSetting": "AllClientLists"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "input": {
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "listId": "list-1",
+        "title": "Updated newsletter",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "updateList-503",
+      "operation": "updateList"
+    },
+    {
+      "callId": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/list-1.json",
+          "requestBody": {
+            "AddUnsubscribesToSuppList": false,
+            "ConfirmationSuccessPage": "https://example.com/joined",
+            "ConfirmedOptIn": false,
+            "ScrubActiveWithSuppList": false,
+            "Title": "Updated newsletter",
+            "UnsubscribePage": "https://example.com/unsubscribed",
+            "UnsubscribeSetting": "AllClientLists"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "input": {
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "listId": "list-1",
+        "title": "Updated newsletter",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "updateList-500",
+      "operation": "updateList"
+    },
+    {
+      "callId": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/list-1.json",
+          "requestBody": {
+            "AddUnsubscribesToSuppList": false,
+            "ConfirmationSuccessPage": "https://example.com/joined",
+            "ConfirmedOptIn": false,
+            "ScrubActiveWithSuppList": false,
+            "Title": "Updated newsletter",
+            "UnsubscribePage": "https://example.com/unsubscribed",
+            "UnsubscribeSetting": "AllClientLists"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "input": {
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "listId": "list-1",
+        "title": "Updated newsletter",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "updateList-transportFailure",
+      "operation": "updateList"
+    },
+    {
+      "callId": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "input": {
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "listId": "",
+        "title": "Updated newsletter",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "updateList-defect",
+      "operation": "updateList"
+    },
+    {
+      "callId": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "exchanges": [
+        {
+          "body": "unexpected",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/list-1.json",
+          "requestBody": {
+            "AddUnsubscribesToSuppList": false,
+            "ConfirmationSuccessPage": "https://example.com/joined",
+            "ConfirmedOptIn": false,
+            "ScrubActiveWithSuppList": false,
+            "Title": "Updated newsletter",
+            "UnsubscribePage": "https://example.com/unsubscribed",
+            "UnsubscribeSetting": "AllClientLists"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "input": {
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "listId": "list-1",
+        "title": "Updated newsletter",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "updateList-invalidResponse",
+      "operation": "updateList"
+    },
+    {
+      "callId": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/list-1.json",
+          "requestBody": {
+            "AddUnsubscribesToSuppList": false,
+            "ConfirmationSuccessPage": "https://example.com/joined",
+            "ConfirmedOptIn": false,
+            "ScrubActiveWithSuppList": false,
+            "Title": "Updated newsletter",
+            "UnsubscribePage": "https://example.com/unsubscribed",
+            "UnsubscribeSetting": "AllClientLists"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b865ad77-df22-501b-ba72-81cc5ef05622",
+      "input": {
+        "confirmationSuccessPage": "https://example.com/joined",
+        "confirmedOptIn": false,
+        "listId": "list-1",
+        "title": "Updated newsletter",
+        "unsubscribePage": "https://example.com/unsubscribed",
+        "unsubscribeSetting": "AllClientLists"
+      },
+      "name": "updateList-notFound",
+      "operation": "updateList"
+    },
+    {
+      "callId": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "list-1",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "deleteList-success",
+      "operation": "deleteList"
+    },
+    {
+      "callId": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "deleteList-providerRejected",
+      "operation": "deleteList"
+    },
+    {
+      "callId": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "deleteList-429",
+      "operation": "deleteList"
+    },
+    {
+      "callId": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "deleteList-503",
+      "operation": "deleteList"
+    },
+    {
+      "callId": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "deleteList-500",
+      "operation": "deleteList"
+    },
+    {
+      "callId": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "deleteList-transportFailure",
+      "operation": "deleteList"
+    },
+    {
+      "callId": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "input": {
+        "listId": ""
+      },
+      "name": "deleteList-defect",
+      "operation": "deleteList"
+    },
+    {
+      "callId": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "exchanges": [
+        {
+          "body": "unexpected",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/lists/list-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "99e63d62-6635-56b7-8734-e7dee7c29a59",
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "deleteList-invalidResponse",
+      "operation": "deleteList"
+    },
+    {
       "callId": "00000000-0000-5000-8000-000000000000",
       "exchanges": [
         {

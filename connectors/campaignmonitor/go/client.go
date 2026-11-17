@@ -6,6 +6,7 @@ package campaignmonitor
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -66,6 +67,10 @@ func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Durat
 }
 
 func (client *Client) request(call sdkgo.Call, method, path string, payload any) ([]byte, int, time.Duration, error) {
+	return client.requestWithContext(call.Context, call, method, path, payload)
+}
+
+func (client *Client) requestWithContext(ctx context.Context, call sdkgo.Call, method, path string, payload any) ([]byte, int, time.Duration, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return nil, 0, 0, errCredential
@@ -84,7 +89,7 @@ func (client *Client) request(call sdkgo.Call, method, path string, payload any)
 	} else {
 		bodyReader = bytes.NewReader(nil)
 	}
-	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bodyReader)
+	request, err := http.NewRequestWithContext(ctx, method, client.baseURL+path, bodyReader)
 	if err != nil {
 		return nil, 0, 0, errRequest
 	}
