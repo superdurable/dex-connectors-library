@@ -2456,6 +2456,22 @@
               "application/json"
             ]
           },
+          "status": 409
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
           "status": 500
         },
         {
@@ -2503,7 +2519,23 @@
               "application/json"
             ]
           },
-          "status": 500
+          "status": 409
+        },
+        {
+          "body": "{\"name\":\"projects/sample-project/databases/(default)/documents/events/sample-event\",\"fields\":{\"title\":{\"stringValue\":\"Other\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/databases/(default)/documents/events/sample-event",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-firestore-token"
+            ]
+          },
+          "status": 200
         }
       ],
       "expected": {
@@ -2518,7 +2550,7 @@
         "output": {
           "name": ""
         },
-        "requestCount": 5,
+        "requestCount": 7,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -2543,7 +2575,7 @@
           "retryAfterMs": 0
         },
         {
-          "exchangeCount": 3,
+          "exchangeCount": 4,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
             "attempt": 2,
@@ -2554,7 +2586,7 @@
           "retryAfterMs": 0
         }
       ],
-      "name": "createDocument-sendCapUncertain",
+      "name": "createDocument-conflictReadBackFailureAndMismatch",
       "operation": "createDocument"
     },
     {
