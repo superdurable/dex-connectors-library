@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listTableColumns/policyColumns/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[excel.ListTableColumnsOutput](`{"columns":[{"id":"0","index":0,"name":"Category"},{"id":"1","index":1,"name":"MaxAutoApproveUsd"},{"id":"2","index":2,"name":"Approver"}]}`)
+			return err
+		}},
+		{name: "findTableRow/travelPolicy/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[excel.FindTableRowOutput](`{"row":{"index":0,"values":{"Category":"travel","MaxAutoApproveUsd":500,"Approver":"lead@contoso.com"}}}`)
+			return err
+		}},
+		{name: "listWorksheets/approvalWorksheets/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[excel.ListWorksheetsOutput](`{"worksheets":[{"id":"{FC034FA8-F8CC-4D24-9C0A-02A81B7792A0}","name":"Policy","position":0,"visibility":"Visible"},{"id":"{FC034FA8-F8CC-4D24-9C0A-02A81B7792A1}","name":"Summary","position":1,"visibility":"Visible"}]}`)
+			return err
+		}},
+		{name: "listWorkbooks/approvalWorkbooks/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[excel.ListWorkbooksOutput](`{"workbooks":[{"id":"01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K","name":"Approval.xlsx","driveId":"b!driveKey-123_abc"}]}`)
+			return err
+		}},
+		{name: "createWorksheet/auditWorksheet/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[excel.CreateWorksheetOutput](`{"worksheet":{"id":"{FC034FA8-F8CC-4D24-9C0A-02A81B7792A2}","name":"Audit","position":2,"visibility":"Visible"}}`)
+			return err
+		}},
 		{name: "getTableRows/approvalPolicyRows/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[excel.GetTableRowsOutput](`{"columns":["Category","MaxAutoApproveUsd","Approver"],"rows":[{"index":0,"values":{"Category":"travel","MaxAutoApproveUsd":500,"Approver":"lead@contoso.com"}},{"index":1,"values":{"Category":"hardware","MaxAutoApproveUsd":1500,"Approver":"it@contoso.com"}}]}`)
 			return err
@@ -42,6 +62,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListTableColumns().Definition().Operation.OperationID != "listTableColumns" {
+		t.Errorf("listTableColumns mock has another definition")
+	}
+	if mock.FindTableRow().Definition().Operation.OperationID != "findTableRow" {
+		t.Errorf("findTableRow mock has another definition")
+	}
+	if mock.ListWorksheets().Definition().Operation.OperationID != "listWorksheets" {
+		t.Errorf("listWorksheets mock has another definition")
+	}
+	if mock.ListWorkbooks().Definition().Operation.OperationID != "listWorkbooks" {
+		t.Errorf("listWorkbooks mock has another definition")
+	}
+	if mock.CreateWorksheet().Definition().Operation.OperationID != "createWorksheet" {
+		t.Errorf("createWorksheet mock has another definition")
+	}
 	if mock.GetTableRows().Definition().Operation.OperationID != "getTableRows" {
 		t.Errorf("getTableRows mock has another definition")
 	}

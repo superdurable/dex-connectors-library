@@ -49,6 +49,8 @@ const (
 	SummaryAddress = "A2:E2"
 
 	recordRequestStepType     = "RecordExcelApprovalRequest"
+	listPolicyColumnsStepType = "ListExcelApprovalPolicyColumns"
+	continuePolicyStepType    = "ContinueExcelApprovalPolicy"
 	readPolicyStepType        = "ReadExcelApprovalPolicy"
 	decideApprovalStepType    = "DecideExcelApproval"
 	appendDecisionStepType    = "AppendExcelDecisionRow"
@@ -206,6 +208,16 @@ func (*Flow) GetFlowType() string { return FlowType }
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(recordApprovalRequest{flow: flow}),
+		dex.DefineStep(excel.NewListTableColumnsStep(excel.ListTableColumnsStepConfig[ApprovalDecision]{
+			StepType: listPolicyColumnsStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{
+				GroupID: "microsoft-excel", GroupLabel: "Microsoft Excel",
+				Explanation: "List the approval-policy table columns before reading its rows.",
+			},
+			Connection: flow.connection, MapToOperationInput: flow.MapToListPolicyColumnsInput,
+			Listed: sdkgo.GoTo(continueApprovalPolicy{}),
+		})),
+		dex.DefineStep(continueApprovalPolicy{}),
 		dex.DefineStep(excel.NewGetTableRowsStep(excel.GetTableRowsStepConfig[ApprovalDecision]{
 			StepType: readPolicyStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -352,6 +364,12 @@ func (flow *Flow) MapToReadPolicyInput(ApprovalDecision) excel.GetTableRowsInput
 	return excel.GetTableRowsInput{DriveID: saved.DriveID, WorkbookID: saved.WorkbookID, Table: saved.Table}
 }
 
+// MapToListPolicyColumnsInput reads the saved policy table's column definitions.
+func (flow *Flow) MapToListPolicyColumnsInput(ApprovalDecision) excel.ListTableColumnsInput {
+	saved := flow.policyTable.Value
+	return excel.ListTableColumnsInput{DriveID: saved.DriveID, WorkbookID: saved.WorkbookID, Table: saved.Table}
+}
+
 // MapToAppendDecisionInput appends one decision row keyed by request ID to the saved decision log.
 func (flow *Flow) MapToAppendDecisionInput(decision ApprovalDecision) excel.AppendTableRowsInput {
 	saved := flow.decisionTable.Value
@@ -448,6 +466,22 @@ func (step recordApprovalRequest) Execute(ctx dex.Context, input Input) (*dex.St
 	}
 	decision := ApprovalDecision{Request: request, Phase: PhaseRecorded, DecidedAt: ctx.FlowStartedAt().UTC().Format(time.RFC3339)}
 	if err := decisionAttribute.Set(ctx, decision); err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[ApprovalDecision](listPolicyColumnsStepType), decision), nil
+}
+
+// dex:group group-id:approval-decision group-label:"Approval decision"
+// dex:explanation text:"Continue the approval Flow after reading the policy table columns."
+type continueApprovalPolicy struct {
+	dex.StepDefaultsNoWaitFor[excel.ListTableColumnsResult]
+}
+
+func (continueApprovalPolicy) GetStepType() string { return continuePolicyStepType }
+
+func (continueApprovalPolicy) Execute(ctx dex.Context, _ excel.ListTableColumnsResult) (*dex.StepDecision, error) {
+	decision, err := decisionAttribute.Get(ctx)
+	if err != nil {
 		return nil, err
 	}
 	return dex.GoTo(sdkgo.StepRef[ApprovalDecision](readPolicyStepType), decision), nil

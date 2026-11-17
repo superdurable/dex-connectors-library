@@ -146,6 +146,7 @@ func TestOnlyAppendTableRowsRunsWithSyncDurability(t *testing.T) {
 		durabilityByOperation[operation.Name] = operation.Execution.Durability
 	}
 	require.Equal(t, map[string]string{
-		"getTableRows": "async", "getValues": "async", "updateValues": "async", "appendTableRows": "sync",
+		"getTableRows": "async", "listTableColumns": "async", "findTableRow": "async", "listWorksheets": "async", "listWorkbooks": "async",
+		"getValues": "async", "updateValues": "async", "appendTableRows": "sync", "createWorksheet": "sync",
 	}, durabilityByOperation)
 }
