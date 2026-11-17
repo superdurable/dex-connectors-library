@@ -43,6 +43,23 @@ unverified.
 | `updateDomain` | mutation | DomainReference |
 | `verifyDomain` | mutation | DomainReference |
 | `sendBatchEmails` | mutation | SentEmailPage |
+| `createTopic` | mutation | TopicReference |
+| `getTopic` | query | Topic |
+| `listTopics` | query | TopicPage |
+| `updateTopic` | mutation | TopicReference |
+| `deleteTopic` | mutation | DeletedTopic |
+
+Topic CRUD follows [Resend's Topics API](https://resend.com/docs/api-reference/topics/create-topic).
+`createTopic` is `limited` with three possible sends and read-back by topic
+name plus settings; an unconfirmed cap selects optional `uncertain`.
+`getTopic` and `listTopics` are safe queries. `updateTopic` sets only the
+selected absolute fields, and `deleteTopic` is repeat-safe. Find topic IDs
+under [Resend Topics](https://resend.com/topics); blank IDs are invalid.
+`defaultSubscription` is immutable and must be `opt_in` or `opt_out`.
+Names are at most 50 characters, descriptions at most 200, and visibility is
+`public` or `private`; blank visibility on creation uses private. See the
+checked-in [create-topic Flow](go/examples/create-topic/README.md) for a
+mock-backed Dex Worker and Client run.
 
 The five new Go queries use the `safe` repeat tier and bounded HTTP responses.
 List inputs accept a 1–100 item `limit`; zero uses Resend's default for emails

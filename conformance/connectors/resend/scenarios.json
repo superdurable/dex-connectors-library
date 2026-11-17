@@ -6585,6 +6585,1963 @@
       },
       "name": "sendBatchEmails-invalidIdempotency",
       "operation": "sendBatchEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"topic-1\",\"name\":\"News\",\"description\":\"Daily news\",\"default_subscription\":\"opt_in\",\"visibility\":\"public\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics/topic-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "default_subscription": "opt_in",
+          "description": "Daily news",
+          "id": "topic-1",
+          "name": "News",
+          "visibility": "public"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "topic-1"
+      },
+      "name": "getTopic-success",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics/topic-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "default_subscription": "",
+          "description": "",
+          "id": "",
+          "name": "",
+          "visibility": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "topic-1"
+      },
+      "name": "getTopic-missing",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics/topic-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "default_subscription": "",
+          "description": "",
+          "id": "",
+          "name": "",
+          "visibility": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "topic-1"
+      },
+      "name": "getTopic-rejected",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"topic-1\",\"name\":\"News\",\"description\":\"Daily news\",\"default_subscription\":\"opt_in\",\"visibility\":\"public\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics/topic-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "default_subscription": "opt_in",
+          "description": "Daily news",
+          "id": "topic-1",
+          "name": "News",
+          "visibility": "public"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "topic-1"
+      },
+      "name": "getTopic-invalid",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "default_subscription": "",
+          "description": "",
+          "id": "",
+          "name": "",
+          "visibility": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getTopic-defect",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics/topic-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "topic-1"
+      },
+      "name": "getTopic-rate",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics/topic-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "topic-1"
+      },
+      "name": "getTopic-server",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics/topic-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "topic-1"
+      },
+      "name": "getTopic-transport",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"topic-1\",\"name\":\"News\",\"description\":\"Daily news\",\"default_subscription\":\"opt_in\",\"visibility\":\"public\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics",
+          "query": {
+            "after": [
+              "topic-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "default_subscription": "opt_in",
+              "description": "Daily news",
+              "id": "topic-1",
+              "name": "News",
+              "visibility": "public"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "limit": 10
+      },
+      "name": "listTopics-success",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics",
+          "query": {
+            "after": [
+              "topic-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "limit": 10
+      },
+      "name": "listTopics-rejected",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"topic-1\",\"name\":\"News\",\"description\":\"Daily news\",\"default_subscription\":\"opt_in\",\"visibility\":\"public\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics",
+          "query": {
+            "after": [
+              "topic-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "default_subscription": "opt_in",
+              "description": "Daily news",
+              "id": "topic-1",
+              "name": "News",
+              "visibility": "public"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "limit": 10
+      },
+      "name": "listTopics-invalid",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "limit": 101
+      },
+      "name": "listTopics-defect",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics",
+          "query": {
+            "after": [
+              "topic-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "limit": 10
+      },
+      "name": "listTopics-rate",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics",
+          "query": {
+            "after": [
+              "topic-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "limit": 10
+      },
+      "name": "listTopics-server",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics",
+          "query": {
+            "after": [
+              "topic-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "limit": 10
+      },
+      "name": "listTopics-transport",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"topic-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/topics/topic-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "topic-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "input": {
+        "id": "topic-1"
+      },
+      "name": "deleteTopic-success",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/topics/topic-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "input": {
+        "id": "topic-1"
+      },
+      "name": "deleteTopic-notFound",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/topics/topic-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "input": {
+        "id": "topic-1"
+      },
+      "name": "deleteTopic-rejected",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"topic-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/topics/topic-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "topic-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "input": {
+        "id": "topic-1"
+      },
+      "name": "deleteTopic-invalid",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/topics/topic-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "input": {
+        "id": "topic-1"
+      },
+      "name": "deleteTopic-429",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/topics/topic-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "input": {
+        "id": "topic-1"
+      },
+      "name": "deleteTopic-5xx",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/topics/topic-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "input": {
+        "id": "topic-1"
+      },
+      "name": "deleteTopic-transport",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d9db4ea6-a2f7-5f97-96ea-614c3ff16f73",
+      "input": {
+        "id": ""
+      },
+      "name": "deleteTopic-defect",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"topic-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/topics",
+          "requestBody": {
+            "default_subscription": "opt_in",
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "topic-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "input": {
+        "defaultSubscription": "opt_in",
+        "description": "Daily news",
+        "name": "News",
+        "visibility": "public"
+      },
+      "name": "createTopic-success",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/topics",
+          "requestBody": {
+            "default_subscription": "opt_in",
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "input": {
+        "defaultSubscription": "opt_in",
+        "description": "Daily news",
+        "name": "News",
+        "visibility": "public"
+      },
+      "name": "createTopic-rejected",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/topics",
+          "requestBody": {
+            "default_subscription": "opt_in",
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "input": {
+        "defaultSubscription": "opt_in",
+        "description": "Daily news",
+        "name": "News",
+        "visibility": "public"
+      },
+      "name": "createTopic-429",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/topics",
+          "requestBody": {
+            "default_subscription": "opt_in",
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "input": {
+        "defaultSubscription": "opt_in",
+        "description": "Daily news",
+        "name": "News",
+        "visibility": "public"
+      },
+      "name": "createTopic-5xx",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/topics",
+          "requestBody": {
+            "default_subscription": "opt_in",
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "input": {
+        "defaultSubscription": "opt_in",
+        "description": "Daily news",
+        "name": "News",
+        "visibility": "public"
+      },
+      "name": "createTopic-transport",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "input": {
+        "defaultSubscription": "opt_in",
+        "description": "Daily news",
+        "name": "",
+        "visibility": "public"
+      },
+      "name": "createTopic-defect",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/topics",
+          "requestBody": {
+            "default_subscription": "opt_in",
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "input": {
+        "defaultSubscription": "opt_in",
+        "description": "Daily news",
+        "name": "News",
+        "visibility": "public"
+      },
+      "name": "createTopic-conflict",
+      "operation": "createTopic"
+    },
+    {
+      "attempts": 2,
+      "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/topics",
+          "requestBody": {
+            "default_subscription": "opt_in",
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"topic-1\",\"name\":\"News\",\"description\":\"Daily news\",\"default_subscription\":\"opt_in\",\"visibility\":\"public\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "topic-1"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "input": {
+        "defaultSubscription": "opt_in",
+        "description": "Daily news",
+        "name": "News",
+        "visibility": "public"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTopic-retry-readback",
+      "operation": "createTopic"
+    },
+    {
+      "attempts": 3,
+      "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/topics",
+          "requestBody": {
+            "default_subscription": "opt_in",
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/topics",
+          "requestBody": {
+            "default_subscription": "opt_in",
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topics",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/topics",
+          "requestBody": {
+            "default_subscription": "opt_in",
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+      "input": {
+        "defaultSubscription": "opt_in",
+        "description": "Daily news",
+        "name": "News",
+        "visibility": "public"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTopic-send-cap",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"topic-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/topics/topic-1",
+          "requestBody": {
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "topic-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "input": {
+        "description": "Daily news",
+        "id": "topic-1",
+        "name": "News",
+        "visibility": "public"
+      },
+      "name": "updateTopic-success",
+      "operation": "updateTopic"
+    },
+    {
+      "callId": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/topics/topic-1",
+          "requestBody": {
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "input": {
+        "description": "Daily news",
+        "id": "topic-1",
+        "name": "News",
+        "visibility": "public"
+      },
+      "name": "updateTopic-notFound",
+      "operation": "updateTopic"
+    },
+    {
+      "callId": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/topics/topic-1",
+          "requestBody": {
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "input": {
+        "description": "Daily news",
+        "id": "topic-1",
+        "name": "News",
+        "visibility": "public"
+      },
+      "name": "updateTopic-providerRejected",
+      "operation": "updateTopic"
+    },
+    {
+      "callId": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"topic-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/topics/topic-1",
+          "requestBody": {
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "topic-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "input": {
+        "description": "Daily news",
+        "id": "topic-1",
+        "name": "News",
+        "visibility": "public"
+      },
+      "name": "updateTopic-invalidResponse",
+      "operation": "updateTopic"
+    },
+    {
+      "callId": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "input": {
+        "description": "Daily news",
+        "id": "",
+        "name": "News",
+        "visibility": "public"
+      },
+      "name": "updateTopic-defect",
+      "operation": "updateTopic"
+    },
+    {
+      "callId": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/topics/topic-1",
+          "requestBody": {
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "input": {
+        "description": "Daily news",
+        "id": "topic-1",
+        "name": "News",
+        "visibility": "public"
+      },
+      "name": "updateTopic-429",
+      "operation": "updateTopic"
+    },
+    {
+      "callId": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/topics/topic-1",
+          "requestBody": {
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "input": {
+        "description": "Daily news",
+        "id": "topic-1",
+        "name": "News",
+        "visibility": "public"
+      },
+      "name": "updateTopic-5xx",
+      "operation": "updateTopic"
+    },
+    {
+      "callId": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/topics/topic-1",
+          "requestBody": {
+            "description": "Daily news",
+            "name": "News",
+            "visibility": "public"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5d117465-c4f1-5901-aa88-86b5e69a3cea",
+      "input": {
+        "description": "Daily news",
+        "id": "topic-1",
+        "name": "News",
+        "visibility": "public"
+      },
+      "name": "updateTopic-transport",
+      "operation": "updateTopic"
     }
   ],
   "schemaVersion": 1

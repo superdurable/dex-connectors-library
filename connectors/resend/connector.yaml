@@ -328,6 +328,88 @@ spec:
       default: true
       description: One sent email appears on the page.
       output: {data: [{id: 5f9f777d-04e0-482a-bb65-088bb5bd44a4, from: 'Acme <hello@example.test>', to: [reader@example.test], subject: Welcome, created_at: '2026-10-26T12:00:00Z'}], has_more: false}
+  - name: createTopic
+    goName: CreateTopic
+    inputType: CreateTopicInput
+    outputType: TopicReference
+    kind: mutation
+    description: Create a subscription topic with its immutable default subscription.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend created the topic.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createTopicDefault, branch: created, default: true, description: Resend created the topic., output: {"id":"topic-1"}}
+  - name: getTopic
+    goName: GetTopic
+    inputType: GetTopicInput
+    outputType: Topic
+    kind: query
+    description: Retrieve one subscription topic by ID.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend found the topic.}
+    - {id: notFound, goName: NotFound, description: The topic does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getTopicDefault, branch: found, default: true, description: Resend found the topic., output: {"id":"topic-1","name":"News","default_subscription":"opt_in","visibility":"public"}}
+  - name: listTopics
+    goName: ListTopics
+    inputType: ListTopicsInput
+    outputType: TopicPage
+    kind: query
+    description: List subscription topics with cursor pagination.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the topic.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listTopicsDefault, branch: listed, default: true, description: Resend listed the topic., output: {"data":[{"id":"topic-1","name":"News","default_subscription":"opt_in","visibility":"public"}],"has_more":false}}
+  - name: updateTopic
+    goName: UpdateTopic
+    inputType: UpdateTopicInput
+    outputType: TopicReference
+    kind: mutation
+    description: Set selected absolute name, description, and visibility fields.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the topic.}
+    - {id: notFound, goName: NotFound, description: The topic does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateTopicDefault, branch: updated, default: true, description: Resend updated the topic., output: {"id":"topic-1"}}
+  - name: deleteTopic
+    goName: DeleteTopic
+    inputType: DeleteTopicInput
+    outputType: DeletedTopic
+    kind: mutation
+    description: Delete one subscription topic by ID.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend deleted the topic.}
+    - {id: notFound, goName: NotFound, description: The topic does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteTopicDefault, branch: deleted, default: true, description: Resend deleted the topic., output: {"id":"topic-1","deleted":true}}
   - name: getContact
     goName: GetContact
     inputType: GetContactInput

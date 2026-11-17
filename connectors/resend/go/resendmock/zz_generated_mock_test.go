@@ -68,6 +68,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.EmailPage](`{"data":[{"id":"5f9f777d-04e0-482a-bb65-088bb5bd44a4","from":"Acme \u003chello@example.test\u003e","to":["reader@example.test"],"subject":"Welcome","created_at":"2026-10-26T12:00:00Z"}],"has_more":false}`)
 			return err
 		}},
+		{name: "createTopic/createTopicDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TopicReference](`{"id":"topic-1"}`)
+			return err
+		}},
+		{name: "getTopic/getTopicDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Topic](`{"id":"topic-1","name":"News","default_subscription":"opt_in","visibility":"public"}`)
+			return err
+		}},
+		{name: "listTopics/listTopicsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TopicPage](`{"data":[{"id":"topic-1","name":"News","default_subscription":"opt_in","visibility":"public"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateTopic/updateTopicDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TopicReference](`{"id":"topic-1"}`)
+			return err
+		}},
+		{name: "deleteTopic/deleteTopicDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedTopic](`{"id":"topic-1","deleted":true}`)
+			return err
+		}},
 		{name: "getContact/getContactDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[resend.Contact](`{"id":"contact-1","email":"reader@example.test","unsubscribed":false}`)
 			return err
@@ -132,6 +152,21 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListEmails().Definition().Operation.OperationID != "listEmails" {
 		t.Errorf("listEmails mock has another definition")
+	}
+	if mock.CreateTopic().Definition().Operation.OperationID != "createTopic" {
+		t.Errorf("createTopic mock has another definition")
+	}
+	if mock.GetTopic().Definition().Operation.OperationID != "getTopic" {
+		t.Errorf("getTopic mock has another definition")
+	}
+	if mock.ListTopics().Definition().Operation.OperationID != "listTopics" {
+		t.Errorf("listTopics mock has another definition")
+	}
+	if mock.UpdateTopic().Definition().Operation.OperationID != "updateTopic" {
+		t.Errorf("updateTopic mock has another definition")
+	}
+	if mock.DeleteTopic().Definition().Operation.OperationID != "deleteTopic" {
+		t.Errorf("deleteTopic mock has another definition")
 	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")
