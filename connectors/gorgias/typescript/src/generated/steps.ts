@@ -107,7 +107,7 @@ export interface CreateTicketStepConfig<StepInput, OperationInput = CreateTicket
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Gorgias conclusively rejected the ticket, such as an unknown assignee or an over-long subject; no ticket was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but Gorgias did not confirm a ticket for it, so the ticket may still appear; the connector never resends it. */
+  /** The send cap is reached, and Gorgias shows no ticket with the Step's external ID after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -137,7 +137,7 @@ export interface UpdateTicketStepConfig<StepInput, OperationInput = UpdateTicket
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Gorgias conclusively rejected the change, such as an unknown user or team, or a merged ticket; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Gorgias returned an invalid or oversized ticket, so the change may have been applied. */
+  /** Gorgias returned an invalid or oversized ticket on the read before the change, so this attempt changed nothing. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -168,7 +168,7 @@ export interface AddNoteStepConfig<StepInput, OperationInput = AddNoteInput, Ope
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Gorgias conclusively rejected the note or reply, or a reply's ticket could not be read, has no customer email to answer, or shows no address known to be the helpdesk's; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but Gorgias did not confirm a message for it, so the note or reply may still appear; the connector never resends it. */
+  /** The send cap is reached, and the ticket shows no message with the Step's external ID after sends whose outcome could not be confirmed, so the note or reply may still appear. Below the cap, an unconfirmed send is read back and then resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

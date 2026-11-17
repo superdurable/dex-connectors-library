@@ -98,41 +98,35 @@ func (AddNoteOperation) IdempotencyKey(callID sdkgo.CallID, _ AddNoteInput) sdkg
 	return sdkgo.IdempotencyKey("dex-" + string(callID))
 }
 
-// Invoke sends POST /api/tickets/{id}/messages once per Step execution unless Gorgias provably did
-// not apply it; a reply first reads the ticket to route it. A 429 or a connection that never opened
-// is retried and may send again, after a later attempt first looks for the message by external_id;
-// any other unconfirmed outcome is retried only to look for the message, because a repeated reply
-// is a second email to the customer.
+// Invoke sends POST /api/tickets/{id}/messages under the SDK single-dispatch fence and the manifest
+// send cap; a reply first reads the ticket to route it. A 429, 503, or connection that never opened
+// is retried and sends again. Any other unconfirmed outcome is retried; the next attempt first looks
+// for the message by external_id, resends while the cap allows, and selects uncertain at the cap.
 func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sdkgo.MutationAttempt[AddNoteOutput] {
 	if err := validateAddNoteInput(input); err != nil {
 		return sdkgo.NewMutationBranch(AddNoteBranchDefect, AddNoteOutput{}, gorgiasFailurePointer(sdkgo.FailureValidation, addNoteOperation, err.Error()), sdkgo.Receipt{})
 	}
-	if hasEarlierDispatch(call) {
-		credentials, failure := operation.client.resolveCredentials(call, addNoteOperation)
-		if failure != nil {
-			return reconcileCredentialFailureAttempt[AddNoteOutput](call, *failure, addNoteOperation)
-		}
-		return operation.findEarlierMessage(call, credentials, input.TicketID)
+	permit, endedAttempt := beginGorgiasWrite[AddNoteOutput](call, addNoteOperation,
+		AddNoteDefinition.StepDefaults.ExecuteMethodTimeout, AddNoteBranchDefect)
+	if endedAttempt != nil {
+		return *endedAttempt
 	}
 	credentials, failure := operation.client.resolveCredentials(call, addNoteOperation)
 	if failure != nil {
-		return sdkgo.NewMutationBranch(AddNoteBranchDefect, AddNoteOutput{}, failure, sdkgo.Receipt{})
+		return credentialFailureAttempt[AddNoteOutput](permit, *failure, AddNoteBranchDefect)
 	}
-	if isLaterAttempt(call) {
-		message, isFound, result, receipt := operation.lookUpMessageByExternalID(call, credentials, input.TicketID)
-		switch {
-		case result.outcome != exchangeSucceeded:
-			return unsentRequestAttempt[AddNoteOutput](result, receipt, addNoteDispatchBranches)
-		case isFound:
-			return sdkgo.NewMutationBranch(AddNoteBranchAdded, AddNoteOutput{Message: message, WasCreatedByEarlierAttempt: true}, nil, receipt)
+	if permit.needsReadBack() {
+		if attempt, isTerminal := operation.findEarlierMessage(call, credentials, input.TicketID, permit); isTerminal {
+			return attempt
 		}
+		// The ticket shows no message with the external ID, so this attempt resends below the cap.
 	}
 	request := createMessageRequestWire{
 		Channel: MessageChannelInternalNote, Via: MessageChannelAPI, FromAgent: true, Sender: messagePersonWire{Email: credentials.Email},
 		BodyText: input.Body, BodyHTML: plainTextToGorgiasHTML(input.Body), ExternalID: string(call.IdempotencyKey),
 	}
 	if input.IsPublicReply {
-		route, attempt, isTerminal := operation.findReplyRoute(call, credentials, input.TicketID)
+		route, attempt, isTerminal := operation.findReplyRoute(call, credentials, input.TicketID, permit)
 		if isTerminal {
 			return attempt
 		}
@@ -141,14 +135,14 @@ func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sd
 		request.Source = &messageSourceWire{Type: MessageChannelEmail, From: gorgiasAddressWire{Address: route.supportAddress},
 			To: []gorgiasAddressWire{{Address: route.customerAddress}}}
 	}
-	if recordDispatch(call) != nil {
-		return dispatchNotRecordedAttempt[AddNoteOutput](addNoteOperation)
-	}
-	result := operation.client.exchange(call, credentials, addNoteOperation, gorgiasRequest{
+	result, refusedAttempt := sendGorgiasWrite[AddNoteOutput](permit, operation.client, credentials, addNoteOperation, gorgiasRequest{
 		method: http.MethodPost, path: ticketPath(input.TicketID) + "/messages", payload: request,
 	})
+	if refusedAttempt != nil {
+		return *refusedAttempt
+	}
 	receipt := operation.client.receipt(call, result.response, 0)
-	if attempt, isTerminal := singleDispatchAttemptForSend[AddNoteOutput](call, result, receipt, addNoteDispatchBranches); isTerminal {
+	if attempt, isTerminal := writeAttemptForExchange[AddNoteOutput](permit, result, receipt, addNoteDispatchBranches); isTerminal {
 		return attempt
 	}
 	message, err := decodeAddedMessage(result.response.body, input.TicketID, string(call.IdempotencyKey))
@@ -156,48 +150,52 @@ func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sd
 		return sdkgo.NewMutationRetry[AddNoteOutput](gorgiasFailure(sdkgo.FailureProtocol, addNoteOperation,
 			"Gorgias accepted the message but returned an invalid message: "+err.Error()), reconcileDelay)
 	}
+	recordAcceptedWrite(permit, message.ID)
 	return sdkgo.NewMutationBranch(AddNoteBranchAdded, AddNoteOutput{Message: message}, nil, operation.client.receipt(call, result.response, message.ID))
 }
 
 // findReplyRoute reads the ticket and answers its customer's newest email from the address that email reached.
-func (operation AddNoteOperation) findReplyRoute(call sdkgo.Call, credentials Credentials, ticketID int64) (replyRoute, sdkgo.MutationAttempt[AddNoteOutput], bool) {
+// After a possible earlier send, a conclusive read failure selects uncertain instead of a refusal branch.
+func (operation AddNoteOperation) findReplyRoute(call sdkgo.Call, credentials Credentials, ticketID int64, permit gorgiasWritePermit) (replyRoute, sdkgo.MutationAttempt[AddNoteOutput], bool) {
 	result := operation.client.exchange(call, credentials, addNoteOperation, gorgiasRequest{method: http.MethodGet, path: ticketPath(ticketID)})
 	receipt := operation.client.receipt(call, result.response, ticketID)
 	switch result.outcome {
 	case exchangeSucceeded:
 	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable:
-		return replyRoute{}, sdkgo.NewMutationRetry[AddNoteOutput](result.failure, result.retryAfter), true
+		return replyRoute{}, preSendRetryAttempt[AddNoteOutput](permit, result.failure, result.retryAfter), true
 	case exchangeNotFound:
-		return replyRoute{}, sdkgo.NewMutationBranch(AddNoteBranchNotFound, AddNoteOutput{}, &result.failure, receipt), true
+		return replyRoute{}, replyRouteFailureAttempt(permit, AddNoteBranchNotFound, result.failure, receipt), true
 	case exchangeDefect:
-		return replyRoute{}, sdkgo.NewMutationBranch(AddNoteBranchDefect, AddNoteOutput{}, &result.failure, receipt), true
+		return replyRoute{}, replyRouteFailureAttempt(permit, AddNoteBranchDefect, result.failure, receipt), true
 	default:
-		return replyRoute{}, sdkgo.NewMutationBranch(AddNoteBranchProviderRejected, AddNoteOutput{}, &result.failure, receipt), true
+		return replyRoute{}, replyRouteFailureAttempt(permit, AddNoteBranchProviderRejected, result.failure, receipt), true
 	}
 	ticket, ticketWire, err := decodeTicketBody(result.response.body, ticketID)
 	if err != nil {
-		return replyRoute{}, sdkgo.NewMutationBranch(AddNoteBranchProviderRejected, AddNoteOutput{}, gorgiasFailurePointer(sdkgo.FailureProtocol, addNoteOperation,
+		return replyRoute{}, replyRouteFailureAttempt(permit, AddNoteBranchProviderRejected, gorgiasFailure(sdkgo.FailureProtocol, addNoteOperation,
 			"Gorgias returned an invalid ticket, so the reply could not be routed: "+err.Error()), receipt), true
 	}
 	route, err := newestCustomerEmailRoute(ticketWire.Messages, ticket.Subject)
 	if err != nil {
-		return replyRoute{}, sdkgo.NewMutationBranch(AddNoteBranchProviderRejected, AddNoteOutput{}, gorgiasFailurePointer(sdkgo.FailureValidation, addNoteOperation,
-			err.Error()), receipt), true
+		return replyRoute{}, replyRouteFailureAttempt(permit, AddNoteBranchProviderRejected, gorgiasFailure(sdkgo.FailureValidation, addNoteOperation, err.Error()), receipt), true
 	}
 	return route, sdkgo.MutationAttempt[AddNoteOutput]{}, false
 }
 
-// findEarlierMessage looks for the message an earlier attempt may have added, by the external ID it wrote.
-func (operation AddNoteOperation) findEarlierMessage(call sdkgo.Call, credentials Credentials, ticketID int64) sdkgo.MutationAttempt[AddNoteOutput] {
-	message, isFound, result, receipt := operation.lookUpMessageByExternalID(call, credentials, ticketID)
-	switch {
-	case result.outcome != exchangeSucceeded:
-		return reconcileLookupFailureAttempt[AddNoteOutput](call, result, receipt, addNoteOperation)
-	case isFound:
-		return sdkgo.NewMutationBranch(AddNoteBranchAdded, AddNoteOutput{Message: message, WasCreatedByEarlierAttempt: true}, nil, receipt)
-	default:
-		return reconcileNotFoundAttempt[AddNoteOutput](call, receipt, addNoteOperation, "message")
+// replyRouteFailureAttempt selects branch on a first send; after a possible earlier send it selects uncertain.
+func replyRouteFailureAttempt(permit gorgiasWritePermit, branch sdkgo.BranchID, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[AddNoteOutput] {
+	if !permit.isFirstSend {
+		return sdkgo.NewMutationUncertain(AddNoteOutput{}, gorgiasFailure(failure.Kind, addNoteOperation,
+			"an earlier attempt of this Step may have sent the reply, and the ticket could not be read to route it again: "+failure.Message), receipt)
 	}
+	return sdkgo.NewMutationBranch(branch, AddNoteOutput{}, &failure, receipt)
+}
+
+// findEarlierMessage looks for the message an earlier attempt may have added, by the external ID it wrote.
+func (operation AddNoteOperation) findEarlierMessage(call sdkgo.Call, credentials Credentials, ticketID int64, permit gorgiasWritePermit) (sdkgo.MutationAttempt[AddNoteOutput], bool) {
+	message, isFound, result, receipt := operation.lookUpMessageByExternalID(call, credentials, ticketID)
+	found := sdkgo.NewMutationBranch(AddNoteBranchAdded, AddNoteOutput{Message: message, WasCreatedByEarlierAttempt: true}, nil, receipt)
+	return readBackAttempt(permit, result, isFound, found, receipt, addNoteOperation, "message")
 }
 
 // lookUpMessageByExternalID reads the ticket's embedded messages; an unreadable ticket returns an exchangeInvalid result.

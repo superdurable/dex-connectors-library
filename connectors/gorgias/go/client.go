@@ -6,8 +6,9 @@
 // updateTicket changes ticket fields and tags so that a repeated attempt writes
 // nothing twice, and createTicket and addNote create a ticket or add one internal
 // note or public email reply. Gorgias documents no idempotency key, so those two
-// resend only after Gorgias provably did not apply a request and otherwise look the
-// write up by the external ID they set. The ticketChanged poll Trigger starts a
+// send under the SDK single-dispatch fence and the manifest send cap: after an
+// unknown outcome they look the write up by the external ID they set, resend while
+// the cap allows, and select uncertain at the cap. The ticketChanged poll Trigger starts a
 // Flow for each ticket event in the account's event log; see
 // NewProjectTicketTriggerRunner.
 //

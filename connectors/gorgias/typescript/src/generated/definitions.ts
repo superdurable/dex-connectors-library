@@ -115,7 +115,7 @@ export const CreateTicketBranch = {
 export const CreateTicketBranchCreated = CreateTicketBranch.Created;
 /** Gorgias conclusively rejected the ticket, such as an unknown assignee or an over-long subject; no ticket was created. */
 export const CreateTicketBranchProviderRejected = CreateTicketBranch.ProviderRejected;
-/** The request was sent but Gorgias did not confirm a ticket for it, so the ticket may still appear; the connector never resends it. */
+/** The send cap is reached, and Gorgias shows no ticket with the Step's external ID after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent. */
 export const CreateTicketBranchUncertain = CreateTicketBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateTicketBranchDefect = CreateTicketBranch.Defect;
@@ -125,7 +125,7 @@ export const CreateTicketDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "The ticket exists: Gorgias created it now, or a retried attempt found the ticket an earlier attempt of this Step created." },
     { id: "providerRejected", description: "Gorgias conclusively rejected the ticket, such as an unknown assignee or an over-long subject; no ticket was created.", optional: true },
-    { id: "uncertain", description: "The request was sent but Gorgias did not confirm a ticket for it, so the ticket may still appear; the connector never resends it.", optional: true },
+    { id: "uncertain", description: "The send cap is reached, and Gorgias shows no ticket with the Step's external ID after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },
@@ -149,7 +149,7 @@ export const UpdateTicketBranchUpdated = UpdateTicketBranch.Updated;
 export const UpdateTicketBranchNotFound = UpdateTicketBranch.NotFound;
 /** Gorgias conclusively rejected the change, such as an unknown user or team, or a merged ticket; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again. */
 export const UpdateTicketBranchProviderRejected = UpdateTicketBranch.ProviderRejected;
-/** Gorgias returned an invalid or oversized ticket, so the change may have been applied. */
+/** Gorgias returned an invalid or oversized ticket on the read before the change, so this attempt changed nothing. */
 export const UpdateTicketBranchInvalidResponse = UpdateTicketBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateTicketBranchDefect = UpdateTicketBranch.Defect;
@@ -160,12 +160,11 @@ export const UpdateTicketDefinition: MutationDefinition = {
     { id: "updated", description: "The ticket holds the requested values, written now or by an earlier attempt." },
     { id: "notFound", description: "The ticket does not exist or is not visible to the connection's user.", optional: true },
     { id: "providerRejected", description: "Gorgias conclusively rejected the change, such as an unknown user or team, or a merged ticket; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again.", optional: true },
-    { id: "invalidResponse", description: "Gorgias returned an invalid or oversized ticket, so the change may have been applied.", optional: true },
+    { id: "invalidResponse", description: "Gorgias returned an invalid or oversized ticket on the read before the change, so this attempt changed nothing.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 45000, executeDurability: "async" },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateTicket. */
 export const UpdateTicketMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -184,7 +183,7 @@ export const AddNoteBranchAdded = AddNoteBranch.Added;
 export const AddNoteBranchNotFound = AddNoteBranch.NotFound;
 /** Gorgias conclusively rejected the note or reply, or a reply's ticket could not be read, has no customer email to answer, or shows no address known to be the helpdesk's; nothing was added. */
 export const AddNoteBranchProviderRejected = AddNoteBranch.ProviderRejected;
-/** The request was sent but Gorgias did not confirm a message for it, so the note or reply may still appear; the connector never resends it. */
+/** The send cap is reached, and the ticket shows no message with the Step's external ID after sends whose outcome could not be confirmed, so the note or reply may still appear. Below the cap, an unconfirmed send is read back and then resent. */
 export const AddNoteBranchUncertain = AddNoteBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddNoteBranchDefect = AddNoteBranch.Defect;
@@ -195,7 +194,7 @@ export const AddNoteDefinition: MutationDefinition = {
     { id: "added", description: "The note or reply exists: Gorgias added it now, or a retried attempt found the message an earlier attempt of this Step added." },
     { id: "notFound", description: "The ticket does not exist or is not visible to the connection's user; nothing was added.", optional: true },
     { id: "providerRejected", description: "Gorgias conclusively rejected the note or reply, or a reply's ticket could not be read, has no customer email to answer, or shows no address known to be the helpdesk's; nothing was added.", optional: true },
-    { id: "uncertain", description: "The request was sent but Gorgias did not confirm a message for it, so the note or reply may still appear; the connector never resends it.", optional: true },
+    { id: "uncertain", description: "The send cap is reached, and the ticket shows no message with the Step's external ID after sends whose outcome could not be confirmed, so the note or reply may still appear. Below the cap, an unconfirmed send is read back and then resent.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },

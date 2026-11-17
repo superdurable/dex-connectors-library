@@ -221,20 +221,18 @@ func TestLostCreateResponseIsFoundByExternalIDAndNeverResentWithRealDex(t *testi
 	require.Len(t, provider.ticket(outcome.Ticket.ID).messagesOn(gorgias.MessageChannelInternalNote), 1)
 }
 
-func TestFailedCreateThatGorgiasDoesNotShowFailsWithoutResendingWithRealDex(t *testing.T) {
+func TestFailedCreateThatGorgiasDoesNotShowIsResentBelowTheSendCapWithRealDex(t *testing.T) {
 	provider := newFakeGorgias(t)
 	provider.failsFirstCreateWithoutStoring = true
 	harness := newTriageHarness(t, provider, defaultRequestTimeout)
 
-	flowID := harness.startTriage(t, "failed-create", integrationIssueInput())
-	result := harness.waitForFlow(t, flowID)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
-	require.Equal(t, 1, provider.count("create"), "a create Gorgias may still apply is never resent")
-	require.Equal(t, 3, provider.count("lookup"), "the read-only lookup was repeated within its budget before uncertain")
-	require.Zero(t, provider.ticketCount())
-	require.Zero(t, provider.count("note"))
+	outcome := harness.runTriage(t, "failed-create", integrationIssueInput())
+	require.Equal(t, TriageTicketOpened, outcome.Action)
+	require.False(t, outcome.WasTicketCreatedByEarlierAttempt)
+	require.Equal(t, 2, provider.count("create"), "the 502 is unknown, so one resend follows an empty lookup")
+	require.Equal(t, 1, provider.count("lookup"), "the retry looked for the ticket before it resent")
+	require.Equal(t, 1, provider.ticketCount())
+	require.Len(t, provider.ticket(outcome.Ticket.ID).messagesOn(gorgias.MessageChannelInternalNote), 1)
 }
 
 func TestLostReplyResponseIsFoundByExternalIDAndNeverResentWithRealDex(t *testing.T) {
@@ -259,12 +257,12 @@ func TestRateLimitedCreateWaitsAndCreatesOneTicketWithRealDex(t *testing.T) {
 	harness := newTriageHarness(t, provider, defaultRequestTimeout)
 
 	outcome := harness.runTriage(t, "rate-limited", integrationIssueInput())
-	require.Equal(t, TriageTicketOpened, outcome.Action, "a 429 clears the dispatch marker, so the retry may send")
+	require.Equal(t, TriageTicketOpened, outcome.Action, "a 429 records canResend, so the retry may send")
 	require.False(t, outcome.WasTicketCreatedByEarlierAttempt)
 	times := provider.requestTimes("create")
 	require.Len(t, times, 2)
 	require.GreaterOrEqual(t, times[1].Sub(times[0]), time.Second, "the retry waited for Retry-After")
-	require.Equal(t, 1, provider.count("lookup"), "the retry looked for the ticket before sending again")
+	require.Zero(t, provider.count("lookup"), "Gorgias did not process the 429, so the retry sends without a lookup")
 	require.Equal(t, 1, provider.ticketCount())
 }
 

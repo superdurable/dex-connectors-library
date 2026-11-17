@@ -483,7 +483,7 @@ var CreateTicketDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTicketBranchCreated, Description: "The ticket exists: Gorgias created it now, or a retried attempt found the ticket an earlier attempt of this Step created."},
 		{ID: CreateTicketBranchProviderRejected, Description: "Gorgias conclusively rejected the ticket, such as an unknown assignee or an over-long subject; no ticket was created.", Optional: true},
-		{ID: CreateTicketBranchUncertain, Description: "The request was sent but Gorgias did not confirm a ticket for it, so the ticket may still appear; the connector never resends it.", Optional: true},
+		{ID: CreateTicketBranchUncertain, Description: "The send cap is reached, and Gorgias shows no ticket with the Step's external ID after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent.", Optional: true},
 		{ID: CreateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -561,7 +561,7 @@ var UpdateTicketDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateTicketBranchUpdated, Description: "The ticket holds the requested values, written now or by an earlier attempt."},
 		{ID: UpdateTicketBranchNotFound, Description: "The ticket does not exist or is not visible to the connection's user.", Optional: true},
 		{ID: UpdateTicketBranchProviderRejected, Description: "Gorgias conclusively rejected the change, such as an unknown user or team, or a merged ticket; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again.", Optional: true},
-		{ID: UpdateTicketBranchInvalidResponse, Description: "Gorgias returned an invalid or oversized ticket, so the change may have been applied.", Optional: true},
+		{ID: UpdateTicketBranchInvalidResponse, Description: "Gorgias returned an invalid or oversized ticket on the read before the change, so this attempt changed nothing.", Optional: true},
 		{ID: UpdateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -569,8 +569,7 @@ var UpdateTicketDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
-	MaxSends:        3,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateTicketResult = sdkgo.MutationResult[UpdateTicketOutput]
@@ -591,8 +590,6 @@ type UpdateTicketStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateTicketResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateTicketOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
-	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
-	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateTicketStep[IN any](config UpdateTicketStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTicketInput, UpdateTicketOutput] {
@@ -627,7 +624,6 @@ func NewUpdateTicketStep[IN any](config UpdateTicketStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
-		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -643,7 +639,7 @@ var AddNoteDefinition = sdkgo.MutationDefinition{
 		{ID: AddNoteBranchAdded, Description: "The note or reply exists: Gorgias added it now, or a retried attempt found the message an earlier attempt of this Step added."},
 		{ID: AddNoteBranchNotFound, Description: "The ticket does not exist or is not visible to the connection's user; nothing was added.", Optional: true},
 		{ID: AddNoteBranchProviderRejected, Description: "Gorgias conclusively rejected the note or reply, or a reply's ticket could not be read, has no customer email to answer, or shows no address known to be the helpdesk's; nothing was added.", Optional: true},
-		{ID: AddNoteBranchUncertain, Description: "The request was sent but Gorgias did not confirm a message for it, so the note or reply may still appear; the connector never resends it.", Optional: true},
+		{ID: AddNoteBranchUncertain, Description: "The send cap is reached, and the ticket shows no message with the Step's external ID after sends whose outcome could not be confirmed, so the note or reply may still appear. Below the cap, an unconfirmed send is read back and then resent.", Optional: true},
 		{ID: AddNoteBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

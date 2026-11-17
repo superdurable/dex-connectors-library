@@ -6,17 +6,17 @@ metadata:
   description: "Search, read, create, and update Gorgias tickets, find customers by email, add internal notes or public email replies, and start Flows from ticket events such as created, updated, or closed, keeping Gorgias's own open and closed statuses and priorities; a retried create or message first looks for the earlier write by its external ID."
   company: Gorgias
   categories: [customer-support, ecommerce]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: gorgias
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-gorgias
       operations: [searchTickets, getTicket, findCustomerByEmail, createTicket, updateTicket, addNote]
       triggers: [ticketChanged]
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: "@superdurable/connector-gorgias"
       operations: [searchTickets, getTicket, findCustomerByEmail, createTicket, updateTicket, addNote]
       triggers: [ticketChanged]
@@ -171,17 +171,18 @@ spec:
       inputType: CreateTicketInput
       outputType: CreateTicketOutput
       kind: mutation
-      description: "Create one ticket with the customer's first message. Gorgias has no idempotency key, so the Step runs with sync durability, records a Dex checkpoint before sending, and finds an unconfirmed ticket by the external ID it wrote instead of sending again. A Worker lost before Dex stores the checkpoint can still send twice when the first ticket is not yet visible."
+      description: "Create one ticket with the customer's first message. Gorgias has no idempotency key, so the Step runs with sync durability and finds an unconfirmed ticket by the external ID it wrote; when none is found it resends while the send cap allows and selects uncertain at the cap. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and count every possible send."
       idempotency: required
       branches:
         - {id: created, goName: Created, description: "The ticket exists: Gorgias created it now, or a retried attempt found the ticket an earlier attempt of this Step created."}
         - {id: providerRejected, goName: ProviderRejected, description: "Gorgias conclusively rejected the ticket, such as an unknown assignee or an over-long subject; no ticket was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was sent but Gorgias did not confirm a ticket for it, so the ticket may still appear; the connector never resends it.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, and Gorgias shows no ticket with the Step's external ID after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated ticket POST could create another ticket if the external-ID lookup is incomplete; Gorgias does not enforce that ID as a key."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Gorgias does not enforce the external ID as a key, so a resend after an absent read-back may still create a second ticket."}}
       mocks:
         - name: refundTicketCreated
           branch: created
@@ -203,11 +204,13 @@ spec:
         - {id: updated, goName: Updated, description: "The ticket holds the requested values, written now or by an earlier attempt."}
         - {id: notFound, goName: NotFound, description: The ticket does not exist or is not visible to the connection's user., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Gorgias conclusively rejected the change, such as an unknown user or team, or a merged ticket; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Gorgias returned an invalid or oversized ticket, so the change may have been applied.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Gorgias returned an invalid or oversized ticket on the read before the change, so this attempt changed nothing.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 45s
         durability: async
+        # Each attempt rereads the ticket and sends absolute fields and tag sets, so a repeat leaves one result.
+        repeatOnUnknown: safe
       mocks:
         - name: billingTicketPrioritized
           branch: updated
@@ -227,18 +230,19 @@ spec:
       inputType: AddNoteInput
       outputType: AddNoteOutput
       kind: mutation
-      description: "Add one internal note or one public email reply to a ticket. Gorgias has no idempotency key, so the Step runs with sync durability, records a Dex checkpoint before sending, and finds an unconfirmed message by the external ID it wrote instead of sending again. A Worker lost before Dex stores the checkpoint can still send twice when the first message is not yet visible."
+      description: "Add one internal note or one public email reply to a ticket. Gorgias has no idempotency key, so the Step runs with sync durability and finds an unconfirmed message by the external ID it wrote; when none is found it resends while the send cap allows and selects uncertain at the cap. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and count every possible send."
       idempotency: required
       branches:
         - {id: added, goName: Added, description: "The note or reply exists: Gorgias added it now, or a retried attempt found the message an earlier attempt of this Step added."}
         - {id: notFound, goName: NotFound, description: "The ticket does not exist or is not visible to the connection's user; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Gorgias conclusively rejected the note or reply, or a reply's ticket could not be read, has no customer email to answer, or shows no address known to be the helpdesk's; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was sent but Gorgias did not confirm a message for it, so the note or reply may still appear; the connector never resends it.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, and the ticket shows no message with the Step's external ID after sends whose outcome could not be confirmed, so the note or reply may still appear. Below the cap, an unconfirmed send is read back and then resent.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated message POST could add another note if the external-ID lookup is incomplete; Gorgias does not enforce that ID as a key."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Gorgias does not enforce the external ID as a key, so a resend after an absent read-back may still add a second note or send a second reply."}}
       mocks:
         - name: billingTriageNote
           branch: added
