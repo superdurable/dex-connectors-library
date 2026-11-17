@@ -21,11 +21,12 @@ SCENARIOS = [
 ]
 CONNECTION = sdk.ConnectionRef("close", "close")
 ADAPTER = conformance.PythonOperationAdapter(
-    "close", CONNECTION, close,
+    "close",
+    CONNECTION,
+    close,
     lambda client, _: close.Client(
         close.Config(base_url="http://127.0.0.1:21244/api/v1"),
-        conformance.static_credentials(
-            CONNECTION, close.Credentials(sdk.SecretString("test-secret-key"))),
+        conformance.static_credentials(CONNECTION, close.Credentials(sdk.SecretString("test-secret-key"))),
         client,
     ),
 )

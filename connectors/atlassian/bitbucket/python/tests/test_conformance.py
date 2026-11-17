@@ -15,12 +15,17 @@ sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
 SCENARIOS = [
-    scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/atlassian/bitbucket/scenarios.json")
+    scenario
+    for scenario in conformance.load_scenarios(
+        ROOT / "conformance/connectors/atlassian/bitbucket/scenarios.json"
+    )
     if scenario["operation"] in {"listRepositories", "listPullRequests"}
 ]
 CONNECTION = sdk.ConnectionRef("bitbucket", "bitbucket")
 ADAPTER = conformance.PythonOperationAdapter(
-    "bitbucket", CONNECTION, bitbucket,
+    "bitbucket",
+    CONNECTION,
+    bitbucket,
     lambda client, _: bitbucket.Client(
         bitbucket.Config(base_url="http://127.0.0.1:8848/2.0"),
         conformance.static_credentials(CONNECTION, bitbucket.Credentials(sdk.SecretString("test-token"))),

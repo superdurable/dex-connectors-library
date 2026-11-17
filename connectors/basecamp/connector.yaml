@@ -188,7 +188,7 @@ spec:
       description: List active projects visible in one Basecamp account.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Basecamp returned the projects.}
         - {id: providerRejected, goName: ProviderRejected, description: Basecamp conclusively rejected the read., optional: true}
@@ -208,7 +208,7 @@ spec:
       description: Read one Basecamp project.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Basecamp returned the project.}
         - {id: notFound, goName: NotFound, description: The project does not exist., optional: true}
@@ -229,7 +229,7 @@ spec:
       description: List active schedule entries on one calendar.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Basecamp returned the requested result.}
         - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
@@ -249,7 +249,7 @@ spec:
       description: Read one schedule entry.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Basecamp returned the requested result.}
         - {id: notFound, goName: NotFound, description: The schedule entry does not exist., optional: true}
@@ -331,7 +331,7 @@ spec:
       description: List active messages on one message board.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Basecamp returned the requested result.}
         - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
@@ -351,7 +351,7 @@ spec:
       description: Read one Basecamp message.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Basecamp returned the requested result.}
         - {id: notFound, goName: NotFound, description: The message does not exist., optional: true}
@@ -494,7 +494,7 @@ spec:
       description: List people visible in one Basecamp account.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Basecamp returned the requested result.}
         - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
@@ -514,7 +514,7 @@ spec:
       description: List active people on a project.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Basecamp returned the requested result.}
         - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
@@ -534,7 +534,7 @@ spec:
       description: Read one Basecamp person.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Basecamp returned the requested result.}
         - {id: notFound, goName: NotFound, description: The requested person or project does not exist., optional: true}
@@ -615,7 +615,7 @@ spec:
       description: List active to-do lists in a to-do set.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Basecamp returned the requested result.}
         - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
@@ -635,7 +635,7 @@ spec:
       description: Read one to-do list.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Basecamp returned the requested result.}
         - {id: notFound, goName: NotFound, description: The to-do list does not exist., optional: true}
@@ -858,7 +858,7 @@ spec:
       description: List to-dos in a Basecamp to-do list.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Basecamp returned the to-dos.}
         - {id: providerRejected, goName: ProviderRejected, description: Basecamp conclusively rejected the read., optional: true}
@@ -878,7 +878,7 @@ spec:
       description: Read one Basecamp to-do.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Basecamp returned the to-do.}
         - {id: notFound, goName: NotFound, description: The to-do does not exist., optional: true}

@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = [scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/buffer/scenarios.json") if scenario["operation"] == "getChannel"]
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/buffer/scenarios.json")
+    if scenario["operation"] == "getChannel"
+]
 CONNECTION = sdk.ConnectionRef("buffer", "buffer")
 TEST_CREDENTIALS = buffer.Credentials(sdk.SecretString("sample-api-key"))
 ADAPTER = conformance.PythonOperationAdapter(

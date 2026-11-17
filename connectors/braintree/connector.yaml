@@ -83,7 +83,7 @@ spec:
       description: Read one dispute and its evidence.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Braintree returned the requested result.}
         - {id: notFound, goName: NotFound, description: The dispute or evidence was not found., optional: true}
@@ -104,7 +104,7 @@ spec:
       description: Search disputes by ID or status.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: searched, goName: Searched, description: Braintree returned the requested result.}
         - {id: notFound, goName: NotFound, description: The dispute or evidence was not found., optional: true}
@@ -230,7 +230,7 @@ spec:
       description: Search transactions by ID or order ID.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: searched, goName: Searched, description: Braintree returned the requested result.}
         - {id: notFound, goName: NotFound, description: The selected resource was not found., optional: true}
@@ -498,7 +498,7 @@ spec:
       description: Read a Braintree customer ID, name, and email.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Braintree returned the customer.}
         - {id: notFound, goName: NotFound, description: The node is absent or has another type., optional: true}
@@ -519,7 +519,7 @@ spec:
       description: Read a Braintree payment method ID and usage.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Braintree returned the payment method.}
         - {id: notFound, goName: NotFound, description: The node is absent or has another type., optional: true}
@@ -540,7 +540,7 @@ spec:
       description: Read a Braintree refund ID and status.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Braintree returned the refund.}
         - {id: notFound, goName: NotFound, description: The node is absent or has another type., optional: true}

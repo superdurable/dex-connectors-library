@@ -15,12 +15,15 @@ sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
 SCENARIOS = [
-    scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/coda/scenarios.json")
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/coda/scenarios.json")
     if scenario["operation"] in {"listRows", "getRow"}
 ]
 CONNECTION = sdk.ConnectionRef("coda", "coda")
 ADAPTER = conformance.PythonOperationAdapter(
-    "coda", CONNECTION, coda,
+    "coda",
+    CONNECTION,
+    coda,
     lambda client, _: coda.Client(
         coda.Config(base_url="http://127.0.0.1:12345/apis/v1"),
         conformance.static_credentials(CONNECTION, coda.Credentials(sdk.SecretString("test-token"))),

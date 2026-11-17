@@ -1,6 +1,6 @@
 # Close connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/close/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/close/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/close`.
 

@@ -72,6 +72,7 @@ spec:
       execution:
         executeMethodTimeout: 45s
         durability: sync
+        repeatOnUnknown: safe
         retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "An unconfirmed chat generation may be billed; another attempt can incur an additional charge."}}
       mocks:
         - name: defaultAnswer

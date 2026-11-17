@@ -21,11 +21,20 @@ SCENARIOS = [
 ]
 CONNECTION = sdk.ConnectionRef("cloudflare", "cloudflare")
 ADAPTER = PythonOperationAdapter(
-    "cloudflare", CONNECTION, cloudflare,
+    "cloudflare",
+    CONNECTION,
+    cloudflare,
     lambda client, recorder: cloudflare.Client(
         cloudflare.Config(base_url="http://127.0.0.1:12345"),
-        sdk.StaticCredentialProvider({CONNECTION: cloudflare.Credentials(
-            sdk.SecretString("" if recorder.scenario["name"] == "listZones-defect" else "test-apitoken"))}),
+        sdk.StaticCredentialProvider(
+            {
+                CONNECTION: cloudflare.Credentials(
+                    sdk.SecretString(
+                        "" if recorder.scenario["name"] == "listZones-defect" else "test-apitoken"
+                    )
+                )
+            }
+        ),
         client,
     ),
     operation_types={"purgeCacheByURLs": cloudflare.PurgeCacheByURLsOperation},
