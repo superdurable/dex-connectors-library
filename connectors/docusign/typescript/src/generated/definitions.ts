@@ -20,7 +20,7 @@ export const CreateEnvelopeFromTemplateBranch = {
 export const CreateEnvelopeFromTemplateBranchCreated = CreateEnvelopeFromTemplateBranch.Created;
 /** DocuSign conclusively rejected the envelope, such as an unknown template, an unfilled or unknown role, an invalid email address, an exhausted envelope allowance, or a user who may not send; nothing was created. */
 export const CreateEnvelopeFromTemplateBranchProviderRejected = CreateEnvelopeFromTemplateBranch.ProviderRejected;
-/** The create request was sent but DocuSign's answer was lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, so an envelope may exist that this Result does not name; do not create another automatically. */
+/** The send cap was reached with DocuSign's answer lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, or several envelopes carry it, so an envelope may exist that this Result does not name; do not create another automatically. */
 export const CreateEnvelopeFromTemplateBranchUncertain = CreateEnvelopeFromTemplateBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateEnvelopeFromTemplateBranchDefect = CreateEnvelopeFromTemplateBranch.Defect;
@@ -30,7 +30,7 @@ export const CreateEnvelopeFromTemplateDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "DocuSign holds the envelope this Step execution created; wasRecovered tells whether a later attempt found it by its custom field after an interrupted one." },
     { id: "providerRejected", description: "DocuSign conclusively rejected the envelope, such as an unknown template, an unfilled or unknown role, an invalid email address, an exhausted envelope allowance, or a user who may not send; nothing was created.", optional: true },
-    { id: "uncertain", description: "The create request was sent but DocuSign's answer was lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, so an envelope may exist that this Result does not name; do not create another automatically.", optional: true },
+    { id: "uncertain", description: "The send cap was reached with DocuSign's answer lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, or several envelopes carry it, so an envelope may exist that this Result does not name; do not create another automatically.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 60000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 3900000 } },

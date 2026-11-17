@@ -424,20 +424,16 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "dispatchedAt": "2026-10-04T12:00:00Z",
           "isDispatched": true
         },
-        "output": {
-          "envelopeId": "",
-          "status": ""
-        },
         "requestCount": 3,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "fixedClock": "2026-10-04T12:00:00Z",
       "idempotencyKey": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
@@ -6714,6 +6710,7 @@
       "operation": "createEnvelopeFromTemplate"
     },
     {
+      "attempts": 3,
       "callId": "b94bb700-bf57-57fc-afbe-e60647490d32",
       "exchanges": [
         {
@@ -6722,6 +6719,212 @@
           "keyMode": "absent",
           "method": "GET",
           "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\":\"SERVER_ERROR\",\"message\":\"inert provider message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "requestBody": {
+            "customFields": {
+              "textCustomFields": [
+                {
+                  "name": "dexIdempotencyKey",
+                  "required": "false",
+                  "show": "false",
+                  "value": "b94bb700-bf57-57fc-afbe-e60647490d32"
+                },
+                {
+                  "name": "requestId",
+                  "required": "false",
+                  "show": "false",
+                  "value": "REQ-1"
+                }
+              ]
+            },
+            "emailBlurb": "Please sign.",
+            "emailSubject": "Meridian MSA",
+            "status": "sent",
+            "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+            "templateRoles": [
+              {
+                "email": "priya@example.com",
+                "name": "Priya Raman",
+                "roleName": "Customer",
+                "routingOrder": "1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"envelopes\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "query": {
+            "custom_field": [
+              "dexIdempotencyKey=b94bb700-bf57-57fc-afbe-e60647490d32"
+            ],
+            "from_date": [
+              "2026-10-04T11:00:00Z"
+            ],
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"envelopes\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "query": {
+            "custom_field": [
+              "dexIdempotencyKey=b94bb700-bf57-57fc-afbe-e60647490d32"
+            ],
+            "from_date": [
+              "2026-10-04T11:00:00Z"
+            ],
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\":\"SERVER_ERROR\",\"message\":\"inert provider message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "requestBody": {
+            "customFields": {
+              "textCustomFields": [
+                {
+                  "name": "dexIdempotencyKey",
+                  "required": "false",
+                  "show": "false",
+                  "value": "b94bb700-bf57-57fc-afbe-e60647490d32"
+                },
+                {
+                  "name": "requestId",
+                  "required": "false",
+                  "show": "false",
+                  "value": "REQ-1"
+                }
+              ]
+            },
+            "emailBlurb": "Please sign.",
+            "emailSubject": "Meridian MSA",
+            "status": "sent",
+            "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+            "templateRoles": [
+              {
+                "email": "priya@example.com",
+                "name": "Priya Raman",
+                "roleName": "Customer",
+                "routingOrder": "1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"envelopes\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "query": {
+            "custom_field": [
+              "dexIdempotencyKey=b94bb700-bf57-57fc-afbe-e60647490d32"
+            ],
+            "from_date": [
+              "2026-10-04T11:00:00Z"
+            ],
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"envelopes\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "query": {
+            "custom_field": [
+              "dexIdempotencyKey=b94bb700-bf57-57fc-afbe-e60647490d32"
+            ],
+            "from_date": [
+              "2026-10-04T11:00:00Z"
+            ],
+            "include": [
+              "custom_fields"
+            ]
+          },
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -6820,7 +7023,7 @@
           "envelopeId": "",
           "status": ""
         },
-        "requestCount": 3,
+        "requestCount": 9,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -6847,6 +7050,26 @@
           }
         ]
       },
+      "intermediate": [
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "dispatchedAt": "2026-10-04T12:00:00Z",
+            "isDispatched": true
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 6,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "dispatchedAt": "2026-10-04T12:00:00Z",
+            "isDispatched": true
+          },
+          "retryAfterMs": 0
+        }
+      ],
       "name": "create-uncertain",
       "operation": "createEnvelopeFromTemplate"
     },

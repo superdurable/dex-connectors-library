@@ -84,10 +84,12 @@ func TestVoidEnvelopeClassifiesOtherAnswers(t *testing.T) {
 		})
 	}
 
-	fake := newFakeDocuSign(t, map[string]http.HandlerFunc{"PUT " + envelopePath: respondJSON(http.StatusServiceUnavailable, `{}`)})
-	_, err := voidEnvelope(t, fake, "Deal lost")
-	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry, "a void is safe to repeat")
+	for _, status := range []int{http.StatusServiceUnavailable, http.StatusConflict, http.StatusFound, http.StatusGone} {
+		fake := newFakeDocuSign(t, map[string]http.HandlerFunc{"PUT " + envelopePath: respondJSON(status, docusignError("UNSPECIFIED_ERROR"))})
+		_, err := voidEnvelope(t, fake, "Deal lost")
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "a void is safe to repeat after HTTP %d", status)
+	}
 }
 
 func TestVoidEnvelopeRequiresAReasonDocuSignKeepsWhole(t *testing.T) {

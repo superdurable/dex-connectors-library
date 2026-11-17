@@ -3,7 +3,7 @@
 
 import { createHash } from 'node:crypto';
 import { AddressRefusal } from '@superdurable/connectors-sdk/providerhttp';
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { CreateEnvelopeFromTemplateDefinition, DownloadCombinedDocumentDefinition, GetEnvelopeDefinition, ListEnvelopeRecipientsDefinition, VoidEnvelopeDefinition } from './generated/definitions.js';
 import type { CombinedDocument, CreatedEnvelope, CreateEnvelopeFromTemplateInput, DownloadCombinedDocumentInput, Envelope, EnvelopeRecipients, GetEnvelopeInput, ListEnvelopeRecipientsInput, Recipient, VoidEnvelopeInput, VoidedEnvelope } from './generated/models.js';
 import { DocuSignClient, ResponseTooLargeError, SessionError, escapePath, failure, isGuid, type DocuSignOutcome, type DocuSignResponse, type DocuSignSession } from './client.js';
@@ -32,39 +32,62 @@ export class CreateEnvelopeFromTemplateOperation implements Mutation<CreateEnvel
     try { body = buildCreateBody(input, marker); }
     catch (error) { return newMutationBranch('defect', zeroCreated, zeroReceipt(), failure(operation, 'VALIDATION', errorMessage(error))); }
     const prior = readCreateCheckpoint(call);
+    // Each attempt sends at most once, so attempt - 1 bounds the earlier sends.
+    const sends = createSendBudget(call);
     let session: DocuSignSession;
     try { session = await this.client.openSession(call, operation); }
     catch (error) {
       if (!(error instanceof SessionError)) throw error;
-      if (prior) {
-        await recordCheckpoint(call, prior);
-        return error.route === 'retry' ? newMutationRetry(error.failure, error.retryAfterMs) : newMutationUncertain(zeroCreated, { ...error.failure, message: `an earlier attempt sent the DocuSign create request and its outcome is unknown; ${error.failure.message}` }, this.client.receipt(''));
-      }
-      return sessionMutationFailure(error, zeroCreated, 'providerRejected', 'providerRejected');
+      if (!prior && !sends.hasPossibleEarlierSend) return sessionMutationFailure(error, zeroCreated, 'providerRejected', 'providerRejected');
+      if (prior) await recordCheckpoint(call, prior);
+      if (error.route === 'retry') return newMutationRetry(error.failure, error.retryAfterMs);
+      return resendLaterOrSelectUncertain(this.client, sends.canResendLater, { ...error.failure, message: `an earlier attempt may have sent the DocuSign create request and its outcome is unknown; ${error.failure.message}` });
     }
-    if (prior) return recoverCreated(this.client, call, session, marker, prior, true, failure(operation, 'TRANSPORT', 'an earlier attempt sent the DocuSign create request and its outcome is unknown'));
-    if (call.context.attempt > 1) {
-      const found = await findBeforeResend(this.client, call, session, marker);
+    if (prior || sends.hasPossibleEarlierSend) {
+      const found = await findBeforeResend(this.client, call, session, marker, prior);
       if (found) return found;
+      if (!sends.canSendNow) {
+        if (prior) await recordCheckpoint(call, prior);
+        return newMutationUncertain(zeroCreated, failure(operation, 'TRANSPORT', 'an earlier attempt may have sent the DocuSign create request and its outcome is unknown'), this.client.receipt(''));
+      }
     }
-    const checkpoint = { isDispatched: true, dispatchedAt: goTimestamp(this.client.currentTime()) };
+    const checkpoint = prior ?? { isDispatched: true, dispatchedAt: goTimestamp(this.client.currentTime()) };
     try { await call.context.recordHeartbeat(checkpoint); }
     catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'the create checkpoint could not be recorded, so nothing was sent to DocuSign')); }
     let response: DocuSignResponse;
     try { response = await this.client.requestAPI(call, session, 'POST', '/envelopes', undefined, body, 'application/json', this.client.maxResponseBytes, 40_000); }
     catch (error) {
-      if (isProvablyNotSent(error)) { await clearCheckpoint(call); return newMutationRetry(failure(operation, 'TRANSPORT', 'DocuSign could not be reached, so no envelope was created')); }
-      return recoverCreated(this.client, call, session, marker, checkpoint, false, failure(operation, 'TRANSPORT', "DocuSign's answer to the create request was lost"));
+      if (isProvablyNotSent(error)) { await releaseCheckpoint(call, prior); return newMutationRetry(failure(operation, 'TRANSPORT', 'DocuSign could not be reached, so no envelope was created')); }
+      return recoverCreated(this.client, call, session, marker, checkpoint, sends.canResendLater, failure(operation, 'TRANSPORT', "DocuSign's answer to the create request was lost"));
     }
     if (response.status === 200 || response.status === 201) {
       try { const created = decodeCreated(response.body, input.isDraft ?? false); return newMutationBranch('created', created, this.client.receipt(created.envelopeId)); }
-      catch { return recoverCreated(this.client, call, session, marker, checkpoint, false, failure(operation, 'PROTOCOL', 'DocuSign accepted the create request but returned an unusable envelope summary')); }
+      catch { return recoverCreated(this.client, call, session, marker, checkpoint, sends.canResendLater, failure(operation, 'PROTOCOL', 'DocuSign accepted the create request but returned an unusable envelope summary')); }
     }
     const outcome = this.client.classify(operation, response);
-    if (outcome.retry && response.status < 500 && response.status !== 408) { await clearCheckpoint(call); return newMutationRetry(outcome.failure, outcome.retryAfterMs); }
-    if (response.status >= 400 && response.status < 500 && response.status !== 408) return newMutationBranch('providerRejected', zeroCreated, this.client.receipt('', outcome.errorCode), outcome.failure);
-    return recoverCreated(this.client, call, session, marker, checkpoint, false, outcome.failure);
+    if (outcome.retry && response.status < 500 && response.status !== 408) { await releaseCheckpoint(call, prior); return newMutationRetry(outcome.failure, outcome.retryAfterMs); }
+    // This send was refused, but an earlier attempt's create may still exist.
+    if (definiteRefusalStatuses.has(response.status) && prior) return newMutationUncertain(zeroCreated, outcome.failure, this.client.receipt('', outcome.errorCode));
+    if (definiteRefusalStatuses.has(response.status)) return newMutationBranch('providerRejected', zeroCreated, this.client.receipt('', outcome.errorCode), outcome.failure);
+    return recoverCreated(this.client, call, session, marker, checkpoint, sends.canResendLater, outcome.failure);
   }
+}
+
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** Possible-send predicates derived from the attempt number and the Step's send cap. */
+interface CreateSendBudget { hasPossibleEarlierSend: boolean; canSendNow: boolean; canResendLater: boolean }
+
+function createSendBudget(call: Call): CreateSendBudget {
+  const operationMaxSends = definitionMaxSends(CreateEnvelopeFromTemplateDefinition);
+  const maxSends = operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+  const attempt = call.context.attempt;
+  return { hasPossibleEarlierSend: attempt > 1, canSendNow: attempt - 1 < maxSends, canResendLater: attempt < maxSends };
+}
+
+function resendLaterOrSelectUncertain(client: DocuSignClient, canResendLater: boolean, unknown: Failure): MutationAttempt<CreatedEnvelope> {
+  // The checkpoint stays the last heartbeat, so the next attempt reads back before it sends.
+  return canResendLater ? newMutationRetry(unknown) : newMutationUncertain(zeroCreated, unknown, client.receipt(''));
 }
 
 /** Read one envelope with custom fields. */
@@ -133,7 +156,8 @@ export class VoidEnvelopeOperation implements Mutation<VoidEnvelopeInput, Voided
     if (response.status === 200) return newMutationBranch('voided', { envelopeId }, this.client.receipt(envelopeId));
     const outcome = this.client.classify(operation, response);
     const receipt = this.client.receipt(envelopeId, outcome.errorCode);
-    if (outcome.retry) return newMutationRetry(outcome.failure, outcome.retryAfterMs);
+    // A 3xx, 409, or other unlisted status leaves the void unknown; voiding again is safe.
+    if (outcome.retry || !definiteRefusalStatuses.has(response.status)) return newMutationRetry(outcome.failure, outcome.retryAfterMs);
     if (outcome.notFound) return newMutationBranch('notFound', zeroVoided, receipt, outcome.failure);
     if (!['ENVELOPE_CANNOT_VOID_INVALID_STATE', 'ENVELOPE_INVALID_STATUS'].includes(outcome.errorCode.toUpperCase())) return newMutationBranch('providerRejected', zeroVoided, receipt, outcome.failure);
     const read = await readEnvelope(this.client, call, session, envelopeId, operation);
@@ -236,6 +260,11 @@ function queryOutcome<Output>(client: DocuSignClient, outcome: DocuSignOutcome, 
 }
 function errorMessage(error: unknown): string { return error instanceof Error ? error.message : 'invalid input'; }
 function isProvablyNotSent(error: unknown): boolean { return error instanceof AddressRefusal || error instanceof Error && 'isProvablyNotSent' in error && error.isProvablyNotSent === true; }
+/** Clear this attempt's checkpoint, but keep an earlier attempt's, whose create may still exist. */
+async function releaseCheckpoint(call: Call, prior: { isDispatched: boolean; dispatchedAt: string } | undefined): Promise<void> {
+  if (prior) await recordCheckpoint(call, prior);
+  else await clearCheckpoint(call);
+}
 async function clearCheckpoint(call: Call): Promise<void> { try { await call.context.recordHeartbeat(undefined); } catch { /* The previous marker keeps a later attempt from a duplicate POST. */ } }
 async function recordCheckpoint(call: Call, checkpoint: { isDispatched: boolean; dispatchedAt: string }): Promise<void> { try { await call.context.recordHeartbeat(checkpoint); } catch { /* The previous checkpoint remains available for recovery. */ } }
 function goTimestamp(value: Date): string { return value.toISOString().replace(/\.([0-9]*?)0*Z$/, (_match, fraction: string) => fraction ? `.${fraction}Z` : 'Z'); }
@@ -347,34 +376,50 @@ function decodeRecipients(body: Uint8Array, envelopeId: string): EnvelopeRecipie
 }
 function parseRoutingOrder(value: string): number { if (!value) return 0; if (!/^[+-]?\d+$/.test(value)) throw new Error(malformed); const parsed = Number(value); if (!Number.isSafeInteger(parsed) || parsed < 0) throw new Error(malformed); return parsed; }
 function compareRecipientId(a: string, b: string): number { const number = /^[+-]?\d+$/.test(a); const other = /^[+-]?\d+$/.test(b); return number && other ? Number(a) - Number(b) : number ? -1 : other ? 1 : a < b ? -1 : a > b ? 1 : 0; }
-async function recoverCreated(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string, checkpoint: { isDispatched: boolean; dispatchedAt: string }, retryable: boolean, unknown: Failure): Promise<MutationAttempt<CreatedEnvelope>> {
-  const uncertain = newMutationUncertain(zeroCreated, unknown, client.receipt(''));
+/** Read back after this attempt's unknown send; a miss resends on a later attempt below the cap. */
+async function recoverCreated(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string, checkpoint: { isDispatched: boolean; dispatchedAt: string }, canResendLater: boolean, unknown: Failure): Promise<MutationAttempt<CreatedEnvelope>> {
+  const resendLater = resendLaterOrSelectUncertain(client, canResendLater, unknown);
   const timeoutMs = recoveryRequestTimeout(call);
-  if (timeoutMs === undefined) return uncertain;
+  if (timeoutMs === undefined) return resendLater;
   let response: DocuSignResponse;
   try { response = await listTagged(client, call, session, marker, checkpoint.dispatchedAt, timeoutMs); }
-  catch (error) { if (retryable && !(error instanceof ResponseTooLargeError)) { await recordCheckpoint(call, checkpoint); return newMutationRetry(failure('createEnvelopeFromTemplate', 'AVAILABILITY', 'DocuSign could not list envelopes to find the one an earlier attempt may have created')); } return uncertain; }
-  if (response.status !== 200) { const outcome = client.classify('createEnvelopeFromTemplate', response); if (retryable && outcome.retry) { await recordCheckpoint(call, checkpoint); return newMutationRetry(outcome.failure, outcome.retryAfterMs); } return uncertain; }
-  try {
-    const matches = findTagged(response.body, marker);
-    if (matches.length !== 1) return uncertain;
-    const recovered = matches[0]; if (!recovered) return uncertain;
-    return newMutationBranch('created', { ...recovered, wasRecovered: true }, client.receipt(recovered.envelopeId));
-  } catch { return uncertain; }
-}
-async function findBeforeResend(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string): Promise<MutationAttempt<CreatedEnvelope> | undefined> {
-  const timeoutMs = recoveryRequestTimeout(call);
-  if (timeoutMs === undefined) return undefined;
-  let response: DocuSignResponse;
-  try { response = await listTagged(client, call, session, marker, call.context.firstAttemptAt.toISOString(), timeoutMs); }
-  catch (error) { return error instanceof ResponseTooLargeError ? undefined : newMutationRetry(failure('createEnvelopeFromTemplate', 'AVAILABILITY', 'DocuSign could not list envelopes to find the one an earlier attempt may have created')); }
-  if (response.status !== 200) { const outcome = client.classify('createEnvelopeFromTemplate', response); return outcome.retry ? newMutationRetry(outcome.failure, outcome.retryAfterMs) : undefined; }
+  catch { return resendLater; }
+  if (response.status !== 200) return resendLater;
   try {
     const matches = findTagged(response.body, marker);
     if (matches.length === 1 && matches[0]) return newMutationBranch('created', { ...matches[0], wasRecovered: true }, client.receipt(matches[0].envelopeId));
-    if (matches.length > 1) return newMutationUncertain(zeroCreated, failure('createEnvelopeFromTemplate', 'CONFLICT', "several DocuSign envelopes carry this Step's dexIdempotencyKey, so none was adopted and none was sent"), client.receipt(''));
-  } catch { /* A malformed optional read-back permits the first POST attempt. */ }
+    if (matches.length > 1) return duplicateEnvelopesUncertain(client);
+  } catch { /* An unreadable listing is no proof either way. */ }
+  // Listings can lag, so a miss is not proof; the next attempt reads back again before it sends.
+  return resendLater;
+}
+/** Read back before a later attempt sends; undefined lets it send when the cap allows. */
+async function findBeforeResend(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string, prior: { isDispatched: boolean; dispatchedAt: string } | undefined): Promise<MutationAttempt<CreatedEnvelope> | undefined> {
+  const timeoutMs = recoveryRequestTimeout(call);
+  if (timeoutMs === undefined) return undefined;
+  let response: DocuSignResponse;
+  try { response = await listTagged(client, call, session, marker, prior?.dispatchedAt ?? call.context.firstAttemptAt.toISOString(), timeoutMs); }
+  catch (error) {
+    if (error instanceof ResponseTooLargeError) return undefined;
+    if (prior) await recordCheckpoint(call, prior);
+    return newMutationRetry(failure('createEnvelopeFromTemplate', 'AVAILABILITY', 'DocuSign could not list envelopes to find the one an earlier attempt may have created'));
+  }
+  if (response.status !== 200) {
+    const outcome = client.classify('createEnvelopeFromTemplate', response);
+    if (!outcome.retry) return undefined;
+    if (prior) await recordCheckpoint(call, prior);
+    return newMutationRetry(outcome.failure, outcome.retryAfterMs);
+  }
+  try {
+    const matches = findTagged(response.body, marker);
+    if (matches.length === 1 && matches[0]) return newMutationBranch('created', { ...matches[0], wasRecovered: true }, client.receipt(matches[0].envelopeId));
+    if (matches.length > 1) return duplicateEnvelopesUncertain(client);
+  } catch { /* A malformed read-back is inconclusive, so the cap decides whether to send. */ }
   return undefined;
+}
+/** Several tagged envelopes are duplicates already present: adopt none and send no more. */
+function duplicateEnvelopesUncertain(client: DocuSignClient): MutationAttempt<CreatedEnvelope> {
+  return newMutationUncertain(zeroCreated, failure('createEnvelopeFromTemplate', 'CONFLICT', "several DocuSign envelopes carry this Step's dexIdempotencyKey, so none was adopted and none was sent"), client.receipt(''));
 }
 function listTagged(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string, since: string, timeoutMs: number): Promise<DocuSignResponse> {
   const from = new Date(new Date(since).getTime() - 3_600_000).toISOString().replace(/\.\d{3}Z$/, 'Z');
