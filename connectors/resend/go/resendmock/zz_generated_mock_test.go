@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createContact/createContactDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactReference](`{"id":"contact-1"}`)
+			return err
+		}},
+		{name: "createDomain/createDomainDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DomainReference](`{"id":"domain-1"}`)
+			return err
+		}},
 		{name: "updateContact/updateContactDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[resend.ContactReference](`{"id":"contact-1"}`)
 			return err
@@ -74,6 +82,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
+		t.Errorf("createContact mock has another definition")
+	}
+	if mock.CreateDomain().Definition().Operation.OperationID != "createDomain" {
+		t.Errorf("createDomain mock has another definition")
+	}
 	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
 		t.Errorf("updateContact mock has another definition")
 	}

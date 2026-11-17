@@ -64,6 +64,38 @@ spec:
       - Paste the token into the secret api_key field and save the connection; leave
         baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
+  - name: createContact
+    goName: CreateContact
+    inputType: CreateContactInput
+    outputType: ContactReference
+    kind: mutation
+    description: Create one global contact by email address.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend created or confirmed the contact.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected creation., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createContactDefault, branch: created, default: true, description: One contact was created., output: {id: contact-1}}
+  - name: createDomain
+    goName: CreateDomain
+    inputType: CreateDomainInput
+    outputType: DomainReference
+    kind: mutation
+    description: Create one sending domain by DNS name.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend created or confirmed the domain.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected creation., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createDomainDefault, branch: created, default: true, description: One domain was created., output: {id: domain-1}}
   - name: updateContact
     goName: UpdateContact
     inputType: UpdateContactInput

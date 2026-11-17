@@ -3851,6 +3851,1359 @@
       },
       "name": "cancelScheduledEmail-defect",
       "operation": "cancelScheduledEmail"
+    },
+    {
+      "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"contact-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "email": "reader@example.test",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "contact-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "input": {
+        "email": "reader@example.test",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "createContact-success",
+      "operation": "createContact"
+    },
+    {
+      "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "email": "reader@example.test",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "input": {
+        "email": "reader@example.test",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "createContact-rejected",
+      "operation": "createContact"
+    },
+    {
+      "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "email": "reader@example.test",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "input": {
+        "email": "reader@example.test",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "createContact-429",
+      "operation": "createContact"
+    },
+    {
+      "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "email": "reader@example.test",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "input": {
+        "email": "reader@example.test",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "createContact-5xx",
+      "operation": "createContact"
+    },
+    {
+      "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "email": "reader@example.test",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "input": {
+        "email": "reader@example.test",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "createContact-transport",
+      "operation": "createContact"
+    },
+    {
+      "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "input": {
+        "email": "",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "createContact-defect",
+      "operation": "createContact"
+    },
+    {
+      "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "email": "reader@example.test",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "input": {
+        "email": "reader@example.test",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "createContact-conflict",
+      "operation": "createContact"
+    },
+    {
+      "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "email": "reader@example.test",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "input": {
+        "email": "reader@example.test",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "createContact-uncertain",
+      "operation": "createContact"
+    },
+    {
+      "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"domain-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains",
+          "requestBody": {
+            "name": "example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "domain-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "input": {
+        "name": "example.test"
+      },
+      "name": "createDomain-success",
+      "operation": "createDomain"
+    },
+    {
+      "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains",
+          "requestBody": {
+            "name": "example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "input": {
+        "name": "example.test"
+      },
+      "name": "createDomain-rejected",
+      "operation": "createDomain"
+    },
+    {
+      "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains",
+          "requestBody": {
+            "name": "example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "input": {
+        "name": "example.test"
+      },
+      "name": "createDomain-429",
+      "operation": "createDomain"
+    },
+    {
+      "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains",
+          "requestBody": {
+            "name": "example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "input": {
+        "name": "example.test"
+      },
+      "name": "createDomain-5xx",
+      "operation": "createDomain"
+    },
+    {
+      "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains",
+          "requestBody": {
+            "name": "example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "input": {
+        "name": "example.test"
+      },
+      "name": "createDomain-transport",
+      "operation": "createDomain"
+    },
+    {
+      "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "input": {
+        "name": ""
+      },
+      "name": "createDomain-defect",
+      "operation": "createDomain"
+    },
+    {
+      "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains",
+          "requestBody": {
+            "name": "example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "input": {
+        "name": "example.test"
+      },
+      "name": "createDomain-conflict",
+      "operation": "createDomain"
+    },
+    {
+      "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains",
+          "requestBody": {
+            "name": "example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "input": {
+        "name": "example.test"
+      },
+      "name": "createDomain-uncertain",
+      "operation": "createDomain"
+    },
+    {
+      "attempts": 2,
+      "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "email": "reader@example.test",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":\"contact-1\",\"email\":\"reader@example.test\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"unsubscribed\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "contact-1"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "input": {
+        "email": "reader@example.test",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createContact-retry-readback",
+      "operation": "createContact"
+    },
+    {
+      "attempts": 3,
+      "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "email": "reader@example.test",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "email": "reader@example.test",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "email": "reader@example.test",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "77b56df0-f538-5349-a1bf-5535116b7af0",
+      "input": {
+        "email": "reader@example.test",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createContact-send-cap",
+      "operation": "createContact"
+    },
+    {
+      "attempts": 2,
+      "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains",
+          "requestBody": {
+            "name": "example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"domain-1\",\"name\":\"example.test\",\"status\":\"pending\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "domain-1"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "input": {
+        "name": "example.test"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createDomain-retry-readback",
+      "operation": "createDomain"
+    },
+    {
+      "attempts": 3,
+      "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains",
+          "requestBody": {
+            "name": "example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains",
+          "requestBody": {
+            "name": "example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains",
+          "requestBody": {
+            "name": "example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+      "input": {
+        "name": "example.test"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createDomain-send-cap",
+      "operation": "createDomain"
     }
   ],
   "schemaVersion": 1

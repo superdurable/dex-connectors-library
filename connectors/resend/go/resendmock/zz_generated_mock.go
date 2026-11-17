@@ -18,6 +18,8 @@ import (
 // Mock is a scripted resend connection. Script each operation through its accessor.
 type Mock struct {
 	connection           resend.Connection
+	createContact        *connectormock.Mutation[resend.CreateContactInput, resend.ContactReference]
+	createDomain         *connectormock.Mutation[resend.CreateDomainInput, resend.DomainReference]
 	updateContact        *connectormock.Mutation[resend.UpdateContactInput, resend.ContactReference]
 	deleteContact        *connectormock.Mutation[resend.DeleteContactInput, resend.DeletedContact]
 	deleteDomain         *connectormock.Mutation[resend.DeleteDomainInput, resend.DeletedDomain]
@@ -37,6 +39,8 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createContact:        connectormock.NewMutation[resend.CreateContactInput, resend.ContactReference](t, resend.CreateContactDefinition),
+		createDomain:         connectormock.NewMutation[resend.CreateDomainInput, resend.DomainReference](t, resend.CreateDomainDefinition),
 		updateContact:        connectormock.NewMutation[resend.UpdateContactInput, resend.ContactReference](t, resend.UpdateContactDefinition),
 		deleteContact:        connectormock.NewMutation[resend.DeleteContactInput, resend.DeletedContact](t, resend.DeleteContactDefinition),
 		deleteDomain:         connectormock.NewMutation[resend.DeleteDomainInput, resend.DeletedDomain](t, resend.DeleteDomainDefinition),
@@ -50,6 +54,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		getDomain:            connectormock.NewQuery[resend.GetDomainInput, resend.Domain](t, resend.GetDomainDefinition),
 		listDomains:          connectormock.NewQuery[resend.ListDomainsInput, resend.DomainPage](t, resend.ListDomainsDefinition),
 	}
+	mock.createContact.Default(CreateContactDefault())
+	mock.createDomain.Default(CreateDomainDefault())
 	mock.updateContact.Default(UpdateContactDefault())
 	mock.deleteContact.Default(DeleteContactDefault())
 	mock.deleteDomain.Default(DeleteDomainDefault())
@@ -72,6 +78,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() resend.Connection { return mock.connection }
+
+// CreateContact returns the createContact script.
+func (mock *Mock) CreateContact() *connectormock.Mutation[resend.CreateContactInput, resend.ContactReference] {
+	return mock.createContact
+}
+
+// CreateDomain returns the createDomain script.
+func (mock *Mock) CreateDomain() *connectormock.Mutation[resend.CreateDomainInput, resend.DomainReference] {
+	return mock.createDomain
+}
 
 // UpdateContact returns the updateContact script.
 func (mock *Mock) UpdateContact() *connectormock.Mutation[resend.UpdateContactInput, resend.ContactReference] {
@@ -135,6 +151,12 @@ func (mock *Mock) ListDomains() *connectormock.Query[resend.ListDomainsInput, re
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateContact() sdkgo.Mutation[resend.CreateContactInput, resend.ContactReference] {
+	return operations.mock.createContact
+}
+func (operations mockOperations) CreateDomain() sdkgo.Mutation[resend.CreateDomainInput, resend.DomainReference] {
+	return operations.mock.createDomain
+}
 func (operations mockOperations) UpdateContact() sdkgo.Mutation[resend.UpdateContactInput, resend.ContactReference] {
 	return operations.mock.updateContact
 }
@@ -170,6 +192,78 @@ func (operations mockOperations) GetDomain() sdkgo.Query[resend.GetDomainInput, 
 }
 func (operations mockOperations) ListDomains() sdkgo.Query[resend.ListDomainsInput, resend.DomainPage] {
 	return operations.mock.listDomains
+}
+
+// CreateContactCreated selects the created branch: Resend created or confirmed the contact.
+func CreateContactCreated(value resend.ContactReference, failure *sdkgo.Failure) connectormock.Case[resend.ContactReference] {
+	return connectormock.Branch(resend.CreateContactBranchCreated, value, failure)
+}
+
+// CreateContactProviderRejected selects the providerRejected branch: Resend definitively rejected creation.
+func CreateContactProviderRejected(value resend.ContactReference, failure *sdkgo.Failure) connectormock.Case[resend.ContactReference] {
+	return connectormock.Branch(resend.CreateContactBranchProviderRejected, value, failure)
+}
+
+// CreateContactDefect selects the defect branch: Local input or credentials are invalid.
+func CreateContactDefect(value resend.ContactReference, failure *sdkgo.Failure) connectormock.Case[resend.ContactReference] {
+	return connectormock.Branch(resend.CreateContactBranchDefect, value, failure)
+}
+
+// CreateContactUncertain returns an uncertain createContact outcome.
+func CreateContactUncertain(value resend.ContactReference, failure sdkgo.Failure) connectormock.Case[resend.ContactReference] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateContactRetry asks Dex to retry the createContact Step, after the delay when it is positive.
+func CreateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.ContactReference] {
+	return connectormock.Retry[resend.ContactReference](failure, after)
+}
+
+// CreateContactCreateContactDefault is the manifest mock createContactDefault: One contact was created.
+func CreateContactCreateContactDefault() connectormock.Case[resend.ContactReference] {
+	value := connectormock.MustDecodeOutput[resend.ContactReference](`{"id":"contact-1"}`)
+	return connectormock.Branch(resend.CreateContactBranchCreated, value, nil)
+}
+
+// CreateContactDefault is the manifest default, createContactDefault, which New installs.
+func CreateContactDefault() connectormock.Case[resend.ContactReference] {
+	return CreateContactCreateContactDefault()
+}
+
+// CreateDomainCreated selects the created branch: Resend created or confirmed the domain.
+func CreateDomainCreated(value resend.DomainReference, failure *sdkgo.Failure) connectormock.Case[resend.DomainReference] {
+	return connectormock.Branch(resend.CreateDomainBranchCreated, value, failure)
+}
+
+// CreateDomainProviderRejected selects the providerRejected branch: Resend definitively rejected creation.
+func CreateDomainProviderRejected(value resend.DomainReference, failure *sdkgo.Failure) connectormock.Case[resend.DomainReference] {
+	return connectormock.Branch(resend.CreateDomainBranchProviderRejected, value, failure)
+}
+
+// CreateDomainDefect selects the defect branch: Local input or credentials are invalid.
+func CreateDomainDefect(value resend.DomainReference, failure *sdkgo.Failure) connectormock.Case[resend.DomainReference] {
+	return connectormock.Branch(resend.CreateDomainBranchDefect, value, failure)
+}
+
+// CreateDomainUncertain returns an uncertain createDomain outcome.
+func CreateDomainUncertain(value resend.DomainReference, failure sdkgo.Failure) connectormock.Case[resend.DomainReference] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateDomainRetry asks Dex to retry the createDomain Step, after the delay when it is positive.
+func CreateDomainRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DomainReference] {
+	return connectormock.Retry[resend.DomainReference](failure, after)
+}
+
+// CreateDomainCreateDomainDefault is the manifest mock createDomainDefault: One domain was created.
+func CreateDomainCreateDomainDefault() connectormock.Case[resend.DomainReference] {
+	value := connectormock.MustDecodeOutput[resend.DomainReference](`{"id":"domain-1"}`)
+	return connectormock.Branch(resend.CreateDomainBranchCreated, value, nil)
+}
+
+// CreateDomainDefault is the manifest default, createDomainDefault, which New installs.
+func CreateDomainDefault() connectormock.Case[resend.DomainReference] {
+	return CreateDomainCreateDomainDefault()
 }
 
 // UpdateContactUpdated selects the updated branch: Resend updated the contact.
