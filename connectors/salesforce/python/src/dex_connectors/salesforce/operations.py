@@ -283,11 +283,17 @@ def _query_outcome(
     )
 
 
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+"""Statuses that prove Salesforce refused a write; any other failure leaves the write unknown."""
+
+
 def _mutation_outcome(
     client: Client, call: Call, outcome: Outcome, empty: T, routes: dict[str, str]
 ) -> MutationAttempt[T]:
     branch = routes.get(outcome.route, outcome.route)
-    if branch == "retry":
+    # Both writes are repeat-safe, so a status that does not prove a refusal, such as 409, is retried.
+    is_unknown_status = outcome.status != 0 and outcome.status not in _DEFINITE_REFUSAL_STATUSES
+    if branch == "retry" or is_unknown_status:
         return MutationAttempt.retry(outcome.failure, outcome.retry_after)
     return MutationAttempt.branch_result(
         branch, empty, client.receipt(call, api_usage=outcome.api_usage), outcome.failure

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dex-connector-salesforce"
-version = "0.2.0"
+version = "0.2.1"
 description = "Salesforce connector for Dex Flows with a record change Trigger"
 readme = "README.md"
 requires-python = ">=3.11"

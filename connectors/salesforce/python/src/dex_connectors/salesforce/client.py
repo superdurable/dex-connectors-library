@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from urllib.parse import quote, urlencode, urlsplit
@@ -113,6 +113,7 @@ class Outcome:
     retry_after: float = 0
     provider_errors: tuple[ProviderError, ...] = ()
     api_usage: str = ""
+    status: int = 0
 
 
 class Client:
@@ -354,7 +355,7 @@ class Client:
                     pass
             if 200 <= status < 300 or status == 300:
                 return response, None
-            return response, self.classify(operation, response, duplicate_retry)
+            return response, replace(self.classify(operation, response, duplicate_retry), status=status)
         return None, Outcome(
             "defect",
             failure(
