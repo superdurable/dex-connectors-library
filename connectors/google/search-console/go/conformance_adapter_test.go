@@ -24,9 +24,14 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	if scenario.Name == "listSites-defect" {
 		credentials.AccessToken = sdkgo.NewSecretString("")
 	}
-	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
+	client, err := New(Config{BaseURL: endpoint, InspectionBaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listSites": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSites(), reference),
+		"listSites":            newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSites(), reference),
+		"getSite":              newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetSite(), reference),
+		"querySearchAnalytics": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.QuerySearchAnalytics(), reference),
+		"listSitemaps":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSitemaps(), reference),
+		"getSitemap":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetSitemap(), reference),
+		"inspectURL":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.InspectURL(), reference),
 	}}
 }

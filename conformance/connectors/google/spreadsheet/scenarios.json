@@ -2,6 +2,2028 @@
   "connector": "google/spreadsheet",
   "scenarios": [
     {
+      "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "exchanges": [
+        {
+          "body": "{\"updates\":{\"updatedRange\":\"'Contacts'!A2:C2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "appended",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+          "providerId": "'Contacts'!A2:C2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "rowNumber": 2,
+          "updatedRange": "'Contacts'!A2:C2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "input": {
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "appendRow-success",
+      "operation": "appendRow"
+    },
+    {
+      "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "input": {
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "appendRow-notFound",
+      "operation": "appendRow"
+    },
+    {
+      "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "input": {
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "appendRow-providerRejected",
+      "operation": "appendRow"
+    },
+    {
+      "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "input": {
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "appendRow-invalidResponse",
+      "operation": "appendRow"
+    },
+    {
+      "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "input": {
+        "sheetName": "Contacts",
+        "spreadsheetId": "x",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "appendRow-defect",
+      "operation": "appendRow"
+    },
+    {
+      "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "input": {
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "appendRow-final429",
+      "operation": "appendRow"
+    },
+    {
+      "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "input": {
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "appendRow-final503",
+      "operation": "appendRow"
+    },
+    {
+      "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "input": {
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "appendRow-transportFailure",
+      "operation": "appendRow"
+    },
+    {
+      "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "input": {
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "appendRow-uncertain",
+      "operation": "appendRow",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "exchanges": [
+        {
+          "body": "{\"updatedRange\":\"'Contacts'!A2:C2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'!A2",
+          "query": {
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'!A2",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "rowNumber": 2,
+          "updatedRange": "'Contacts'!A2:C2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "input": {
+        "rowNumber": 2,
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "updateRow-success",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'!A2",
+          "query": {
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'!A2",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "input": {
+        "rowNumber": 2,
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "updateRow-notFound",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'!A2",
+          "query": {
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'!A2",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "input": {
+        "rowNumber": 2,
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "updateRow-providerRejected",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "input": {
+        "rowNumber": 2,
+        "sheetName": "Contacts",
+        "spreadsheetId": "x",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "updateRow-defect",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'!A2",
+          "query": {
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'!A2",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "input": {
+        "rowNumber": 2,
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "updateRow-final429",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'!A2",
+          "query": {
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'!A2",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "input": {
+        "rowNumber": 2,
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "updateRow-final503",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'!A2",
+          "query": {
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'!A2",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "input": {
+        "rowNumber": 2,
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "updateRow-transportFailure",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "exchanges": [
+        {
+          "body": "{\"replies\":[{\"addSheet\":{\"properties\":{\"sheetId\":1770640304,\"title\":\"Contacts\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "addSheet": {
+                  "properties": {
+                    "sheetId": 1770640304,
+                    "title": "Contacts"
+                  }
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "sheetId": 1770640304,
+          "title": "Contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "input": {
+        "spreadsheetId": "sheet-id",
+        "title": "Contacts"
+      },
+      "name": "createSheet-success",
+      "operation": "createSheet"
+    },
+    {
+      "callId": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "addSheet": {
+                  "properties": {
+                    "sheetId": 1770640304,
+                    "title": "Contacts"
+                  }
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "sheetId": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "input": {
+        "spreadsheetId": "sheet-id",
+        "title": "Contacts"
+      },
+      "name": "createSheet-notFound",
+      "operation": "createSheet"
+    },
+    {
+      "callId": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "addSheet": {
+                  "properties": {
+                    "sheetId": 1770640304,
+                    "title": "Contacts"
+                  }
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "sheetId": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "input": {
+        "spreadsheetId": "sheet-id",
+        "title": "Contacts"
+      },
+      "name": "createSheet-providerRejected",
+      "operation": "createSheet"
+    },
+    {
+      "callId": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "exchanges": [
+        {
+          "body": "{\"replies\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "addSheet": {
+                  "properties": {
+                    "sheetId": 1770640304,
+                    "title": "Contacts"
+                  }
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "sheetId": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "input": {
+        "spreadsheetId": "sheet-id",
+        "title": "Contacts"
+      },
+      "name": "createSheet-invalidResponse",
+      "operation": "createSheet"
+    },
+    {
+      "callId": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "sheetId": 0,
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "input": {
+        "spreadsheetId": "x",
+        "title": "Contacts"
+      },
+      "name": "createSheet-defect",
+      "operation": "createSheet"
+    },
+    {
+      "callId": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "addSheet": {
+                  "properties": {
+                    "sheetId": 1770640304,
+                    "title": "Contacts"
+                  }
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "input": {
+        "spreadsheetId": "sheet-id",
+        "title": "Contacts"
+      },
+      "name": "createSheet-final429",
+      "operation": "createSheet"
+    },
+    {
+      "callId": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "addSheet": {
+                  "properties": {
+                    "sheetId": 1770640304,
+                    "title": "Contacts"
+                  }
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "input": {
+        "spreadsheetId": "sheet-id",
+        "title": "Contacts"
+      },
+      "name": "createSheet-final503",
+      "operation": "createSheet"
+    },
+    {
+      "callId": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "addSheet": {
+                  "properties": {
+                    "sheetId": 1770640304,
+                    "title": "Contacts"
+                  }
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "input": {
+        "spreadsheetId": "sheet-id",
+        "title": "Contacts"
+      },
+      "name": "createSheet-transportFailure",
+      "operation": "createSheet"
+    },
+    {
+      "callId": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":400}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "addSheet": {
+                  "properties": {
+                    "sheetId": 1770640304,
+                    "title": "Contacts"
+                  }
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"spreadsheetId\":\"sheet-id\",\"properties\":{\"title\":\"Contacts\"},\"sheets\":[{\"properties\":{\"sheetId\":1770640304,\"title\":\"Contacts\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "sheetId": 1770640304,
+          "title": "Contacts"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fddf8a75-40de-587a-8669-e7eeaac34271",
+      "input": {
+        "spreadsheetId": "sheet-id",
+        "title": "Contacts"
+      },
+      "name": "createSheet-readBack",
+      "operation": "createSheet"
+    },
+    {
+      "callId": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "exchanges": [
+        {
+          "body": "{\"replies\":[{}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "deleteSheet": {
+                  "sheetId": 1
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "sheetId": 1,
+          "spreadsheetId": "sheet-id"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "input": {
+        "sheetId": 1,
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSheet-success",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "deleteSheet": {
+                  "sheetId": 1
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "sheetId": 0,
+          "spreadsheetId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "input": {
+        "sheetId": 1,
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSheet-notFound",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "deleteSheet": {
+                  "sheetId": 1
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "sheetId": 0,
+          "spreadsheetId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "input": {
+        "sheetId": 1,
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSheet-providerRejected",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "sheetId": 0,
+          "spreadsheetId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "input": {
+        "sheetId": 1,
+        "spreadsheetId": "x"
+      },
+      "name": "deleteSheet-defect",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "deleteSheet": {
+                  "sheetId": 1
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "input": {
+        "sheetId": 1,
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSheet-final429",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "deleteSheet": {
+                  "sheetId": 1
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "input": {
+        "sheetId": 1,
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSheet-final503",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "deleteSheet": {
+                  "sheetId": 1
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "input": {
+        "sheetId": 1,
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSheet-transportFailure",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":400}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id:batchUpdate",
+          "requestBody": {
+            "requests": [
+              {
+                "deleteSheet": {
+                  "sheetId": 1
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"spreadsheetId\":\"sheet-id\",\"properties\":{\"title\":\"Contacts\"},\"sheets\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "sheetId": 1,
+          "spreadsheetId": "sheet-id"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "496ceb95-3d22-5e5b-b9b7-080a7519f2f1",
+      "input": {
+        "sheetId": 1,
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSheet-alreadyAbsent",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "exchanges": [
+        {
+          "body": "{\"spreadsheetId\":\"sheet-id\",\"clearedRange\":\"Contacts!A2:C3\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/Contacts!A2:C3:clear",
+          "requestBody": {},
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "cleared",
+        "failureKind": "",
+        "output": {
+          "clearedRange": "Contacts!A2:C3",
+          "spreadsheetId": "sheet-id"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "input": {
+        "range": "Contacts!A2:C3",
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "clearValues-success",
+      "operation": "clearValues"
+    },
+    {
+      "callId": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/Contacts!A2:C3:clear",
+          "requestBody": {},
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "clearedRange": "",
+          "spreadsheetId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "input": {
+        "range": "Contacts!A2:C3",
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "clearValues-notFound",
+      "operation": "clearValues"
+    },
+    {
+      "callId": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/Contacts!A2:C3:clear",
+          "requestBody": {},
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "clearedRange": "",
+          "spreadsheetId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "input": {
+        "range": "Contacts!A2:C3",
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "clearValues-providerRejected",
+      "operation": "clearValues"
+    },
+    {
+      "callId": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/Contacts!A2:C3:clear",
+          "requestBody": {},
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "clearedRange": "",
+          "spreadsheetId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "input": {
+        "range": "Contacts!A2:C3",
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "clearValues-invalidResponse",
+      "operation": "clearValues"
+    },
+    {
+      "callId": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "clearedRange": "",
+          "spreadsheetId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "input": {
+        "range": "Contacts!A2:C3",
+        "spreadsheetId": "x"
+      },
+      "name": "clearValues-defect",
+      "operation": "clearValues"
+    },
+    {
+      "callId": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/Contacts!A2:C3:clear",
+          "requestBody": {},
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "input": {
+        "range": "Contacts!A2:C3",
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "clearValues-final429",
+      "operation": "clearValues"
+    },
+    {
+      "callId": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/Contacts!A2:C3:clear",
+          "requestBody": {},
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "input": {
+        "range": "Contacts!A2:C3",
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "clearValues-final503",
+      "operation": "clearValues"
+    },
+    {
+      "callId": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/Contacts!A2:C3:clear",
+          "requestBody": {},
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1cc309c4-8bc4-533a-ae45-636407816290",
+      "input": {
+        "range": "Contacts!A2:C3",
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "clearValues-transportFailure",
+      "operation": "clearValues"
+    },
+    {
       "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
       "exchanges": [
         {
@@ -3143,6 +5165,820 @@
       },
       "name": "getValues-numeric-cells",
       "operation": "getValues"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [
+        {
+          "body": "{\"spreadsheetId\":\"sheet-id\",\"properties\":{\"title\":\"Contacts\"},\"sheets\":[{\"properties\":{\"sheetId\":1,\"title\":\"Contacts\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "sheets": [
+            {
+              "sheetId": 1,
+              "title": "Contacts"
+            }
+          ],
+          "spreadsheetId": "sheet-id",
+          "title": "Contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "getSpreadsheet-success",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "getSpreadsheet-providerRejected",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "getSpreadsheet-final429",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "getSpreadsheet-final503",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "getSpreadsheet-transportFailure",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "bad/"
+      },
+      "name": "getSpreadsheet-defect",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "getSpreadsheet-notFound",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "getSpreadsheet-invalidResponse",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [
+        {
+          "body": "{\"spreadsheetId\":\"sheet-id\",\"properties\":{\"title\":\"Contacts\"},\"sheets\":[{\"properties\":{\"sheetId\":1,\"title\":\"Contacts\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets",
+          "requestBody": {
+            "properties": {
+              "title": "Contacts"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+          "providerId": "sheet-id",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "sheets": [
+            {
+              "sheetId": 1,
+              "title": "Contacts"
+            }
+          ],
+          "spreadsheetId": "sheet-id",
+          "title": "Contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-success",
+      "operation": "createSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets",
+          "requestBody": {
+            "properties": {
+              "title": "Contacts"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-providerRejected",
+      "operation": "createSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets",
+          "requestBody": {
+            "properties": {
+              "title": "Contacts"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-final429",
+      "operation": "createSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets",
+          "requestBody": {
+            "properties": {
+              "title": "Contacts"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-final503",
+      "operation": "createSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets",
+          "requestBody": {
+            "properties": {
+              "title": "Contacts"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-transportFailure",
+      "operation": "createSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": ""
+      },
+      "name": "createSpreadsheet-defect",
+      "operation": "createSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets",
+          "requestBody": {
+            "properties": {
+              "title": "Contacts"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-invalidResponse",
+      "operation": "createSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-uncertain",
+      "operation": "createSpreadsheet",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drive/v3/files/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "spreadsheetId": "sheet-id"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSpreadsheet-success",
+      "operation": "deleteSpreadsheet"
+    },
+    {
+      "callId": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drive/v3/files/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "spreadsheetId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSpreadsheet-providerRejected",
+      "operation": "deleteSpreadsheet"
+    },
+    {
+      "callId": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drive/v3/files/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSpreadsheet-final429",
+      "operation": "deleteSpreadsheet"
+    },
+    {
+      "callId": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drive/v3/files/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSpreadsheet-final503",
+      "operation": "deleteSpreadsheet"
+    },
+    {
+      "callId": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drive/v3/files/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSpreadsheet-transportFailure",
+      "operation": "deleteSpreadsheet"
+    },
+    {
+      "callId": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "spreadsheetId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "input": {
+        "spreadsheetId": "bad/"
+      },
+      "name": "deleteSpreadsheet-defect",
+      "operation": "deleteSpreadsheet"
+    },
+    {
+      "callId": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drive/v3/files/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "spreadsheetId": "sheet-id"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSpreadsheet-alreadyAbsent",
+      "operation": "deleteSpreadsheet"
     }
   ],
   "schemaVersion": 1

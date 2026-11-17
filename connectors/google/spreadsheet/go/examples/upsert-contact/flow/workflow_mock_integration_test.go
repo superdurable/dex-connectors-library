@@ -24,7 +24,9 @@ import (
 func TestUpsertContactExampleRunsOnSpreadsheetMockWithRealDex(t *testing.T) {
 	mock := spreadsheetmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	detailFlow := NewSpreadsheetDetailFlow(mock.Connection())
+	operationsFlow := NewSpreadsheetOperationsFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, detailFlow, operationsFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -73,6 +75,35 @@ func TestUpsertContactExampleRunsOnSpreadsheetMockWithRealDex(t *testing.T) {
 	calls := mock.UpsertRow().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, flowID, calls[0].FlowID)
+	detailFlowID := "google-sheets-detail-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, detailFlow, detailFlowID, spreadsheet.GetSpreadsheetInput{SpreadsheetID: "sample-spreadsheet"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	detailResult, err := client.WaitForFlow(ctx, detailFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, detailResult.Status, detailResult.ErrorMessage)
+	var detail spreadsheet.SpreadsheetInfo
+	require.NoError(t, detailResult.DecodeSingleOutput(&detail))
+	require.Equal(t, "Contacts", detail.Title)
+	require.Len(t, mock.GetSpreadsheet().Calls(), 1)
+	for _, request := range []SpreadsheetOperationRequest{
+		{Operation: "createSheet", SpreadsheetID: "sample-spreadsheet", SheetName: "Contacts"},
+		{Operation: "deleteSheet", SpreadsheetID: "sample-spreadsheet", SheetID: 1},
+		{Operation: "clearValues", SpreadsheetID: "sample-spreadsheet", Range: "Contacts!A2:C3"},
+		{Operation: "appendRow", SpreadsheetID: "sample-spreadsheet", SheetName: "Contacts", Values: []string{"ada@example.test", "Ada", "active"}},
+		{Operation: "updateRow", SpreadsheetID: "sample-spreadsheet", SheetName: "Contacts", RowNumber: 2, Values: []string{"ada@example.test", "Ada", "active"}},
+	} {
+		operationFlowID := "google-sheets-" + request.Operation + "-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+		_, err = client.StartFlow(ctx, operationsFlow, operationFlowID, request, dex.StartFlowOptions{})
+		require.NoError(t, err)
+		operationResult, waitError := client.WaitForFlow(ctx, operationFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+		require.NoError(t, waitError)
+		require.Equal(t, dex.FlowCompleted, operationResult.Status, operationResult.ErrorMessage)
+	}
+	require.Len(t, mock.CreateSheet().Calls(), 1)
+	require.Len(t, mock.DeleteSheet().Calls(), 1)
+	require.Len(t, mock.ClearValues().Calls(), 1)
+	require.Len(t, mock.AppendRow().Calls(), 1)
+	require.Len(t, mock.UpdateRow().Calls(), 1)
 	require.Equal(t, spreadsheet.UpsertRowInput{
 		SpreadsheetID: "1A2B3C4D5E6F7G8H9I0JkLmNoPqRsTuVwXyZ", SheetName: "Contacts",
 		KeyColumn: "email", KeyValue: "ada@example.test",

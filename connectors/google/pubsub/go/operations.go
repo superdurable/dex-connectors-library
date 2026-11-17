@@ -32,6 +32,8 @@ type ListTopicsInput struct {
 type Topic struct {
 	// Name has the form projects/{project-id}/topics/{topic-id}.
 	Name string `json:"name"`
+	// Labels are the topic's provider labels when returned.
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // TopicsPage holds one page of topic names and its next cursor.

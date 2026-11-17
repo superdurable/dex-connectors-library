@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listMessages/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gmail.MessagesPage](`{"messages":[{"id":"18c0a1b2c3d4e5f6","threadId":"18c0a1b2c3d4e5f0"}],"nextPageToken":"","resultSizeEstimate":1}`)
+			return err
+		}},
+		{name: "listThreads/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gmail.ThreadsPage](`{"threads":[{"id":"18c0a1b2c3d4e5f0","snippet":"Customer question"}],"nextPageToken":"","resultSizeEstimate":1}`)
+			return err
+		}},
+		{name: "getThread/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gmail.Thread](`{"id":"18c0a1b2c3d4e5f0","snippet":"Customer question","messages":[{"messageId":"18c0a1b2c3d4e5f6","threadId":"18c0a1b2c3d4e5f0","from":"ada@example.com","subject":"Question","receivedAt":"2026-03-04T09:15:00Z"}]}`)
+			return err
+		}},
+		{name: "listLabels/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gmail.LabelsList](`{"labels":[{"id":"INBOX","name":"INBOX","type":"system"},{"id":"Label_1","name":"Customers","type":"user"}]}`)
+			return err
+		}},
+		{name: "getLabel/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gmail.Label](`{"id":"Label_1","name":"Customers","type":"user","messagesTotal":1,"messagesUnread":1,"threadsTotal":1,"threadsUnread":1}`)
+			return err
+		}},
 		{name: "getMessage/customerQuestion/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[gmail.Message](`{"messageId":"18c0a1b2c3d4e5f6","threadId":"18c0a1b2c3d4e5f0","rfcMessageId":"\u003cquestion-1@mail.example.com\u003e","inReplyTo":"\u003cwelcome-1@mail.example.com\u003e","references":"\u003cwelcome-1@mail.example.com\u003e","from":"Ada Customer \u003cada@example.com\u003e","replyTo":"ada.support@example.com","to":["support@example.org"],"subject":"Re: Order 1042 has not arrived","textBody":"Hello, my order 1042 has not arrived yet. Can you check?","htmlBody":"\u003cp\u003eHello, my order 1042 has not arrived yet. Can you check?\u003c/p\u003e","snippet":"Hello, my order 1042 has not arrived yet.","receivedAt":"2026-03-04T09:15:00Z","labelIds":["INBOX","UNREAD"]}`)
 			return err
@@ -38,6 +58,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListMessages().Definition().Operation.OperationID != "listMessages" {
+		t.Errorf("listMessages mock has another definition")
+	}
+	if mock.ListThreads().Definition().Operation.OperationID != "listThreads" {
+		t.Errorf("listThreads mock has another definition")
+	}
+	if mock.GetThread().Definition().Operation.OperationID != "getThread" {
+		t.Errorf("getThread mock has another definition")
+	}
+	if mock.ListLabels().Definition().Operation.OperationID != "listLabels" {
+		t.Errorf("listLabels mock has another definition")
+	}
+	if mock.GetLabel().Definition().Operation.OperationID != "getLabel" {
+		t.Errorf("getLabel mock has another definition")
+	}
 	if mock.GetMessage().Definition().Operation.OperationID != "getMessage" {
 		t.Errorf("getMessage mock has another definition")
 	}

@@ -2,13 +2,15 @@
 // SPDX-License-Identifier: MIT
 
 import { it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
-import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
+import { answerRecordedRequest, ExchangeRecorder, replay, scenarioCall, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { GeminiClient } from '../src/client.js';
 import { GenerateContentRequestSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/gemini/scenarios.json', import.meta.url));
+const scenarios = (JSON.parse(readFileSync(new URL('../../../../../conformance/connectors/google/gemini/scenarios.json', import.meta.url), 'utf8')).scenarios as Scenario[])
+  .filter(scenario => scenario.operation === 'generateContent');
 const connection = { provider: 'google', name: 'gemini-default' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeGemini));

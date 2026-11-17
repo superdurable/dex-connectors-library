@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: gemini
   displayName: Gemini
-  description: "Google Gemini API models.generateContent as a native Query, with Gemini's own contents, JSON Schema structured output, thinking budget, token usage, and explicit safety outcomes. Provider-neutral text generation Steps use the llm connector."
+  description: "Generate Gemini content and manage File Search stores through typed Queries and Mutations. Provider-neutral text generation Steps use the llm connector."
   company: Google
   categories: [ai]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: google
   languages:
@@ -91,6 +91,66 @@ spec:
         outputs:
           - {name: model, goName: Model, type: string}
   operations:
+    - name: listFileSearchStores
+      goName: ListFileSearchStores
+      inputType: ListFileSearchStoresInput
+      outputType: FileSearchStoresPage
+      kind: query
+      description: List one page of File Search stores owned by the API key's project.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Gemini returned the requested File Search stores page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Gemini conclusively rejected the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Gemini returned malformed or oversized store JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local page input or credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One File Search store is visible., output: {fileSearchStores: [{name: fileSearchStores/team-docs-abc123def456, displayName: Team docs}], nextPageToken: ''}}
+    - name: getFileSearchStore
+      goName: GetFileSearchStore
+      inputType: GetFileSearchStoreInput
+      outputType: FileSearchStore
+      kind: query
+      description: Get one File Search store by its resource name.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Gemini returned the store.}
+        - {id: notFound, goName: NotFound, description: No store has that name., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Gemini conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Gemini returned malformed or oversized store JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local store name or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: The requested File Search store exists., output: {name: fileSearchStores/team-docs-abc123def456, displayName: Team docs}}
+    - name: createFileSearchStore
+      goName: CreateFileSearchStore
+      inputType: CreateFileSearchStoreInput
+      outputType: FileSearchStore
+      kind: mutation
+      description: Create a File Search store with a display name and optional embedding model.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Gemini created or read back the store.}
+        - {id: providerRejected, goName: ProviderRejected, description: Gemini conclusively rejected the create., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A prior create may have succeeded but read-back could not confirm it after the send cap., optional: true}
+        - {id: defect, goName: Defect, description: "Local store input, credentials, or checkpoint are invalid.", optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Gemini created the requested File Search store., output: {name: fileSearchStores/team-docs-abc123def456, displayName: Team docs}}
+    - name: deleteFileSearchStore
+      goName: DeleteFileSearchStore
+      inputType: DeleteFileSearchStoreInput
+      outputType: DeleteFileSearchStoreOutput
+      kind: mutation
+      description: Delete a File Search store by its resource name, optionally deleting its documents.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Gemini deleted the store or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Gemini conclusively rejected the delete., optional: true}
+        - {id: defect, goName: Defect, description: Local store name or credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Gemini deleted the requested File Search store., output: {name: fileSearchStores/team-docs-abc123def456}}
     - name: generateContent
       goName: GenerateContent
       inputType: GenerateContentRequest

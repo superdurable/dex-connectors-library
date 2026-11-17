@@ -45,11 +45,27 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListFileSearchStores() sdkgo.Query[ListFileSearchStoresInput, FileSearchStoresPage]
+	GetFileSearchStore() sdkgo.Query[GetFileSearchStoreInput, FileSearchStore]
+	CreateFileSearchStore() sdkgo.Mutation[CreateFileSearchStoreInput, FileSearchStore]
+	DeleteFileSearchStore() sdkgo.Mutation[DeleteFileSearchStoreInput, DeleteFileSearchStoreOutput]
 	GenerateContent() sdkgo.Query[GenerateContentRequest, GenerateContentResponse]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListFileSearchStores() sdkgo.Query[ListFileSearchStoresInput, FileSearchStoresPage] {
+	return operations.client.ListFileSearchStores()
+}
+func (operations clientOperations) GetFileSearchStore() sdkgo.Query[GetFileSearchStoreInput, FileSearchStore] {
+	return operations.client.GetFileSearchStore()
+}
+func (operations clientOperations) CreateFileSearchStore() sdkgo.Mutation[CreateFileSearchStoreInput, FileSearchStore] {
+	return operations.client.CreateFileSearchStore()
+}
+func (operations clientOperations) DeleteFileSearchStore() sdkgo.Mutation[DeleteFileSearchStoreInput, DeleteFileSearchStoreOutput] {
+	return operations.client.DeleteFileSearchStore()
+}
 func (operations clientOperations) GenerateContent() sdkgo.Query[GenerateContentRequest, GenerateContentResponse] {
 	return operations.client.GenerateContent()
 }
@@ -186,6 +202,304 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListFileSearchStoresBranchListed sdkgo.BranchID = "listed"
+const ListFileSearchStoresBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListFileSearchStoresBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListFileSearchStoresBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListFileSearchStoresDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listFileSearchStores"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListFileSearchStoresBranchListed, Description: "Gemini returned the requested File Search stores page."},
+		{ID: ListFileSearchStoresBranchProviderRejected, Description: "Gemini conclusively rejected the listing.", Optional: true},
+		{ID: ListFileSearchStoresBranchInvalidResponse, Description: "Gemini returned malformed or oversized store JSON.", Optional: true},
+		{ID: ListFileSearchStoresBranchDefect, Description: "Local page input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListFileSearchStoresResult = sdkgo.QueryResult[FileSearchStoresPage]
+
+type ListFileSearchStoresStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=gemini"`
+	operationID                    struct{}                                                `connector:"operationId=listFileSearchStores"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                          `connector:"configurationUI"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListFileSearchStoresInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListFileSearchStoresResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListFileSearchStoresResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListFileSearchStoresResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListFileSearchStoresResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FileSearchStoresPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewListFileSearchStoresStep[IN any](config ListFileSearchStoresStepConfig[IN]) sdkgo.QueryStep[IN, ListFileSearchStoresInput, FileSearchStoresPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gemini connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListFileSearchStoresInput, FileSearchStoresPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListFileSearchStores(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListFileSearchStoresResult] {
+			branches := make([]sdkgo.BranchTarget[ListFileSearchStoresResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListFileSearchStoresBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListFileSearchStoresBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListFileSearchStoresBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListFileSearchStoresBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetFileSearchStoreBranchFound sdkgo.BranchID = "found"
+const GetFileSearchStoreBranchNotFound sdkgo.BranchID = "notFound"
+const GetFileSearchStoreBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetFileSearchStoreBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetFileSearchStoreBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetFileSearchStoreDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getFileSearchStore"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetFileSearchStoreBranchFound, Description: "Gemini returned the store."},
+		{ID: GetFileSearchStoreBranchNotFound, Description: "No store has that name.", Optional: true},
+		{ID: GetFileSearchStoreBranchProviderRejected, Description: "Gemini conclusively rejected the read.", Optional: true},
+		{ID: GetFileSearchStoreBranchInvalidResponse, Description: "Gemini returned malformed or oversized store JSON.", Optional: true},
+		{ID: GetFileSearchStoreBranchDefect, Description: "Local store name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetFileSearchStoreResult = sdkgo.QueryResult[FileSearchStore]
+
+type GetFileSearchStoreStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=gemini"`
+	operationID                    struct{}                                           `connector:"operationId=getFileSearchStore"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                     `connector:"configurationUI"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetFileSearchStoreInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetFileSearchStoreResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetFileSearchStoreResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetFileSearchStoreResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetFileSearchStoreResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetFileSearchStoreResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FileSearchStore]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetFileSearchStoreStep[IN any](config GetFileSearchStoreStepConfig[IN]) sdkgo.QueryStep[IN, GetFileSearchStoreInput, FileSearchStore] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gemini connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetFileSearchStoreInput, FileSearchStore]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetFileSearchStore(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetFileSearchStoreResult] {
+			branches := make([]sdkgo.BranchTarget[GetFileSearchStoreResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetFileSearchStoreBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetFileSearchStoreBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetFileSearchStoreBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetFileSearchStoreBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetFileSearchStoreBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateFileSearchStoreBranchCreated sdkgo.BranchID = "created"
+const CreateFileSearchStoreBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateFileSearchStoreBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateFileSearchStoreBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateFileSearchStoreDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createFileSearchStore"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateFileSearchStoreBranchCreated, Description: "Gemini created or read back the store."},
+		{ID: CreateFileSearchStoreBranchProviderRejected, Description: "Gemini conclusively rejected the create.", Optional: true},
+		{ID: CreateFileSearchStoreBranchUncertain, Description: "A prior create may have succeeded but read-back could not confirm it after the send cap.", Optional: true},
+		{ID: CreateFileSearchStoreBranchDefect, Description: "Local store input, credentials, or checkpoint are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateFileSearchStoreResult = sdkgo.MutationResult[FileSearchStore]
+
+type CreateFileSearchStoreStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=gemini"`
+	operationID                       struct{}                                              `connector:"operationId=createFileSearchStore"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                        `connector:"configurationUI"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateFileSearchStoreInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateFileSearchStoreResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateFileSearchStoreResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateFileSearchStoreResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateFileSearchStoreResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[FileSearchStore]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateFileSearchStoreStep[IN any](config CreateFileSearchStoreStepConfig[IN]) sdkgo.MutationStep[IN, CreateFileSearchStoreInput, FileSearchStore] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gemini connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateFileSearchStoreInput, FileSearchStore]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreateFileSearchStore(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateFileSearchStoreResult] {
+			branches := make([]sdkgo.BranchTarget[CreateFileSearchStoreResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateFileSearchStoreBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateFileSearchStoreBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateFileSearchStoreBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateFileSearchStoreBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const DeleteFileSearchStoreBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteFileSearchStoreBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteFileSearchStoreBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteFileSearchStoreDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteFileSearchStore"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteFileSearchStoreBranchDeleted, Description: "Gemini deleted the store or it was already absent."},
+		{ID: DeleteFileSearchStoreBranchProviderRejected, Description: "Gemini conclusively rejected the delete.", Optional: true},
+		{ID: DeleteFileSearchStoreBranchDefect, Description: "Local store name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteFileSearchStoreResult = sdkgo.MutationResult[DeleteFileSearchStoreOutput]
+
+type DeleteFileSearchStoreStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                          `connector:"connectorId=gemini"`
+	operationID                       struct{}                                                          `connector:"operationId=deleteFileSearchStore"`
+	StepType                          string                                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                             `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                                    `connector:"configurationUI"`
+	Connection                        Connection                                                        `connector:"connection"`
+	ConnectionName                    string                                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteFileSearchStoreInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteFileSearchStoreResult]                         `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteFileSearchStoreResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteFileSearchStoreResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteFileSearchStoreOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteFileSearchStoreStep[IN any](config DeleteFileSearchStoreStepConfig[IN]) sdkgo.MutationStep[IN, DeleteFileSearchStoreInput, DeleteFileSearchStoreOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gemini connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteFileSearchStoreInput, DeleteFileSearchStoreOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteFileSearchStore(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteFileSearchStoreResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteFileSearchStoreResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteFileSearchStoreBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteFileSearchStoreBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteFileSearchStoreBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GenerateContentBranchGenerated sdkgo.BranchID = "generated"

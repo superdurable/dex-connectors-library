@@ -12,7 +12,7 @@ export interface Config {
   baseUrl?: string;
   /** Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for a slow gateway. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large topic pages. */
+  /** Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large topic, subscription, or pull pages. */
   maxResponseBytes?: number;
 }
 
@@ -93,6 +93,8 @@ export interface ListTopicsInput {
 export interface Topic {
   /** Name has the form projects/{project-id}/topics/{topic-id}. */
   "name": string;
+  /** Labels are the topic's provider labels when returned. */
+  "labels"?: { [key: string]: string } | undefined;
 }
 /** TopicsPage holds one page of topic names and its next cursor. */
 export interface TopicsPage {
@@ -112,6 +114,7 @@ export const ListTopicsInputSchema = z.strictObject({
 /** Runtime validator for Topic. */
 export const TopicSchema = z.strictObject({
   "name": z.string(),
+  "labels": z.record(z.string(), z.string()).optional(),
 }) satisfies z.ZodType<Topic>;
 
 /** Runtime validator for TopicsPage. */

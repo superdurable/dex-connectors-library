@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Replay Go-recorded Gemini requests and outcomes through the Python connector."""
 
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -14,9 +15,11 @@ from dex_connectors import sdk
 
 ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
-from connector_scenarios import ExchangeRecorder, HeartbeatContext, load_scenarios, replay  # noqa: E402
+from connector_scenarios import ExchangeRecorder, HeartbeatContext, replay  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/google/gemini/scenarios.json")
+SCENARIOS = [scenario for scenario in json.loads(
+    (ROOT / "conformance/connectors/google/gemini/scenarios.json").read_text()
+)["scenarios"] if scenario["operation"] == "generateContent"]
 CONNECTION = sdk.ConnectionRef("google", "gemini-api")
 
 
