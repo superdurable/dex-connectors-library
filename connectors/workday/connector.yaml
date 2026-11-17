@@ -112,7 +112,7 @@ spec:
       description: List a page of accessible Workday workers, optionally searching by name prefix.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Workday returned the requested worker page.}
         - {id: providerRejected, goName: ProviderRejected, description: Workday conclusively rejected the search., optional: true}
