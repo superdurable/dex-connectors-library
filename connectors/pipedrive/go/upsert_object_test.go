@@ -212,34 +212,50 @@ func TestUpsertObjectFailsClosedForALegacyCheckpoint(t *testing.T) {
 	provider := newRecordingPipedrive(t, store.serve(t))
 	ctx := newStepDexContext("upsert-unfound")
 	require.NoError(t, ctx.RecordHeartbeat(map[string]string{"pipedriveDispatchedCallId": "earlier"}))
-	result, err := sdkgo.RunMutation(ctx, newAPITokenClient(t, provider.URL).UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
-	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	_, err := sdkgo.RunMutation(ctx, newAPITokenClient(t, provider.URL).UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unreadable checkpoint returns Retry without a send")
 	require.Zero(t, store.count(), "the connector never creates a second time")
 	require.Empty(t, provider.recordedRequests(), "a legacy checkpoint cannot authorize a read or send")
 }
 
-func TestUpsertObjectSearchesAfterAClaimAndSelectsUncertainWhenCreateCannotBeFound(t *testing.T) {
-	seed := newRecordingPipedrive(t, func(response http.ResponseWriter, request recordedRequest) {
-		if request.method == http.MethodGet {
-			writeJSON(t, response, http.StatusOK, `{"success":true,"data":{"items":[]},"additional_data":{"next_cursor":null}}`)
-			return
-		}
-		writeRecord(t, response, `{"id":901,"name":"Jane Smith","emails":[{"value":"jane@acme.example.com","primary":true}]}`)
-	})
-	ctx := newStepDexContext("upsert-claimed-search-miss")
-	seedResult, err := sdkgo.RunMutation(ctx, newAPITokenClient(t, seed.URL).UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
-	require.NoError(t, err)
-	require.NoError(t, ctx.RecordHeartbeat(singledispatch.Marker{CallID: seedResult.Receipt.CallID, Attempt: 1, State: singledispatch.StateClaimed}))
-	ctx.nextAttempt()
-	provider := newRecordingPipedrive(t, func(response http.ResponseWriter, _ recordedRequest) {
-		writeJSON(t, response, http.StatusOK, `{"success":true,"data":{"items":[]},"additional_data":{"next_cursor":null}}`)
-	})
-	result, err := sdkgo.RunMutation(ctx, newAPITokenClient(t, provider.URL).UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
-	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
-	require.Len(t, provider.recordedRequests(), 1)
-	require.Equal(t, http.MethodGet, provider.recordedRequests()[0].method)
+func TestUpsertObjectSearchesAfterAClaimAndCreatesAgainOnlyBelowTheSendCap(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		priorAttempt int32
+		wantBranch   sdkgo.BranchID
+		wantMethods  []string
+	}{
+		{name: "below the cap", priorAttempt: 1, wantBranch: pipedrive.UpsertObjectBranchUpserted, wantMethods: []string{http.MethodGet, http.MethodPost}},
+		{name: "at the cap", priorAttempt: 3, wantBranch: sdkgo.UncertainBranchID, wantMethods: []string{http.MethodGet}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			serve := func(response http.ResponseWriter, request recordedRequest) {
+				if request.method == http.MethodGet {
+					writeJSON(t, response, http.StatusOK, `{"success":true,"data":{"items":[]},"additional_data":{"next_cursor":null}}`)
+					return
+				}
+				writeRecord(t, response, `{"id":901,"name":"Jane Smith","emails":[{"value":"jane@acme.example.com","primary":true}]}`)
+			}
+			seed := newRecordingPipedrive(t, serve)
+			ctx := newStepDexContext("upsert-claimed-search-miss")
+			seedResult, err := sdkgo.RunMutation(ctx, newAPITokenClient(t, seed.URL).UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
+			require.NoError(t, err)
+			require.NoError(t, ctx.RecordHeartbeat(singledispatch.Marker{CallID: seedResult.Receipt.CallID, Attempt: test.priorAttempt, State: singledispatch.StateClaimed, SendCount: test.priorAttempt}))
+			for ctx.Attempt() <= test.priorAttempt {
+				ctx.nextAttempt()
+			}
+			provider := newRecordingPipedrive(t, serve)
+			result, err := sdkgo.RunMutation(ctx, newAPITokenClient(t, provider.URL).UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
+			require.NoError(t, err)
+			require.Equal(t, test.wantBranch, result.Branch)
+			var methods []string
+			for _, request := range provider.recordedRequests() {
+				methods = append(methods, request.method)
+			}
+			require.Equal(t, test.wantMethods, methods, "the identity search always runs before another create")
+		})
+	}
 }
 
 func TestUpsertObjectReadsSavedProviderIDWithoutAnotherCreate(t *testing.T) {

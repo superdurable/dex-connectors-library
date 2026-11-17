@@ -132,6 +132,9 @@ export class PipedriveClient {
         if (response.status >= 200 && response.status < 300) return { ...this.failed('invalid', operation, 'RESPONSE_TOO_LARGE', 'Pipedrive response exceeds the configured maxResponseBytes limit'), response };
       } else if (error instanceof AddressRefusal || error instanceof ProviderTransportError && error.isProvablyNotSent || error instanceof Error && 'code' in error && error.code === 'ECONNREFUSED') {
         return this.failed('notSent', operation, 'TRANSPORT', 'Pipedrive could not be reached; no request was sent');
+      } else if (error instanceof ProviderTransportError && error.status !== undefined && error.headers) {
+        // Keep the status so a create Pipedrive accepted is never resent.
+        return { ...this.failed('unavailable', operation, 'TRANSPORT', 'Pipedrive response could not be read'), response: { status: error.status, headers: error.headers, body: new Uint8Array() } };
       } else return this.failed('unavailable', operation, 'TRANSPORT', 'Pipedrive request failed before a response arrived');
     }
     if (response.status >= 200 && response.status < 300) {

@@ -1422,6 +1422,7 @@
           "attempt": 1,
           "callId": "caa4781a-357f-5359-9562-1241cba08988",
           "providerId": "301",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -1518,6 +1519,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "caa4781a-357f-5359-9562-1241cba08988",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -1589,7 +1591,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "caa4781a-357f-5359-9562-1241cba08988",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -1859,8 +1861,9 @@
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "caa4781a-357f-5359-9562-1241cba08988",
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -1889,7 +1892,13 @@
         "objectType": "deals"
       },
       "name": "createObject-uncertain",
-      "operation": "createObject"
+      "operation": "createObject",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "caa4781a-357f-5359-9562-1241cba08988",
+        "sendCount": 2,
+        "state": "claimed"
+      }
     },
     {
       "callId": "fca56e98-569e-585e-ac80-0eda663618f7",
@@ -2542,6 +2551,7 @@
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
           "providerId": "101",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -3627,6 +3637,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "sendCount": 1,
           "state": "claimed"
         },
         "requestCount": 2,
@@ -3841,6 +3852,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -4165,10 +4177,208 @@
       "name": "upsertObject-prior-unconfirmed",
       "operation": "upsertObject",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+        "sendCount": 3,
         "state": "claimed"
       }
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"id\":101,\"name\":\"Jane Smith\",\"emails\":[{\"value\":\"jane@example.com\",\"primary\":true}],\"org_id\":201,\"owner_id\":7}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "jane@example.com"
+              }
+            ],
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "providerId": "101",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "created": true,
+          "object": {
+            "emails": [
+              "jane@example.com"
+            ],
+            "fields": {
+              "emails": [
+                {
+                  "primary": true,
+                  "value": "jane@example.com"
+                }
+              ],
+              "id": 101,
+              "name": "Jane Smith",
+              "org_id": 201,
+              "owner_id": 7
+            },
+            "id": "101",
+            "name": "Jane Smith",
+            "objectType": "persons",
+            "organizationId": "201",
+            "ownerId": "7"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-prior-create-below-send-cap",
+      "operation": "upsertObject",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "caa4781a-357f-5359-9562-1241cba08988",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/deals",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "org_id": 201,
+            "owner_id": 7,
+            "person_id": 101,
+            "pipeline_id": 2,
+            "stage_id": 3,
+            "title": "Acme renewal",
+            "value": 125.5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "caa4781a-357f-5359-9562-1241cba08988",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa4781a-357f-5359-9562-1241cba08988",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "org_id": 201,
+          "owner_id": 7,
+          "person_id": 101,
+          "pipeline_id": 2,
+          "stage_id": 3,
+          "title": "Acme renewal",
+          "value": 125.5
+        },
+        "objectType": "deals"
+      },
+      "name": "createObject-resend-below-send-cap",
+      "operation": "createObject"
     },
     {
       "callId": "caa4781a-357f-5359-9562-1241cba08988",
@@ -4578,6 +4788,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "sendCount": 1,
           "state": "claimed"
         },
         "requestCount": 3,
@@ -4720,6 +4931,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "sendCount": 1,
           "state": "claimed"
         },
         "requestCount": 4,
@@ -4846,6 +5058,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "sendCount": 1,
           "state": "claimed"
         },
         "requestCount": 3,
@@ -4988,6 +5201,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "sendCount": 1,
           "state": "claimed"
         },
         "requestCount": 4,
@@ -5112,6 +5326,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "sendCount": 1,
           "state": "claimed"
         },
         "requestCount": 2,
@@ -5252,6 +5467,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "sendCount": 1,
           "state": "claimed"
         },
         "requestCount": 3,
@@ -5345,6 +5561,7 @@
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
           "providerId": "101",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -5455,6 +5672,7 @@
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
           "providerId": "101",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -5645,6 +5863,7 @@
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
           "providerId": "101",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {

@@ -551,7 +551,7 @@ var UpsertObjectDefinition = sdkgo.MutationDefinition{
 		{ID: UpsertObjectBranchMultipleMatches, Description: "More than one record carries the identity value, so the connector changed nothing; the Result lists their IDs.", Optional: true},
 		{ID: UpsertObjectBranchProviderRejected, Description: "Pipedrive conclusively rejected the search or the write, such as an invalid field value, a revoked token, or a missing scope; nothing was created.", Optional: true},
 		{ID: UpsertObjectBranchInvalidResponse, Description: "Pipedrive returned an invalid or oversized search page or updated record.", Optional: true},
-		{ID: UpsertObjectBranchUncertain, Description: "A create sent in this or an earlier attempt was not confirmed, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again.", Optional: true},
+		{ID: UpsertObjectBranchUncertain, Description: "Creates sent up to the Step's send cap were not confirmed, or Pipedrive refused a create after an earlier possible one, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again.", Optional: true},
 		{ID: UpsertObjectBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -559,6 +559,8 @@ var UpsertObjectDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type UpsertObjectResult = sdkgo.MutationResult[UpsertedObject]
@@ -581,6 +583,8 @@ type UpsertObjectStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpsertObjectResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpsertedObject]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpsertObjectStep[IN any](config UpsertObjectStepConfig[IN]) sdkgo.MutationStep[IN, UpsertObjectInput, UpsertedObject] {
@@ -619,6 +623,7 @@ func NewUpsertObjectStep[IN any](config UpsertObjectStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -632,7 +637,7 @@ var CreateObjectDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateObjectBranchCreated, Description: "Pipedrive created the record and returned it."},
 		{ID: CreateObjectBranchProviderRejected, Description: "Pipedrive conclusively rejected the create, such as a missing title or name, an unknown stage or owner, or a revoked token; nothing was created.", Optional: true},
-		{ID: CreateObjectBranchUncertain, Description: "The create was sent but its outcome cannot be confirmed, so the record may exist; the connector never sends it again.", Optional: true},
+		{ID: CreateObjectBranchUncertain, Description: "Creates whose outcome is unknown, such as a 5xx or lost response, were sent up to the Step's send cap, or Pipedrive accepted a create without a usable record, so the record may exist; the connector does not send it again.", Optional: true},
 		{ID: CreateObjectBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -640,6 +645,8 @@ var CreateObjectDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateObjectResult = sdkgo.MutationResult[CRMObject]
@@ -660,6 +667,8 @@ type CreateObjectStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateObjectResult]                `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CRMObject]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateObjectStep[IN any](config CreateObjectStepConfig[IN]) sdkgo.MutationStep[IN, CreateObjectInput, CRMObject] {
@@ -692,6 +701,7 @@ func NewCreateObjectStep[IN any](config CreateObjectStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -715,6 +725,7 @@ var UpdateObjectDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateObjectResult = sdkgo.MutationResult[CRMObject]

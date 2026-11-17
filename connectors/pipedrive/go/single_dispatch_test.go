@@ -6,6 +6,7 @@ package pipedrive_test
 import (
 	"context"
 	"net/http"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -49,9 +50,14 @@ func TestCreateObjectFenceRetries503ThenReadsBackAcceptedID(t *testing.T) {
 	require.Equal(t, 2, attempts)
 }
 
-func TestCreateObjectFenceRequiresImmediatelyPreviousCanResend(t *testing.T) {
+func TestCreateObjectFenceCountsAnAttemptWithoutACheckpointAsAPossibleSend(t *testing.T) {
+	var sends atomic.Int32
 	provider := newRecordingPipedrive(t, func(response http.ResponseWriter, _ recordedRequest) {
-		writeError(t, response, http.StatusServiceUnavailable)
+		if sends.Add(1) == 1 {
+			writeError(t, response, http.StatusServiceUnavailable)
+			return
+		}
+		writeError(t, response, http.StatusBadRequest)
 	})
 	ctx := singledispatchtest.NewContext("deal-intake", "stale-create")
 	client := newAPITokenClient(t, provider.URL)
@@ -62,8 +68,8 @@ func TestCreateObjectFenceRequiresImmediatelyPreviousCanResend(t *testing.T) {
 	ctx.AdvanceAttempt()
 	result, err := sdkgo.RunMutation(ctx, client.CreateObject(), pipedriveConnection, dealInput())
 	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
-	require.Len(t, provider.recordedRequests(), 1)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch, "the skipped attempt may have created the deal, so a refusal proves nothing")
+	require.Len(t, provider.recordedRequests(), 2)
 }
 
 func TestCreateObjectFenceRecordsCredentialFailureBeforeSend(t *testing.T) {
@@ -231,14 +237,16 @@ func TestCreateObjectFenceFailsClosedWhenClaimIsLost(t *testing.T) {
 	ctx := singledispatchtest.NewContext("deal-intake", "lost-claim")
 	ctx.LoseNextHeartbeat()
 	client := newAPITokenClient(t, provider.URL)
-	first, err := sdkgo.RunMutation(ctx, client.CreateObject(), pipedriveConnection, dealInput())
+	var retry *sdkgo.RetryError
+	for attempt := 1; attempt < 3; attempt++ {
+		_, err := sdkgo.RunMutation(ctx, client.CreateObject(), pipedriveConnection, dealInput())
+		require.ErrorAs(t, err, &retry, "attempt %d is below the send cap", attempt)
+		ctx.AdvanceAttempt()
+	}
+	last, err := sdkgo.RunMutation(ctx, client.CreateObject(), pipedriveConnection, dealInput())
 	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, first.Branch)
-	ctx.AdvanceAttempt()
-	second, err := sdkgo.RunMutation(ctx, client.CreateObject(), pipedriveConnection, dealInput())
-	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, second.Branch)
-	require.Len(t, provider.recordedRequests(), 1)
+	require.Equal(t, sdkgo.UncertainBranchID, last.Branch, "a lost claim still counts as a send")
+	require.Len(t, provider.recordedRequests(), 3)
 }
 
 func TestCreateObjectFenceCutsMidRequestAtAttemptMargin(t *testing.T) {
@@ -248,9 +256,9 @@ func TestCreateObjectFenceCutsMidRequestAtAttemptMargin(t *testing.T) {
 	ctx := singledispatchtest.NewContext("deal-intake", "deadline-cut")
 	cancel := ctx.SetDeadline(time.Now().Add(time.Second))
 	defer cancel()
-	result, err := sdkgo.RunMutation(ctx, newAPITokenClient(t, provider.URL).CreateObject(), pipedriveConnection, dealInput())
-	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	_, err := sdkgo.RunMutation(ctx, newAPITokenClient(t, provider.URL).CreateObject(), pipedriveConnection, dealInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "a cut request has an unknown outcome below the send cap")
 	require.Len(t, provider.recordedRequests(), 1)
 	require.False(t, ctx.Err() == context.DeadlineExceeded, "the request ended before the Step deadline")
 }
@@ -335,9 +343,9 @@ func TestCreateObjectFenceDisablesHTTPTransportReplayOnReusedConnection(t *testi
 	_, err = sdkgo.RunQuery(newStepDexContext("prime-reused-connection"), client.GetObject(), pipedriveConnection,
 		pipedrive.GetObjectInput{ObjectType: pipedrive.ObjectTypeDeals, ObjectID: "42"})
 	require.NoError(t, err)
-	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("deal-intake", "reused-create"), client.CreateObject(), pipedriveConnection, dealInput())
-	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	_, err = sdkgo.RunMutation(singledispatchtest.NewContext("deal-intake", "reused-create"), client.CreateObject(), pipedriveConnection, dealInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "a dropped write has an unknown outcome below the send cap")
 	requests := provider.recordedRequests()
 	require.Len(t, requests, 2)
 	require.Equal(t, http.MethodPost, requests[1].method)
