@@ -41,12 +41,56 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	GetPackage() sdkgo.Query[GetPackageInput, PackageStatus]
+	ListPackages() sdkgo.Query[ListPackagesInput, PackagesPage]
+	CreateDraftPackage() sdkgo.Mutation[CreateDraftPackageInput, CreatedPackage]
+	UpdatePackageName() sdkgo.Mutation[UpdatePackageNameInput, UpdatedPackage]
+	SendPackage() sdkgo.Mutation[SendPackageInput, SentPackage]
+	TrashPackage() sdkgo.Mutation[TrashPackageInput, TrashedPackage]
+	DeletePackage() sdkgo.Mutation[DeletePackageInput, DeletedPackage]
+	ListSignerRoles() sdkgo.Query[ListSignerRolesInput, SignerRoleIDsPage]
+	GetSignerRole() sdkgo.Query[GetSignerRoleInput, SignerRoleID]
+	AddSigner() sdkgo.Mutation[AddSignerInput, SignerRoleID]
+	UpdateSigner() sdkgo.Mutation[UpdateSignerInput, SignerRoleID]
+	RemoveSigner() sdkgo.Mutation[RemoveSignerInput, SignerRoleID]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) GetPackage() sdkgo.Query[GetPackageInput, PackageStatus] {
 	return operations.client.GetPackage()
+}
+func (operations clientOperations) ListPackages() sdkgo.Query[ListPackagesInput, PackagesPage] {
+	return operations.client.ListPackages()
+}
+func (operations clientOperations) CreateDraftPackage() sdkgo.Mutation[CreateDraftPackageInput, CreatedPackage] {
+	return operations.client.CreateDraftPackage()
+}
+func (operations clientOperations) UpdatePackageName() sdkgo.Mutation[UpdatePackageNameInput, UpdatedPackage] {
+	return operations.client.UpdatePackageName()
+}
+func (operations clientOperations) SendPackage() sdkgo.Mutation[SendPackageInput, SentPackage] {
+	return operations.client.SendPackage()
+}
+func (operations clientOperations) TrashPackage() sdkgo.Mutation[TrashPackageInput, TrashedPackage] {
+	return operations.client.TrashPackage()
+}
+func (operations clientOperations) DeletePackage() sdkgo.Mutation[DeletePackageInput, DeletedPackage] {
+	return operations.client.DeletePackage()
+}
+func (operations clientOperations) ListSignerRoles() sdkgo.Query[ListSignerRolesInput, SignerRoleIDsPage] {
+	return operations.client.ListSignerRoles()
+}
+func (operations clientOperations) GetSignerRole() sdkgo.Query[GetSignerRoleInput, SignerRoleID] {
+	return operations.client.GetSignerRole()
+}
+func (operations clientOperations) AddSigner() sdkgo.Mutation[AddSignerInput, SignerRoleID] {
+	return operations.client.AddSigner()
+}
+func (operations clientOperations) UpdateSigner() sdkgo.Mutation[UpdateSignerInput, SignerRoleID] {
+	return operations.client.UpdateSigner()
+}
+func (operations clientOperations) RemoveSigner() sdkgo.Mutation[RemoveSignerInput, SignerRoleID] {
+	return operations.client.RemoveSigner()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -255,6 +299,849 @@ func NewGetPackageStep[IN any](config GetPackageStepConfig[IN]) sdkgo.QueryStep[
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetPackageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListPackagesBranchListed sdkgo.BranchID = "listed"
+const ListPackagesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPackagesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPackagesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPackagesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPackages"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPackagesBranchListed, Description: "OneSpan Sign returned the package outcome."},
+		{ID: ListPackagesBranchProviderRejected, Description: "OneSpan Sign rejected the request.", Optional: true},
+		{ID: ListPackagesBranchInvalidResponse, Description: "OneSpan Sign returned invalid package data.", Optional: true},
+		{ID: ListPackagesBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPackagesResult = sdkgo.QueryResult[PackagesPage]
+
+type ListPackagesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=onespan-sign"`
+	operationID                    struct{}                                        `connector:"operationId=listPackages"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPackagesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPackagesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListPackagesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPackagesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPackagesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PackagesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListPackagesStep[IN any](config ListPackagesStepConfig[IN]) sdkgo.QueryStep[IN, ListPackagesInput, PackagesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("onespan-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPackagesInput, PackagesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListPackages(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPackagesResult] {
+			branches := make([]sdkgo.BranchTarget[ListPackagesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPackagesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPackagesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPackagesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPackagesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateDraftPackageBranchCreated sdkgo.BranchID = "created"
+const CreateDraftPackageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateDraftPackageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateDraftPackageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateDraftPackageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createDraftPackage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateDraftPackageBranchCreated, Description: "OneSpan Sign returned the package outcome."},
+		{ID: CreateDraftPackageBranchProviderRejected, Description: "OneSpan Sign rejected the request.", Optional: true},
+		{ID: CreateDraftPackageBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+		{ID: CreateDraftPackageBranchUncertain, Description: "Package outcome may be committed but could not be confirmed.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateDraftPackageResult = sdkgo.MutationResult[CreatedPackage]
+
+type CreateDraftPackageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=onespan-sign"`
+	operationID                       struct{}                                             `connector:"operationId=createDraftPackage"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateDraftPackageInput                     `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateDraftPackageResult]               `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateDraftPackageResult]               `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateDraftPackageResult]               `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateDraftPackageResult]               `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedPackage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateDraftPackageStep[IN any](config CreateDraftPackageStepConfig[IN]) sdkgo.MutationStep[IN, CreateDraftPackageInput, CreatedPackage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("onespan-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateDraftPackageInput, CreatedPackage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateDraftPackage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateDraftPackageResult] {
+			branches := make([]sdkgo.BranchTarget[CreateDraftPackageResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateDraftPackageBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateDraftPackageBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateDraftPackageBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateDraftPackageBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdatePackageNameBranchUpdated sdkgo.BranchID = "updated"
+const UpdatePackageNameBranchNotFound sdkgo.BranchID = "notFound"
+const UpdatePackageNameBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdatePackageNameBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdatePackageNameBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdatePackageNameDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updatePackageName"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdatePackageNameBranchUpdated, Description: "OneSpan Sign returned the package outcome."},
+		{ID: UpdatePackageNameBranchNotFound, Description: "OneSpan Sign did not find the package.", Optional: true},
+		{ID: UpdatePackageNameBranchProviderRejected, Description: "OneSpan Sign rejected the request.", Optional: true},
+		{ID: UpdatePackageNameBranchInvalidResponse, Description: "OneSpan Sign returned invalid package data.", Optional: true},
+		{ID: UpdatePackageNameBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdatePackageNameResult = sdkgo.MutationResult[UpdatedPackage]
+
+type UpdatePackageNameStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=onespan-sign"`
+	operationID                       struct{}                                             `connector:"operationId=updatePackageName"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdatePackageNameInput                      `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdatePackageNameResult]                `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdatePackageNameResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdatePackageNameResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdatePackageNameResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdatePackageNameResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedPackage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUpdatePackageNameStep[IN any](config UpdatePackageNameStepConfig[IN]) sdkgo.MutationStep[IN, UpdatePackageNameInput, UpdatedPackage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("onespan-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdatePackageNameInput, UpdatedPackage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdatePackageName(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdatePackageNameResult] {
+			branches := make([]sdkgo.BranchTarget[UpdatePackageNameResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdatePackageNameBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdatePackageNameBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdatePackageNameBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdatePackageNameBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdatePackageNameBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SendPackageBranchSent sdkgo.BranchID = "sent"
+const SendPackageBranchNotFound sdkgo.BranchID = "notFound"
+const SendPackageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendPackageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const SendPackageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var SendPackageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendPackage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendPackageBranchSent, Description: "OneSpan Sign returned the package outcome."},
+		{ID: SendPackageBranchNotFound, Description: "OneSpan Sign did not find the package.", Optional: true},
+		{ID: SendPackageBranchProviderRejected, Description: "OneSpan Sign rejected the request.", Optional: true},
+		{ID: SendPackageBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+		{ID: SendPackageBranchUncertain, Description: "Package outcome may be committed but could not be confirmed.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendPackageResult = sdkgo.MutationResult[SentPackage]
+
+type SendPackageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=onespan-sign"`
+	operationID                       struct{}                                          `connector:"operationId=sendPackage"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendPackageInput                         `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendPackageResult]                   `connector:"branch=sent"`
+	NotFound                          sdkgo.Target[SendPackageResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[SendPackageResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[SendPackageResult]                   `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[SendPackageResult]                   `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentPackage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendPackageStep[IN any](config SendPackageStepConfig[IN]) sdkgo.MutationStep[IN, SendPackageInput, SentPackage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("onespan-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendPackageInput, SentPackage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendPackage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendPackageResult] {
+			branches := make([]sdkgo.BranchTarget[SendPackageResult], 0, 5)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendPackageBranchSent))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(SendPackageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendPackageBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendPackageBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendPackageBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const TrashPackageBranchTrashed sdkgo.BranchID = "trashed"
+const TrashPackageBranchNotFound sdkgo.BranchID = "notFound"
+const TrashPackageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const TrashPackageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const TrashPackageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var TrashPackageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "trashPackage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: TrashPackageBranchTrashed, Description: "OneSpan Sign returned the package outcome."},
+		{ID: TrashPackageBranchNotFound, Description: "OneSpan Sign did not find the package.", Optional: true},
+		{ID: TrashPackageBranchProviderRejected, Description: "OneSpan Sign rejected the request.", Optional: true},
+		{ID: TrashPackageBranchInvalidResponse, Description: "OneSpan Sign returned invalid package data.", Optional: true},
+		{ID: TrashPackageBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type TrashPackageResult = sdkgo.MutationResult[TrashedPackage]
+
+type TrashPackageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=onespan-sign"`
+	operationID                       struct{}                                             `connector:"operationId=trashPackage"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) TrashPackageInput                           `connector:"mapToOperationInput"`
+	Trashed                           sdkgo.Target[TrashPackageResult]                     `connector:"branch=trashed"`
+	NotFound                          sdkgo.Target[TrashPackageResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[TrashPackageResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[TrashPackageResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[TrashPackageResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TrashedPackage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewTrashPackageStep[IN any](config TrashPackageStepConfig[IN]) sdkgo.MutationStep[IN, TrashPackageInput, TrashedPackage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("onespan-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TrashPackageInput, TrashedPackage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.TrashPackage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[TrashPackageResult] {
+			branches := make([]sdkgo.BranchTarget[TrashPackageResult], 0, 5)
+			if config.Trashed.HasStep() {
+				branches = append(branches, config.Trashed.BranchTarget(TrashPackageBranchTrashed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(TrashPackageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(TrashPackageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(TrashPackageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(TrashPackageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeletePackageBranchDeleted sdkgo.BranchID = "deleted"
+const DeletePackageBranchNotFound sdkgo.BranchID = "notFound"
+const DeletePackageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeletePackageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeletePackageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeletePackageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deletePackage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeletePackageBranchDeleted, Description: "OneSpan Sign returned the package outcome."},
+		{ID: DeletePackageBranchNotFound, Description: "OneSpan Sign did not find the package.", Optional: true},
+		{ID: DeletePackageBranchProviderRejected, Description: "OneSpan Sign rejected the request.", Optional: true},
+		{ID: DeletePackageBranchInvalidResponse, Description: "OneSpan Sign returned invalid package data.", Optional: true},
+		{ID: DeletePackageBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeletePackageResult = sdkgo.MutationResult[DeletedPackage]
+
+type DeletePackageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=onespan-sign"`
+	operationID                       struct{}                                             `connector:"operationId=deletePackage"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeletePackageInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeletePackageResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeletePackageResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeletePackageResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeletePackageResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeletePackageResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedPackage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeletePackageStep[IN any](config DeletePackageStepConfig[IN]) sdkgo.MutationStep[IN, DeletePackageInput, DeletedPackage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("onespan-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeletePackageInput, DeletedPackage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeletePackage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeletePackageResult] {
+			branches := make([]sdkgo.BranchTarget[DeletePackageResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeletePackageBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeletePackageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeletePackageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeletePackageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeletePackageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSignerRolesBranchListed sdkgo.BranchID = "listed"
+const ListSignerRolesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSignerRolesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSignerRolesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSignerRolesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSignerRoles"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSignerRolesBranchListed, Description: "OneSpan Sign returned the signer role outcome."},
+		{ID: ListSignerRolesBranchProviderRejected, Description: "OneSpan Sign rejected the signer role request.", Optional: true},
+		{ID: ListSignerRolesBranchInvalidResponse, Description: "OneSpan Sign returned invalid role data.", Optional: true},
+		{ID: ListSignerRolesBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSignerRolesResult = sdkgo.QueryResult[SignerRoleIDsPage]
+
+type ListSignerRolesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=onespan-sign"`
+	operationID                    struct{}                                             `connector:"operationId=listSignerRoles"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSignerRolesInput                        `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSignerRolesResult]                  `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSignerRolesResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSignerRolesResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSignerRolesResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SignerRoleIDsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewListSignerRolesStep[IN any](config ListSignerRolesStepConfig[IN]) sdkgo.QueryStep[IN, ListSignerRolesInput, SignerRoleIDsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("onespan-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSignerRolesInput, SignerRoleIDsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSignerRoles(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSignerRolesResult] {
+			branches := make([]sdkgo.BranchTarget[ListSignerRolesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSignerRolesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSignerRolesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSignerRolesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSignerRolesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSignerRoleBranchFound sdkgo.BranchID = "found"
+const GetSignerRoleBranchNotFound sdkgo.BranchID = "notFound"
+const GetSignerRoleBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSignerRoleBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSignerRoleBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSignerRoleDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSignerRole"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSignerRoleBranchFound, Description: "OneSpan Sign returned the signer role outcome."},
+		{ID: GetSignerRoleBranchNotFound, Description: "OneSpan Sign did not find the signer role.", Optional: true},
+		{ID: GetSignerRoleBranchProviderRejected, Description: "OneSpan Sign rejected the signer role request.", Optional: true},
+		{ID: GetSignerRoleBranchInvalidResponse, Description: "OneSpan Sign returned invalid role data.", Optional: true},
+		{ID: GetSignerRoleBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSignerRoleResult = sdkgo.QueryResult[SignerRoleID]
+
+type GetSignerRoleStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=onespan-sign"`
+	operationID                    struct{}                                        `connector:"operationId=getSignerRole"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSignerRoleInput                     `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSignerRoleResult]               `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetSignerRoleResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetSignerRoleResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSignerRoleResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSignerRoleResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SignerRoleID]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetSignerRoleStep[IN any](config GetSignerRoleStepConfig[IN]) sdkgo.QueryStep[IN, GetSignerRoleInput, SignerRoleID] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("onespan-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSignerRoleInput, SignerRoleID]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSignerRole(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSignerRoleResult] {
+			branches := make([]sdkgo.BranchTarget[GetSignerRoleResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSignerRoleBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetSignerRoleBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSignerRoleBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSignerRoleBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSignerRoleBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const AddSignerBranchAdded sdkgo.BranchID = "added"
+const AddSignerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const AddSignerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const AddSignerBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var AddSignerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "addSigner"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: AddSignerBranchAdded, Description: "OneSpan Sign returned the signer role outcome."},
+		{ID: AddSignerBranchProviderRejected, Description: "OneSpan Sign rejected the signer role request.", Optional: true},
+		{ID: AddSignerBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+		{ID: AddSignerBranchUncertain, Description: "Signer addition may have succeeded but could not be confirmed.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type AddSignerResult = sdkgo.MutationResult[SignerRoleID]
+
+type AddSignerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=onespan-sign"`
+	operationID                       struct{}                                           `connector:"operationId=addSigner"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) AddSignerInput                            `connector:"mapToOperationInput"`
+	Added                             sdkgo.Target[AddSignerResult]                      `connector:"branch=added"`
+	ProviderRejected                  sdkgo.Target[AddSignerResult]                      `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[AddSignerResult]                      `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[AddSignerResult]                      `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SignerRoleID]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewAddSignerStep[IN any](config AddSignerStepConfig[IN]) sdkgo.MutationStep[IN, AddSignerInput, SignerRoleID] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("onespan-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddSignerInput, SignerRoleID]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.AddSigner(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[AddSignerResult] {
+			branches := make([]sdkgo.BranchTarget[AddSignerResult], 0, 4)
+			if config.Added.HasStep() {
+				branches = append(branches, config.Added.BranchTarget(AddSignerBranchAdded))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(AddSignerBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(AddSignerBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(AddSignerBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateSignerBranchUpdated sdkgo.BranchID = "updated"
+const UpdateSignerBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateSignerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateSignerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateSignerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateSignerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateSigner"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateSignerBranchUpdated, Description: "OneSpan Sign returned the signer role outcome."},
+		{ID: UpdateSignerBranchNotFound, Description: "OneSpan Sign did not find the signer role.", Optional: true},
+		{ID: UpdateSignerBranchProviderRejected, Description: "OneSpan Sign rejected the signer role request.", Optional: true},
+		{ID: UpdateSignerBranchInvalidResponse, Description: "OneSpan Sign returned invalid role data.", Optional: true},
+		{ID: UpdateSignerBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateSignerResult = sdkgo.MutationResult[SignerRoleID]
+
+type UpdateSignerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=onespan-sign"`
+	operationID                       struct{}                                           `connector:"operationId=updateSigner"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateSignerInput                         `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateSignerResult]                   `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateSignerResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateSignerResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateSignerResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateSignerResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SignerRoleID]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateSignerStep[IN any](config UpdateSignerStepConfig[IN]) sdkgo.MutationStep[IN, UpdateSignerInput, SignerRoleID] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("onespan-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateSignerInput, SignerRoleID]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateSigner(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateSignerResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateSignerResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateSignerBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateSignerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateSignerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateSignerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateSignerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RemoveSignerBranchRemoved sdkgo.BranchID = "removed"
+const RemoveSignerBranchNotFound sdkgo.BranchID = "notFound"
+const RemoveSignerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RemoveSignerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const RemoveSignerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RemoveSignerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "removeSigner"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RemoveSignerBranchRemoved, Description: "OneSpan Sign returned the signer role outcome."},
+		{ID: RemoveSignerBranchNotFound, Description: "OneSpan Sign did not find the signer role.", Optional: true},
+		{ID: RemoveSignerBranchProviderRejected, Description: "OneSpan Sign rejected the signer role request.", Optional: true},
+		{ID: RemoveSignerBranchInvalidResponse, Description: "OneSpan Sign returned invalid role data.", Optional: true},
+		{ID: RemoveSignerBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RemoveSignerResult = sdkgo.MutationResult[SignerRoleID]
+
+type RemoveSignerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=onespan-sign"`
+	operationID                       struct{}                                           `connector:"operationId=removeSigner"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) RemoveSignerInput                         `connector:"mapToOperationInput"`
+	Removed                           sdkgo.Target[RemoveSignerResult]                   `connector:"branch=removed"`
+	NotFound                          sdkgo.Target[RemoveSignerResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[RemoveSignerResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[RemoveSignerResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[RemoveSignerResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SignerRoleID]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewRemoveSignerStep[IN any](config RemoveSignerStepConfig[IN]) sdkgo.MutationStep[IN, RemoveSignerInput, SignerRoleID] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("onespan-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RemoveSignerInput, SignerRoleID]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RemoveSigner(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RemoveSignerResult] {
+			branches := make([]sdkgo.BranchTarget[RemoveSignerResult], 0, 5)
+			if config.Removed.HasStep() {
+				branches = append(branches, config.Removed.BranchTarget(RemoveSignerBranchRemoved))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(RemoveSignerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RemoveSignerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RemoveSignerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RemoveSignerBranchDefect))
 			}
 			return branches
 		}(),

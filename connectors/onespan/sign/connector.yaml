@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: onespan-sign
   displayName: OneSpan Sign
-  description: Read a transaction package's name and status through the OneSpan Sign REST API.
+  description: Read and manage transaction packages through the OneSpan Sign REST API.
   company: OneSpan
   categories: [files-documents]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: onespan-sign
   languages:
@@ -76,3 +76,186 @@ spec:
           default: true
           description: One example completed package is returned.
           output: {id: '9sKhW-h-qS9m6Ho3zRv3n2a-rkI=', name: Example agreement, status: COMPLETED}
+    - name: listPackages
+      goName: ListPackages
+      inputType: ListPackagesInput
+      outputType: PackagesPage
+      kind: query
+      description: List transaction packages by status.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: OneSpan Sign returned the package outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: OneSpan Sign rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OneSpan Sign returned invalid package data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example package outcome., output: {packages: [{id: '9sKhW-h-qS9m6Ho3zRv3n2a-rkI=', name: Example agreement, status: DRAFT}], count: 1}}
+    - name: createDraftPackage
+      goName: CreateDraftPackage
+      inputType: CreateDraftPackageInput
+      outputType: CreatedPackage
+      kind: mutation
+      description: Create a draft transaction package without documents.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: created, goName: Created, description: OneSpan Sign returned the package outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: OneSpan Sign rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Package outcome may be committed but could not be confirmed., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example package outcome., output: {id: '9sKhW-h-qS9m6Ho3zRv3n2a-rkI='}}
+    - name: updatePackageName
+      goName: UpdatePackageName
+      inputType: UpdatePackageNameInput
+      outputType: UpdatedPackage
+      kind: mutation
+      description: Set the name of a draft transaction package.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: OneSpan Sign returned the package outcome.}
+        - {id: notFound, goName: NotFound, description: OneSpan Sign did not find the package., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OneSpan Sign rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OneSpan Sign returned invalid package data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example package outcome., output: {id: '9sKhW-h-qS9m6Ho3zRv3n2a-rkI=', name: Example agreement}}
+    - name: sendPackage
+      goName: SendPackage
+      inputType: SendPackageInput
+      outputType: SentPackage
+      kind: mutation
+      description: Send a prepared transaction for signing.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: sent, goName: Sent, description: OneSpan Sign returned the package outcome.}
+        - {id: notFound, goName: NotFound, description: OneSpan Sign did not find the package., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OneSpan Sign rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Package outcome may be committed but could not be confirmed., optional: true}
+      mocks:
+        - {name: sentDefault, branch: sent, default: true, description: Example package outcome., output: {id: '9sKhW-h-qS9m6Ho3zRv3n2a-rkI=', status: SENT}}
+    - name: trashPackage
+      goName: TrashPackage
+      inputType: TrashPackageInput
+      outputType: TrashedPackage
+      kind: mutation
+      description: Move a transaction to Trash.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: trashed, goName: Trashed, description: OneSpan Sign returned the package outcome.}
+        - {id: notFound, goName: NotFound, description: OneSpan Sign did not find the package., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OneSpan Sign rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OneSpan Sign returned invalid package data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: trashedDefault, branch: trashed, default: true, description: Example package outcome., output: {id: '9sKhW-h-qS9m6Ho3zRv3n2a-rkI='}}
+    - name: deletePackage
+      goName: DeletePackage
+      inputType: DeletePackageInput
+      outputType: DeletedPackage
+      kind: mutation
+      description: Permanently delete a transaction package.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: OneSpan Sign returned the package outcome.}
+        - {id: notFound, goName: NotFound, description: OneSpan Sign did not find the package., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OneSpan Sign rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OneSpan Sign returned invalid package data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Example package outcome., output: {id: '9sKhW-h-qS9m6Ho3zRv3n2a-rkI='}}
+    - name: listSignerRoles
+      goName: ListSignerRoles
+      inputType: ListSignerRolesInput
+      outputType: SignerRoleIDsPage
+      kind: query
+      description: List signer role IDs in a transaction.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: OneSpan Sign returned the signer role outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: OneSpan Sign rejected the signer role request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OneSpan Sign returned invalid role data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example signer role outcome., output: {roleIds: [Signer1]}}
+    - name: getSignerRole
+      goName: GetSignerRole
+      inputType: GetSignerRoleInput
+      outputType: SignerRoleID
+      kind: query
+      description: Check one signer role without returning identity details.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: OneSpan Sign returned the signer role outcome.}
+        - {id: notFound, goName: NotFound, description: OneSpan Sign did not find the signer role., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OneSpan Sign rejected the signer role request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OneSpan Sign returned invalid role data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example signer role outcome., output: {roleId: Signer1}}
+    - name: addSigner
+      goName: AddSigner
+      inputType: AddSignerInput
+      outputType: SignerRoleID
+      kind: mutation
+      description: Add one named signer role to a draft package.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: added, goName: Added, description: OneSpan Sign returned the signer role outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: OneSpan Sign rejected the signer role request., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Signer addition may have succeeded but could not be confirmed., optional: true}
+      mocks:
+        - {name: addedDefault, branch: added, default: true, description: Example signer role outcome., output: {roleId: Signer1}}
+    - name: updateSigner
+      goName: UpdateSigner
+      inputType: UpdateSignerInput
+      outputType: SignerRoleID
+      kind: mutation
+      description: Set a draft signer role's identity fields.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: OneSpan Sign returned the signer role outcome.}
+        - {id: notFound, goName: NotFound, description: OneSpan Sign did not find the signer role., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OneSpan Sign rejected the signer role request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OneSpan Sign returned invalid role data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example signer role outcome., output: {roleId: Signer1}}
+    - name: removeSigner
+      goName: RemoveSigner
+      inputType: RemoveSignerInput
+      outputType: SignerRoleID
+      kind: mutation
+      description: Remove one signer role from a draft package.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: removed, goName: Removed, description: OneSpan Sign returned the signer role outcome.}
+        - {id: notFound, goName: NotFound, description: OneSpan Sign did not find the signer role., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OneSpan Sign rejected the signer role request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OneSpan Sign returned invalid role data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: removedDefault, branch: removed, default: true, description: Example signer role outcome., output: {roleId: Signer1}}
