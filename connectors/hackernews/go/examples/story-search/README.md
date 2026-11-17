@@ -117,6 +117,16 @@ make test-connectors
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 make test-connector-integration
 ```
 
+The opt-in live test runs this Flow through Dex against Hacker News's public
+Search API. With `dexcli dev -open=false` running on port 8801, run:
+
+```sh
+cd connectors/hackernews/go
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
+  GOWORK=off go test -tags=integration,live ./examples/story-search/flow \
+  -run '^TestStorySearchLiveCommentsWithRealDex$' -count=1 -v
+```
+
 A live acceptance run uses the same **Connections**, Worker health, and
 **Start Flow** endpoints as Dex Web. Inspect the completed report's stories,
 window, and links before publishing a change.
