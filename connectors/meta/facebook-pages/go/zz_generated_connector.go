@@ -40,6 +40,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	UpdatePost() sdkgo.Mutation[UpdatePostInput, ChangedPost]
+	DeletePost() sdkgo.Mutation[DeletePostInput, ChangedPost]
 	ListPosts() sdkgo.Query[ListPostsInput, PagePostsPage]
 	GetPost() sdkgo.Query[GetPostInput, PagePostMetadata]
 	PublishTextPost() sdkgo.Mutation[PublishTextPostInput, PublishedPost]
@@ -47,6 +49,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) UpdatePost() sdkgo.Mutation[UpdatePostInput, ChangedPost] {
+	return operations.client.UpdatePost()
+}
+func (operations clientOperations) DeletePost() sdkgo.Mutation[DeletePostInput, ChangedPost] {
+	return operations.client.DeletePost()
+}
 func (operations clientOperations) ListPosts() sdkgo.Query[ListPostsInput, PagePostsPage] {
 	return operations.client.ListPosts()
 }
@@ -192,6 +200,160 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential page_access_token is required")
 	}
 	return nil
+}
+
+const UpdatePostBranchUpdated sdkgo.BranchID = "updated"
+const UpdatePostBranchNotFound sdkgo.BranchID = "notFound"
+const UpdatePostBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdatePostBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdatePostBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdatePostDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updatePost"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdatePostBranchUpdated, Description: "Meta confirmed the post update."},
+		{ID: UpdatePostBranchNotFound, Description: "The post is missing or inaccessible.", Optional: true},
+		{ID: UpdatePostBranchProviderRejected, Description: "Meta definitively rejected the update.", Optional: true},
+		{ID: UpdatePostBranchInvalidResponse, Description: "Meta returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdatePostBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdatePostResult = sdkgo.MutationResult[ChangedPost]
+
+type UpdatePostStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=facebook-pages"`
+	operationID                       struct{}                                          `connector:"operationId=updatePost"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdatePostInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdatePostResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdatePostResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdatePostResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdatePostResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdatePostResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ChangedPost]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewUpdatePostStep[IN any](config UpdatePostStepConfig[IN]) sdkgo.MutationStep[IN, UpdatePostInput, ChangedPost] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("facebook-pages connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdatePostInput, ChangedPost]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdatePost(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdatePostResult] {
+			branches := make([]sdkgo.BranchTarget[UpdatePostResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdatePostBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdatePostBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdatePostBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdatePostBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdatePostBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeletePostBranchDeleted sdkgo.BranchID = "deleted"
+const DeletePostBranchNotFound sdkgo.BranchID = "notFound"
+const DeletePostBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeletePostBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeletePostBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeletePostDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deletePost"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeletePostBranchDeleted, Description: "Meta confirmed the post deletion."},
+		{ID: DeletePostBranchNotFound, Description: "The post is already missing or inaccessible.", Optional: true},
+		{ID: DeletePostBranchProviderRejected, Description: "Meta definitively rejected deletion.", Optional: true},
+		{ID: DeletePostBranchInvalidResponse, Description: "Meta returned malformed or oversized JSON.", Optional: true},
+		{ID: DeletePostBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeletePostResult = sdkgo.MutationResult[ChangedPost]
+
+type DeletePostStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=facebook-pages"`
+	operationID                       struct{}                                          `connector:"operationId=deletePost"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeletePostInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeletePostResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeletePostResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeletePostResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeletePostResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeletePostResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ChangedPost]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeletePostStep[IN any](config DeletePostStepConfig[IN]) sdkgo.MutationStep[IN, DeletePostInput, ChangedPost] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("facebook-pages connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeletePostInput, ChangedPost]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeletePost(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeletePostResult] {
+			branches := make([]sdkgo.BranchTarget[DeletePostResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeletePostBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeletePostBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeletePostBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeletePostBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeletePostBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListPostsBranchListed sdkgo.BranchID = "listed"
