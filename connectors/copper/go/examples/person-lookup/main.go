@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{personlookup.NewFlow(connection), personlookup.NewPeopleSearchFlow(connection), personlookup.NewCompaniesSearchFlow(connection), personlookup.NewLeadsSearchFlow(connection), personlookup.NewLeadCreationFlow(connection), personlookup.NewOpportunitiesSearchFlow(connection), personlookup.NewOpportunityCreationFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{personlookup.NewFlow(connection), personlookup.NewPeopleSearchFlow(connection), personlookup.NewCompaniesSearchFlow(connection), personlookup.NewLeadsSearchFlow(connection), personlookup.NewLeadCreationFlow(connection), personlookup.NewOpportunitiesSearchFlow(connection), personlookup.NewOpportunityCreationFlow(connection), personlookup.NewProjectsSearchFlow(connection), personlookup.NewProjectCreationFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Copper personlookup Flow: %w", err)
 	}

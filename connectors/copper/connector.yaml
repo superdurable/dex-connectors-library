@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: copper
   displayName: Copper CRM
-  description: Manage Copper leads, people, companies, and opportunities without custom fields.
+  description: Manage Copper leads, people, companies, opportunities, and projects without custom fields.
   company: Copper
   categories: [crm-sales]
   version: v0.2.0
@@ -302,6 +302,107 @@ spec:
           default: true
           description: One sample lead status is listed.
           output: {statuses: [{id: 208231, name: New}]}
+    - name: createProject
+      goName: CreateProject
+      inputType: CreateProjectInput
+      outputType: ProjectMetadata
+      kind: mutation
+      description: Create a Copper project with a name and bounded retry.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Copper created the project.}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample project is created.
+          output: {id: 208105, name: Sample Project, status: Open}
+    - name: listProjects
+      goName: ListProjects
+      inputType: ListProjectsInput
+      outputType: ProjectsPage
+      kind: query
+      description: Search one bounded page of projects by name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Copper returned a page of projects.}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Copper returned malformed or oversized projects JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample projects page is returned.
+          output: {projects: [{id: 208105, name: Sample Project, status: Open}]}
+    - name: updateProject
+      goName: UpdateProject
+      inputType: UpdateProjectInput
+      outputType: ProjectMetadata
+      kind: mutation
+      description: Replace a Copper project's name and details without changing other fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Copper updated the project.}
+        - {id: notFound, goName: NotFound, description: No project matches the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample project is updated.
+          output: {id: 208105, name: Sample Project, status: Open}
+    - name: deleteProject
+      goName: DeleteProject
+      inputType: DeleteProjectInput
+      outputType: DeleteProjectOutput
+      kind: mutation
+      description: Permanently delete a Copper project by numeric ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Copper deleted the project.}
+        - {id: notFound, goName: NotFound, description: No project matches the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample project is deleted.
+          output: {id: 208105, deleted: true}
+    - name: getProject
+      goName: GetProject
+      inputType: GetProjectInput
+      outputType: ProjectMetadata
+      kind: query
+      description: Read a Copper project's ID, name, and status by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Copper returned the selected project.}
+        - {id: notFound, goName: NotFound, description: No project matches this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Copper returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or unavailable credentials., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample project is returned.
+          output: {id: 208105, name: Sample Project, status: Open}
     - name: createOpportunity
       goName: CreateOpportunity
       inputType: CreateOpportunityInput

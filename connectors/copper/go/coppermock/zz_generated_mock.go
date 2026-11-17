@@ -30,6 +30,11 @@ type Mock struct {
 	deletePerson        *connectormock.Mutation[copper.DeletePersonInput, copper.DeletePersonOutput]
 	listCustomerSources *connectormock.Query[copper.ListCustomerSourcesInput, copper.CustomerSourcesList]
 	listLeadStatuses    *connectormock.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList]
+	createProject       *connectormock.Mutation[copper.CreateProjectInput, copper.ProjectMetadata]
+	listProjects        *connectormock.Query[copper.ListProjectsInput, copper.ProjectsPage]
+	updateProject       *connectormock.Mutation[copper.UpdateProjectInput, copper.ProjectMetadata]
+	deleteProject       *connectormock.Mutation[copper.DeleteProjectInput, copper.DeleteProjectOutput]
+	getProject          *connectormock.Query[copper.GetProjectInput, copper.ProjectMetadata]
 	createOpportunity   *connectormock.Mutation[copper.CreateOpportunityInput, copper.OpportunityMetadata]
 	listOpportunities   *connectormock.Query[copper.ListOpportunitiesInput, copper.OpportunitiesPage]
 	updateOpportunity   *connectormock.Mutation[copper.UpdateOpportunityInput, copper.OpportunityMetadata]
@@ -59,6 +64,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		deletePerson:        connectormock.NewMutation[copper.DeletePersonInput, copper.DeletePersonOutput](t, copper.DeletePersonDefinition),
 		listCustomerSources: connectormock.NewQuery[copper.ListCustomerSourcesInput, copper.CustomerSourcesList](t, copper.ListCustomerSourcesDefinition),
 		listLeadStatuses:    connectormock.NewQuery[copper.ListLeadStatusesInput, copper.LeadStatusesList](t, copper.ListLeadStatusesDefinition),
+		createProject:       connectormock.NewMutation[copper.CreateProjectInput, copper.ProjectMetadata](t, copper.CreateProjectDefinition),
+		listProjects:        connectormock.NewQuery[copper.ListProjectsInput, copper.ProjectsPage](t, copper.ListProjectsDefinition),
+		updateProject:       connectormock.NewMutation[copper.UpdateProjectInput, copper.ProjectMetadata](t, copper.UpdateProjectDefinition),
+		deleteProject:       connectormock.NewMutation[copper.DeleteProjectInput, copper.DeleteProjectOutput](t, copper.DeleteProjectDefinition),
+		getProject:          connectormock.NewQuery[copper.GetProjectInput, copper.ProjectMetadata](t, copper.GetProjectDefinition),
 		createOpportunity:   connectormock.NewMutation[copper.CreateOpportunityInput, copper.OpportunityMetadata](t, copper.CreateOpportunityDefinition),
 		listOpportunities:   connectormock.NewQuery[copper.ListOpportunitiesInput, copper.OpportunitiesPage](t, copper.ListOpportunitiesDefinition),
 		updateOpportunity:   connectormock.NewMutation[copper.UpdateOpportunityInput, copper.OpportunityMetadata](t, copper.UpdateOpportunityDefinition),
@@ -82,6 +92,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.deletePerson.Default(DeletePersonDefault())
 	mock.listCustomerSources.Default(ListCustomerSourcesDefault())
 	mock.listLeadStatuses.Default(ListLeadStatusesDefault())
+	mock.createProject.Default(CreateProjectDefault())
+	mock.listProjects.Default(ListProjectsDefault())
+	mock.updateProject.Default(UpdateProjectDefault())
+	mock.deleteProject.Default(DeleteProjectDefault())
+	mock.getProject.Default(GetProjectDefault())
 	mock.createOpportunity.Default(CreateOpportunityDefault())
 	mock.listOpportunities.Default(ListOpportunitiesDefault())
 	mock.updateOpportunity.Default(UpdateOpportunityDefault())
@@ -161,6 +176,31 @@ func (mock *Mock) ListCustomerSources() *connectormock.Query[copper.ListCustomer
 // ListLeadStatuses returns the listLeadStatuses script.
 func (mock *Mock) ListLeadStatuses() *connectormock.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList] {
 	return mock.listLeadStatuses
+}
+
+// CreateProject returns the createProject script.
+func (mock *Mock) CreateProject() *connectormock.Mutation[copper.CreateProjectInput, copper.ProjectMetadata] {
+	return mock.createProject
+}
+
+// ListProjects returns the listProjects script.
+func (mock *Mock) ListProjects() *connectormock.Query[copper.ListProjectsInput, copper.ProjectsPage] {
+	return mock.listProjects
+}
+
+// UpdateProject returns the updateProject script.
+func (mock *Mock) UpdateProject() *connectormock.Mutation[copper.UpdateProjectInput, copper.ProjectMetadata] {
+	return mock.updateProject
+}
+
+// DeleteProject returns the deleteProject script.
+func (mock *Mock) DeleteProject() *connectormock.Mutation[copper.DeleteProjectInput, copper.DeleteProjectOutput] {
+	return mock.deleteProject
+}
+
+// GetProject returns the getProject script.
+func (mock *Mock) GetProject() *connectormock.Query[copper.GetProjectInput, copper.ProjectMetadata] {
+	return mock.getProject
 }
 
 // CreateOpportunity returns the createOpportunity script.
@@ -250,6 +290,21 @@ func (operations mockOperations) ListCustomerSources() sdkgo.Query[copper.ListCu
 }
 func (operations mockOperations) ListLeadStatuses() sdkgo.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList] {
 	return operations.mock.listLeadStatuses
+}
+func (operations mockOperations) CreateProject() sdkgo.Mutation[copper.CreateProjectInput, copper.ProjectMetadata] {
+	return operations.mock.createProject
+}
+func (operations mockOperations) ListProjects() sdkgo.Query[copper.ListProjectsInput, copper.ProjectsPage] {
+	return operations.mock.listProjects
+}
+func (operations mockOperations) UpdateProject() sdkgo.Mutation[copper.UpdateProjectInput, copper.ProjectMetadata] {
+	return operations.mock.updateProject
+}
+func (operations mockOperations) DeleteProject() sdkgo.Mutation[copper.DeleteProjectInput, copper.DeleteProjectOutput] {
+	return operations.mock.deleteProject
+}
+func (operations mockOperations) GetProject() sdkgo.Query[copper.GetProjectInput, copper.ProjectMetadata] {
+	return operations.mock.getProject
 }
 func (operations mockOperations) CreateOpportunity() sdkgo.Mutation[copper.CreateOpportunityInput, copper.OpportunityMetadata] {
 	return operations.mock.createOpportunity
@@ -717,6 +772,189 @@ func ListLeadStatusesListedDefault() connectormock.Case[copper.LeadStatusesList]
 func ListLeadStatusesDefault() connectormock.Case[copper.LeadStatusesList] {
 	return ListLeadStatusesListedDefault()
 }
+
+// CreateProjectCreated selects the created branch: Copper created the project.
+func CreateProjectCreated(value copper.ProjectMetadata, failure *sdkgo.Failure) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Branch(copper.CreateProjectBranchCreated, value, failure)
+}
+
+// CreateProjectProviderRejected selects the providerRejected branch: Copper rejected creation.
+func CreateProjectProviderRejected(value copper.ProjectMetadata, failure *sdkgo.Failure) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Branch(copper.CreateProjectBranchProviderRejected, value, failure)
+}
+
+// CreateProjectUncertain returns an uncertain createProject outcome.
+func CreateProjectUncertain(value copper.ProjectMetadata, failure sdkgo.Failure) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateProjectDefect selects the defect branch: Input or credentials are invalid.
+func CreateProjectDefect(value copper.ProjectMetadata, failure *sdkgo.Failure) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Branch(copper.CreateProjectBranchDefect, value, failure)
+}
+
+// CreateProjectRetry asks Dex to retry the createProject Step, after the delay when it is positive.
+func CreateProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Retry[copper.ProjectMetadata](failure, after)
+}
+
+// CreateProjectCreatedDefault is the manifest mock createdDefault: A sample project is created.
+func CreateProjectCreatedDefault() connectormock.Case[copper.ProjectMetadata] {
+	value := connectormock.MustDecodeOutput[copper.ProjectMetadata](`{"id":208105,"name":"Sample Project","status":"Open"}`)
+	return connectormock.Branch(copper.CreateProjectBranchCreated, value, nil)
+}
+
+// CreateProjectDefault is the manifest default, createdDefault, which New installs.
+func CreateProjectDefault() connectormock.Case[copper.ProjectMetadata] {
+	return CreateProjectCreatedDefault()
+}
+
+// ListProjectsListed selects the listed branch: Copper returned a page of projects.
+func ListProjectsListed(value copper.ProjectsPage, failure *sdkgo.Failure) connectormock.Case[copper.ProjectsPage] {
+	return connectormock.Branch(copper.ListProjectsBranchListed, value, failure)
+}
+
+// ListProjectsProviderRejected selects the providerRejected branch: Copper rejected the search.
+func ListProjectsProviderRejected(value copper.ProjectsPage, failure *sdkgo.Failure) connectormock.Case[copper.ProjectsPage] {
+	return connectormock.Branch(copper.ListProjectsBranchProviderRejected, value, failure)
+}
+
+// ListProjectsInvalidResponse selects the invalidResponse branch: Copper returned malformed or oversized projects JSON.
+func ListProjectsInvalidResponse(value copper.ProjectsPage, failure *sdkgo.Failure) connectormock.Case[copper.ProjectsPage] {
+	return connectormock.Branch(copper.ListProjectsBranchInvalidResponse, value, failure)
+}
+
+// ListProjectsDefect selects the defect branch: Input or credentials are invalid.
+func ListProjectsDefect(value copper.ProjectsPage, failure *sdkgo.Failure) connectormock.Case[copper.ProjectsPage] {
+	return connectormock.Branch(copper.ListProjectsBranchDefect, value, failure)
+}
+
+// ListProjectsRetry asks Dex to retry the listProjects Step, after the delay when it is positive.
+func ListProjectsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.ProjectsPage] {
+	return connectormock.Retry[copper.ProjectsPage](failure, after)
+}
+
+// ListProjectsListedDefault is the manifest mock listedDefault: A sample projects page is returned.
+func ListProjectsListedDefault() connectormock.Case[copper.ProjectsPage] {
+	value := connectormock.MustDecodeOutput[copper.ProjectsPage](`{"projects":[{"id":208105,"name":"Sample Project","status":"Open"}]}`)
+	return connectormock.Branch(copper.ListProjectsBranchListed, value, nil)
+}
+
+// ListProjectsDefault is the manifest default, listedDefault, which New installs.
+func ListProjectsDefault() connectormock.Case[copper.ProjectsPage] {
+	return ListProjectsListedDefault()
+}
+
+// UpdateProjectUpdated selects the updated branch: Copper updated the project.
+func UpdateProjectUpdated(value copper.ProjectMetadata, failure *sdkgo.Failure) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Branch(copper.UpdateProjectBranchUpdated, value, failure)
+}
+
+// UpdateProjectNotFound selects the notFound branch: No project matches the ID.
+func UpdateProjectNotFound(value copper.ProjectMetadata, failure *sdkgo.Failure) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Branch(copper.UpdateProjectBranchNotFound, value, failure)
+}
+
+// UpdateProjectProviderRejected selects the providerRejected branch: Copper rejected the update.
+func UpdateProjectProviderRejected(value copper.ProjectMetadata, failure *sdkgo.Failure) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Branch(copper.UpdateProjectBranchProviderRejected, value, failure)
+}
+
+// UpdateProjectDefect selects the defect branch: Input or credentials are invalid.
+func UpdateProjectDefect(value copper.ProjectMetadata, failure *sdkgo.Failure) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Branch(copper.UpdateProjectBranchDefect, value, failure)
+}
+
+// UpdateProjectRetry asks Dex to retry the updateProject Step, after the delay when it is positive.
+func UpdateProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Retry[copper.ProjectMetadata](failure, after)
+}
+
+// UpdateProjectUpdatedDefault is the manifest mock updatedDefault: A sample project is updated.
+func UpdateProjectUpdatedDefault() connectormock.Case[copper.ProjectMetadata] {
+	value := connectormock.MustDecodeOutput[copper.ProjectMetadata](`{"id":208105,"name":"Sample Project","status":"Open"}`)
+	return connectormock.Branch(copper.UpdateProjectBranchUpdated, value, nil)
+}
+
+// UpdateProjectDefault is the manifest default, updatedDefault, which New installs.
+func UpdateProjectDefault() connectormock.Case[copper.ProjectMetadata] {
+	return UpdateProjectUpdatedDefault()
+}
+
+// DeleteProjectDeleted selects the deleted branch: Copper deleted the project.
+func DeleteProjectDeleted(value copper.DeleteProjectOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteProjectOutput] {
+	return connectormock.Branch(copper.DeleteProjectBranchDeleted, value, failure)
+}
+
+// DeleteProjectNotFound selects the notFound branch: No project matches the ID.
+func DeleteProjectNotFound(value copper.DeleteProjectOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteProjectOutput] {
+	return connectormock.Branch(copper.DeleteProjectBranchNotFound, value, failure)
+}
+
+// DeleteProjectProviderRejected selects the providerRejected branch: Copper rejected the deletion.
+func DeleteProjectProviderRejected(value copper.DeleteProjectOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteProjectOutput] {
+	return connectormock.Branch(copper.DeleteProjectBranchProviderRejected, value, failure)
+}
+
+// DeleteProjectDefect selects the defect branch: Input or credentials are invalid.
+func DeleteProjectDefect(value copper.DeleteProjectOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteProjectOutput] {
+	return connectormock.Branch(copper.DeleteProjectBranchDefect, value, failure)
+}
+
+// DeleteProjectRetry asks Dex to retry the deleteProject Step, after the delay when it is positive.
+func DeleteProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.DeleteProjectOutput] {
+	return connectormock.Retry[copper.DeleteProjectOutput](failure, after)
+}
+
+// DeleteProjectDeletedDefault is the manifest mock deletedDefault: A sample project is deleted.
+func DeleteProjectDeletedDefault() connectormock.Case[copper.DeleteProjectOutput] {
+	value := connectormock.MustDecodeOutput[copper.DeleteProjectOutput](`{"id":208105,"deleted":true}`)
+	return connectormock.Branch(copper.DeleteProjectBranchDeleted, value, nil)
+}
+
+// DeleteProjectDefault is the manifest default, deletedDefault, which New installs.
+func DeleteProjectDefault() connectormock.Case[copper.DeleteProjectOutput] {
+	return DeleteProjectDeletedDefault()
+}
+
+// GetProjectFound selects the found branch: Copper returned the selected project.
+func GetProjectFound(value copper.ProjectMetadata, failure *sdkgo.Failure) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Branch(copper.GetProjectBranchFound, value, failure)
+}
+
+// GetProjectNotFound selects the notFound branch: No project matches this ID.
+func GetProjectNotFound(value copper.ProjectMetadata, failure *sdkgo.Failure) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Branch(copper.GetProjectBranchNotFound, value, failure)
+}
+
+// GetProjectProviderRejected selects the providerRejected branch: Copper conclusively rejected the request.
+func GetProjectProviderRejected(value copper.ProjectMetadata, failure *sdkgo.Failure) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Branch(copper.GetProjectBranchProviderRejected, value, failure)
+}
+
+// GetProjectInvalidResponse selects the invalidResponse branch: Copper returned malformed or oversized JSON.
+func GetProjectInvalidResponse(value copper.ProjectMetadata, failure *sdkgo.Failure) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Branch(copper.GetProjectBranchInvalidResponse, value, failure)
+}
+
+// GetProjectDefect selects the defect branch: Invalid input or unavailable credentials.
+func GetProjectDefect(value copper.ProjectMetadata, failure *sdkgo.Failure) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Branch(copper.GetProjectBranchDefect, value, failure)
+}
+
+// GetProjectRetry asks Dex to retry the getProject Step, after the delay when it is positive.
+func GetProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.ProjectMetadata] {
+	return connectormock.Retry[copper.ProjectMetadata](failure, after)
+}
+
+// GetProjectFoundDefault is the manifest mock foundDefault: One sample project is returned.
+func GetProjectFoundDefault() connectormock.Case[copper.ProjectMetadata] {
+	value := connectormock.MustDecodeOutput[copper.ProjectMetadata](`{"id":208105,"name":"Sample Project","status":"Open"}`)
+	return connectormock.Branch(copper.GetProjectBranchFound, value, nil)
+}
+
+// GetProjectDefault is the manifest default, foundDefault, which New installs.
+func GetProjectDefault() connectormock.Case[copper.ProjectMetadata] { return GetProjectFoundDefault() }
 
 // CreateOpportunityCreated selects the created branch: Copper created the opportunity.
 func CreateOpportunityCreated(value copper.OpportunityMetadata, failure *sdkgo.Failure) connectormock.Case[copper.OpportunityMetadata] {

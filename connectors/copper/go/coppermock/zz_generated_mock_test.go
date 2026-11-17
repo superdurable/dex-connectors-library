@@ -64,6 +64,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[copper.LeadStatusesList](`{"statuses":[{"id":208231,"name":"New"}]}`)
 			return err
 		}},
+		{name: "createProject/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.ProjectMetadata](`{"id":208105,"name":"Sample Project","status":"Open"}`)
+			return err
+		}},
+		{name: "listProjects/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.ProjectsPage](`{"projects":[{"id":208105,"name":"Sample Project","status":"Open"}]}`)
+			return err
+		}},
+		{name: "updateProject/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.ProjectMetadata](`{"id":208105,"name":"Sample Project","status":"Open"}`)
+			return err
+		}},
+		{name: "deleteProject/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.DeleteProjectOutput](`{"id":208105,"deleted":true}`)
+			return err
+		}},
+		{name: "getProject/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.ProjectMetadata](`{"id":208105,"name":"Sample Project","status":"Open"}`)
+			return err
+		}},
 		{name: "createOpportunity/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[copper.OpportunityMetadata](`{"id":4956209,"name":"Sample Opportunity","status":"Open"}`)
 			return err
@@ -149,6 +169,21 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListLeadStatuses().Definition().Operation.OperationID != "listLeadStatuses" {
 		t.Errorf("listLeadStatuses mock has another definition")
+	}
+	if mock.CreateProject().Definition().Operation.OperationID != "createProject" {
+		t.Errorf("createProject mock has another definition")
+	}
+	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
+		t.Errorf("listProjects mock has another definition")
+	}
+	if mock.UpdateProject().Definition().Operation.OperationID != "updateProject" {
+		t.Errorf("updateProject mock has another definition")
+	}
+	if mock.DeleteProject().Definition().Operation.OperationID != "deleteProject" {
+		t.Errorf("deleteProject mock has another definition")
+	}
+	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
+		t.Errorf("getProject mock has another definition")
 	}
 	if mock.CreateOpportunity().Definition().Operation.OperationID != "createOpportunity" {
 		t.Errorf("createOpportunity mock has another definition")
