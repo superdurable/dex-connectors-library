@@ -30,3 +30,7 @@ GOWORK=off go vet ./...
 Provider tests use a local HTTP server. The example integration test uses a
 real Dex Worker and Client with a generated mock. A live Baidu Maps lookup
 requires a user-configured server-side AK and is not part of these tests.
+
+## TypeScript
+
+The first TypeScript release is `@superdurable/connector-baidu-maps` v0.1.0. See the [TypeScript README](typescript/README.md) and its runnable [address lookup Flow](typescript/examples/address-lookup/README.md). It replays the Go-recorded provider scenarios and has a local real Dex Worker/Client test. Live Baidu AK authorization has not been verified.
