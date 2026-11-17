@@ -64,6 +64,8 @@ type Operations interface {
 	GetCatalogObject() sdkgo.Query[GetCatalogObjectInput, CatalogObject]
 	UpsertCatalogObject() sdkgo.Mutation[UpsertCatalogObjectInput, CatalogObject]
 	DeleteCatalogObject() sdkgo.Mutation[DeleteCatalogObjectInput, DeletedCatalogObjects]
+	RetrieveInventoryCount() sdkgo.Query[RetrieveInventoryCountInput, InventoryCounts]
+	SetInventoryPhysicalCount() sdkgo.Mutation[SetInventoryPhysicalCountInput, InventoryCounts]
 }
 
 type clientOperations struct{ client *Client }
@@ -139,6 +141,12 @@ func (operations clientOperations) UpsertCatalogObject() sdkgo.Mutation[UpsertCa
 }
 func (operations clientOperations) DeleteCatalogObject() sdkgo.Mutation[DeleteCatalogObjectInput, DeletedCatalogObjects] {
 	return operations.client.DeleteCatalogObject()
+}
+func (operations clientOperations) RetrieveInventoryCount() sdkgo.Query[RetrieveInventoryCountInput, InventoryCounts] {
+	return operations.client.RetrieveInventoryCount()
+}
+func (operations clientOperations) SetInventoryPhysicalCount() sdkgo.Mutation[SetInventoryPhysicalCountInput, InventoryCounts] {
+	return operations.client.SetInventoryPhysicalCount()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -2052,6 +2060,154 @@ func NewDeleteCatalogObjectStep[IN any](config DeleteCatalogObjectStepConfig[IN]
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteCatalogObjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RetrieveInventoryCountBranchFound sdkgo.BranchID = "found"
+const RetrieveInventoryCountBranchNotFound sdkgo.BranchID = "notFound"
+const RetrieveInventoryCountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RetrieveInventoryCountBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const RetrieveInventoryCountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RetrieveInventoryCountDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "retrieveInventoryCount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RetrieveInventoryCountBranchFound, Description: "Read inventory counts for a catalog variation."},
+		{ID: RetrieveInventoryCountBranchNotFound, Description: "The catalog variation was not found.", Optional: true},
+		{ID: RetrieveInventoryCountBranchProviderRejected, Description: "Square conclusively rejected the request.", Optional: true},
+		{ID: RetrieveInventoryCountBranchInvalidResponse, Description: "Square returned malformed or oversized JSON.", Optional: true},
+		{ID: RetrieveInventoryCountBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type RetrieveInventoryCountResult = sdkgo.QueryResult[InventoryCounts]
+
+type RetrieveInventoryCountStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=square"`
+	operationID                    struct{}                                           `connector:"operationId=retrieveInventoryCount"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) RetrieveInventoryCountInput               `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[RetrieveInventoryCountResult]         `connector:"branch=found"`
+	NotFound                       sdkgo.Target[RetrieveInventoryCountResult]         `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[RetrieveInventoryCountResult]         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[RetrieveInventoryCountResult]         `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[RetrieveInventoryCountResult]         `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InventoryCounts]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewRetrieveInventoryCountStep[IN any](config RetrieveInventoryCountStepConfig[IN]) sdkgo.QueryStep[IN, RetrieveInventoryCountInput, InventoryCounts] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("square connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, RetrieveInventoryCountInput, InventoryCounts]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RetrieveInventoryCount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RetrieveInventoryCountResult] {
+			branches := make([]sdkgo.BranchTarget[RetrieveInventoryCountResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(RetrieveInventoryCountBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(RetrieveInventoryCountBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RetrieveInventoryCountBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RetrieveInventoryCountBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RetrieveInventoryCountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SetInventoryPhysicalCountBranchReconciled sdkgo.BranchID = "reconciled"
+const SetInventoryPhysicalCountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SetInventoryPhysicalCountBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SetInventoryPhysicalCountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SetInventoryPhysicalCountDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "setInventoryPhysicalCount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SetInventoryPhysicalCountBranchReconciled, Description: "Square reconciled the physical count."},
+		{ID: SetInventoryPhysicalCountBranchProviderRejected, Description: "Square conclusively rejected the request.", Optional: true},
+		{ID: SetInventoryPhysicalCountBranchInvalidResponse, Description: "Square returned malformed or oversized JSON.", Optional: true},
+		{ID: SetInventoryPhysicalCountBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SetInventoryPhysicalCountResult = sdkgo.MutationResult[InventoryCounts]
+
+type SetInventoryPhysicalCountStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=square"`
+	operationID                       struct{}                                              `connector:"operationId=setInventoryPhysicalCount"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetInventoryPhysicalCountInput               `connector:"mapToOperationInput"`
+	Reconciled                        sdkgo.Target[SetInventoryPhysicalCountResult]         `connector:"branch=reconciled"`
+	ProviderRejected                  sdkgo.Target[SetInventoryPhysicalCountResult]         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SetInventoryPhysicalCountResult]         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SetInventoryPhysicalCountResult]         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InventoryCounts]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewSetInventoryPhysicalCountStep[IN any](config SetInventoryPhysicalCountStepConfig[IN]) sdkgo.MutationStep[IN, SetInventoryPhysicalCountInput, InventoryCounts] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("square connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetInventoryPhysicalCountInput, InventoryCounts]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SetInventoryPhysicalCount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SetInventoryPhysicalCountResult] {
+			branches := make([]sdkgo.BranchTarget[SetInventoryPhysicalCountResult], 0, 4)
+			if config.Reconciled.HasStep() {
+				branches = append(branches, config.Reconciled.BranchTarget(SetInventoryPhysicalCountBranchReconciled))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SetInventoryPhysicalCountBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SetInventoryPhysicalCountBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SetInventoryPhysicalCountBranchDefect))
 			}
 			return branches
 		}(),

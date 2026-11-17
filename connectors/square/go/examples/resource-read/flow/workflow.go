@@ -22,6 +22,7 @@ const (
 	createCustomerStepType = "CreateSquareCustomer"
 	createOrderStepType    = "CreateSquareOrder"
 	upsertCatalogStepType  = "CreateSquareCatalogItem"
+	setInventoryStepType   = "SetSquareInventoryPhysicalCount"
 )
 
 // Request is the typed start input for this example.
@@ -48,6 +49,14 @@ type Request struct {
 	OrderQuantity string `json:"orderQuantity,omitempty"`
 	// CatalogItemName creates a catalog item when set.
 	CatalogItemName string `json:"catalogItemName,omitempty"`
+	// InventoryVariationID selects a catalog variation for physical count reconciliation.
+	InventoryVariationID string `json:"inventoryVariationId,omitempty"`
+	// InventoryLocationID identifies the location where the count was observed.
+	InventoryLocationID string `json:"inventoryLocationId,omitempty"`
+	// InventoryQuantity is the nonnegative observed decimal count.
+	InventoryQuantity string `json:"inventoryQuantity,omitempty"`
+	// InventoryOccurredAt is the RFC3339 observation time.
+	InventoryOccurredAt string `json:"inventoryOccurredAt,omitempty"`
 }
 
 // Outcome is the completed resource read.
@@ -64,6 +73,8 @@ type Outcome struct {
 	Order square.Order `json:"order,omitempty"`
 	// CatalogObject is the created Square catalog item when CatalogItemName was set.
 	CatalogObject square.CatalogObject `json:"catalogObject,omitempty"`
+	// InventoryCounts reports the reconciled physical count.
+	InventoryCounts square.InventoryCounts `json:"inventoryCounts,omitempty"`
 }
 
 var outcomeAttribute = dex.DefineAttribute[Outcome]("square-resource-read-outcome")
@@ -119,12 +130,19 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: MapToUpsertCatalogObjectInput,
 			Upserted:            sdkgo.GoTo(completeCatalogItem{}),
 		})),
+		dex.DefineStep(square.NewSetInventoryPhysicalCountStep(square.SetInventoryPhysicalCountStepConfig[Request]{
+			StepType: setInventoryStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "square", GroupLabel: "Square", Explanation: "Reconcile the observed physical inventory count."},
+			MapToOperationInput: MapToSetInventoryPhysicalCountInput,
+			Reconciled:          sdkgo.GoTo(completeInventoryCount{}),
+		})),
 		dex.DefineStep(completeRead{}),
 		dex.DefineStep(completeCashPayment{}),
 		dex.DefineStep(completeRefund{}),
 		dex.DefineStep(completeCustomer{}),
 		dex.DefineStep(completeOrder{}),
 		dex.DefineStep(completeCatalogItem{}),
+		dex.DefineStep(completeInventoryCount{}),
 	}
 }
 
@@ -187,6 +205,11 @@ func MapToUpsertCatalogObjectInput(request Request) square.UpsertCatalogObjectIn
 	}}
 }
 
+// MapToSetInventoryPhysicalCountInput maps an observed quantity and its fixed observation time.
+func MapToSetInventoryPhysicalCountInput(request Request) square.SetInventoryPhysicalCountInput {
+	return square.SetInventoryPhysicalCountInput{CatalogObjectID: request.InventoryVariationID, LocationID: request.InventoryLocationID, Quantity: request.InventoryQuantity, OccurredAt: request.InventoryOccurredAt}
+}
+
 // PrepareRequest rejects invalid local input before a provider call.
 func PrepareRequest(request Request) (Request, error) {
 	if request.RecordCashPayment && (request.AmountMoney.Amount <= 0 || request.AmountMoney.Currency == "") {
@@ -216,6 +239,14 @@ func PrepareRequest(request Request) (Request, error) {
 	}
 	if request.CatalogItemName != "" && (request.RecordCashPayment || request.RefundPaymentID != "" || request.CreateCustomer || request.OrderLocationID != "") {
 		return Request{}, errors.New("choose one Square action")
+	}
+	if request.InventoryVariationID != "" {
+		if request.RecordCashPayment || request.RefundPaymentID != "" || request.CreateCustomer || request.OrderLocationID != "" || request.CatalogItemName != "" {
+			return Request{}, errors.New("choose one Square action")
+		}
+		if request.InventoryLocationID == "" || request.InventoryQuantity == "" || request.InventoryOccurredAt == "" {
+			return Request{}, errors.New("inventory location, quantity, and observation time are required")
+		}
 	}
 	return request, nil
 }
@@ -247,6 +278,9 @@ func (prepareRequest) Execute(ctx dex.Context, request Request) (*dex.StepDecisi
 	}
 	if prepared.CatalogItemName != "" {
 		return dex.GoTo(sdkgo.StepRef[Request](upsertCatalogStepType), prepared), nil
+	}
+	if prepared.InventoryVariationID != "" {
+		return dex.GoTo(sdkgo.StepRef[Request](setInventoryStepType), prepared), nil
 	}
 	return dex.GoTo(sdkgo.StepRef[Request](readStepType), prepared), nil
 }
@@ -335,6 +369,21 @@ type completeCatalogItem struct {
 func (completeCatalogItem) GetStepType() string { return "CompleteCatalogItem" }
 func (completeCatalogItem) Execute(ctx dex.Context, result square.UpsertCatalogObjectResult) (*dex.StepDecision, error) {
 	outcome := Outcome{CatalogObject: result.Value}
+	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:resource-result group-label:"Resource result"
+// dex:explanation text:"Persist the reconciled inventory count as the Flow outcome."
+type completeInventoryCount struct {
+	dex.StepDefaultsNoWaitFor[square.SetInventoryPhysicalCountResult]
+}
+
+func (completeInventoryCount) GetStepType() string { return "CompleteInventoryCount" }
+func (completeInventoryCount) Execute(ctx dex.Context, result square.SetInventoryPhysicalCountResult) (*dex.StepDecision, error) {
+	outcome := Outcome{InventoryCounts: result.Value}
 	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

@@ -1,6 +1,6 @@
 # Square resource-read example
 
-This Flow uses the static `square` connection. By default, `square.NewListPaymentsStep` reads payments. With `recordCashPayment: true`, `square.NewCreatePaymentStep` records a cash payment. With `refundPaymentId`, `square.NewRefundPaymentStep` refunds a completed payment. With `createCustomer: true`, `square.NewCreateCustomerStep` creates a customer. With `orderLocationId`, `square.NewCreateOrderStep` creates an order. With `catalogItemName`, `square.NewUpsertCatalogObjectStep` creates a catalog item. Start input is typed as `Request`; the result is `Outcome`. Optional error branches are unwired and fail the Flow.
+This Flow uses the static `square` connection. By default, `square.NewListPaymentsStep` reads payments. With `recordCashPayment: true`, `square.NewCreatePaymentStep` records a cash payment. With `refundPaymentId`, `square.NewRefundPaymentStep` refunds a completed payment. With `createCustomer: true`, `square.NewCreateCustomerStep` creates a customer. With `orderLocationId`, `square.NewCreateOrderStep` creates an order. With `catalogItemName`, `square.NewUpsertCatalogObjectStep` creates a catalog item. With `inventoryVariationId`, `square.NewSetInventoryPhysicalCountStep` reconciles stock. Start input is typed as `Request`; the result is `Outcome`. Optional error branches are unwired and fail the Flow.
 
 ## Generate strict FDG 2.0
 
@@ -48,4 +48,6 @@ To create an order, enable `ORDERS_WRITE`, find the seller location ID in Square
 
 To create a catalog item, enable `ITEMS_WRITE` and start with `{"catalogItemName":"Coffee"}`. The example builds a complete ITEM object with one variable-priced variation and derives a stable idempotency key. For updates outside this example, pass a complete object to `UpsertCatalogObject`; omitted fields and child variations are cleared by Square.
 
-The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs read, cash write, refund, customer create, order create, and catalog create paths through a real Dex Worker using manifest mocks.
+To reconcile stock, enable `INVENTORY_WRITE` and start with `{"inventoryVariationId":"variation_101","inventoryLocationId":"loc_101","inventoryQuantity":"5","inventoryOccurredAt":"2026-11-17T12:00:00Z"}`. Find the variation ID in Square Dashboard > Items & services > Item library and the location ID in Account & Settings > Business > Locations. Quantity is a nonnegative decimal string; occurredAt is the actual RFC3339 observation time. The connector derives the required UUID idempotency key. Use a current timestamp from the physical count, rather than the example value.
+
+The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs read, cash write, refund, customer create, order create, catalog create, and inventory reconciliation paths through a real Dex Worker using manifest mocks.

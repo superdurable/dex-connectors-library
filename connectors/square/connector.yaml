@@ -46,12 +46,12 @@ spec:
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: "Secret Square production access token from https://developer.squareup.com/apps > application > Credentials > Production. It is an opaque bearer token; enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, and ITEMS_READ/WRITE for the corresponding operations. Blank prevents calls. Use the matching sandbox baseUrl with a sandbox token."
+        description: "Secret Square production access token from https://developer.squareup.com/apps > application > Credentials > Production. It is an opaque bearer token; enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, ITEMS_READ/WRITE, and INVENTORY_READ/WRITE for the corresponding operations. Blank prevents calls. Use the matching sandbox baseUrl with a sandbox token."
         required: true
     guide:
       startURL: https://developer.squareup.com/apps
       steps:
-        - "At https://developer.squareup.com/apps create or choose an application, open Credentials > Production and copy the secret access token into access_token. Enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, and ITEMS_READ/WRITE for the corresponding operation families. For sandbox testing use its Sandbox token and override baseUrl with https://connect.squareupsandbox.com/v2. Blank prevents calls."
+        - "At https://developer.squareup.com/apps create or choose an application, open Credentials > Production and copy the secret access token into access_token. Enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, ITEMS_READ/WRITE, and INVENTORY_READ/WRITE for the corresponding operation families. For sandbox testing use its Sandbox token and override baseUrl with https://connect.squareupsandbox.com/v2. Blank prevents calls."
         - "Set baseUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
   operations:
     - name: listPayments
@@ -551,3 +551,44 @@ spec:
           description: A synthetic Square catalog response.
           default: true
           output: {deletedObjectIds: [item_101]}
+    - name: retrieveInventoryCount
+      goName: RetrieveInventoryCount
+      inputType: RetrieveInventoryCountInput
+      outputType: InventoryCounts
+      kind: query
+      description: Read inventory counts for one catalog variation and optional location.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Read inventory counts for a catalog variation.}
+        - {id: notFound, goName: NotFound, description: The catalog variation was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: A synthetic Square inventory count.
+          default: true
+          output: {counts: [{catalog_object_id: variation_101, location_id: loc_101, state: IN_STOCK, quantity: "5"}], cursor: ""}
+    - name: setInventoryPhysicalCount
+      goName: SetInventoryPhysicalCount
+      inputType: SetInventoryPhysicalCountInput
+      outputType: InventoryCounts
+      kind: mutation
+      description: Reconcile one variation's physical count with a UUID idempotency key.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: reconciled, goName: Reconciled, description: Square reconciled the physical count.}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: reconciled
+          description: A synthetic Square reconciled inventory count.
+          default: true
+          output: {counts: [{catalog_object_id: variation_101, location_id: loc_101, state: IN_STOCK, quantity: "5"}], cursor: ""}

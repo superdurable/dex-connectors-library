@@ -17,31 +17,33 @@ import (
 
 // Mock is a scripted square connection. Script each operation through its accessor.
 type Mock struct {
-	connection           square.Connection
-	listPayments         *connectormock.Query[square.ListPaymentsInput, square.PaymentPage]
-	getPayment           *connectormock.Query[square.GetPaymentInput, square.Payment]
-	createPayment        *connectormock.Mutation[square.CreatePaymentInput, square.Payment]
-	updatePayment        *connectormock.Mutation[square.UpdatePaymentInput, square.Payment]
-	cancelPayment        *connectormock.Mutation[square.CancelPaymentInput, square.Payment]
-	completePayment      *connectormock.Mutation[square.CompletePaymentInput, square.Payment]
-	listRefunds          *connectormock.Query[square.ListRefundsInput, square.RefundPage]
-	getRefund            *connectormock.Query[square.GetRefundInput, square.Refund]
-	refundPayment        *connectormock.Mutation[square.RefundPaymentInput, square.Refund]
-	listCustomers        *connectormock.Query[square.ListCustomersInput, square.CustomerPage]
-	searchCustomers      *connectormock.Query[square.SearchCustomersInput, square.CustomerPage]
-	getCustomer          *connectormock.Query[square.GetCustomerInput, square.Customer]
-	createCustomer       *connectormock.Mutation[square.CreateCustomerInput, square.Customer]
-	updateCustomer       *connectormock.Mutation[square.UpdateCustomerInput, square.Customer]
-	deleteCustomer       *connectormock.Mutation[square.DeleteCustomerInput, square.DeletedCustomer]
-	searchOrders         *connectormock.Query[square.SearchOrdersInput, square.OrderPage]
-	getOrder             *connectormock.Query[square.GetOrderInput, square.Order]
-	createOrder          *connectormock.Mutation[square.CreateOrderInput, square.Order]
-	updateOrder          *connectormock.Mutation[square.UpdateOrderInput, square.Order]
-	listCatalogObjects   *connectormock.Query[square.ListCatalogObjectsInput, square.CatalogPage]
-	searchCatalogObjects *connectormock.Query[square.SearchCatalogObjectsInput, square.CatalogPage]
-	getCatalogObject     *connectormock.Query[square.GetCatalogObjectInput, square.CatalogObject]
-	upsertCatalogObject  *connectormock.Mutation[square.UpsertCatalogObjectInput, square.CatalogObject]
-	deleteCatalogObject  *connectormock.Mutation[square.DeleteCatalogObjectInput, square.DeletedCatalogObjects]
+	connection                square.Connection
+	listPayments              *connectormock.Query[square.ListPaymentsInput, square.PaymentPage]
+	getPayment                *connectormock.Query[square.GetPaymentInput, square.Payment]
+	createPayment             *connectormock.Mutation[square.CreatePaymentInput, square.Payment]
+	updatePayment             *connectormock.Mutation[square.UpdatePaymentInput, square.Payment]
+	cancelPayment             *connectormock.Mutation[square.CancelPaymentInput, square.Payment]
+	completePayment           *connectormock.Mutation[square.CompletePaymentInput, square.Payment]
+	listRefunds               *connectormock.Query[square.ListRefundsInput, square.RefundPage]
+	getRefund                 *connectormock.Query[square.GetRefundInput, square.Refund]
+	refundPayment             *connectormock.Mutation[square.RefundPaymentInput, square.Refund]
+	listCustomers             *connectormock.Query[square.ListCustomersInput, square.CustomerPage]
+	searchCustomers           *connectormock.Query[square.SearchCustomersInput, square.CustomerPage]
+	getCustomer               *connectormock.Query[square.GetCustomerInput, square.Customer]
+	createCustomer            *connectormock.Mutation[square.CreateCustomerInput, square.Customer]
+	updateCustomer            *connectormock.Mutation[square.UpdateCustomerInput, square.Customer]
+	deleteCustomer            *connectormock.Mutation[square.DeleteCustomerInput, square.DeletedCustomer]
+	searchOrders              *connectormock.Query[square.SearchOrdersInput, square.OrderPage]
+	getOrder                  *connectormock.Query[square.GetOrderInput, square.Order]
+	createOrder               *connectormock.Mutation[square.CreateOrderInput, square.Order]
+	updateOrder               *connectormock.Mutation[square.UpdateOrderInput, square.Order]
+	listCatalogObjects        *connectormock.Query[square.ListCatalogObjectsInput, square.CatalogPage]
+	searchCatalogObjects      *connectormock.Query[square.SearchCatalogObjectsInput, square.CatalogPage]
+	getCatalogObject          *connectormock.Query[square.GetCatalogObjectInput, square.CatalogObject]
+	upsertCatalogObject       *connectormock.Mutation[square.UpsertCatalogObjectInput, square.CatalogObject]
+	deleteCatalogObject       *connectormock.Mutation[square.DeleteCatalogObjectInput, square.DeletedCatalogObjects]
+	retrieveInventoryCount    *connectormock.Query[square.RetrieveInventoryCountInput, square.InventoryCounts]
+	setInventoryPhysicalCount *connectormock.Mutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -49,30 +51,32 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listPayments:         connectormock.NewQuery[square.ListPaymentsInput, square.PaymentPage](t, square.ListPaymentsDefinition),
-		getPayment:           connectormock.NewQuery[square.GetPaymentInput, square.Payment](t, square.GetPaymentDefinition),
-		createPayment:        connectormock.NewMutation[square.CreatePaymentInput, square.Payment](t, square.CreatePaymentDefinition),
-		updatePayment:        connectormock.NewMutation[square.UpdatePaymentInput, square.Payment](t, square.UpdatePaymentDefinition),
-		cancelPayment:        connectormock.NewMutation[square.CancelPaymentInput, square.Payment](t, square.CancelPaymentDefinition),
-		completePayment:      connectormock.NewMutation[square.CompletePaymentInput, square.Payment](t, square.CompletePaymentDefinition),
-		listRefunds:          connectormock.NewQuery[square.ListRefundsInput, square.RefundPage](t, square.ListRefundsDefinition),
-		getRefund:            connectormock.NewQuery[square.GetRefundInput, square.Refund](t, square.GetRefundDefinition),
-		refundPayment:        connectormock.NewMutation[square.RefundPaymentInput, square.Refund](t, square.RefundPaymentDefinition),
-		listCustomers:        connectormock.NewQuery[square.ListCustomersInput, square.CustomerPage](t, square.ListCustomersDefinition),
-		searchCustomers:      connectormock.NewQuery[square.SearchCustomersInput, square.CustomerPage](t, square.SearchCustomersDefinition),
-		getCustomer:          connectormock.NewQuery[square.GetCustomerInput, square.Customer](t, square.GetCustomerDefinition),
-		createCustomer:       connectormock.NewMutation[square.CreateCustomerInput, square.Customer](t, square.CreateCustomerDefinition),
-		updateCustomer:       connectormock.NewMutation[square.UpdateCustomerInput, square.Customer](t, square.UpdateCustomerDefinition),
-		deleteCustomer:       connectormock.NewMutation[square.DeleteCustomerInput, square.DeletedCustomer](t, square.DeleteCustomerDefinition),
-		searchOrders:         connectormock.NewQuery[square.SearchOrdersInput, square.OrderPage](t, square.SearchOrdersDefinition),
-		getOrder:             connectormock.NewQuery[square.GetOrderInput, square.Order](t, square.GetOrderDefinition),
-		createOrder:          connectormock.NewMutation[square.CreateOrderInput, square.Order](t, square.CreateOrderDefinition),
-		updateOrder:          connectormock.NewMutation[square.UpdateOrderInput, square.Order](t, square.UpdateOrderDefinition),
-		listCatalogObjects:   connectormock.NewQuery[square.ListCatalogObjectsInput, square.CatalogPage](t, square.ListCatalogObjectsDefinition),
-		searchCatalogObjects: connectormock.NewQuery[square.SearchCatalogObjectsInput, square.CatalogPage](t, square.SearchCatalogObjectsDefinition),
-		getCatalogObject:     connectormock.NewQuery[square.GetCatalogObjectInput, square.CatalogObject](t, square.GetCatalogObjectDefinition),
-		upsertCatalogObject:  connectormock.NewMutation[square.UpsertCatalogObjectInput, square.CatalogObject](t, square.UpsertCatalogObjectDefinition),
-		deleteCatalogObject:  connectormock.NewMutation[square.DeleteCatalogObjectInput, square.DeletedCatalogObjects](t, square.DeleteCatalogObjectDefinition),
+		listPayments:              connectormock.NewQuery[square.ListPaymentsInput, square.PaymentPage](t, square.ListPaymentsDefinition),
+		getPayment:                connectormock.NewQuery[square.GetPaymentInput, square.Payment](t, square.GetPaymentDefinition),
+		createPayment:             connectormock.NewMutation[square.CreatePaymentInput, square.Payment](t, square.CreatePaymentDefinition),
+		updatePayment:             connectormock.NewMutation[square.UpdatePaymentInput, square.Payment](t, square.UpdatePaymentDefinition),
+		cancelPayment:             connectormock.NewMutation[square.CancelPaymentInput, square.Payment](t, square.CancelPaymentDefinition),
+		completePayment:           connectormock.NewMutation[square.CompletePaymentInput, square.Payment](t, square.CompletePaymentDefinition),
+		listRefunds:               connectormock.NewQuery[square.ListRefundsInput, square.RefundPage](t, square.ListRefundsDefinition),
+		getRefund:                 connectormock.NewQuery[square.GetRefundInput, square.Refund](t, square.GetRefundDefinition),
+		refundPayment:             connectormock.NewMutation[square.RefundPaymentInput, square.Refund](t, square.RefundPaymentDefinition),
+		listCustomers:             connectormock.NewQuery[square.ListCustomersInput, square.CustomerPage](t, square.ListCustomersDefinition),
+		searchCustomers:           connectormock.NewQuery[square.SearchCustomersInput, square.CustomerPage](t, square.SearchCustomersDefinition),
+		getCustomer:               connectormock.NewQuery[square.GetCustomerInput, square.Customer](t, square.GetCustomerDefinition),
+		createCustomer:            connectormock.NewMutation[square.CreateCustomerInput, square.Customer](t, square.CreateCustomerDefinition),
+		updateCustomer:            connectormock.NewMutation[square.UpdateCustomerInput, square.Customer](t, square.UpdateCustomerDefinition),
+		deleteCustomer:            connectormock.NewMutation[square.DeleteCustomerInput, square.DeletedCustomer](t, square.DeleteCustomerDefinition),
+		searchOrders:              connectormock.NewQuery[square.SearchOrdersInput, square.OrderPage](t, square.SearchOrdersDefinition),
+		getOrder:                  connectormock.NewQuery[square.GetOrderInput, square.Order](t, square.GetOrderDefinition),
+		createOrder:               connectormock.NewMutation[square.CreateOrderInput, square.Order](t, square.CreateOrderDefinition),
+		updateOrder:               connectormock.NewMutation[square.UpdateOrderInput, square.Order](t, square.UpdateOrderDefinition),
+		listCatalogObjects:        connectormock.NewQuery[square.ListCatalogObjectsInput, square.CatalogPage](t, square.ListCatalogObjectsDefinition),
+		searchCatalogObjects:      connectormock.NewQuery[square.SearchCatalogObjectsInput, square.CatalogPage](t, square.SearchCatalogObjectsDefinition),
+		getCatalogObject:          connectormock.NewQuery[square.GetCatalogObjectInput, square.CatalogObject](t, square.GetCatalogObjectDefinition),
+		upsertCatalogObject:       connectormock.NewMutation[square.UpsertCatalogObjectInput, square.CatalogObject](t, square.UpsertCatalogObjectDefinition),
+		deleteCatalogObject:       connectormock.NewMutation[square.DeleteCatalogObjectInput, square.DeletedCatalogObjects](t, square.DeleteCatalogObjectDefinition),
+		retrieveInventoryCount:    connectormock.NewQuery[square.RetrieveInventoryCountInput, square.InventoryCounts](t, square.RetrieveInventoryCountDefinition),
+		setInventoryPhysicalCount: connectormock.NewMutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts](t, square.SetInventoryPhysicalCountDefinition),
 	}
 	mock.listPayments.Default(ListPaymentsDefault())
 	mock.getPayment.Default(GetPaymentDefault())
@@ -98,6 +102,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.getCatalogObject.Default(GetCatalogObjectDefault())
 	mock.upsertCatalogObject.Default(UpsertCatalogObjectDefault())
 	mock.deleteCatalogObject.Default(DeleteCatalogObjectDefault())
+	mock.retrieveInventoryCount.Default(RetrieveInventoryCountDefault())
+	mock.setInventoryPhysicalCount.Default(SetInventoryPhysicalCountDefault())
 	connection, err := square.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "square", Name: connectionName})
 	if err != nil {
 		t.Fatalf("square mock connection: %v", err)
@@ -229,6 +235,16 @@ func (mock *Mock) DeleteCatalogObject() *connectormock.Mutation[square.DeleteCat
 	return mock.deleteCatalogObject
 }
 
+// RetrieveInventoryCount returns the retrieveInventoryCount script.
+func (mock *Mock) RetrieveInventoryCount() *connectormock.Query[square.RetrieveInventoryCountInput, square.InventoryCounts] {
+	return mock.retrieveInventoryCount
+}
+
+// SetInventoryPhysicalCount returns the setInventoryPhysicalCount script.
+func (mock *Mock) SetInventoryPhysicalCount() *connectormock.Mutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts] {
+	return mock.setInventoryPhysicalCount
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListPayments() sdkgo.Query[square.ListPaymentsInput, square.PaymentPage] {
@@ -302,6 +318,12 @@ func (operations mockOperations) UpsertCatalogObject() sdkgo.Mutation[square.Ups
 }
 func (operations mockOperations) DeleteCatalogObject() sdkgo.Mutation[square.DeleteCatalogObjectInput, square.DeletedCatalogObjects] {
 	return operations.mock.deleteCatalogObject
+}
+func (operations mockOperations) RetrieveInventoryCount() sdkgo.Query[square.RetrieveInventoryCountInput, square.InventoryCounts] {
+	return operations.mock.retrieveInventoryCount
+}
+func (operations mockOperations) SetInventoryPhysicalCount() sdkgo.Mutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts] {
+	return operations.mock.setInventoryPhysicalCount
 }
 
 // ListPaymentsListed selects the listed branch: List one page of Square payments.
@@ -1205,4 +1227,81 @@ func DeleteCatalogObjectDefaultAnswer() connectormock.Case[square.DeletedCatalog
 // DeleteCatalogObjectDefault is the manifest default, defaultAnswer, which New installs.
 func DeleteCatalogObjectDefault() connectormock.Case[square.DeletedCatalogObjects] {
 	return DeleteCatalogObjectDefaultAnswer()
+}
+
+// RetrieveInventoryCountFound selects the found branch: Read inventory counts for a catalog variation.
+func RetrieveInventoryCountFound(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.RetrieveInventoryCountBranchFound, value, failure)
+}
+
+// RetrieveInventoryCountNotFound selects the notFound branch: The catalog variation was not found.
+func RetrieveInventoryCountNotFound(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.RetrieveInventoryCountBranchNotFound, value, failure)
+}
+
+// RetrieveInventoryCountProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func RetrieveInventoryCountProviderRejected(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.RetrieveInventoryCountBranchProviderRejected, value, failure)
+}
+
+// RetrieveInventoryCountInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func RetrieveInventoryCountInvalidResponse(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.RetrieveInventoryCountBranchInvalidResponse, value, failure)
+}
+
+// RetrieveInventoryCountDefect selects the defect branch: Local input or connection credentials are invalid.
+func RetrieveInventoryCountDefect(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.RetrieveInventoryCountBranchDefect, value, failure)
+}
+
+// RetrieveInventoryCountRetry asks Dex to retry the retrieveInventoryCount Step, after the delay when it is positive.
+func RetrieveInventoryCountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Retry[square.InventoryCounts](failure, after)
+}
+
+// RetrieveInventoryCountDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square inventory count.
+func RetrieveInventoryCountDefaultAnswer() connectormock.Case[square.InventoryCounts] {
+	value := connectormock.MustDecodeOutput[square.InventoryCounts](`{"counts":[{"catalog_object_id":"variation_101","location_id":"loc_101","state":"IN_STOCK","quantity":"5"}],"cursor":""}`)
+	return connectormock.Branch(square.RetrieveInventoryCountBranchFound, value, nil)
+}
+
+// RetrieveInventoryCountDefault is the manifest default, defaultAnswer, which New installs.
+func RetrieveInventoryCountDefault() connectormock.Case[square.InventoryCounts] {
+	return RetrieveInventoryCountDefaultAnswer()
+}
+
+// SetInventoryPhysicalCountReconciled selects the reconciled branch: Square reconciled the physical count.
+func SetInventoryPhysicalCountReconciled(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.SetInventoryPhysicalCountBranchReconciled, value, failure)
+}
+
+// SetInventoryPhysicalCountProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func SetInventoryPhysicalCountProviderRejected(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.SetInventoryPhysicalCountBranchProviderRejected, value, failure)
+}
+
+// SetInventoryPhysicalCountInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func SetInventoryPhysicalCountInvalidResponse(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.SetInventoryPhysicalCountBranchInvalidResponse, value, failure)
+}
+
+// SetInventoryPhysicalCountDefect selects the defect branch: Local input or connection credentials are invalid.
+func SetInventoryPhysicalCountDefect(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.SetInventoryPhysicalCountBranchDefect, value, failure)
+}
+
+// SetInventoryPhysicalCountRetry asks Dex to retry the setInventoryPhysicalCount Step, after the delay when it is positive.
+func SetInventoryPhysicalCountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Retry[square.InventoryCounts](failure, after)
+}
+
+// SetInventoryPhysicalCountDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square reconciled inventory count.
+func SetInventoryPhysicalCountDefaultAnswer() connectormock.Case[square.InventoryCounts] {
+	value := connectormock.MustDecodeOutput[square.InventoryCounts](`{"counts":[{"catalog_object_id":"variation_101","location_id":"loc_101","state":"IN_STOCK","quantity":"5"}],"cursor":""}`)
+	return connectormock.Branch(square.SetInventoryPhysicalCountBranchReconciled, value, nil)
+}
+
+// SetInventoryPhysicalCountDefault is the manifest default, defaultAnswer, which New installs.
+func SetInventoryPhysicalCountDefault() connectormock.Case[square.InventoryCounts] {
+	return SetInventoryPhysicalCountDefaultAnswer()
 }

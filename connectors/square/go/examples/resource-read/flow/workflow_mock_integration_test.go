@@ -143,4 +143,19 @@ func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 	require.Equal(t, catalogFlowID, catalogCalls[0].FlowID)
 	require.Equal(t, MapToUpsertCatalogObjectInput(catalogInput), catalogCalls[0].Input)
 	require.Equal(t, square.UpsertCatalogObjectBranchUpserted, catalogCalls[0].Branch)
+	inventoryFlowID := "square-inventory-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	inventoryInput := Request{InventoryVariationID: "variation_101", InventoryLocationID: "loc_101", InventoryQuantity: "5", InventoryOccurredAt: "2026-11-17T12:00:00Z"}
+	_, err = client.StartFlow(ctx, flow, inventoryFlowID, inventoryInput, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	inventoryResult, err := client.WaitForFlow(ctx, inventoryFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, inventoryResult.Status, inventoryResult.ErrorMessage)
+	var inventoryOutcome Outcome
+	require.NoError(t, inventoryResult.DecodeSingleOutput(&inventoryOutcome))
+	require.Equal(t, "5", inventoryOutcome.InventoryCounts.Counts[0].Quantity)
+	inventoryCalls := mock.SetInventoryPhysicalCount().Calls()
+	require.Len(t, inventoryCalls, 1)
+	require.Equal(t, inventoryFlowID, inventoryCalls[0].FlowID)
+	require.Equal(t, MapToSetInventoryPhysicalCountInput(inventoryInput), inventoryCalls[0].Input)
+	require.Equal(t, square.SetInventoryPhysicalCountBranchReconciled, inventoryCalls[0].Branch)
 }

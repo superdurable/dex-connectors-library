@@ -112,6 +112,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[square.DeletedCatalogObjects](`{"deletedObjectIds":["item_101"]}`)
 			return err
 		}},
+		{name: "retrieveInventoryCount/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.InventoryCounts](`{"counts":[{"catalog_object_id":"variation_101","location_id":"loc_101","state":"IN_STOCK","quantity":"5"}],"cursor":""}`)
+			return err
+		}},
+		{name: "setInventoryPhysicalCount/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.InventoryCounts](`{"counts":[{"catalog_object_id":"variation_101","location_id":"loc_101","state":"IN_STOCK","quantity":"5"}],"cursor":""}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -193,5 +201,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteCatalogObject().Definition().Operation.OperationID != "deleteCatalogObject" {
 		t.Errorf("deleteCatalogObject mock has another definition")
+	}
+	if mock.RetrieveInventoryCount().Definition().Operation.OperationID != "retrieveInventoryCount" {
+		t.Errorf("retrieveInventoryCount mock has another definition")
+	}
+	if mock.SetInventoryPhysicalCount().Definition().Operation.OperationID != "setInventoryPhysicalCount" {
+		t.Errorf("setInventoryPhysicalCount mock has another definition")
 	}
 }
