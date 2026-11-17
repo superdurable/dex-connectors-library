@@ -24,6 +24,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[dropboxsign.SignatureRequestPage](`{"requests":[{"id":"fa5c8a0b0f492d768749333ad6fcc214c111e967","title":"Example agreement","isComplete":false,"isDeclined":false,"hasError":false}],"page":1,"totalPages":1}`)
 			return err
 		}},
+		{name: "sendSignatureRequest/sentDocument/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropboxsign.SignatureRequestStatus](`{"id":"fa5c8a0b0f492d768749333ad6fcc214c111e967","title":"Example agreement","isComplete":false,"isDeclined":false,"hasError":false}`)
+			return err
+		}},
+		{name: "sendSignatureRequestWithTemplate/sentTemplate/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropboxsign.SignatureRequestStatus](`{"id":"fa5c8a0b0f492d768749333ad6fcc214c111e967","title":"Example agreement","isComplete":false,"isDeclined":false,"hasError":false}`)
+			return err
+		}},
+		{name: "cancelIncompleteSignatureRequest/cancellationQueued/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropboxsign.CancellationQueued](`{"signatureRequestId":"fa5c8a0b0f492d768749333ad6fcc214c111e967","queued":true}`)
+			return err
+		}},
+		{name: "remindSignatureRequest/reminderSent/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropboxsign.SignatureRequestStatus](`{"id":"fa5c8a0b0f492d768749333ad6fcc214c111e967","title":"Example agreement","isComplete":false,"isDeclined":false,"hasError":false}`)
+			return err
+		}},
 		{name: "updateSignerName/updatedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[dropboxsign.UpdatedSignerName](`{"signatureRequestId":"fa5c8a0b0f492d768749333ad6fcc214c111e967","updated":true}`)
 			return err
@@ -43,6 +59,18 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListSignatureRequests().Definition().Operation.OperationID != "listSignatureRequests" {
 		t.Errorf("listSignatureRequests mock has another definition")
+	}
+	if mock.SendSignatureRequest().Definition().Operation.OperationID != "sendSignatureRequest" {
+		t.Errorf("sendSignatureRequest mock has another definition")
+	}
+	if mock.SendSignatureRequestWithTemplate().Definition().Operation.OperationID != "sendSignatureRequestWithTemplate" {
+		t.Errorf("sendSignatureRequestWithTemplate mock has another definition")
+	}
+	if mock.CancelIncompleteSignatureRequest().Definition().Operation.OperationID != "cancelIncompleteSignatureRequest" {
+		t.Errorf("cancelIncompleteSignatureRequest mock has another definition")
+	}
+	if mock.RemindSignatureRequest().Definition().Operation.OperationID != "remindSignatureRequest" {
+		t.Errorf("remindSignatureRequest mock has another definition")
 	}
 	if mock.UpdateSignerName().Definition().Operation.OperationID != "updateSignerName" {
 		t.Errorf("updateSignerName mock has another definition")

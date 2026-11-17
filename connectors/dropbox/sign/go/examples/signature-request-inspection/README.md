@@ -2,6 +2,8 @@
 
 The same Worker also registers `DropboxSignSignatureRequestList`. Start it with a one-based `page`, `pageSize` from 1 to 100, and optional Dropbox Sign search expression. It returns titles and status flags without signer or document data. `TestSignatureRequestListUsesDefaultMockWithRealDex` exercises the listing against a real local Dex with the connector mock.
 
+The Worker registers `DropboxSignTemplateSend`. Start it with a `templateIds` array from the account's Templates page, a `signers` array with exact template role, name, and email, and `testMode: true` for a nonbinding test. An optional title, subject, and message can be supplied. `TestTemplateSendUsesDefaultMockWithRealDex` exercises this Flow against a real local Dex with the connector mock. Optional rejection and uncertainty branches are unwired.
+
 This runnable Flow calls `getSignatureRequest` through the static `dropbox-sign` connection. It saves the selected status in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
@@ -11,6 +13,7 @@ From `connectors/dropbox/sign/go`, run:
 ```bash
 dexcli visualize ./examples/signature-request-inspection/flow/workflow.go --schema-version 2.0 --json --out /tmp/dropbox-sign-signature-request-inspection-fdg
 dexcli visualize ./examples/signature-request-inspection/flow/list_flow.go --schema-version 2.0 --lint app --json --out /tmp/dropbox-sign-signature-request-list-fdg
+dexcli visualize ./examples/signature-request-inspection/flow/template_send_flow.go --schema-version 2.0 --lint app --json --out /tmp/dropbox-sign-template-send-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.
