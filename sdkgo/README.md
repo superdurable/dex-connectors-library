@@ -605,6 +605,16 @@ no marker: attempt one may send, and a later attempt assumes that each earlier
 attempt sent once, which can only overcount. Only a heartbeat read error from
 Dex, and an own entry with an impossible send count, fail closed.
 
+Each call has its own Call ID even when one Step calls the same operation
+twice. `RunQuery`, `RunMutation`, and agent tools count the calls of each
+operation in a Step attempt: the first keeps the Call ID derived from the Flow
+ID, Step execution ID, connector ID, and operation ID, and the n-th call mixes
+n into that derivation, so idempotency keys of single calls never change. The
+count restarts each attempt, so a Step must make its connector calls in a
+deterministic order, for example sequentially in input order; calls of the same
+operation started concurrently in a varying order can swap Call IDs between
+attempts.
+
 The heartbeat format is internal to the connector SDKs and may change between
 releases. Hosts, including agent hosts, must not parse it; classify a result
 by the connector's selected branch. Connector tests seed a prior attempt's

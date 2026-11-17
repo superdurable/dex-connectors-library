@@ -455,6 +455,16 @@ than the cap. Only a heartbeat read error from Dex, and an own entry with a
 send count that one send per attempt could not produce, fail closed. Earlier
 SDK releases fail closed on the new format.
 
+Two calls of the same connector operation in one Step get distinct Call IDs.
+The SDKs count the calls of each operation per Step attempt: the first keeps
+the four-field derivation in [`identity.json`](../conformance/identity.json),
+so single-call idempotency keys and in-flight Flows are unchanged, and the
+n-th appends the decimal `n` as a fifth length-prefixed field
+(`occurrenceCallIds` pins occurrences 1 to 3). The count restarts each attempt,
+so a Step must make its connector calls in a deterministic order; otherwise
+two calls of one operation could swap identities, and checkpoint entries,
+between attempts.
+
 The checkpoint format is internal to the connector SDKs and may change. Hosts,
 including Dex agents and MCP servers, must not parse it; they classify a
 result by the branch the connector selects.

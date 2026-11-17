@@ -719,6 +719,38 @@ func (mutation renamedFencedMutation) Definition() sdkgo.MutationDefinition {
 	return definition
 }
 
+func TestRepeatedFencedOperationInOneStepGetsDistinctStableCallIDs(t *testing.T) {
+	mutation := &fencedMutation{branch: agentBranchSucceeded, shouldSend: true}
+	tool, err := sdkgo.NewMutationAgentTool(mutation, agentConnection, agentMutationMetadata())
+	require.NoError(t, err)
+	ctx := agentStepContext()
+	for range 2 {
+		attempt, err := tool.RunAttempt(ctx, nil)
+		require.NoError(t, err)
+		require.Equal(t, sdkgo.AgentToolAttemptSucceeded, attempt.Outcome)
+	}
+	require.Equal(t, 2, mutation.providerSent, "the second call is not fenced by the first call's claim")
+	require.Len(t, mutation.callIDs, 2)
+	require.NotEqual(t, mutation.callIDs[0], mutation.callIDs[1])
+	heartbeats := ctx.Heartbeats()
+	var checkpoint struct {
+		SingleDispatchMarkers map[sdkgo.CallID]singledispatch.Marker `json:"singleDispatchMarkers"`
+	}
+	require.NoError(t, json.Unmarshal(heartbeats[len(heartbeats)-1], &checkpoint))
+	require.Len(t, checkpoint.SingleDispatchMarkers, 2)
+
+	ctx.AdvanceAttempt()
+	retried := &fencedMutation{branch: agentBranchSucceeded, shouldSend: true}
+	retriedTool, err := sdkgo.NewMutationAgentTool(retried, agentConnection, agentMutationMetadata())
+	require.NoError(t, err)
+	for range 2 {
+		_, err := retriedTool.RunAttempt(ctx, nil)
+		require.NoError(t, err)
+	}
+	require.Equal(t, mutation.callIDs, retried.callIDs, "call order keeps occurrence IDs stable across attempts")
+	require.Zero(t, retried.providerSent, "each call finds its own claim and does not resend")
+}
+
 func TestTwoFencedAgentToolsInOneStepBothSend(t *testing.T) {
 	gmail := renamedFencedMutation{fencedMutation: &fencedMutation{branch: agentBranchSucceeded, shouldSend: true}, operation: sdkgo.OperationRef{ConnectorID: "gmail", OperationID: "sendMessage"}}
 	slack := renamedFencedMutation{fencedMutation: &fencedMutation{branch: agentBranchSucceeded, shouldSend: true}, operation: sdkgo.OperationRef{ConnectorID: "slack", OperationID: "postThreadReply"}}

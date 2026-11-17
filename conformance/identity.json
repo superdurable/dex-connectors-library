@@ -20,6 +20,11 @@
     "provider": "sample",
     "observedAt": "2026-10-29T12:30:45.123Z"
   },
+  "occurrenceCallIds": [
+    "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "3a6d73b9-2b75-503d-9247-2a8dc2fa961e",
+    "391bf0f6-f405-5d7a-9b2c-e5eb439e1910"
+  ],
   "providerKey": "sample/5af8fafa-06ff-5b2d-bb13-04693809fabf",
   "source": {
     "connectorId": "sample",

@@ -4,13 +4,12 @@
 package singledispatch
 
 import (
-	"context"
 	"maps"
 	"math"
-	"reflect"
 	"sync"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/internal/stepattempt"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -25,35 +24,16 @@ type checkpointHeartbeat struct {
 
 // stepCheckpoint merges the Markers of every Fence in one Step attempt into each heartbeat.
 type stepCheckpoint struct {
-	attempt int32
 	mu      sync.Mutex
 	markers map[sdkgo.CallID]Marker
 }
 
-// stepIdentity keys a Step context whose dynamic type cannot be a map key.
-type stepIdentity struct {
-	flowID          string
-	stepExecutionID string
-}
+var stepCheckpoints = stepattempt.NewRegistry(func(ctx dex.Context) *stepCheckpoint {
+	return &stepCheckpoint{markers: previousAttemptMarkers(ctx)}
+})
 
-var stepCheckpoints = struct {
-	mu        sync.Mutex
-	byContext map[any]*stepCheckpoint
-}{byContext: map[any]*stepCheckpoint{}}
-
-// stepCheckpointFor is released when ctx ends or a later attempt replaces it.
 func stepCheckpointFor(ctx dex.Context) *stepCheckpoint {
-	key := stepCheckpointKey(ctx)
-	attempt := ctx.Attempt()
-	stepCheckpoints.mu.Lock()
-	defer stepCheckpoints.mu.Unlock()
-	if existing, isPresent := stepCheckpoints.byContext[key]; isPresent && existing.attempt == attempt {
-		return existing
-	}
-	checkpoint := &stepCheckpoint{attempt: attempt, markers: previousAttemptMarkers(ctx)}
-	stepCheckpoints.byContext[key] = checkpoint
-	context.AfterFunc(ctx, func() { releaseStepCheckpoint(key, checkpoint) })
-	return checkpoint
+	return stepCheckpoints.For(ctx)
 }
 
 // record holds the lock across the heartbeat so the last persisted value has every committed entry.
@@ -68,21 +48,6 @@ func (checkpoint *stepCheckpoint) record(ctx dex.Context, marker Marker) error {
 	}
 	checkpoint.markers = markers
 	return nil
-}
-
-func releaseStepCheckpoint(key any, checkpoint *stepCheckpoint) {
-	stepCheckpoints.mu.Lock()
-	defer stepCheckpoints.mu.Unlock()
-	if stepCheckpoints.byContext[key] == checkpoint {
-		delete(stepCheckpoints.byContext, key)
-	}
-}
-
-func stepCheckpointKey(ctx dex.Context) any {
-	if reflect.TypeOf(ctx).Comparable() {
-		return ctx
-	}
-	return stepIdentity{flowID: ctx.FlowID(), stepExecutionID: ctx.StepExecutionID()}
 }
 
 // previousAttemptMarkers seeds a checkpoint; an unreadable heartbeat seeds nothing, which only overcounts.
