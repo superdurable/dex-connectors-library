@@ -12,27 +12,40 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
 
 // Option supplies a non-serializable client dependency.
 type Option interface{ applyClientOption(*Client) }
 type httpClientOption struct{ client *http.Client }
+type webhookSecretOption struct{ secret sdkgo.SecretString }
 
 func (option httpClientOption) applyClientOption(client *Client) { client.httpClient = option.client }
+func (option webhookSecretOption) applyClientOption(client *Client) {
+	client.webhookSecret = option.secret
+}
 
 // WithHTTPClient supplies a transport; New copies it and disables redirects.
 func WithHTTPClient(client *http.Client) Option { return httpClientOption{client} }
 
-// Client holds immutable HTTP configuration and resolves credentials for each request.
+// WithWebhookSecret supplies the Bitbucket webhook HMAC key for this process.
+// Blank leaves event delivery unavailable; API operations still work.
+func WithWebhookSecret(secret sdkgo.SecretString) Option { return webhookSecretOption{secret} }
+
+// Client holds HTTP configuration, a webhook secret, and shared event endpoints.
 type Client struct {
-	baseURL          string
-	maxResponseBytes int64
-	credentials      CredentialSource
-	httpClient       *http.Client
+	baseURL                    string
+	maxResponseBytes           int64
+	credentials                CredentialSource
+	httpClient                 *http.Client
+	webhookSecret              sdkgo.SecretString
+	repositoryEventEndpointsMu sync.Mutex
+	repositoryEventEndpoints   map[sdkgo.ConnectionRef]*webhooktrigger.Endpoint[Credentials, RepositoryEvent]
 }
 
 // New validates the connection settings without contacting Bitbucket.
@@ -51,7 +64,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, err
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, repositoryEventEndpoints: make(map[sdkgo.ConnectionRef]*webhooktrigger.Endpoint[Credentials, RepositoryEvent])}
 	for _, option := range options {
 		if option == nil {
 			return nil, fmt.Errorf("client option is required")

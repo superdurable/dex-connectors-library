@@ -270,6 +270,50 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+var RepositoryEventReceivedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "repositoryEventReceived"},
+	Description: "Receive HMAC-verified repository or workspace webhooks as identifier-only events.",
+}
+
+type RepositoryEventReceivedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{} `connector:"connectorId=bitbucket"`
+	triggerName                             struct{} `connector:"triggerName=repositoryEventReceived"`
+	ConnectionName                          string   `connector:"connectionName"`
+	BindingName                             string   `connector:"bindingName"`
+}
+
+func DefineRepositoryEventReceivedTriggerBinding(config RepositoryEventReceivedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: RepositoryEventReceivedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+	})
+}
+
+type RepositoryEventReceivedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                                    `connector:"connectorId=bitbucket"`
+	triggerName                      struct{}                                    `connector:"triggerName=repositoryEventReceived"`
+	Connection                       Connection                                  `connector:"connection"`
+	ConnectionName                   string                                      `connector:"connectionName"`
+	BindingName                      string                                      `connector:"bindingName"`
+	Configuration                    RepositoryEventReceivedTriggerConfiguration `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[RepositoryEvent]        `connector:"triggerTarget"`
+}
+
+func NewRepositoryEventReceivedTrigger(config RepositoryEventReceivedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: RepositoryEventReceivedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[RepositoryEvent]{
+		Definition: RepositoryEventReceivedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.repositoryEventReceivedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
 const ListBranchesBranchListed sdkgo.BranchID = "listed"
 const ListBranchesBranchNotFound sdkgo.BranchID = "notFound"
 const ListBranchesBranchProviderRejected sdkgo.BranchID = "providerRejected"

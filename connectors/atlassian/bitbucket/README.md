@@ -4,7 +4,7 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket`.
 
-Typed Query and Mutation Steps for Bitbucket. The module is `github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go`. See the [runnable resource-read Flow](go/examples/resource-read/README.md), which also registers a pull request title update Flow.
+Typed Query and Mutation Steps plus a verified repository webhook Trigger for Bitbucket. The module is `github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go`. See the [runnable operation Flows](go/examples/resource-read/README.md) and [repository event Flow](go/examples/repository-event/README.md).
 
 The Python package is [`dex-connector-atlassian-bitbucket`](python/README.md), imported as
 `dex_connectors.atlassian_bitbucket`.
@@ -48,11 +48,17 @@ Pull request comments support one-page list, single-comment read, Markdown creat
 
 Branches support one-page list, single-branch read, create at an exact 40-character hex commit hash, and delete. Branch names may contain `/`, but omit the `refs/heads/` prefix. `CreateBranch` uses the safe tier because its name is a stable repository-local key; a 409 is read back and accepted only when the existing branch points to the requested commit. Bitbucket Cloud has no branch update endpoint in the [refs API](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-refs/); change the branch in Git instead. Create and delete need Repositories Write access.
 
+## Repository event Trigger
+
+`repositoryEventReceived` accepts signed events from all 29 keys currently published by Bitbucket for workspace webhooks, including repository, pull request, issue, pipeline, and project events. The event includes safe resource identifiers and every branch or tag change in a push; it does not persist the entire webhook body. The Trigger event ID combines Bitbucket's `X-Request-UUID` and `X-Event-Key`; repeated delivery with the same request UUID keeps one ID. Bindings can filter supported event keys; an empty filter accepts all. The application should narrow repositories with its Trigger filter when a connection serves multiple repositories.
+
+Create a webhook under **Repository settings > Webhooks > Add webhook** or **Workspace settings > Webhooks** at [Bitbucket](https://bitbucket.org/), select the desired events, point it at the application's public HTTPS endpoint, and set a secret. Workspace webhooks receive events from all repositories in that workspace. Supply the same secret to the Go client with `WithWebhookSecret`; the [repository event example](go/examples/repository-event/README.md) reads it from `BITBUCKET_WEBHOOK_SECRET` and mounts the endpoint with a durable project inbox. The endpoint verifies the `X-Hub-Signature` SHA-256 HMAC before it records an event and answers retryably when the secret is blank or no Trigger is running. The access token and webhook secret remain separate; existing API connections need no new field.
+
 Workspace access tokens require Bitbucket Premium; grant Repositories > Read/Write/Admin/Delete for repository actions and Pull requests > Read/Write for PR actions. [Atlassian explains token creation](https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/) and [workspace token permissions](https://support.atlassian.com/bitbucket-cloud/docs/workspace-access-token-permissions/).
 
 ## Authentication and configuration
 
-Follow the authorization guide in `connector.yaml` from [https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/](https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/). The connection resolves credentials for each operation. Secrets travel in HTTP headers and never enter results, receipts, failures, or URLs. The `baseUrl` field uses the provider API URL, `timeout` bounds one HTTP request, and `maxResponseBytes` bounds JSON response size. The last two fields use a positive Go duration and a positive byte count, respectively; blank uses the displayed defaults.
+Follow the authorization guide in `connector.yaml` from [https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/](https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/). The connection resolves credentials for each operation or webhook delivery. Secrets travel in HTTP headers or HMAC verification and never enter results, receipts, failures, or URLs. The `baseUrl` field uses the provider API URL, `timeout` bounds one HTTP request, and `maxResponseBytes` bounds JSON response and webhook body size. The last two fields use a positive Go duration and a positive byte count, respectively; blank uses the displayed defaults.
 
 ## Failure handling
 
