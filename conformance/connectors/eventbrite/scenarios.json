@@ -1579,6 +1579,2917 @@
       },
       "name": "publishEvent-defect",
       "operation": "publishEvent"
+    },
+    {
+      "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"Example event\"},\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+          "providerId": "67890",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "67890",
+          "name": "Example event",
+          "status": "draft"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "input": {
+        "currency": "USD",
+        "endUtc": "2026-12-01T19:00:00Z",
+        "name": "Example event",
+        "organizationId": "12345",
+        "startUtc": "2026-12-01T18:00:00Z",
+        "timezone": "America/Los_Angeles"
+      },
+      "name": "createEvent-success",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "input": {
+        "currency": "USD",
+        "endUtc": "2026-12-01T19:00:00Z",
+        "name": "Example event",
+        "organizationId": "12345",
+        "startUtc": "2026-12-01T18:00:00Z",
+        "timezone": "America/Los_Angeles"
+      },
+      "name": "createEvent-providerRejected",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "input": {
+        "currency": "USD",
+        "endUtc": "2026-12-01T19:00:00Z",
+        "name": "Example event",
+        "organizationId": "12345",
+        "startUtc": "2026-12-01T18:00:00Z",
+        "timezone": "America/Los_Angeles"
+      },
+      "name": "createEvent-acceptedMalformed",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "input": {
+        "currency": "USD",
+        "endUtc": "2026-12-01T19:00:00Z",
+        "name": "Example event",
+        "organizationId": "12345",
+        "startUtc": "2026-12-01T18:00:00Z",
+        "timezone": "America/Los_Angeles"
+      },
+      "name": "createEvent-rateLimited",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "input": {
+        "currency": "USD",
+        "endUtc": "2026-12-01T19:00:00Z",
+        "name": "Example event",
+        "organizationId": "12345",
+        "startUtc": "2026-12-01T18:00:00Z",
+        "timezone": "America/Los_Angeles"
+      },
+      "name": "createEvent-serviceUnavailable",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "input": {
+        "currency": "USD",
+        "endUtc": "2026-12-01T19:00:00Z",
+        "name": "Example event",
+        "organizationId": "12345",
+        "startUtc": "2026-12-01T18:00:00Z",
+        "timezone": "America/Los_Angeles"
+      },
+      "name": "createEvent-serverUnavailable",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "input": {
+        "currency": "USD",
+        "endUtc": "2026-12-01T19:00:00Z",
+        "name": "Example event",
+        "organizationId": "12345",
+        "startUtc": "2026-12-01T18:00:00Z",
+        "timezone": "America/Los_Angeles"
+      },
+      "name": "createEvent-transportFailure",
+      "operation": "createEvent"
+    },
+    {
+      "attempts": 3,
+      "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "input": {
+        "currency": "USD",
+        "endUtc": "2026-12-01T19:00:00Z",
+        "name": "Example event",
+        "organizationId": "12345",
+        "startUtc": "2026-12-01T18:00:00Z",
+        "timezone": "America/Los_Angeles"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createEvent-sendCap",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "input": {
+        "currency": "USD",
+        "endUtc": "2026-12-01T19:00:00Z",
+        "name": "",
+        "organizationId": "12345",
+        "startUtc": "2026-12-01T18:00:00Z",
+        "timezone": "America/Los_Angeles"
+      },
+      "name": "createEvent-defect",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"67891\",\"name\":{\"text\":\"Example event copy\"},\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/copy/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "copied",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+          "providerId": "67891",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "67891",
+          "name": "Example event copy",
+          "status": "draft"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "copyEvent-success",
+      "operation": "copyEvent"
+    },
+    {
+      "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/copy/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "copyEvent-notFound",
+      "operation": "copyEvent"
+    },
+    {
+      "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/copy/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "copyEvent-providerRejected",
+      "operation": "copyEvent"
+    },
+    {
+      "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/copy/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "copyEvent-acceptedMalformed",
+      "operation": "copyEvent"
+    },
+    {
+      "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/copy/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "copyEvent-rateLimited",
+      "operation": "copyEvent"
+    },
+    {
+      "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/copy/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "copyEvent-serviceUnavailable",
+      "operation": "copyEvent"
+    },
+    {
+      "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/copy/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "copyEvent-serverUnavailable",
+      "operation": "copyEvent"
+    },
+    {
+      "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/copy/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "copyEvent-transportFailure",
+      "operation": "copyEvent"
+    },
+    {
+      "attempts": 3,
+      "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/copy/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/copy/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/copy/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "input": {
+        "eventId": "67890"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "copyEvent-sendCap",
+      "operation": "copyEvent"
+    },
+    {
+      "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "input": {
+        "eventId": "bad"
+      },
+      "name": "copyEvent-defect",
+      "operation": "copyEvent"
+    },
+    {
+      "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"Example event\"},\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "67890",
+          "name": "Example event",
+          "status": "draft"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "input": {
+        "currency": "USD",
+        "endUtc": "2026-12-01T19:00:00Z",
+        "name": "Example event",
+        "organizationId": "12345",
+        "startUtc": "2026-12-01T18:00:00Z",
+        "timezone": "America/Los_Angeles"
+      },
+      "name": "createEvent-readBack",
+      "operation": "createEvent",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+          "providerId": "67890",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"67891\",\"name\":{\"text\":\"Example event copy\"},\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67891/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "copied",
+        "failureKind": "",
+        "output": {
+          "id": "67891",
+          "name": "Example event copy",
+          "status": "draft"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "copyEvent-readBack",
+      "operation": "copyEvent",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
+          "providerId": "67891",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"Example event\"},\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"New event name\"},\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/",
+          "requestBody": {
+            "event": {
+              "name": {
+                "html": "New event name"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"New event name\"},\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "67890",
+          "name": "New event name",
+          "status": "draft"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "input": {
+        "eventId": "67890",
+        "name": "New event name"
+      },
+      "name": "updateEvent-success",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"New event name\"},\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "67890",
+          "name": "New event name",
+          "status": "draft"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "input": {
+        "eventId": "67890",
+        "name": "New event name"
+      },
+      "name": "updateEvent-alreadyApplied",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "input": {
+        "eventId": "67890",
+        "name": "New event name"
+      },
+      "name": "updateEvent-notFound",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "input": {
+        "eventId": "67890",
+        "name": "New event name"
+      },
+      "name": "updateEvent-providerRejected",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "input": {
+        "eventId": "67890",
+        "name": "New event name"
+      },
+      "name": "updateEvent-invalidResponse",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "input": {
+        "eventId": "67890",
+        "name": "New event name"
+      },
+      "name": "updateEvent-rateLimited",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "input": {
+        "eventId": "67890",
+        "name": "New event name"
+      },
+      "name": "updateEvent-serverUnavailable",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "input": {
+        "eventId": "67890",
+        "name": "New event name"
+      },
+      "name": "updateEvent-serviceUnavailable",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "input": {
+        "eventId": "67890",
+        "name": "New event name"
+      },
+      "name": "updateEvent-transportFailure",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"Example event\"},\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/",
+          "requestBody": {
+            "event": {
+              "name": {
+                "html": "New event name"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "input": {
+        "eventId": "67890",
+        "name": "New event name"
+      },
+      "name": "updateEvent-postServerUnavailable",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
+      "input": {
+        "eventId": "bad",
+        "name": "New event name"
+      },
+      "name": "updateEvent-defect",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"Example event\"},\"status\":\"live\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"unpublished\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/unpublish/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"Example event\"},\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unpublished",
+        "failureKind": "",
+        "output": {
+          "id": "67890",
+          "name": "Example event",
+          "status": "draft"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "unpublishEvent-success",
+      "operation": "unpublishEvent"
+    },
+    {
+      "callId": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"Example event\"},\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unpublished",
+        "failureKind": "",
+        "output": {
+          "id": "67890",
+          "name": "Example event",
+          "status": "draft"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "unpublishEvent-alreadyApplied",
+      "operation": "unpublishEvent"
+    },
+    {
+      "callId": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "unpublishEvent-notFound",
+      "operation": "unpublishEvent"
+    },
+    {
+      "callId": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "unpublishEvent-providerRejected",
+      "operation": "unpublishEvent"
+    },
+    {
+      "callId": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "unpublishEvent-invalidResponse",
+      "operation": "unpublishEvent"
+    },
+    {
+      "callId": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "unpublishEvent-rateLimited",
+      "operation": "unpublishEvent"
+    },
+    {
+      "callId": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "unpublishEvent-serverUnavailable",
+      "operation": "unpublishEvent"
+    },
+    {
+      "callId": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "unpublishEvent-serviceUnavailable",
+      "operation": "unpublishEvent"
+    },
+    {
+      "callId": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "unpublishEvent-transportFailure",
+      "operation": "unpublishEvent"
+    },
+    {
+      "callId": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"Example event\"},\"status\":\"live\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/unpublish/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "unpublishEvent-postServerUnavailable",
+      "operation": "unpublishEvent"
+    },
+    {
+      "callId": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
+      "input": {
+        "eventId": "bad"
+      },
+      "name": "unpublishEvent-defect",
+      "operation": "unpublishEvent"
+    },
+    {
+      "callId": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"Example event\"},\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"canceled\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/cancel/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"Example event\"},\"status\":\"canceled\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "canceled",
+        "failureKind": "",
+        "output": {
+          "id": "67890",
+          "name": "Example event",
+          "status": "canceled"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "cancelEvent-success",
+      "operation": "cancelEvent"
+    },
+    {
+      "callId": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"Example event\"},\"status\":\"canceled\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "canceled",
+        "failureKind": "",
+        "output": {
+          "id": "67890",
+          "name": "Example event",
+          "status": "canceled"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "cancelEvent-alreadyApplied",
+      "operation": "cancelEvent"
+    },
+    {
+      "callId": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "cancelEvent-notFound",
+      "operation": "cancelEvent"
+    },
+    {
+      "callId": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "cancelEvent-providerRejected",
+      "operation": "cancelEvent"
+    },
+    {
+      "callId": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "cancelEvent-invalidResponse",
+      "operation": "cancelEvent"
+    },
+    {
+      "callId": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "cancelEvent-rateLimited",
+      "operation": "cancelEvent"
+    },
+    {
+      "callId": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "cancelEvent-serverUnavailable",
+      "operation": "cancelEvent"
+    },
+    {
+      "callId": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "cancelEvent-serviceUnavailable",
+      "operation": "cancelEvent"
+    },
+    {
+      "callId": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "cancelEvent-transportFailure",
+      "operation": "cancelEvent"
+    },
+    {
+      "callId": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"67890\",\"name\":{\"text\":\"Example event\"},\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/cancel/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "cancelEvent-postServerUnavailable",
+      "operation": "cancelEvent"
+    },
+    {
+      "callId": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
+      "input": {
+        "eventId": "bad"
+      },
+      "name": "cancelEvent-defect",
+      "operation": "cancelEvent"
+    },
+    {
+      "callId": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "exchanges": [
+        {
+          "body": "{\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "eventId": "67890"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "deleteEvent-success",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "eventId": "67890"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "deleteEvent-alreadyAbsent",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "eventId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "deleteEvent-providerRejected",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "deleteEvent-rateLimited",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "deleteEvent-serverUnavailable",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "deleteEvent-serviceUnavailable",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "deleteEvent-transportFailure",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/67890/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "input": {
+        "eventId": "67890"
+      },
+      "name": "deleteEvent-malformedAnswer",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "eventId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "56b69387-69c8-5785-82e1-1682a72dd676",
+      "input": {
+        "eventId": "bad"
+      },
+      "name": "deleteEvent-defect",
+      "operation": "deleteEvent"
     }
   ],
   "schemaVersion": 1

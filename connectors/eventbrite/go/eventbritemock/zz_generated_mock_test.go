@@ -36,6 +36,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"live"}`)
 			return err
 		}},
+		{name: "createEvent/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"draft"}`)
+			return err
+		}},
+		{name: "copyEvent/copiedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67891","name":"Example event copy","status":"draft"}`)
+			return err
+		}},
+		{name: "updateEvent/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"New event name","status":"draft"}`)
+			return err
+		}},
+		{name: "unpublishEvent/unpublishedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"draft"}`)
+			return err
+		}},
+		{name: "cancelEvent/canceledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"canceled"}`)
+			return err
+		}},
+		{name: "deleteEvent/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.DeletedEvent](`{"eventId":"67890","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -60,5 +84,23 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.PublishEvent().Definition().Operation.OperationID != "publishEvent" {
 		t.Errorf("publishEvent mock has another definition")
+	}
+	if mock.CreateEvent().Definition().Operation.OperationID != "createEvent" {
+		t.Errorf("createEvent mock has another definition")
+	}
+	if mock.CopyEvent().Definition().Operation.OperationID != "copyEvent" {
+		t.Errorf("copyEvent mock has another definition")
+	}
+	if mock.UpdateEvent().Definition().Operation.OperationID != "updateEvent" {
+		t.Errorf("updateEvent mock has another definition")
+	}
+	if mock.UnpublishEvent().Definition().Operation.OperationID != "unpublishEvent" {
+		t.Errorf("unpublishEvent mock has another definition")
+	}
+	if mock.CancelEvent().Definition().Operation.OperationID != "cancelEvent" {
+		t.Errorf("cancelEvent mock has another definition")
+	}
+	if mock.DeleteEvent().Definition().Operation.OperationID != "deleteEvent" {
+		t.Errorf("deleteEvent mock has another definition")
 	}
 }

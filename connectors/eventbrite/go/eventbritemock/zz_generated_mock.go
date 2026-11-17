@@ -23,6 +23,12 @@ type Mock struct {
 	getAttendee       *connectormock.Query[eventbrite.GetAttendeeInput, eventbrite.AttendeeMetadata]
 	getEvent          *connectormock.Query[eventbrite.GetEventInput, eventbrite.EventMetadata]
 	publishEvent      *connectormock.Mutation[eventbrite.PublishEventInput, eventbrite.EventMetadata]
+	createEvent       *connectormock.Mutation[eventbrite.CreateEventInput, eventbrite.EventMetadata]
+	copyEvent         *connectormock.Mutation[eventbrite.CopyEventInput, eventbrite.EventMetadata]
+	updateEvent       *connectormock.Mutation[eventbrite.UpdateEventInput, eventbrite.EventMetadata]
+	unpublishEvent    *connectormock.Mutation[eventbrite.UnpublishEventInput, eventbrite.EventMetadata]
+	cancelEvent       *connectormock.Mutation[eventbrite.CancelEventInput, eventbrite.EventMetadata]
+	deleteEvent       *connectormock.Mutation[eventbrite.DeleteEventInput, eventbrite.DeletedEvent]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -35,12 +41,24 @@ func New(t testing.TB, connectionName string) *Mock {
 		getAttendee:       connectormock.NewQuery[eventbrite.GetAttendeeInput, eventbrite.AttendeeMetadata](t, eventbrite.GetAttendeeDefinition),
 		getEvent:          connectormock.NewQuery[eventbrite.GetEventInput, eventbrite.EventMetadata](t, eventbrite.GetEventDefinition),
 		publishEvent:      connectormock.NewMutation[eventbrite.PublishEventInput, eventbrite.EventMetadata](t, eventbrite.PublishEventDefinition),
+		createEvent:       connectormock.NewMutation[eventbrite.CreateEventInput, eventbrite.EventMetadata](t, eventbrite.CreateEventDefinition),
+		copyEvent:         connectormock.NewMutation[eventbrite.CopyEventInput, eventbrite.EventMetadata](t, eventbrite.CopyEventDefinition),
+		updateEvent:       connectormock.NewMutation[eventbrite.UpdateEventInput, eventbrite.EventMetadata](t, eventbrite.UpdateEventDefinition),
+		unpublishEvent:    connectormock.NewMutation[eventbrite.UnpublishEventInput, eventbrite.EventMetadata](t, eventbrite.UnpublishEventDefinition),
+		cancelEvent:       connectormock.NewMutation[eventbrite.CancelEventInput, eventbrite.EventMetadata](t, eventbrite.CancelEventDefinition),
+		deleteEvent:       connectormock.NewMutation[eventbrite.DeleteEventInput, eventbrite.DeletedEvent](t, eventbrite.DeleteEventDefinition),
 	}
 	mock.listOrganizations.Default(ListOrganizationsDefault())
 	mock.listEvents.Default(ListEventsDefault())
 	mock.getAttendee.Default(GetAttendeeDefault())
 	mock.getEvent.Default(GetEventDefault())
 	mock.publishEvent.Default(PublishEventDefault())
+	mock.createEvent.Default(CreateEventDefault())
+	mock.copyEvent.Default(CopyEventDefault())
+	mock.updateEvent.Default(UpdateEventDefault())
+	mock.unpublishEvent.Default(UnpublishEventDefault())
+	mock.cancelEvent.Default(CancelEventDefault())
+	mock.deleteEvent.Default(DeleteEventDefault())
 	connection, err := eventbrite.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "eventbrite", Name: connectionName})
 	if err != nil {
 		t.Fatalf("eventbrite mock connection: %v", err)
@@ -77,6 +95,36 @@ func (mock *Mock) PublishEvent() *connectormock.Mutation[eventbrite.PublishEvent
 	return mock.publishEvent
 }
 
+// CreateEvent returns the createEvent script.
+func (mock *Mock) CreateEvent() *connectormock.Mutation[eventbrite.CreateEventInput, eventbrite.EventMetadata] {
+	return mock.createEvent
+}
+
+// CopyEvent returns the copyEvent script.
+func (mock *Mock) CopyEvent() *connectormock.Mutation[eventbrite.CopyEventInput, eventbrite.EventMetadata] {
+	return mock.copyEvent
+}
+
+// UpdateEvent returns the updateEvent script.
+func (mock *Mock) UpdateEvent() *connectormock.Mutation[eventbrite.UpdateEventInput, eventbrite.EventMetadata] {
+	return mock.updateEvent
+}
+
+// UnpublishEvent returns the unpublishEvent script.
+func (mock *Mock) UnpublishEvent() *connectormock.Mutation[eventbrite.UnpublishEventInput, eventbrite.EventMetadata] {
+	return mock.unpublishEvent
+}
+
+// CancelEvent returns the cancelEvent script.
+func (mock *Mock) CancelEvent() *connectormock.Mutation[eventbrite.CancelEventInput, eventbrite.EventMetadata] {
+	return mock.cancelEvent
+}
+
+// DeleteEvent returns the deleteEvent script.
+func (mock *Mock) DeleteEvent() *connectormock.Mutation[eventbrite.DeleteEventInput, eventbrite.DeletedEvent] {
+	return mock.deleteEvent
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOrganizations() sdkgo.Query[eventbrite.ListOrganizationsInput, eventbrite.OrganizationsPage] {
@@ -93,6 +141,24 @@ func (operations mockOperations) GetEvent() sdkgo.Query[eventbrite.GetEventInput
 }
 func (operations mockOperations) PublishEvent() sdkgo.Mutation[eventbrite.PublishEventInput, eventbrite.EventMetadata] {
 	return operations.mock.publishEvent
+}
+func (operations mockOperations) CreateEvent() sdkgo.Mutation[eventbrite.CreateEventInput, eventbrite.EventMetadata] {
+	return operations.mock.createEvent
+}
+func (operations mockOperations) CopyEvent() sdkgo.Mutation[eventbrite.CopyEventInput, eventbrite.EventMetadata] {
+	return operations.mock.copyEvent
+}
+func (operations mockOperations) UpdateEvent() sdkgo.Mutation[eventbrite.UpdateEventInput, eventbrite.EventMetadata] {
+	return operations.mock.updateEvent
+}
+func (operations mockOperations) UnpublishEvent() sdkgo.Mutation[eventbrite.UnpublishEventInput, eventbrite.EventMetadata] {
+	return operations.mock.unpublishEvent
+}
+func (operations mockOperations) CancelEvent() sdkgo.Mutation[eventbrite.CancelEventInput, eventbrite.EventMetadata] {
+	return operations.mock.cancelEvent
+}
+func (operations mockOperations) DeleteEvent() sdkgo.Mutation[eventbrite.DeleteEventInput, eventbrite.DeletedEvent] {
+	return operations.mock.deleteEvent
 }
 
 // ListOrganizationsListed selects the listed branch: Eventbrite returned the organization page.
@@ -289,4 +355,233 @@ func PublishEventPublishedDefault() connectormock.Case[eventbrite.EventMetadata]
 // PublishEventDefault is the manifest default, publishedDefault, which New installs.
 func PublishEventDefault() connectormock.Case[eventbrite.EventMetadata] {
 	return PublishEventPublishedDefault()
+}
+
+// CreateEventCreated selects the created branch: Eventbrite created the draft event.
+func CreateEventCreated(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.CreateEventBranchCreated, value, failure)
+}
+
+// CreateEventProviderRejected selects the providerRejected branch: Eventbrite conclusively refused the event.
+func CreateEventProviderRejected(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.CreateEventBranchProviderRejected, value, failure)
+}
+
+// CreateEventUncertain returns an uncertain createEvent outcome.
+func CreateEventUncertain(value eventbrite.EventMetadata, failure sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateEventDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateEventDefect(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.CreateEventBranchDefect, value, failure)
+}
+
+// CreateEventRetry asks Dex to retry the createEvent Step, after the delay when it is positive.
+func CreateEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Retry[eventbrite.EventMetadata](failure, after)
+}
+
+// CreateEventCreatedDefault is the manifest mock createdDefault: One example draft event.
+func CreateEventCreatedDefault() connectormock.Case[eventbrite.EventMetadata] {
+	value := connectormock.MustDecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"draft"}`)
+	return connectormock.Branch(eventbrite.CreateEventBranchCreated, value, nil)
+}
+
+// CreateEventDefault is the manifest default, createdDefault, which New installs.
+func CreateEventDefault() connectormock.Case[eventbrite.EventMetadata] {
+	return CreateEventCreatedDefault()
+}
+
+// CopyEventCopied selects the copied branch: Eventbrite returned the new event.
+func CopyEventCopied(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.CopyEventBranchCopied, value, failure)
+}
+
+// CopyEventNotFound selects the notFound branch: The source event does not exist or is inaccessible.
+func CopyEventNotFound(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.CopyEventBranchNotFound, value, failure)
+}
+
+// CopyEventProviderRejected selects the providerRejected branch: Eventbrite conclusively refused the copy.
+func CopyEventProviderRejected(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.CopyEventBranchProviderRejected, value, failure)
+}
+
+// CopyEventUncertain returns an uncertain copyEvent outcome.
+func CopyEventUncertain(value eventbrite.EventMetadata, failure sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CopyEventDefect selects the defect branch: Local input or connection credentials are invalid.
+func CopyEventDefect(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.CopyEventBranchDefect, value, failure)
+}
+
+// CopyEventRetry asks Dex to retry the copyEvent Step, after the delay when it is positive.
+func CopyEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Retry[eventbrite.EventMetadata](failure, after)
+}
+
+// CopyEventCopiedDefault is the manifest mock copiedDefault: One example copied draft event.
+func CopyEventCopiedDefault() connectormock.Case[eventbrite.EventMetadata] {
+	value := connectormock.MustDecodeOutput[eventbrite.EventMetadata](`{"id":"67891","name":"Example event copy","status":"draft"}`)
+	return connectormock.Branch(eventbrite.CopyEventBranchCopied, value, nil)
+}
+
+// CopyEventDefault is the manifest default, copiedDefault, which New installs.
+func CopyEventDefault() connectormock.Case[eventbrite.EventMetadata] { return CopyEventCopiedDefault() }
+
+// UpdateEventUpdated selects the updated branch: The event has the requested name.
+func UpdateEventUpdated(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.UpdateEventBranchUpdated, value, failure)
+}
+
+// UpdateEventNotFound selects the notFound branch: The event does not exist or is inaccessible.
+func UpdateEventNotFound(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.UpdateEventBranchNotFound, value, failure)
+}
+
+// UpdateEventProviderRejected selects the providerRejected branch: Eventbrite conclusively refused the update.
+func UpdateEventProviderRejected(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.UpdateEventBranchProviderRejected, value, failure)
+}
+
+// UpdateEventInvalidResponse selects the invalidResponse branch: Eventbrite returned malformed or oversized event JSON.
+func UpdateEventInvalidResponse(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.UpdateEventBranchInvalidResponse, value, failure)
+}
+
+// UpdateEventDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateEventDefect(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.UpdateEventBranchDefect, value, failure)
+}
+
+// UpdateEventRetry asks Dex to retry the updateEvent Step, after the delay when it is positive.
+func UpdateEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Retry[eventbrite.EventMetadata](failure, after)
+}
+
+// UpdateEventUpdatedDefault is the manifest mock updatedDefault: One example event has its updated name.
+func UpdateEventUpdatedDefault() connectormock.Case[eventbrite.EventMetadata] {
+	value := connectormock.MustDecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"New event name","status":"draft"}`)
+	return connectormock.Branch(eventbrite.UpdateEventBranchUpdated, value, nil)
+}
+
+// UpdateEventDefault is the manifest default, updatedDefault, which New installs.
+func UpdateEventDefault() connectormock.Case[eventbrite.EventMetadata] {
+	return UpdateEventUpdatedDefault()
+}
+
+// UnpublishEventUnpublished selects the unpublished branch: The event is no longer live.
+func UnpublishEventUnpublished(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.UnpublishEventBranchUnpublished, value, failure)
+}
+
+// UnpublishEventNotFound selects the notFound branch: The event does not exist or is inaccessible.
+func UnpublishEventNotFound(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.UnpublishEventBranchNotFound, value, failure)
+}
+
+// UnpublishEventProviderRejected selects the providerRejected branch: Eventbrite conclusively refused unpublication.
+func UnpublishEventProviderRejected(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.UnpublishEventBranchProviderRejected, value, failure)
+}
+
+// UnpublishEventInvalidResponse selects the invalidResponse branch: Eventbrite returned malformed or oversized event JSON.
+func UnpublishEventInvalidResponse(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.UnpublishEventBranchInvalidResponse, value, failure)
+}
+
+// UnpublishEventDefect selects the defect branch: Local input or connection credentials are invalid.
+func UnpublishEventDefect(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.UnpublishEventBranchDefect, value, failure)
+}
+
+// UnpublishEventRetry asks Dex to retry the unpublishEvent Step, after the delay when it is positive.
+func UnpublishEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Retry[eventbrite.EventMetadata](failure, after)
+}
+
+// UnpublishEventUnpublishedDefault is the manifest mock unpublishedDefault: One example event is back in draft.
+func UnpublishEventUnpublishedDefault() connectormock.Case[eventbrite.EventMetadata] {
+	value := connectormock.MustDecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"draft"}`)
+	return connectormock.Branch(eventbrite.UnpublishEventBranchUnpublished, value, nil)
+}
+
+// UnpublishEventDefault is the manifest default, unpublishedDefault, which New installs.
+func UnpublishEventDefault() connectormock.Case[eventbrite.EventMetadata] {
+	return UnpublishEventUnpublishedDefault()
+}
+
+// CancelEventCanceled selects the canceled branch: The event is canceled.
+func CancelEventCanceled(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.CancelEventBranchCanceled, value, failure)
+}
+
+// CancelEventNotFound selects the notFound branch: The event does not exist or is inaccessible.
+func CancelEventNotFound(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.CancelEventBranchNotFound, value, failure)
+}
+
+// CancelEventProviderRejected selects the providerRejected branch: Eventbrite conclusively refused cancellation.
+func CancelEventProviderRejected(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.CancelEventBranchProviderRejected, value, failure)
+}
+
+// CancelEventInvalidResponse selects the invalidResponse branch: Eventbrite returned malformed or oversized event JSON.
+func CancelEventInvalidResponse(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.CancelEventBranchInvalidResponse, value, failure)
+}
+
+// CancelEventDefect selects the defect branch: Local input or connection credentials are invalid.
+func CancelEventDefect(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.CancelEventBranchDefect, value, failure)
+}
+
+// CancelEventRetry asks Dex to retry the cancelEvent Step, after the delay when it is positive.
+func CancelEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Retry[eventbrite.EventMetadata](failure, after)
+}
+
+// CancelEventCanceledDefault is the manifest mock canceledDefault: One example event is canceled.
+func CancelEventCanceledDefault() connectormock.Case[eventbrite.EventMetadata] {
+	value := connectormock.MustDecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"canceled"}`)
+	return connectormock.Branch(eventbrite.CancelEventBranchCanceled, value, nil)
+}
+
+// CancelEventDefault is the manifest default, canceledDefault, which New installs.
+func CancelEventDefault() connectormock.Case[eventbrite.EventMetadata] {
+	return CancelEventCanceledDefault()
+}
+
+// DeleteEventDeleted selects the deleted branch: The event is absent.
+func DeleteEventDeleted(value eventbrite.DeletedEvent, failure *sdkgo.Failure) connectormock.Case[eventbrite.DeletedEvent] {
+	return connectormock.Branch(eventbrite.DeleteEventBranchDeleted, value, failure)
+}
+
+// DeleteEventProviderRejected selects the providerRejected branch: Eventbrite conclusively refused deletion.
+func DeleteEventProviderRejected(value eventbrite.DeletedEvent, failure *sdkgo.Failure) connectormock.Case[eventbrite.DeletedEvent] {
+	return connectormock.Branch(eventbrite.DeleteEventBranchProviderRejected, value, failure)
+}
+
+// DeleteEventDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteEventDefect(value eventbrite.DeletedEvent, failure *sdkgo.Failure) connectormock.Case[eventbrite.DeletedEvent] {
+	return connectormock.Branch(eventbrite.DeleteEventBranchDefect, value, failure)
+}
+
+// DeleteEventRetry asks Dex to retry the deleteEvent Step, after the delay when it is positive.
+func DeleteEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.DeletedEvent] {
+	return connectormock.Retry[eventbrite.DeletedEvent](failure, after)
+}
+
+// DeleteEventDeletedDefault is the manifest mock deletedDefault: One example event is absent.
+func DeleteEventDeletedDefault() connectormock.Case[eventbrite.DeletedEvent] {
+	value := connectormock.MustDecodeOutput[eventbrite.DeletedEvent](`{"eventId":"67890","deleted":true}`)
+	return connectormock.Branch(eventbrite.DeleteEventBranchDeleted, value, nil)
+}
+
+// DeleteEventDefault is the manifest default, deletedDefault, which New installs.
+func DeleteEventDefault() connectormock.Case[eventbrite.DeletedEvent] {
+	return DeleteEventDeletedDefault()
 }
