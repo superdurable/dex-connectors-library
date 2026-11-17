@@ -27,7 +27,8 @@ func TestGenerateEmitsSendCapsOnlyWhenRequested(t *testing.T) {
 	connector, err = codegen.Generate(manifest, codegen.WithRepeatOnUnknownSendCaps())
 	require.NoError(t, err)
 	require.Contains(t, string(connector), "RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,", "agent.retry safe resolves createWidget to safe")
-	require.NotContains(t, string(connector), "MaxSends", "a safe operation has no send cap or override")
+	require.NotContains(t, string(connector), "MaxSends:", "a safe operation has no send cap and forwards no override")
+	require.Contains(t, string(connector), "\t// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.\n\tMaxSends int32 `connector:\"maxSends\"`\n", "a safe operation keeps the field callers wrote for a limited tier")
 	require.Equal(t, 1, strings.Count(string(connector), "RepeatOnUnknown:"), "only the Mutation carries a tier")
 
 	manifest.Spec.Operations[2].Agent.Retry = ""
@@ -107,6 +108,59 @@ func TestGeneratedSendCaps(t *testing.T) {
 	require.Equal(t, int32(4), createWidget.MaxSends)
 	require.False(t, createWidget.IsRetrySafe)
 	require.Equal(t, sdkgo.AgentToolEffectNonIdempotentWrite, createWidget.Effect())
+}
+`),
+	}
+
+	output, err := runFixtureModuleTests(t, mocksModulePath, files)
+
+	require.NoError(t, err, output)
+	require.Contains(t, output, "ok  \t"+mocksModulePath+"\t")
+}
+
+// TestGeneratedSafeMutationIgnoresMaxSends compiles a caller that sets MaxSends on a safe Mutation, which the SDK would reject.
+func TestGeneratedSafeMutationIgnoresMaxSends(t *testing.T) {
+	manifest, operations := loadAgentToolsFixture(t)
+	connector, err := codegen.Generate(manifest, codegen.WithRepeatOnUnknownSendCaps())
+	require.NoError(t, err)
+	agentTools, err := codegen.GenerateAgentTools(manifest, operations, codegen.WithRepeatOnUnknownSendCaps())
+	require.NoError(t, err)
+	source, test, err := codegen.GenerateMockPackage(manifest, mocksModulePath)
+	require.NoError(t, err)
+	client, err := os.ReadFile(filepath.Join(mocksFixturePath, "client.go"))
+	require.NoError(t, err)
+	files := map[string][]byte{
+		codegen.OutputFile:           connector,
+		codegen.AgentToolsOutputFile: agentTools,
+		"client.go":                  client,
+		filepath.Join(codegen.MockPackageName(manifest), codegen.MockOutputFile):     source,
+		filepath.Join(codegen.MockPackageName(manifest), codegen.MockTestOutputFile): test,
+		"safe_send_caps_test.go": []byte(`// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+package mockfixture_test
+
+import (
+	"testing"
+
+	"example.com/mockfixture"
+	"example.com/mockfixture/mockfixturemock"
+	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+)
+
+func TestSafeMutationIgnoresMaxSends(t *testing.T) {
+	require.Equal(t, sdkgo.RepeatOnUnknownSafe, mockfixture.CreateWidgetDefinition.RepeatOnUnknown)
+	config := mockfixture.CreateWidgetStepConfig[mockfixture.CreateWidgetInput]{
+		StepType: "CreateWidget", Annotations: sdkgo.StepAnnotations{GroupID: "widgets", GroupLabel: "Widgets", Explanation: "Create a widget."},
+		Connection: mockfixturemock.New(t, "primary").Connection(), ConnectionName: "primary",
+		MapToOperationInput: func(input mockfixture.CreateWidgetInput) mockfixture.CreateWidgetInput { return input },
+		Created:             sdkgo.GoTo(sdkgo.StepRef[mockfixture.CreateWidgetResult]("Done")),
+		MaxSends:            6,
+	}
+	withoutOverride := config
+	withoutOverride.MaxSends = 0
+	require.Equal(t, mockfixture.NewCreateWidgetStep(withoutOverride).GetStepOptions(), mockfixture.NewCreateWidgetStep(config).GetStepOptions())
 }
 `),
 	}

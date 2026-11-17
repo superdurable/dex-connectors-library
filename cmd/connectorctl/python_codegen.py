@@ -789,9 +789,15 @@ def render_steps():
         )
         lines.append("    step_options_override: dex.StepOptions | None = None,")
         tier = repeat_on_unknown_tier(operation)
-        # Only a limited Mutation accepts a send cap, so other factories reject the keyword.
+        # Only a limited Mutation forwards a send cap; a safe one keeps the keyword for compatibility.
         has_max_sends_override = bool(tier) and tier["repeatOnUnknown"] == "limited"
+        has_ignored_max_sends = bool(tier) and tier["repeatOnUnknown"] == "safe"
         if has_max_sends_override:
+            lines.append("    max_sends_override: int | None = None,")
+        elif has_ignored_max_sends:
+            lines.append(
+                "    # Accepted for compatibility; ignored because the operation is safe to repeat."
+            )
             lines.append("    max_sends_override: int | None = None,")
         lines.append(f") -> {kind}Step[StepInput, {input_type}, {output_type}]:")
         lines += [

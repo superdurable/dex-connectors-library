@@ -83,7 +83,7 @@ func GenerateTypeScriptFromPackage(manifest schema.Manifest, connectorPackage *g
 		return nil, err
 	}
 	files["definitions.ts"] = definitions
-	files["steps.ts"] = generateTypeScriptSteps(operations)
+	files["steps.ts"] = generateTypeScriptSteps(operations, config)
 	mock, err := generateTypeScriptMock(manifest, operations, graph.Models)
 	if err != nil {
 		return nil, err
@@ -673,7 +673,12 @@ func generateTypeScriptDefinitions(manifest schema.Manifest, operations []schema
 	return output.Bytes(), nil
 }
 
-func generateTypeScriptSteps(operations []schema.Operation) []byte {
+// hasIgnoredTypeScriptMaxSends reports whether a safe Mutation's factory accepts maxSends without forwarding it, because the SDK rejects it.
+func hasIgnoredTypeScriptMaxSends(operation schema.Operation, config typeScriptGenerateConfig) bool {
+	return config.hasRepeatOnUnknownSendCaps && operation.Kind == "mutation" && operation.ResolvedRepeatOnUnknown() == schema.RepeatOnUnknownSafe
+}
+
+func generateTypeScriptSteps(operations []schema.Operation, config typeScriptGenerateConfig) []byte {
 	var output bytes.Buffer
 	output.WriteString(typeScriptHeader())
 	output.WriteString("import { goToBranch")
@@ -705,11 +710,21 @@ func generateTypeScriptSteps(operations []schema.Operation) []byte {
 			}
 			fmt.Fprintf(&output, "  /** %s */\n  %s%s: StepTarget<%sResult<OperationOutput>>;\n", typeScriptJSDoc(branch.Description), branch.ID, optional, kind)
 		}
+		isMaxSendsIgnored := hasIgnoredTypeScriptMaxSends(operation, config)
+		if isMaxSendsIgnored {
+			output.WriteString("  /** Accepted for compatibility; ignored because the operation is safe to repeat. */\n  maxSends?: number;\n")
+		}
 		output.WriteString("}\n\n")
 		fmt.Fprintf(&output, "/** Build the %s Step from a named connection. */\nexport function new%sStep<StepInput, OperationInput = %s, OperationOutput = %s>(configuration: %sStepConfig<StepInput, OperationInput, OperationOutput>): %sStep<StepInput, OperationInput, OperationOutput> {\n", operation.Name, operation.GoName, operation.InputType, operation.OutputType, operation.GoName, kind)
+		if isMaxSendsIgnored {
+			output.WriteString("  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.\n")
+		}
 		output.WriteString("  const { connection, connectionName, ")
 		for _, branch := range operation.Branches {
 			fmt.Fprintf(&output, "%s, ", branch.ID)
+		}
+		if isMaxSendsIgnored {
+			output.WriteString("maxSends, ")
 		}
 		output.WriteString("...stepConfiguration } = configuration;\n")
 		output.WriteString("  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');\n")
