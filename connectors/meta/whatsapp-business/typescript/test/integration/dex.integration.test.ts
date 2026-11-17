@@ -82,7 +82,8 @@ it('runs all WhatsApp operations through real Dex retry and uncertainty boundari
     const template = await client.waitForFlow(templateID, 60_000);
     expect(template.status).toBe('failed');
     expect(template.errorMessage).toContain('uncertain');
-    expect(templateRequests).toBe(1);
+    // Each unknown outcome resends until the send cap of 3, then selects uncertain.
+    expect(templateRequests).toBe(3);
   } finally {
     await client.close(); await worker.close(); cache.close();
     await rm(directory, { recursive: true, force: true });

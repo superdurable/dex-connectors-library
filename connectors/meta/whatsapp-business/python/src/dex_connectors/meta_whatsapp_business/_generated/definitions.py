@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -48,14 +49,16 @@ SEND_TEXT_MESSAGE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(SENT, "Meta returned a WhatsApp message ID.", False),
         BranchDefinition(PROVIDER_REJECTED, "Meta definitively rejected the message.", True),
-        BranchDefinition(UNCERTAIN, "The send outcome cannot be confirmed; do not resend blindly.", True),
-        BranchDefinition(DEFECT, "Local input or credentials are invalid.", True),
+        BranchDefinition(UNCERTAIN, "Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly.", True),
+        BranchDefinition(DEFECT, "Local input or credentials are invalid before any send.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),
         1,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 SEND_TEMPLATE_MESSAGE_DEFINITION = MutationDefinition(
@@ -63,12 +66,14 @@ SEND_TEMPLATE_MESSAGE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(SENT, "Meta returned a WhatsApp message ID.", False),
         BranchDefinition(PROVIDER_REJECTED, "Meta definitively rejected the template send.", True),
-        BranchDefinition(UNCERTAIN, "The send outcome cannot be confirmed; do not resend blindly.", True),
-        BranchDefinition(DEFECT, "Local input or credentials are invalid.", True),
+        BranchDefinition(UNCERTAIN, "Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly.", True),
+        BranchDefinition(DEFECT, "Local input or credentials are invalid before any send.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),
         1,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )

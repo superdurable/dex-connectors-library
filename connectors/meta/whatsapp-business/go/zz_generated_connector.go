@@ -281,14 +281,16 @@ var SendTextMessageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendTextMessageBranchSent, Description: "Meta returned a WhatsApp message ID."},
 		{ID: SendTextMessageBranchProviderRejected, Description: "Meta definitively rejected the message.", Optional: true},
-		{ID: SendTextMessageBranchUncertain, Description: "The send outcome cannot be confirmed; do not resend blindly.", Optional: true},
-		{ID: SendTextMessageBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: SendTextMessageBranchUncertain, Description: "Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly.", Optional: true},
+		{ID: SendTextMessageBranchDefect, Description: "Local input or credentials are invalid before any send.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type SendTextMessageResult = sdkgo.MutationResult[SentMessage]
@@ -308,6 +310,8 @@ type SendTextMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SendTextMessageResult]               `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSendTextMessageStep[IN any](config SendTextMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendTextMessageInput, SentMessage] {
@@ -339,6 +343,7 @@ func NewSendTextMessageStep[IN any](config SendTextMessageStepConfig[IN]) sdkgo.
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -352,14 +357,16 @@ var SendTemplateMessageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendTemplateMessageBranchSent, Description: "Meta returned a WhatsApp message ID."},
 		{ID: SendTemplateMessageBranchProviderRejected, Description: "Meta definitively rejected the template send.", Optional: true},
-		{ID: SendTemplateMessageBranchUncertain, Description: "The send outcome cannot be confirmed; do not resend blindly.", Optional: true},
-		{ID: SendTemplateMessageBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: SendTemplateMessageBranchUncertain, Description: "Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly.", Optional: true},
+		{ID: SendTemplateMessageBranchDefect, Description: "Local input or credentials are invalid before any send.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type SendTemplateMessageResult = sdkgo.MutationResult[SentMessage]
@@ -379,6 +386,8 @@ type SendTemplateMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SendTemplateMessageResult]           `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSendTemplateMessageStep[IN any](config SendTemplateMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendTemplateMessageInput, SentMessage] {
@@ -410,5 +419,6 @@ func NewSendTemplateMessageStep[IN any](config SendTemplateMessageStepConfig[IN]
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

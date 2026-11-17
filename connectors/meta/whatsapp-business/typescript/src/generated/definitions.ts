@@ -53,9 +53,9 @@ export const SendTextMessageBranch = {
 export const SendTextMessageBranchSent = SendTextMessageBranch.Sent;
 /** Meta definitively rejected the message. */
 export const SendTextMessageBranchProviderRejected = SendTextMessageBranch.ProviderRejected;
-/** The send outcome cannot be confirmed; do not resend blindly. */
+/** Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly. */
 export const SendTextMessageBranchUncertain = SendTextMessageBranch.Uncertain;
-/** Local input or credentials are invalid. */
+/** Local input or credentials are invalid before any send. */
 export const SendTextMessageBranchDefect = SendTextMessageBranch.Defect;
 /** Manifest definition for sendTextMessage. */
 export const SendTextMessageDefinition: MutationDefinition = {
@@ -63,10 +63,12 @@ export const SendTextMessageDefinition: MutationDefinition = {
   branches: [
     { id: "sent", description: "Meta returned a WhatsApp message ID." },
     { id: "providerRejected", description: "Meta definitively rejected the message.", optional: true },
-    { id: "uncertain", description: "The send outcome cannot be confirmed; do not resend blindly.", optional: true },
-    { id: "defect", description: "Local input or credentials are invalid.", optional: true },
+    { id: "uncertain", description: "Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly.", optional: true },
+    { id: "defect", description: "Local input or credentials are invalid before any send.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for sendTextMessage. */
 export const SendTextMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -82,9 +84,9 @@ export const SendTemplateMessageBranch = {
 export const SendTemplateMessageBranchSent = SendTemplateMessageBranch.Sent;
 /** Meta definitively rejected the template send. */
 export const SendTemplateMessageBranchProviderRejected = SendTemplateMessageBranch.ProviderRejected;
-/** The send outcome cannot be confirmed; do not resend blindly. */
+/** Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly. */
 export const SendTemplateMessageBranchUncertain = SendTemplateMessageBranch.Uncertain;
-/** Local input or credentials are invalid. */
+/** Local input or credentials are invalid before any send. */
 export const SendTemplateMessageBranchDefect = SendTemplateMessageBranch.Defect;
 /** Manifest definition for sendTemplateMessage. */
 export const SendTemplateMessageDefinition: MutationDefinition = {
@@ -92,10 +94,12 @@ export const SendTemplateMessageDefinition: MutationDefinition = {
   branches: [
     { id: "sent", description: "Meta returned a WhatsApp message ID." },
     { id: "providerRejected", description: "Meta definitively rejected the template send.", optional: true },
-    { id: "uncertain", description: "The send outcome cannot be confirmed; do not resend blindly.", optional: true },
-    { id: "defect", description: "Local input or credentials are invalid.", optional: true },
+    { id: "uncertain", description: "Meta may have accepted the message, but the send cap was reached or Meta returned an incomplete confirmation; do not resend blindly.", optional: true },
+    { id: "defect", description: "Local input or credentials are invalid before any send.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for sendTemplateMessage. */
 export const SendTemplateMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
