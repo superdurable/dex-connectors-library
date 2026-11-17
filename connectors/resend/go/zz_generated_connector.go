@@ -40,6 +40,11 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	UpdateContact() sdkgo.Mutation[UpdateContactInput, ContactReference]
+	DeleteContact() sdkgo.Mutation[DeleteContactInput, DeletedContact]
+	DeleteDomain() sdkgo.Mutation[DeleteDomainInput, DeletedDomain]
+	UpdateScheduledEmail() sdkgo.Mutation[UpdateScheduledEmailInput, EmailReference]
+	CancelScheduledEmail() sdkgo.Mutation[CancelScheduledEmailInput, EmailReference]
 	SendEmail() sdkgo.Mutation[SendEmailInput, SentEmail]
 	GetEmail() sdkgo.Query[GetEmailInput, Email]
 	ListEmails() sdkgo.Query[ListEmailsInput, EmailPage]
@@ -51,6 +56,21 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) UpdateContact() sdkgo.Mutation[UpdateContactInput, ContactReference] {
+	return operations.client.UpdateContact()
+}
+func (operations clientOperations) DeleteContact() sdkgo.Mutation[DeleteContactInput, DeletedContact] {
+	return operations.client.DeleteContact()
+}
+func (operations clientOperations) DeleteDomain() sdkgo.Mutation[DeleteDomainInput, DeletedDomain] {
+	return operations.client.DeleteDomain()
+}
+func (operations clientOperations) UpdateScheduledEmail() sdkgo.Mutation[UpdateScheduledEmailInput, EmailReference] {
+	return operations.client.UpdateScheduledEmail()
+}
+func (operations clientOperations) CancelScheduledEmail() sdkgo.Mutation[CancelScheduledEmailInput, EmailReference] {
+	return operations.client.CancelScheduledEmail()
+}
 func (operations clientOperations) SendEmail() sdkgo.Mutation[SendEmailInput, SentEmail] {
 	return operations.client.SendEmail()
 }
@@ -208,6 +228,391 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const UpdateContactBranchUpdated sdkgo.BranchID = "updated"
+const UpdateContactBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateContactBranchUpdated, Description: "Resend updated the contact."},
+		{ID: UpdateContactBranchNotFound, Description: "The contact does not exist.", Optional: true},
+		{ID: UpdateContactBranchProviderRejected, Description: "Resend definitively rejected the update.", Optional: true},
+		{ID: UpdateContactBranchInvalidResponse, Description: "Resend returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateContactBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateContactResult = sdkgo.MutationResult[ContactReference]
+
+type UpdateContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=resend"`
+	operationID                       struct{}                                               `connector:"operationId=updateContact"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateContactInput                            `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateContactResult]                      `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateContactResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateContactResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateContactResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateContactResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateContactStep[IN any](config UpdateContactStepConfig[IN]) sdkgo.MutationStep[IN, UpdateContactInput, ContactReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateContactInput, ContactReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateContactResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateContactResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateContactBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateContactBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteContactBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteContactBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteContactBranchDeleted, Description: "Resend deleted the contact."},
+		{ID: DeleteContactBranchNotFound, Description: "The contact does not exist.", Optional: true},
+		{ID: DeleteContactBranchProviderRejected, Description: "Resend definitively rejected the deletion.", Optional: true},
+		{ID: DeleteContactBranchInvalidResponse, Description: "Resend returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteContactBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteContactResult = sdkgo.MutationResult[DeletedContact]
+
+type DeleteContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=resend"`
+	operationID                       struct{}                                             `connector:"operationId=deleteContact"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteContactInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteContactResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteContactResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteContactResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteContactResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteContactResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedContact]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteContactStep[IN any](config DeleteContactStepConfig[IN]) sdkgo.MutationStep[IN, DeleteContactInput, DeletedContact] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteContactInput, DeletedContact]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteContactResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteContactResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteContactBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteContactBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteDomainBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteDomainBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteDomainBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteDomainBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteDomainBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteDomainDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteDomain"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteDomainBranchDeleted, Description: "Resend deleted the domain."},
+		{ID: DeleteDomainBranchNotFound, Description: "The domain does not exist.", Optional: true},
+		{ID: DeleteDomainBranchProviderRejected, Description: "Resend definitively rejected the deletion.", Optional: true},
+		{ID: DeleteDomainBranchInvalidResponse, Description: "Resend returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteDomainBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteDomainResult = sdkgo.MutationResult[DeletedDomain]
+
+type DeleteDomainStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=resend"`
+	operationID                       struct{}                                            `connector:"operationId=deleteDomain"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteDomainInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteDomainResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteDomainResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteDomainResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteDomainResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteDomainResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedDomain]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteDomainStep[IN any](config DeleteDomainStepConfig[IN]) sdkgo.MutationStep[IN, DeleteDomainInput, DeletedDomain] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteDomainInput, DeletedDomain]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteDomain(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteDomainResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteDomainResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteDomainBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteDomainBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteDomainBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteDomainBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteDomainBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateScheduledEmailBranchUpdated sdkgo.BranchID = "updated"
+const UpdateScheduledEmailBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateScheduledEmailBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateScheduledEmailBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateScheduledEmailBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateScheduledEmailDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateScheduledEmail"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateScheduledEmailBranchUpdated, Description: "Resend updated the scheduled email."},
+		{ID: UpdateScheduledEmailBranchNotFound, Description: "The email does not exist.", Optional: true},
+		{ID: UpdateScheduledEmailBranchProviderRejected, Description: "Resend definitively rejected the update.", Optional: true},
+		{ID: UpdateScheduledEmailBranchInvalidResponse, Description: "Resend returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateScheduledEmailBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateScheduledEmailResult = sdkgo.MutationResult[EmailReference]
+
+type UpdateScheduledEmailStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=resend"`
+	operationID                       struct{}                                             `connector:"operationId=updateScheduledEmail"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateScheduledEmailInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateScheduledEmailResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateScheduledEmailResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateScheduledEmailResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateScheduledEmailResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateScheduledEmailResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EmailReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateScheduledEmailStep[IN any](config UpdateScheduledEmailStepConfig[IN]) sdkgo.MutationStep[IN, UpdateScheduledEmailInput, EmailReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateScheduledEmailInput, EmailReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateScheduledEmail(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateScheduledEmailResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateScheduledEmailResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateScheduledEmailBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateScheduledEmailBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateScheduledEmailBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateScheduledEmailBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateScheduledEmailBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CancelScheduledEmailBranchCancelled sdkgo.BranchID = "cancelled"
+const CancelScheduledEmailBranchNotFound sdkgo.BranchID = "notFound"
+const CancelScheduledEmailBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelScheduledEmailBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CancelScheduledEmailBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelScheduledEmailDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelScheduledEmail"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelScheduledEmailBranchCancelled, Description: "Resend cancelled the scheduled email."},
+		{ID: CancelScheduledEmailBranchNotFound, Description: "The email does not exist.", Optional: true},
+		{ID: CancelScheduledEmailBranchProviderRejected, Description: "Resend definitively rejected cancellation.", Optional: true},
+		{ID: CancelScheduledEmailBranchInvalidResponse, Description: "Resend returned malformed or oversized JSON.", Optional: true},
+		{ID: CancelScheduledEmailBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CancelScheduledEmailResult = sdkgo.MutationResult[EmailReference]
+
+type CancelScheduledEmailStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=resend"`
+	operationID                       struct{}                                             `connector:"operationId=cancelScheduledEmail"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CancelScheduledEmailInput                   `connector:"mapToOperationInput"`
+	Cancelled                         sdkgo.Target[CancelScheduledEmailResult]             `connector:"branch=cancelled"`
+	NotFound                          sdkgo.Target[CancelScheduledEmailResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CancelScheduledEmailResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CancelScheduledEmailResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CancelScheduledEmailResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EmailReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewCancelScheduledEmailStep[IN any](config CancelScheduledEmailStepConfig[IN]) sdkgo.MutationStep[IN, CancelScheduledEmailInput, EmailReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CancelScheduledEmailInput, EmailReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelScheduledEmail(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelScheduledEmailResult] {
+			branches := make([]sdkgo.BranchTarget[CancelScheduledEmailResult], 0, 5)
+			if config.Cancelled.HasStep() {
+				branches = append(branches, config.Cancelled.BranchTarget(CancelScheduledEmailBranchCancelled))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CancelScheduledEmailBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelScheduledEmailBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CancelScheduledEmailBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelScheduledEmailBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const SendEmailBranchSent sdkgo.BranchID = "sent"

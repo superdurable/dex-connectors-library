@@ -2226,6 +2226,1631 @@
       },
       "name": "listDomains-transport",
       "operation": "listDomains"
+    },
+    {
+      "callId": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"contact-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/reader@example.test",
+          "requestBody": {
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "contact-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "input": {
+        "firstName": "Ada",
+        "idOrEmail": "reader@example.test",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "updateContact-success",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/reader@example.test",
+          "requestBody": {
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "input": {
+        "firstName": "Ada",
+        "idOrEmail": "reader@example.test",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "updateContact-notFound",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/reader@example.test",
+          "requestBody": {
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "input": {
+        "firstName": "Ada",
+        "idOrEmail": "reader@example.test",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "updateContact-rejected",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/reader@example.test",
+          "requestBody": {
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "input": {
+        "firstName": "Ada",
+        "idOrEmail": "reader@example.test",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "updateContact-invalid",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/reader@example.test",
+          "requestBody": {
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "input": {
+        "firstName": "Ada",
+        "idOrEmail": "reader@example.test",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "updateContact-429",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/reader@example.test",
+          "requestBody": {
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "input": {
+        "firstName": "Ada",
+        "idOrEmail": "reader@example.test",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "updateContact-5xx",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/reader@example.test",
+          "requestBody": {
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "unsubscribed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "input": {
+        "firstName": "Ada",
+        "idOrEmail": "reader@example.test",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "updateContact-transport",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "exchanges": [
+        {
+          "body": "{\"contact\":\"contact-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "contact": "contact-1",
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "input": {
+        "idOrEmail": "reader@example.test"
+      },
+      "name": "deleteContact-success",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contact": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "input": {
+        "idOrEmail": "reader@example.test"
+      },
+      "name": "deleteContact-notFound",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contact": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "input": {
+        "idOrEmail": "reader@example.test"
+      },
+      "name": "deleteContact-rejected",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contact": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "input": {
+        "idOrEmail": "reader@example.test"
+      },
+      "name": "deleteContact-invalid",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "input": {
+        "idOrEmail": "reader@example.test"
+      },
+      "name": "deleteContact-429",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "input": {
+        "idOrEmail": "reader@example.test"
+      },
+      "name": "deleteContact-5xx",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/reader@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "input": {
+        "idOrEmail": "reader@example.test"
+      },
+      "name": "deleteContact-transport",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"domain-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/domains/domain-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "domain-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "deleteDomain-success",
+      "operation": "deleteDomain"
+    },
+    {
+      "callId": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/domains/domain-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "deleteDomain-notFound",
+      "operation": "deleteDomain"
+    },
+    {
+      "callId": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/domains/domain-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "deleteDomain-rejected",
+      "operation": "deleteDomain"
+    },
+    {
+      "callId": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/domains/domain-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "deleteDomain-invalid",
+      "operation": "deleteDomain"
+    },
+    {
+      "callId": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/domains/domain-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "deleteDomain-429",
+      "operation": "deleteDomain"
+    },
+    {
+      "callId": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/domains/domain-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "deleteDomain-5xx",
+      "operation": "deleteDomain"
+    },
+    {
+      "callId": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/domains/domain-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "input": {
+        "id": "domain-1"
+      },
+      "name": "deleteDomain-transport",
+      "operation": "deleteDomain"
+    },
+    {
+      "callId": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"email-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/emails/email-1",
+          "requestBody": {
+            "scheduled_at": "2027-01-01T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "email-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "input": {
+        "id": "email-1",
+        "scheduledAt": "2027-01-01T12:00:00Z"
+      },
+      "name": "updateScheduledEmail-success",
+      "operation": "updateScheduledEmail"
+    },
+    {
+      "callId": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/emails/email-1",
+          "requestBody": {
+            "scheduled_at": "2027-01-01T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "input": {
+        "id": "email-1",
+        "scheduledAt": "2027-01-01T12:00:00Z"
+      },
+      "name": "updateScheduledEmail-notFound",
+      "operation": "updateScheduledEmail"
+    },
+    {
+      "callId": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/emails/email-1",
+          "requestBody": {
+            "scheduled_at": "2027-01-01T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "input": {
+        "id": "email-1",
+        "scheduledAt": "2027-01-01T12:00:00Z"
+      },
+      "name": "updateScheduledEmail-rejected",
+      "operation": "updateScheduledEmail"
+    },
+    {
+      "callId": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/emails/email-1",
+          "requestBody": {
+            "scheduled_at": "2027-01-01T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "input": {
+        "id": "email-1",
+        "scheduledAt": "2027-01-01T12:00:00Z"
+      },
+      "name": "updateScheduledEmail-invalid",
+      "operation": "updateScheduledEmail"
+    },
+    {
+      "callId": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/emails/email-1",
+          "requestBody": {
+            "scheduled_at": "2027-01-01T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "input": {
+        "id": "email-1",
+        "scheduledAt": "2027-01-01T12:00:00Z"
+      },
+      "name": "updateScheduledEmail-429",
+      "operation": "updateScheduledEmail"
+    },
+    {
+      "callId": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/emails/email-1",
+          "requestBody": {
+            "scheduled_at": "2027-01-01T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "input": {
+        "id": "email-1",
+        "scheduledAt": "2027-01-01T12:00:00Z"
+      },
+      "name": "updateScheduledEmail-5xx",
+      "operation": "updateScheduledEmail"
+    },
+    {
+      "callId": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/emails/email-1",
+          "requestBody": {
+            "scheduled_at": "2027-01-01T12:00:00Z"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "input": {
+        "id": "email-1",
+        "scheduledAt": "2027-01-01T12:00:00Z"
+      },
+      "name": "updateScheduledEmail-transport",
+      "operation": "updateScheduledEmail"
+    },
+    {
+      "callId": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"email-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/emails/email-1/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "cancelled",
+        "failureKind": "",
+        "output": {
+          "id": "email-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "input": {
+        "id": "email-1"
+      },
+      "name": "cancelScheduledEmail-success",
+      "operation": "cancelScheduledEmail"
+    },
+    {
+      "callId": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/emails/email-1/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "input": {
+        "id": "email-1"
+      },
+      "name": "cancelScheduledEmail-notFound",
+      "operation": "cancelScheduledEmail"
+    },
+    {
+      "callId": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/emails/email-1/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "input": {
+        "id": "email-1"
+      },
+      "name": "cancelScheduledEmail-rejected",
+      "operation": "cancelScheduledEmail"
+    },
+    {
+      "callId": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/emails/email-1/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "input": {
+        "id": "email-1"
+      },
+      "name": "cancelScheduledEmail-invalid",
+      "operation": "cancelScheduledEmail"
+    },
+    {
+      "callId": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/emails/email-1/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "input": {
+        "id": "email-1"
+      },
+      "name": "cancelScheduledEmail-429",
+      "operation": "cancelScheduledEmail"
+    },
+    {
+      "callId": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/emails/email-1/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "input": {
+        "id": "email-1"
+      },
+      "name": "cancelScheduledEmail-5xx",
+      "operation": "cancelScheduledEmail"
+    },
+    {
+      "callId": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/emails/email-1/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "input": {
+        "id": "email-1"
+      },
+      "name": "cancelScheduledEmail-transport",
+      "operation": "cancelScheduledEmail"
+    },
+    {
+      "callId": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be5e6899-6bce-52d3-97b6-c2282aa6d480",
+      "input": {
+        "firstName": "Ada",
+        "idOrEmail": "",
+        "lastName": "Lovelace",
+        "unsubscribed": true
+      },
+      "name": "updateContact-defect",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contact": "",
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8d67492e-7ba4-5809-918d-6a47c159c87b",
+      "input": {
+        "idOrEmail": ""
+      },
+      "name": "deleteContact-defect",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "97414616-17de-51b9-8dfc-352e6fb9cf8e",
+      "input": {
+        "id": ""
+      },
+      "name": "deleteDomain-defect",
+      "operation": "deleteDomain"
+    },
+    {
+      "callId": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f74a301-93a1-5096-9c72-2aaf38e4857b",
+      "input": {
+        "id": "",
+        "scheduledAt": "2027-01-01T12:00:00Z"
+      },
+      "name": "updateScheduledEmail-defect",
+      "operation": "updateScheduledEmail"
+    },
+    {
+      "callId": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2bc7e3a7-20df-58fa-b251-5e587b3fa89b",
+      "input": {
+        "id": ""
+      },
+      "name": "cancelScheduledEmail-defect",
+      "operation": "cancelScheduledEmail"
     }
   ],
   "schemaVersion": 1

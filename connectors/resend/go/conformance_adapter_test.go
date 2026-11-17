@@ -27,5 +27,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listContacts": newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListContacts(), connection),
 		"getDomain":    newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetDomain(), connection),
 		"listDomains":  newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListDomains(), connection),
+		"updateContact": newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateContact(), connection, scenario.CallID),
+		"deleteContact": newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteContact(), connection, scenario.CallID),
+		"deleteDomain": newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteDomain(), connection, scenario.CallID),
+		"updateScheduledEmail": newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateScheduledEmail(), connection, scenario.CallID),
+		"cancelScheduledEmail": newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.CancelScheduledEmail(), connection, scenario.CallID),
 	}}
 }

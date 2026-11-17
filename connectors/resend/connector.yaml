@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: resend
   displayName: Resend
-  description: Send and inspect emails, contacts, and verified domains through the Resend API.
+  description: Send and manage emails, contacts, and verified domains through the Resend API.
   company: Resend
   categories: [communication, developer-tools]
   version: v0.3.0
@@ -64,6 +64,91 @@ spec:
       - Paste the token into the secret api_key field and save the connection; leave
         baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
+  - name: updateContact
+    goName: UpdateContact
+    inputType: UpdateContactInput
+    outputType: ContactReference
+    kind: mutation
+    description: Replace a global contact's name and subscription state.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the contact.}
+    - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the update., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateContactDefault, branch: updated, default: true, description: One contact was updated., output: {id: contact-1}}
+  - name: deleteContact
+    goName: DeleteContact
+    inputType: DeleteContactInput
+    outputType: DeletedContact
+    kind: mutation
+    description: Delete a global contact by ID or email address.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend deleted the contact.}
+    - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the deletion., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteContactDefault, branch: deleted, default: true, description: One contact was deleted., output: {contact: contact-1, deleted: true}}
+  - name: deleteDomain
+    goName: DeleteDomain
+    inputType: DeleteDomainInput
+    outputType: DeletedDomain
+    kind: mutation
+    description: Delete a sending domain by ID.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend deleted the domain.}
+    - {id: notFound, goName: NotFound, description: The domain does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the deletion., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteDomainDefault, branch: deleted, default: true, description: One domain was deleted., output: {id: domain-1, deleted: true}}
+  - name: updateScheduledEmail
+    goName: UpdateScheduledEmail
+    inputType: UpdateScheduledEmailInput
+    outputType: EmailReference
+    kind: mutation
+    description: Replace the delivery time of a scheduled email.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the scheduled email.}
+    - {id: notFound, goName: NotFound, description: The email does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the update., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateScheduledEmailDefault, branch: updated, default: true, description: One schedule was updated., output: {id: email-1}}
+  - name: cancelScheduledEmail
+    goName: CancelScheduledEmail
+    inputType: CancelScheduledEmailInput
+    outputType: EmailReference
+    kind: mutation
+    description: Cancel a scheduled email before delivery.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: cancelled, goName: Cancelled, description: Resend cancelled the scheduled email.}
+    - {id: notFound, goName: NotFound, description: The email does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected cancellation., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: cancelScheduledEmailDefault, branch: cancelled, default: true, description: One schedule was cancelled., output: {id: email-1}}
   - name: sendEmail
     goName: SendEmail
     inputType: SendEmailInput

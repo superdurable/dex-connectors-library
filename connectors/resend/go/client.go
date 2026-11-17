@@ -469,6 +469,9 @@ func runMutation[T any](client *Client, call sdkgo.Call, operation, method, path
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusConflict:
+		if extraHeader != "Idempotency-Key" {
+			return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the request with HTTP 409")
+		}
 		conflict, _ := providerhttp.ReadBoundedBody(response.Body, providerhttp.MaxErrorBodyBytes)
 		names := providerhttp.ReadErrorTokens(conflict, []string{"/name"})
 		if len(names) == 1 && names[0] == "invalid_idempotent_request" {

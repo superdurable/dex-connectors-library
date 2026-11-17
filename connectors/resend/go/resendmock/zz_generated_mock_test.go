@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "updateContact/updateContactDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactReference](`{"id":"contact-1"}`)
+			return err
+		}},
+		{name: "deleteContact/deleteContactDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedContact](`{"contact":"contact-1","deleted":true}`)
+			return err
+		}},
+		{name: "deleteDomain/deleteDomainDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedDomain](`{"id":"domain-1","deleted":true}`)
+			return err
+		}},
+		{name: "updateScheduledEmail/updateScheduledEmailDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailReference](`{"id":"email-1"}`)
+			return err
+		}},
+		{name: "cancelScheduledEmail/cancelScheduledEmailDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailReference](`{"id":"email-1"}`)
+			return err
+		}},
 		{name: "sendEmail/sendEmailDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[resend.SentEmail](`{"id":"5f9f777d-04e0-482a-bb65-088bb5bd44a4"}`)
 			return err
@@ -54,6 +74,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
+	}
+	if mock.DeleteDomain().Definition().Operation.OperationID != "deleteDomain" {
+		t.Errorf("deleteDomain mock has another definition")
+	}
+	if mock.UpdateScheduledEmail().Definition().Operation.OperationID != "updateScheduledEmail" {
+		t.Errorf("updateScheduledEmail mock has another definition")
+	}
+	if mock.CancelScheduledEmail().Definition().Operation.OperationID != "cancelScheduledEmail" {
+		t.Errorf("cancelScheduledEmail mock has another definition")
+	}
 	if mock.SendEmail().Definition().Operation.OperationID != "sendEmail" {
 		t.Errorf("sendEmail mock has another definition")
 	}
