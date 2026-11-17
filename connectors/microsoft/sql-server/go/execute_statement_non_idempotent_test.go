@@ -58,6 +58,7 @@ func TestExecuteStatementNonIdempotentClaimsBeforeCommitAndCommitsOnce(t *testin
 	require.Equal(t, int64(1), result.Value.RowsAffected)
 	require.True(t, database.hasCommitted.Load())
 	require.Len(t, server.EventsOfKind(scriptedtds.EventCommit), 1)
+	require.Empty(t, server.EventsOfKind(scriptedtds.EventAttention), "ending the statement context sends no attention before COMMIT")
 	require.Equal(t, singledispatch.StateClaimed, lastMarker(t, step).State, "COMMIT was claimed before it was sent")
 	requireSecretFree(t, result)
 }
