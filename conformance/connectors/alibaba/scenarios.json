@@ -1,0 +1,467 @@
+{
+  "connector": "alibaba",
+  "scenarios": [
+    {
+      "callId": "94bf0d0a-aa47-403d-ba6c-ff061f252354",
+      "exchanges": [
+        {
+          "body": "{\"Regions\":{\"Region\":[{\"RegionId\":\"cn-hangzhou\",\"LocalName\":\"华东1（杭州）\",\"RegionEndpoint\":\"ecs.cn-hangzhou.aliyuncs.com\",\"Status\":\"available\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "ACS3-HMAC-SHA256 Credential=test-access-key-id,SignedHeaders=host;x-acs-action;x-acs-content-sha256;x-acs-date;x-acs-signature-nonce;x-acs-version,Signature=f79f12fbf3009a5dfd9bd95a970c8b90ede559c15fe1d914e39e067a3130e1d7"
+            ],
+            "X-Acs-Action": [
+              "DescribeRegions"
+            ],
+            "X-Acs-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Acs-Date": [
+              "2023-10-26T10:22:32Z"
+            ],
+            "X-Acs-Signature-Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "X-Acs-Version": [
+              "2014-05-26"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "regions": [
+            {
+              "endpoint": "ecs.cn-hangzhou.aliyuncs.com",
+              "localName": "华东1（杭州）",
+              "regionId": "cn-hangzhou",
+              "status": "available"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "describeRegions-fetched",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "3ca8a576-6e40-4272-8da6-ac103c60c026",
+      "exchanges": [
+        {
+          "body": "{\"Code\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "ACS3-HMAC-SHA256 Credential=test-access-key-id,SignedHeaders=host;x-acs-action;x-acs-content-sha256;x-acs-date;x-acs-signature-nonce;x-acs-version,Signature=f79f12fbf3009a5dfd9bd95a970c8b90ede559c15fe1d914e39e067a3130e1d7"
+            ],
+            "X-Acs-Action": [
+              "DescribeRegions"
+            ],
+            "X-Acs-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Acs-Date": [
+              "2023-10-26T10:22:32Z"
+            ],
+            "X-Acs-Signature-Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "X-Acs-Version": [
+              "2014-05-26"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "regions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "describeRegions-providerRejected",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "63a1f559-b439-4835-8a61-88c6d99819fb",
+      "exchanges": [
+        {
+          "body": "{\"Code\":\"Throttling.System\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "ACS3-HMAC-SHA256 Credential=test-access-key-id,SignedHeaders=host;x-acs-action;x-acs-content-sha256;x-acs-date;x-acs-signature-nonce;x-acs-version,Signature=f79f12fbf3009a5dfd9bd95a970c8b90ede559c15fe1d914e39e067a3130e1d7"
+            ],
+            "X-Acs-Action": [
+              "DescribeRegions"
+            ],
+            "X-Acs-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Acs-Date": [
+              "2023-10-26T10:22:32Z"
+            ],
+            "X-Acs-Signature-Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "X-Acs-Version": [
+              "2014-05-26"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "describeRegions-throttling",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "4f9e6402-8762-49df-8fc8-7e166ba55107",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "ACS3-HMAC-SHA256 Credential=test-access-key-id,SignedHeaders=host;x-acs-action;x-acs-content-sha256;x-acs-date;x-acs-signature-nonce;x-acs-version,Signature=f79f12fbf3009a5dfd9bd95a970c8b90ede559c15fe1d914e39e067a3130e1d7"
+            ],
+            "X-Acs-Action": [
+              "DescribeRegions"
+            ],
+            "X-Acs-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Acs-Date": [
+              "2023-10-26T10:22:32Z"
+            ],
+            "X-Acs-Signature-Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "X-Acs-Version": [
+              "2014-05-26"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "regions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "describeRegions-invalidResponse",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "8e10207f-5f7f-453b-9c71-beaa07f34a90",
+      "exchanges": [
+        {
+          "body": "{\"Regions\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "ACS3-HMAC-SHA256 Credential=test-access-key-id,SignedHeaders=host;x-acs-action;x-acs-content-sha256;x-acs-date;x-acs-signature-nonce;x-acs-version,Signature=f79f12fbf3009a5dfd9bd95a970c8b90ede559c15fe1d914e39e067a3130e1d7"
+            ],
+            "X-Acs-Action": [
+              "DescribeRegions"
+            ],
+            "X-Acs-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Acs-Date": [
+              "2023-10-26T10:22:32Z"
+            ],
+            "X-Acs-Signature-Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "X-Acs-Version": [
+              "2014-05-26"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "regions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "describeRegions-missingList",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "6ee19150-454e-425d-9a21-8f8a4b779f82",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "ACS3-HMAC-SHA256 Credential=test-access-key-id,SignedHeaders=host;x-acs-action;x-acs-content-sha256;x-acs-date;x-acs-signature-nonce;x-acs-version,Signature=f79f12fbf3009a5dfd9bd95a970c8b90ede559c15fe1d914e39e067a3130e1d7"
+            ],
+            "X-Acs-Action": [
+              "DescribeRegions"
+            ],
+            "X-Acs-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Acs-Date": [
+              "2023-10-26T10:22:32Z"
+            ],
+            "X-Acs-Signature-Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "X-Acs-Version": [
+              "2014-05-26"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "describeRegions-rateLimit429",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "dc3a6c0e-4f92-449b-89eb-edebcffa0c52",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "ACS3-HMAC-SHA256 Credential=test-access-key-id,SignedHeaders=host;x-acs-action;x-acs-content-sha256;x-acs-date;x-acs-signature-nonce;x-acs-version,Signature=f79f12fbf3009a5dfd9bd95a970c8b90ede559c15fe1d914e39e067a3130e1d7"
+            ],
+            "X-Acs-Action": [
+              "DescribeRegions"
+            ],
+            "X-Acs-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Acs-Date": [
+              "2023-10-26T10:22:32Z"
+            ],
+            "X-Acs-Signature-Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "X-Acs-Version": [
+              "2014-05-26"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "describeRegions-availability503",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "6fb39b5c-4e17-4e5e-8afc-500fc3e0515f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "ACS3-HMAC-SHA256 Credential=test-access-key-id,SignedHeaders=host;x-acs-action;x-acs-content-sha256;x-acs-date;x-acs-signature-nonce;x-acs-version,Signature=f79f12fbf3009a5dfd9bd95a970c8b90ede559c15fe1d914e39e067a3130e1d7"
+            ],
+            "X-Acs-Action": [
+              "DescribeRegions"
+            ],
+            "X-Acs-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Acs-Date": [
+              "2023-10-26T10:22:32Z"
+            ],
+            "X-Acs-Signature-Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "X-Acs-Version": [
+              "2014-05-26"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "describeRegions-transportFailure",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "d121ca35-6c52-4acf-926b-692ba38fc40e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "regions": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "describeRegions-defect",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "8a5e1f89-a25a-4094-8c22-7cde7f272203",
+      "exchanges": [
+        {
+          "body": "{\"Regions\":{\"Region\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "ACS3-HMAC-SHA256 Credential=test-access-key-id,SignedHeaders=host;x-acs-action;x-acs-content-sha256;x-acs-date;x-acs-signature-nonce;x-acs-version,Signature=f79f12fbf3009a5dfd9bd95a970c8b90ede559c15fe1d914e39e067a3130e1d7"
+            ],
+            "X-Acs-Action": [
+              "DescribeRegions"
+            ],
+            "X-Acs-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Acs-Date": [
+              "2023-10-26T10:22:32Z"
+            ],
+            "X-Acs-Signature-Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "X-Acs-Version": [
+              "2014-05-26"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "regions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "describeRegions-oversized",
+      "operation": "describeRegions"
+    }
+  ],
+  "schemaVersion": 1
+}

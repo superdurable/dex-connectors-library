@@ -5,11 +5,11 @@ package alibaba
 
 import (
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -55,11 +55,11 @@ func (operation DescribeRegionsOperation) Invoke(call sdkgo.Call, _ DescribeRegi
 		return regionsBranch(DescribeRegionsBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	nonceBytes := make([]byte, 16)
-	if _, err := rand.Read(nonceBytes); err != nil {
+	if _, err := io.ReadFull(operation.client.nonceSource, nonceBytes); err != nil {
 		return regionsRetry(sdkgo.FailureAvailability, "request nonce unavailable", 0)
 	}
 	nonce := hex.EncodeToString(nonceBytes)
-	requestDate := time.Now().UTC().Format("2006-01-02T15:04:05Z")
+	requestDate := operation.client.clock().UTC().Format("2006-01-02T15:04:05Z")
 	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, operation.client.baseURL+"/", nil)
 	if err != nil {
 		return regionsBranch(DescribeRegionsBranchDefect, sdkgo.FailureValidation, "ECS request is invalid")
