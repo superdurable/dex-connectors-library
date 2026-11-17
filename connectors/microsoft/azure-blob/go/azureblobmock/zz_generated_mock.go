@@ -17,11 +17,15 @@ import (
 
 // Mock is a scripted microsoft-azure-blob connection. Script each operation through its accessor.
 type Mock struct {
-	connection azureblob.Connection
-	listBlobs  *connectormock.Query[azureblob.ListBlobsInput, azureblob.BlobsPage]
-	putBlob    *connectormock.Mutation[azureblob.PutBlobInput, azureblob.BlobWriteResult]
-	deleteBlob *connectormock.Mutation[azureblob.DeleteBlobInput, azureblob.BlobDeleteResult]
-	getBlob    *connectormock.Query[azureblob.GetBlobInput, azureblob.BlobDownload]
+	connection      azureblob.Connection
+	listContainers  *connectormock.Query[azureblob.ListContainersInput, azureblob.ContainersPage]
+	getContainer    *connectormock.Query[azureblob.GetContainerInput, azureblob.ContainerProperties]
+	createContainer *connectormock.Mutation[azureblob.CreateContainerInput, azureblob.ContainerWriteResult]
+	deleteContainer *connectormock.Mutation[azureblob.DeleteContainerInput, azureblob.ContainerDeleteResult]
+	listBlobs       *connectormock.Query[azureblob.ListBlobsInput, azureblob.BlobsPage]
+	putBlob         *connectormock.Mutation[azureblob.PutBlobInput, azureblob.BlobWriteResult]
+	deleteBlob      *connectormock.Mutation[azureblob.DeleteBlobInput, azureblob.BlobDeleteResult]
+	getBlob         *connectormock.Query[azureblob.GetBlobInput, azureblob.BlobDownload]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,11 +33,19 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listBlobs:  connectormock.NewQuery[azureblob.ListBlobsInput, azureblob.BlobsPage](t, azureblob.ListBlobsDefinition),
-		putBlob:    connectormock.NewMutation[azureblob.PutBlobInput, azureblob.BlobWriteResult](t, azureblob.PutBlobDefinition),
-		deleteBlob: connectormock.NewMutation[azureblob.DeleteBlobInput, azureblob.BlobDeleteResult](t, azureblob.DeleteBlobDefinition),
-		getBlob:    connectormock.NewQuery[azureblob.GetBlobInput, azureblob.BlobDownload](t, azureblob.GetBlobDefinition),
+		listContainers:  connectormock.NewQuery[azureblob.ListContainersInput, azureblob.ContainersPage](t, azureblob.ListContainersDefinition),
+		getContainer:    connectormock.NewQuery[azureblob.GetContainerInput, azureblob.ContainerProperties](t, azureblob.GetContainerDefinition),
+		createContainer: connectormock.NewMutation[azureblob.CreateContainerInput, azureblob.ContainerWriteResult](t, azureblob.CreateContainerDefinition),
+		deleteContainer: connectormock.NewMutation[azureblob.DeleteContainerInput, azureblob.ContainerDeleteResult](t, azureblob.DeleteContainerDefinition),
+		listBlobs:       connectormock.NewQuery[azureblob.ListBlobsInput, azureblob.BlobsPage](t, azureblob.ListBlobsDefinition),
+		putBlob:         connectormock.NewMutation[azureblob.PutBlobInput, azureblob.BlobWriteResult](t, azureblob.PutBlobDefinition),
+		deleteBlob:      connectormock.NewMutation[azureblob.DeleteBlobInput, azureblob.BlobDeleteResult](t, azureblob.DeleteBlobDefinition),
+		getBlob:         connectormock.NewQuery[azureblob.GetBlobInput, azureblob.BlobDownload](t, azureblob.GetBlobDefinition),
 	}
+	mock.listContainers.Default(ListContainersDefault())
+	mock.getContainer.Default(GetContainerDefault())
+	mock.createContainer.Default(CreateContainerDefault())
+	mock.deleteContainer.Default(DeleteContainerDefault())
 	mock.listBlobs.Default(ListBlobsDefault())
 	mock.putBlob.Default(PutBlobDefault())
 	mock.deleteBlob.Default(DeleteBlobDefault())
@@ -48,6 +60,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() azureblob.Connection { return mock.connection }
+
+// ListContainers returns the listContainers script.
+func (mock *Mock) ListContainers() *connectormock.Query[azureblob.ListContainersInput, azureblob.ContainersPage] {
+	return mock.listContainers
+}
+
+// GetContainer returns the getContainer script.
+func (mock *Mock) GetContainer() *connectormock.Query[azureblob.GetContainerInput, azureblob.ContainerProperties] {
+	return mock.getContainer
+}
+
+// CreateContainer returns the createContainer script.
+func (mock *Mock) CreateContainer() *connectormock.Mutation[azureblob.CreateContainerInput, azureblob.ContainerWriteResult] {
+	return mock.createContainer
+}
+
+// DeleteContainer returns the deleteContainer script.
+func (mock *Mock) DeleteContainer() *connectormock.Mutation[azureblob.DeleteContainerInput, azureblob.ContainerDeleteResult] {
+	return mock.deleteContainer
+}
 
 // ListBlobs returns the listBlobs script.
 func (mock *Mock) ListBlobs() *connectormock.Query[azureblob.ListBlobsInput, azureblob.BlobsPage] {
@@ -71,6 +103,18 @@ func (mock *Mock) GetBlob() *connectormock.Query[azureblob.GetBlobInput, azurebl
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListContainers() sdkgo.Query[azureblob.ListContainersInput, azureblob.ContainersPage] {
+	return operations.mock.listContainers
+}
+func (operations mockOperations) GetContainer() sdkgo.Query[azureblob.GetContainerInput, azureblob.ContainerProperties] {
+	return operations.mock.getContainer
+}
+func (operations mockOperations) CreateContainer() sdkgo.Mutation[azureblob.CreateContainerInput, azureblob.ContainerWriteResult] {
+	return operations.mock.createContainer
+}
+func (operations mockOperations) DeleteContainer() sdkgo.Mutation[azureblob.DeleteContainerInput, azureblob.ContainerDeleteResult] {
+	return operations.mock.deleteContainer
+}
 func (operations mockOperations) ListBlobs() sdkgo.Query[azureblob.ListBlobsInput, azureblob.BlobsPage] {
 	return operations.mock.listBlobs
 }
@@ -82,6 +126,155 @@ func (operations mockOperations) DeleteBlob() sdkgo.Mutation[azureblob.DeleteBlo
 }
 func (operations mockOperations) GetBlob() sdkgo.Query[azureblob.GetBlobInput, azureblob.BlobDownload] {
 	return operations.mock.getBlob
+}
+
+// ListContainersListed selects the listed branch: Azure returned one container page.
+func ListContainersListed(value azureblob.ContainersPage, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainersPage] {
+	return connectormock.Branch(azureblob.ListContainersBranchListed, value, failure)
+}
+
+// ListContainersProviderRejected selects the providerRejected branch: Azure rejected the list request.
+func ListContainersProviderRejected(value azureblob.ContainersPage, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainersPage] {
+	return connectormock.Branch(azureblob.ListContainersBranchProviderRejected, value, failure)
+}
+
+// ListContainersInvalidResponse selects the invalidResponse branch: Azure returned invalid or oversized XML.
+func ListContainersInvalidResponse(value azureblob.ContainersPage, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainersPage] {
+	return connectormock.Branch(azureblob.ListContainersBranchInvalidResponse, value, failure)
+}
+
+// ListContainersDefect selects the defect branch: The marker or connection is invalid.
+func ListContainersDefect(value azureblob.ContainersPage, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainersPage] {
+	return connectormock.Branch(azureblob.ListContainersBranchDefect, value, failure)
+}
+
+// ListContainersRetry asks Dex to retry the listContainers Step, after the delay when it is positive.
+func ListContainersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[azureblob.ContainersPage] {
+	return connectormock.Retry[azureblob.ContainersPage](failure, after)
+}
+
+// ListContainersListedDefault is the manifest mock listedDefault: One example container is listed.
+func ListContainersListedDefault() connectormock.Case[azureblob.ContainersPage] {
+	value := connectormock.MustDecodeOutput[azureblob.ContainersPage](`{"names":["docs"],"nextMarker":""}`)
+	return connectormock.Branch(azureblob.ListContainersBranchListed, value, nil)
+}
+
+// ListContainersDefault is the manifest default, listedDefault, which New installs.
+func ListContainersDefault() connectormock.Case[azureblob.ContainersPage] {
+	return ListContainersListedDefault()
+}
+
+// GetContainerFound selects the found branch: Azure returned container properties.
+func GetContainerFound(value azureblob.ContainerProperties, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainerProperties] {
+	return connectormock.Branch(azureblob.GetContainerBranchFound, value, failure)
+}
+
+// GetContainerMissing selects the missing branch: The container does not exist.
+func GetContainerMissing(value azureblob.ContainerProperties, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainerProperties] {
+	return connectormock.Branch(azureblob.GetContainerBranchMissing, value, failure)
+}
+
+// GetContainerProviderRejected selects the providerRejected branch: Azure rejected the lookup.
+func GetContainerProviderRejected(value azureblob.ContainerProperties, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainerProperties] {
+	return connectormock.Branch(azureblob.GetContainerBranchProviderRejected, value, failure)
+}
+
+// GetContainerInvalidResponse selects the invalidResponse branch: Azure returned invalid response metadata.
+func GetContainerInvalidResponse(value azureblob.ContainerProperties, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainerProperties] {
+	return connectormock.Branch(azureblob.GetContainerBranchInvalidResponse, value, failure)
+}
+
+// GetContainerDefect selects the defect branch: The container or connection is invalid.
+func GetContainerDefect(value azureblob.ContainerProperties, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainerProperties] {
+	return connectormock.Branch(azureblob.GetContainerBranchDefect, value, failure)
+}
+
+// GetContainerRetry asks Dex to retry the getContainer Step, after the delay when it is positive.
+func GetContainerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[azureblob.ContainerProperties] {
+	return connectormock.Retry[azureblob.ContainerProperties](failure, after)
+}
+
+// GetContainerFoundDefault is the manifest mock foundDefault: One example container is found.
+func GetContainerFoundDefault() connectormock.Case[azureblob.ContainerProperties] {
+	value := connectormock.MustDecodeOutput[azureblob.ContainerProperties](`{"etag":"\"0x1\"","lastModified":"Mon, 02 Jan 2006 15:04:05 GMT"}`)
+	return connectormock.Branch(azureblob.GetContainerBranchFound, value, nil)
+}
+
+// GetContainerDefault is the manifest default, foundDefault, which New installs.
+func GetContainerDefault() connectormock.Case[azureblob.ContainerProperties] {
+	return GetContainerFoundDefault()
+}
+
+// CreateContainerCreated selects the created branch: Azure created the named container.
+func CreateContainerCreated(value azureblob.ContainerWriteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainerWriteResult] {
+	return connectormock.Branch(azureblob.CreateContainerBranchCreated, value, failure)
+}
+
+// CreateContainerAlreadyExists selects the alreadyExists branch: Azure reports the named container already exists.
+func CreateContainerAlreadyExists(value azureblob.ContainerWriteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainerWriteResult] {
+	return connectormock.Branch(azureblob.CreateContainerBranchAlreadyExists, value, failure)
+}
+
+// CreateContainerProviderRejected selects the providerRejected branch: Azure rejected container creation.
+func CreateContainerProviderRejected(value azureblob.ContainerWriteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainerWriteResult] {
+	return connectormock.Branch(azureblob.CreateContainerBranchProviderRejected, value, failure)
+}
+
+// CreateContainerInvalidResponse selects the invalidResponse branch: Azure returned invalid response metadata.
+func CreateContainerInvalidResponse(value azureblob.ContainerWriteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainerWriteResult] {
+	return connectormock.Branch(azureblob.CreateContainerBranchInvalidResponse, value, failure)
+}
+
+// CreateContainerDefect selects the defect branch: The container or connection is invalid.
+func CreateContainerDefect(value azureblob.ContainerWriteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainerWriteResult] {
+	return connectormock.Branch(azureblob.CreateContainerBranchDefect, value, failure)
+}
+
+// CreateContainerRetry asks Dex to retry the createContainer Step, after the delay when it is positive.
+func CreateContainerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[azureblob.ContainerWriteResult] {
+	return connectormock.Retry[azureblob.ContainerWriteResult](failure, after)
+}
+
+// CreateContainerCreatedDefault is the manifest mock createdDefault: One example container was created.
+func CreateContainerCreatedDefault() connectormock.Case[azureblob.ContainerWriteResult] {
+	value := connectormock.MustDecodeOutput[azureblob.ContainerWriteResult](`{"container":"docs"}`)
+	return connectormock.Branch(azureblob.CreateContainerBranchCreated, value, nil)
+}
+
+// CreateContainerDefault is the manifest default, createdDefault, which New installs.
+func CreateContainerDefault() connectormock.Case[azureblob.ContainerWriteResult] {
+	return CreateContainerCreatedDefault()
+}
+
+// DeleteContainerDeleted selects the deleted branch: Azure accepted deletion or the container was already missing.
+func DeleteContainerDeleted(value azureblob.ContainerDeleteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainerDeleteResult] {
+	return connectormock.Branch(azureblob.DeleteContainerBranchDeleted, value, failure)
+}
+
+// DeleteContainerProviderRejected selects the providerRejected branch: Azure rejected container deletion.
+func DeleteContainerProviderRejected(value azureblob.ContainerDeleteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainerDeleteResult] {
+	return connectormock.Branch(azureblob.DeleteContainerBranchProviderRejected, value, failure)
+}
+
+// DeleteContainerDefect selects the defect branch: The container or connection is invalid.
+func DeleteContainerDefect(value azureblob.ContainerDeleteResult, failure *sdkgo.Failure) connectormock.Case[azureblob.ContainerDeleteResult] {
+	return connectormock.Branch(azureblob.DeleteContainerBranchDefect, value, failure)
+}
+
+// DeleteContainerRetry asks Dex to retry the deleteContainer Step, after the delay when it is positive.
+func DeleteContainerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[azureblob.ContainerDeleteResult] {
+	return connectormock.Retry[azureblob.ContainerDeleteResult](failure, after)
+}
+
+// DeleteContainerDeletedDefault is the manifest mock deletedDefault: One example container was deleted.
+func DeleteContainerDeletedDefault() connectormock.Case[azureblob.ContainerDeleteResult] {
+	value := connectormock.MustDecodeOutput[azureblob.ContainerDeleteResult](`{"deleted":true}`)
+	return connectormock.Branch(azureblob.DeleteContainerBranchDeleted, value, nil)
+}
+
+// DeleteContainerDefault is the manifest default, deletedDefault, which New installs.
+func DeleteContainerDefault() connectormock.Case[azureblob.ContainerDeleteResult] {
+	return DeleteContainerDeletedDefault()
 }
 
 // ListBlobsListed selects the listed branch: Azure returned one blob page.

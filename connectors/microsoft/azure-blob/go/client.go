@@ -90,6 +90,7 @@ type providerResponse struct {
 	status      int
 	contentType string
 	etag        string
+	lastModified string
 	retryAfter  time.Duration
 	err         error
 }
@@ -176,5 +177,5 @@ func (client *Client) requestStorage(call sdkgo.Call, method, path string, body 
 	if bytes.Contains(responseBody, []byte(accountKey)) {
 		return providerResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
 	}
-	return providerResponse{body: responseBody, status: response.StatusCode, contentType: response.Header.Get("Content-Type"), etag: response.Header.Get("ETag"), retryAfter: retryAfter, err: err}
+	return providerResponse{body: responseBody, status: response.StatusCode, contentType: response.Header.Get("Content-Type"), etag: response.Header.Get("ETag"), lastModified: response.Header.Get("Last-Modified"), retryAfter: retryAfter, err: err}
 }

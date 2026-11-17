@@ -1471,6 +1471,1210 @@
       },
       "name": "deleteBlob-transport",
       "operation": "deleteBlob"
+    },
+    {
+      "callId": "b07-cont-list-1",
+      "exchanges": [
+        {
+          "body": "\u003cEnumerationResults\u003e\u003cContainers\u003e\u003cContainer\u003e\u003cName\u003edocs\u003c/Name\u003e\u003c/Container\u003e\u003c/Containers\u003e\u003cNextMarker\u003enext\u003c/NextMarker\u003e\u003c/EnumerationResults\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "comp": [
+              "list"
+            ],
+            "marker": [
+              "cursor"
+            ],
+            "maxresults": [
+              "100"
+            ],
+            "prefix": [
+              "doc"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:KbR7kCnO8MbZl3oq3uVd4S5NrqB3rOLOafTRGuTVugI="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "names": [
+            "docs"
+          ],
+          "nextMarker": "next"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "cursor",
+        "prefix": "doc"
+      },
+      "name": "listContainers-listed",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "b07-cont-list-2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "comp": [
+              "list"
+            ],
+            "marker": [
+              "cursor"
+            ],
+            "maxresults": [
+              "100"
+            ],
+            "prefix": [
+              "doc"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:KbR7kCnO8MbZl3oq3uVd4S5NrqB3rOLOafTRGuTVugI="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "names": [],
+          "nextMarker": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "cursor",
+        "prefix": "doc"
+      },
+      "name": "listContainers-rejected",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "b07-cont-list-3",
+      "exchanges": [
+        {
+          "body": "\u003cbad\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "comp": [
+              "list"
+            ],
+            "marker": [
+              "cursor"
+            ],
+            "maxresults": [
+              "100"
+            ],
+            "prefix": [
+              "doc"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:KbR7kCnO8MbZl3oq3uVd4S5NrqB3rOLOafTRGuTVugI="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "names": [],
+          "nextMarker": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "cursor",
+        "prefix": "doc"
+      },
+      "name": "listContainers-invalid",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "b07-cont-list-4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "names": [],
+          "nextMarker": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "cursor",
+        "prefix": "doc\u0000"
+      },
+      "name": "listContainers-defect",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "b07-cont-list-5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "comp": [
+              "list"
+            ],
+            "marker": [
+              "cursor"
+            ],
+            "maxresults": [
+              "100"
+            ],
+            "prefix": [
+              "doc"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:KbR7kCnO8MbZl3oq3uVd4S5NrqB3rOLOafTRGuTVugI="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "cursor",
+        "prefix": "doc"
+      },
+      "name": "listContainers-429",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "b07-cont-list-6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "comp": [
+              "list"
+            ],
+            "marker": [
+              "cursor"
+            ],
+            "maxresults": [
+              "100"
+            ],
+            "prefix": [
+              "doc"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:KbR7kCnO8MbZl3oq3uVd4S5NrqB3rOLOafTRGuTVugI="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "cursor",
+        "prefix": "doc"
+      },
+      "name": "listContainers-500",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "b07-cont-list-7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "comp": [
+              "list"
+            ],
+            "marker": [
+              "cursor"
+            ],
+            "maxresults": [
+              "100"
+            ],
+            "prefix": [
+              "doc"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:KbR7kCnO8MbZl3oq3uVd4S5NrqB3rOLOafTRGuTVugI="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "cursor",
+        "prefix": "doc"
+      },
+      "name": "listContainers-transport",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "b07-cont-get-1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "ETag": "\"0x1\"",
+            "Last-Modified": "Mon, 02 Jan 2006 15:04:05 GMT"
+          },
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:YIsujbIKw7lAwDqPjmFNRRCnswkosrY+joconPV7LeE="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "etag": "\"0x1\"",
+          "lastModified": "Mon, 02 Jan 2006 15:04:05 GMT"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "docs"
+      },
+      "name": "getContainer-found",
+      "operation": "getContainer"
+    },
+    {
+      "callId": "b07-cont-get-2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:YIsujbIKw7lAwDqPjmFNRRCnswkosrY+joconPV7LeE="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "etag": "",
+          "lastModified": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "docs"
+      },
+      "name": "getContainer-missing",
+      "operation": "getContainer"
+    },
+    {
+      "callId": "b07-cont-get-3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:YIsujbIKw7lAwDqPjmFNRRCnswkosrY+joconPV7LeE="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "etag": "",
+          "lastModified": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "docs"
+      },
+      "name": "getContainer-rejected",
+      "operation": "getContainer"
+    },
+    {
+      "callId": "b07-cont-get-4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:YIsujbIKw7lAwDqPjmFNRRCnswkosrY+joconPV7LeE="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "etag": "",
+          "lastModified": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "docs"
+      },
+      "name": "getContainer-invalid",
+      "operation": "getContainer"
+    },
+    {
+      "callId": "b07-cont-get-5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "etag": "",
+          "lastModified": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "INVALID"
+      },
+      "name": "getContainer-defect",
+      "operation": "getContainer"
+    },
+    {
+      "callId": "b07-cont-get-6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:YIsujbIKw7lAwDqPjmFNRRCnswkosrY+joconPV7LeE="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "docs"
+      },
+      "name": "getContainer-429",
+      "operation": "getContainer"
+    },
+    {
+      "callId": "b07-cont-get-7",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:YIsujbIKw7lAwDqPjmFNRRCnswkosrY+joconPV7LeE="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "docs"
+      },
+      "name": "getContainer-500",
+      "operation": "getContainer"
+    },
+    {
+      "callId": "b07-cont-get-8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:YIsujbIKw7lAwDqPjmFNRRCnswkosrY+joconPV7LeE="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "container": "docs"
+      },
+      "name": "getContainer-transport",
+      "operation": "getContainer"
+    },
+    {
+      "callId": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:URlgSg70cKOdpGwOqHCQCoH1JD6APQfi3IdUJZUMEgs="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "container": "docs"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "input": {
+        "container": "docs"
+      },
+      "name": "createContainer-created",
+      "operation": "createContainer"
+    },
+    {
+      "callId": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:URlgSg70cKOdpGwOqHCQCoH1JD6APQfi3IdUJZUMEgs="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "alreadyExists",
+        "failureKind": "CONFLICT",
+        "output": {
+          "container": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "input": {
+        "container": "docs"
+      },
+      "name": "createContainer-exists",
+      "operation": "createContainer"
+    },
+    {
+      "callId": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:URlgSg70cKOdpGwOqHCQCoH1JD6APQfi3IdUJZUMEgs="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "container": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "input": {
+        "container": "docs"
+      },
+      "name": "createContainer-rejected",
+      "operation": "createContainer"
+    },
+    {
+      "callId": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "container": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "input": {
+        "container": "INVALID"
+      },
+      "name": "createContainer-defect",
+      "operation": "createContainer"
+    },
+    {
+      "callId": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:URlgSg70cKOdpGwOqHCQCoH1JD6APQfi3IdUJZUMEgs="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "input": {
+        "container": "docs"
+      },
+      "name": "createContainer-429",
+      "operation": "createContainer"
+    },
+    {
+      "callId": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:URlgSg70cKOdpGwOqHCQCoH1JD6APQfi3IdUJZUMEgs="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "input": {
+        "container": "docs"
+      },
+      "name": "createContainer-500",
+      "operation": "createContainer"
+    },
+    {
+      "callId": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:URlgSg70cKOdpGwOqHCQCoH1JD6APQfi3IdUJZUMEgs="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "input": {
+        "container": "docs"
+      },
+      "name": "createContainer-transport",
+      "operation": "createContainer"
+    },
+    {
+      "callId": "f90b59ef-a8f3-5dea-947a-fc5eed95efca",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:vJod/yDXTnnByRqRcK1lr/qCTDbxbqraF25JIxMLavQ="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f90b59ef-a8f3-5dea-947a-fc5eed95efca",
+      "input": {
+        "container": "docs"
+      },
+      "name": "deleteContainer-deleted",
+      "operation": "deleteContainer"
+    },
+    {
+      "callId": "f90b59ef-a8f3-5dea-947a-fc5eed95efca",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:vJod/yDXTnnByRqRcK1lr/qCTDbxbqraF25JIxMLavQ="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f90b59ef-a8f3-5dea-947a-fc5eed95efca",
+      "input": {
+        "container": "docs"
+      },
+      "name": "deleteContainer-rejected",
+      "operation": "deleteContainer"
+    },
+    {
+      "callId": "f90b59ef-a8f3-5dea-947a-fc5eed95efca",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f90b59ef-a8f3-5dea-947a-fc5eed95efca",
+      "input": {
+        "container": "INVALID"
+      },
+      "name": "deleteContainer-defect",
+      "operation": "deleteContainer"
+    },
+    {
+      "callId": "f90b59ef-a8f3-5dea-947a-fc5eed95efca",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:vJod/yDXTnnByRqRcK1lr/qCTDbxbqraF25JIxMLavQ="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f90b59ef-a8f3-5dea-947a-fc5eed95efca",
+      "input": {
+        "container": "docs"
+      },
+      "name": "deleteContainer-429",
+      "operation": "deleteContainer"
+    },
+    {
+      "callId": "f90b59ef-a8f3-5dea-947a-fc5eed95efca",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:vJod/yDXTnnByRqRcK1lr/qCTDbxbqraF25JIxMLavQ="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f90b59ef-a8f3-5dea-947a-fc5eed95efca",
+      "input": {
+        "container": "docs"
+      },
+      "name": "deleteContainer-500",
+      "operation": "deleteContainer"
+    },
+    {
+      "callId": "f90b59ef-a8f3-5dea-947a-fc5eed95efca",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:vJod/yDXTnnByRqRcK1lr/qCTDbxbqraF25JIxMLavQ="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f90b59ef-a8f3-5dea-947a-fc5eed95efca",
+      "input": {
+        "container": "docs"
+      },
+      "name": "deleteContainer-transport",
+      "operation": "deleteContainer"
     }
   ],
   "schemaVersion": 1

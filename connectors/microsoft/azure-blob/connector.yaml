@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: microsoft-azure-blob
   displayName: Azure Blob Storage
-  description: List, download, upload, and delete bounded blobs with Azure Storage Shared Key authorization.
+  description: Manage Azure Storage containers and list, download, upload, and delete bounded blobs with Shared Key authorization.
   company: Microsoft
   categories: [databases-storage, files-documents]
   version: v0.2.0
@@ -38,17 +38,17 @@ spec:
         goName: Timeout
         type: duration
         default: 15s
-        description: Maximum duration of one blob download as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
+        description: Maximum duration of one Azure Storage request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
         default: 1048576
-        description: Maximum complete blob body in bytes. Blank uses the displayed default; increase only for a known larger blob that the Flow can safely store.
+        description: Maximum complete blob body or list XML in bytes. Blank uses the displayed default; increase only for a known larger result that the Flow can safely store.
       - name: listPageSize
         goName: ListPageSize
         type: integer
         default: 100
-        description: Positive maximum number of blob names per list page. Blank uses the displayed default; increase for a large container when the returned XML fits maxResponseBytes.
+        description: Positive maximum number of blob or container names per list page. Blank uses the displayed default; increase for a large account when the returned XML fits maxResponseBytes.
   auth:
     type: apiKey
     connectionKind: microsoft-azure-blob-shared-key
@@ -66,6 +66,87 @@ spec:
         - Open Data storage > Containers > selected container and note its lowercase name and blob path. Use those values as Flow input. Leave endpoint, timeout, maxResponseBytes, and listPageSize blank for their displayed defaults.
         - Rotate by selecting the other access key, updating this connection, verifying a Flow, then regenerating the old key under Access keys. Remove the connection when access should end.
   operations:
+    - name: listContainers
+      goName: ListContainers
+      inputType: ListContainersInput
+      outputType: ContainersPage
+      kind: query
+      description: List one bounded page of container names in the storage account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Azure returned one container page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Azure rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Azure returned invalid or oversized XML., optional: true}
+        - {id: defect, goName: Defect, description: The marker or connection is invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example container is listed.
+          output: {names: [docs], nextMarker: ''}
+    - name: getContainer
+      goName: GetContainer
+      inputType: GetContainerInput
+      outputType: ContainerProperties
+      kind: query
+      description: Read one container's ETag and last modified date.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Azure returned container properties.}
+        - {id: missing, goName: Missing, description: The container does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Azure rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Azure returned invalid response metadata., optional: true}
+        - {id: defect, goName: Defect, description: The container or connection is invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example container is found.
+          output: {etag: '"0x1"', lastModified: 'Mon, 02 Jan 2006 15:04:05 GMT'}
+    - name: createContainer
+      goName: CreateContainer
+      inputType: CreateContainerInput
+      outputType: ContainerWriteResult
+      kind: mutation
+      description: Create a container with a unique lowercase name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Azure created the named container.}
+        - {id: alreadyExists, goName: AlreadyExists, description: Azure reports the named container already exists., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Azure rejected container creation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Azure returned invalid response metadata., optional: true}
+        - {id: defect, goName: Defect, description: The container or connection is invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One example container was created.
+          output: {container: docs}
+    - name: deleteContainer
+      goName: DeleteContainer
+      inputType: DeleteContainerInput
+      outputType: ContainerDeleteResult
+      kind: mutation
+      description: Delete a container and all blobs within it.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Azure accepted deletion or the container was already missing.}
+        - {id: providerRejected, goName: ProviderRejected, description: Azure rejected container deletion., optional: true}
+        - {id: defect, goName: Defect, description: The container or connection is invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One example container was deleted.
+          output: {deleted: true}
     - name: listBlobs
       goName: ListBlobs
       inputType: ListBlobsInput
