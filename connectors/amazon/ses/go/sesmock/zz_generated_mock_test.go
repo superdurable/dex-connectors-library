@@ -20,6 +20,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[ses.EmailIdentityDetails](`{"name":"example.com","verificationStatus":"SUCCESS"}`)
 			return err
 		}},
+		{name: "listEmailIdentities/identityPage/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailIdentityPage](`{"identities":[{"name":"example.com","verificationStatus":"SUCCESS","identityType":"DOMAIN","sendingEnabled":true}],"nextToken":"page-2"}`)
+			return err
+		}},
+		{name: "listEmailIdentities/identityPage/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailIdentityPage](`{"identities":[{"name":"example.net","verificationStatus":"SUCCESS","identityType":"DOMAIN","sendingEnabled":true}],"nextToken":"page-3"}`)
+			return err
+		}},
+		{name: "listEmailIdentities/identityPage/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailIdentityPage](`{"identities":[{"name":"example.org","verificationStatus":"SUCCESS","identityType":"DOMAIN","sendingEnabled":true}]}`)
+			return err
+		}},
+		{name: "deleteEmailIdentity/deletedIdentity/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.DeletedEmailIdentity](`{"name":"example.com"}`)
+			return err
+		}},
+		{name: "sendEmail/sentEmail/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.SentEmail](`{"messageId":"example-message-id"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +52,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetEmailIdentity().Definition().Operation.OperationID != "getEmailIdentity" {
 		t.Errorf("getEmailIdentity mock has another definition")
+	}
+	if mock.ListEmailIdentities().Definition().Operation.OperationID != "listEmailIdentities" {
+		t.Errorf("listEmailIdentities mock has another definition")
+	}
+	if mock.DeleteEmailIdentity().Definition().Operation.OperationID != "deleteEmailIdentity" {
+		t.Errorf("deleteEmailIdentity mock has another definition")
+	}
+	if mock.SendEmail().Definition().Operation.OperationID != "sendEmail" {
+		t.Errorf("sendEmail mock has another definition")
 	}
 }

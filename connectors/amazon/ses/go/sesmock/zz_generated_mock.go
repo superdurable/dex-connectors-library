@@ -17,8 +17,11 @@ import (
 
 // Mock is a scripted amazon-ses connection. Script each operation through its accessor.
 type Mock struct {
-	connection       ses.Connection
-	getEmailIdentity *connectormock.Query[ses.GetEmailIdentityInput, ses.EmailIdentityDetails]
+	connection          ses.Connection
+	getEmailIdentity    *connectormock.Query[ses.GetEmailIdentityInput, ses.EmailIdentityDetails]
+	listEmailIdentities *connectormock.Query[ses.ListEmailIdentitiesInput, ses.EmailIdentityPage]
+	deleteEmailIdentity *connectormock.Mutation[ses.DeleteEmailIdentityInput, ses.DeletedEmailIdentity]
+	sendEmail           *connectormock.Mutation[ses.SendEmailInput, ses.SentEmail]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +29,15 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getEmailIdentity: connectormock.NewQuery[ses.GetEmailIdentityInput, ses.EmailIdentityDetails](t, ses.GetEmailIdentityDefinition),
+		getEmailIdentity:    connectormock.NewQuery[ses.GetEmailIdentityInput, ses.EmailIdentityDetails](t, ses.GetEmailIdentityDefinition),
+		listEmailIdentities: connectormock.NewQuery[ses.ListEmailIdentitiesInput, ses.EmailIdentityPage](t, ses.ListEmailIdentitiesDefinition),
+		deleteEmailIdentity: connectormock.NewMutation[ses.DeleteEmailIdentityInput, ses.DeletedEmailIdentity](t, ses.DeleteEmailIdentityDefinition),
+		sendEmail:           connectormock.NewMutation[ses.SendEmailInput, ses.SentEmail](t, ses.SendEmailDefinition),
 	}
 	mock.getEmailIdentity.Default(GetEmailIdentityDefault())
+	mock.listEmailIdentities.Default(ListEmailIdentitiesDefault())
+	mock.deleteEmailIdentity.Default(DeleteEmailIdentityDefault())
+	mock.sendEmail.Default(SendEmailDefault())
 	connection, err := ses.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "amazon-ses", Name: connectionName})
 	if err != nil {
 		t.Fatalf("amazon-ses mock connection: %v", err)
@@ -45,10 +54,34 @@ func (mock *Mock) GetEmailIdentity() *connectormock.Query[ses.GetEmailIdentityIn
 	return mock.getEmailIdentity
 }
 
+// ListEmailIdentities returns the listEmailIdentities script.
+func (mock *Mock) ListEmailIdentities() *connectormock.Query[ses.ListEmailIdentitiesInput, ses.EmailIdentityPage] {
+	return mock.listEmailIdentities
+}
+
+// DeleteEmailIdentity returns the deleteEmailIdentity script.
+func (mock *Mock) DeleteEmailIdentity() *connectormock.Mutation[ses.DeleteEmailIdentityInput, ses.DeletedEmailIdentity] {
+	return mock.deleteEmailIdentity
+}
+
+// SendEmail returns the sendEmail script.
+func (mock *Mock) SendEmail() *connectormock.Mutation[ses.SendEmailInput, ses.SentEmail] {
+	return mock.sendEmail
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetEmailIdentity() sdkgo.Query[ses.GetEmailIdentityInput, ses.EmailIdentityDetails] {
 	return operations.mock.getEmailIdentity
+}
+func (operations mockOperations) ListEmailIdentities() sdkgo.Query[ses.ListEmailIdentitiesInput, ses.EmailIdentityPage] {
+	return operations.mock.listEmailIdentities
+}
+func (operations mockOperations) DeleteEmailIdentity() sdkgo.Mutation[ses.DeleteEmailIdentityInput, ses.DeletedEmailIdentity] {
+	return operations.mock.deleteEmailIdentity
+}
+func (operations mockOperations) SendEmail() sdkgo.Mutation[ses.SendEmailInput, ses.SentEmail] {
+	return operations.mock.sendEmail
 }
 
 // GetEmailIdentityFound selects the found branch: AWS returned the identity verification status.
@@ -91,3 +124,109 @@ func GetEmailIdentityFoundDefault() connectormock.Case[ses.EmailIdentityDetails]
 func GetEmailIdentityDefault() connectormock.Case[ses.EmailIdentityDetails] {
 	return GetEmailIdentityFoundDefault()
 }
+
+// ListEmailIdentitiesPage selects the page branch: AWS returned a page of identities.
+func ListEmailIdentitiesPage(value ses.EmailIdentityPage, failure *sdkgo.Failure) connectormock.Case[ses.EmailIdentityPage] {
+	return connectormock.Branch(ses.ListEmailIdentitiesBranchPage, value, failure)
+}
+
+// ListEmailIdentitiesProviderRejected selects the providerRejected branch: AWS conclusively rejected the listing.
+func ListEmailIdentitiesProviderRejected(value ses.EmailIdentityPage, failure *sdkgo.Failure) connectormock.Case[ses.EmailIdentityPage] {
+	return connectormock.Branch(ses.ListEmailIdentitiesBranchProviderRejected, value, failure)
+}
+
+// ListEmailIdentitiesInvalidResponse selects the invalidResponse branch: AWS returned malformed or oversized identity data.
+func ListEmailIdentitiesInvalidResponse(value ses.EmailIdentityPage, failure *sdkgo.Failure) connectormock.Case[ses.EmailIdentityPage] {
+	return connectormock.Branch(ses.ListEmailIdentitiesBranchInvalidResponse, value, failure)
+}
+
+// ListEmailIdentitiesDefect selects the defect branch: The page size or token is invalid.
+func ListEmailIdentitiesDefect(value ses.EmailIdentityPage, failure *sdkgo.Failure) connectormock.Case[ses.EmailIdentityPage] {
+	return connectormock.Branch(ses.ListEmailIdentitiesBranchDefect, value, failure)
+}
+
+// ListEmailIdentitiesRetry asks Dex to retry the listEmailIdentities Step, after the delay when it is positive.
+func ListEmailIdentitiesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.EmailIdentityPage] {
+	return connectormock.Retry[ses.EmailIdentityPage](failure, after)
+}
+
+// ListEmailIdentitiesIdentityPage is the manifest mock identityPage: The account has three pages of verified identities.
+func ListEmailIdentitiesIdentityPage() connectormock.Case[ses.EmailIdentityPage] {
+	pages := []ses.EmailIdentityPage{
+		connectormock.MustDecodeOutput[ses.EmailIdentityPage](`{"identities":[{"name":"example.com","verificationStatus":"SUCCESS","identityType":"DOMAIN","sendingEnabled":true}],"nextToken":"page-2"}`),
+		connectormock.MustDecodeOutput[ses.EmailIdentityPage](`{"identities":[{"name":"example.net","verificationStatus":"SUCCESS","identityType":"DOMAIN","sendingEnabled":true}],"nextToken":"page-3"}`),
+		connectormock.MustDecodeOutput[ses.EmailIdentityPage](`{"identities":[{"name":"example.org","verificationStatus":"SUCCESS","identityType":"DOMAIN","sendingEnabled":true}]}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[ses.ListEmailIdentitiesInput]("nextToken", "nextToken", pages)
+	return connectormock.Paged(ses.ListEmailIdentitiesBranchPage, pageNumber, pages...)
+}
+
+// ListEmailIdentitiesDefault is the manifest default, identityPage, which New installs.
+func ListEmailIdentitiesDefault() connectormock.Case[ses.EmailIdentityPage] {
+	return ListEmailIdentitiesIdentityPage()
+}
+
+// DeleteEmailIdentityDeleted selects the deleted branch: The identity is absent after the deletion.
+func DeleteEmailIdentityDeleted(value ses.DeletedEmailIdentity, failure *sdkgo.Failure) connectormock.Case[ses.DeletedEmailIdentity] {
+	return connectormock.Branch(ses.DeleteEmailIdentityBranchDeleted, value, failure)
+}
+
+// DeleteEmailIdentityProviderRejected selects the providerRejected branch: AWS conclusively rejected the deletion.
+func DeleteEmailIdentityProviderRejected(value ses.DeletedEmailIdentity, failure *sdkgo.Failure) connectormock.Case[ses.DeletedEmailIdentity] {
+	return connectormock.Branch(ses.DeleteEmailIdentityBranchProviderRejected, value, failure)
+}
+
+// DeleteEmailIdentityDefect selects the defect branch: The identity or connection is invalid.
+func DeleteEmailIdentityDefect(value ses.DeletedEmailIdentity, failure *sdkgo.Failure) connectormock.Case[ses.DeletedEmailIdentity] {
+	return connectormock.Branch(ses.DeleteEmailIdentityBranchDefect, value, failure)
+}
+
+// DeleteEmailIdentityRetry asks Dex to retry the deleteEmailIdentity Step, after the delay when it is positive.
+func DeleteEmailIdentityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.DeletedEmailIdentity] {
+	return connectormock.Retry[ses.DeletedEmailIdentity](failure, after)
+}
+
+// DeleteEmailIdentityDeletedIdentity is the manifest mock deletedIdentity: The identity was removed.
+func DeleteEmailIdentityDeletedIdentity() connectormock.Case[ses.DeletedEmailIdentity] {
+	value := connectormock.MustDecodeOutput[ses.DeletedEmailIdentity](`{"name":"example.com"}`)
+	return connectormock.Branch(ses.DeleteEmailIdentityBranchDeleted, value, nil)
+}
+
+// DeleteEmailIdentityDefault is the manifest default, deletedIdentity, which New installs.
+func DeleteEmailIdentityDefault() connectormock.Case[ses.DeletedEmailIdentity] {
+	return DeleteEmailIdentityDeletedIdentity()
+}
+
+// SendEmailSent selects the sent branch: SES accepted the message and returned its message ID.
+func SendEmailSent(value ses.SentEmail, failure *sdkgo.Failure) connectormock.Case[ses.SentEmail] {
+	return connectormock.Branch(ses.SendEmailBranchSent, value, failure)
+}
+
+// SendEmailProviderRejected selects the providerRejected branch: SES definitively rejected the sender, recipient, or content.
+func SendEmailProviderRejected(value ses.SentEmail, failure *sdkgo.Failure) connectormock.Case[ses.SentEmail] {
+	return connectormock.Branch(ses.SendEmailBranchProviderRejected, value, failure)
+}
+
+// SendEmailUncertain returns an uncertain sendEmail outcome.
+func SendEmailUncertain(value ses.SentEmail, failure sdkgo.Failure) connectormock.Case[ses.SentEmail] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendEmailDefect selects the defect branch: The input or connection is invalid.
+func SendEmailDefect(value ses.SentEmail, failure *sdkgo.Failure) connectormock.Case[ses.SentEmail] {
+	return connectormock.Branch(ses.SendEmailBranchDefect, value, failure)
+}
+
+// SendEmailRetry asks Dex to retry the sendEmail Step, after the delay when it is positive.
+func SendEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.SentEmail] {
+	return connectormock.Retry[ses.SentEmail](failure, after)
+}
+
+// SendEmailSentEmail is the manifest mock sentEmail: SES accepted a plain text email.
+func SendEmailSentEmail() connectormock.Case[ses.SentEmail] {
+	value := connectormock.MustDecodeOutput[ses.SentEmail](`{"messageId":"example-message-id"}`)
+	return connectormock.Branch(ses.SendEmailBranchSent, value, nil)
+}
+
+// SendEmailDefault is the manifest default, sentEmail, which New installs.
+func SendEmailDefault() connectormock.Case[ses.SentEmail] { return SendEmailSentEmail() }
