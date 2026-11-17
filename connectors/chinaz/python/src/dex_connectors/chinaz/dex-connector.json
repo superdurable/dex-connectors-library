@@ -1,0 +1,65 @@
+{
+  "connectorId": "chinaz",
+  "releaseTag": "connectors/chinaz/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-chinaz",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_site_tdk_step",
+      "kind": "query",
+      "operationId": "getSiteTDK",
+      "inputType": "GetSiteTDKInput",
+      "description": "Read public title, keywords, description, and IP for one domain.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetSiteTDKInput selects one public website by domain name.",
+        "properties": {
+          "domain": {
+            "description": "Domain is a hostname without scheme, port, or path.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -1,0 +1,749 @@
+{
+  "connector": "chinaz",
+  "scenarios": [
+    {
+      "callId": "bc149bdf-3303-54ca-97b7-21e6e0c087d0",
+      "exchanges": [
+        {
+          "body": "{\"StateCode\":1,\"Result\":{\"Title\":\"Example Site\",\"Keywords\":\"example\",\"Description\":\"Public example\",\"IP\":\"192.0.2.1\",\"private\":\"omit\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/single/tdk",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VjcmV0VGVzdEtleQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"key\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ZXhhbXBsZS5jb20=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"domain\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "description": "Public example",
+          "domain": "example.com",
+          "ipAddress": "192.0.2.1",
+          "keywords": "example",
+          "title": "Example Site"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com"
+      },
+      "name": "getSiteTDK-found",
+      "operation": "getSiteTDK"
+    },
+    {
+      "callId": "425a31ee-6b7c-5c2c-baf3-a4261051050d",
+      "exchanges": [
+        {
+          "body": "{\"StateCode\":10025,\"Reason\":\"none\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/single/tdk",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VjcmV0VGVzdEtleQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"key\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ZXhhbXBsZS5jb20=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"domain\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "description": "",
+          "domain": "",
+          "ipAddress": "",
+          "keywords": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com"
+      },
+      "name": "getSiteTDK-notFound",
+      "operation": "getSiteTDK"
+    },
+    {
+      "callId": "aab1aca7-9993-5023-81e3-820db12e17d9",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"secret\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/single/tdk",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VjcmV0VGVzdEtleQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"key\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ZXhhbXBsZS5jb20=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"domain\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "description": "",
+          "domain": "",
+          "ipAddress": "",
+          "keywords": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com"
+      },
+      "name": "getSiteTDK-providerRejected",
+      "operation": "getSiteTDK"
+    },
+    {
+      "callId": "7caa5d41-50fb-595a-b64f-6c1a1f996ebd",
+      "exchanges": [
+        {
+          "body": "{\"StateCode\":10001,\"Reason\":\"secret\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/single/tdk",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VjcmV0VGVzdEtleQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"key\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ZXhhbXBsZS5jb20=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"domain\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "description": "",
+          "domain": "",
+          "ipAddress": "",
+          "keywords": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com"
+      },
+      "name": "getSiteTDK-keyRejected",
+      "operation": "getSiteTDK"
+    },
+    {
+      "callId": "e336ee2f-76c6-5f92-80a9-8fbdb0d53bfa",
+      "exchanges": [
+        {
+          "body": "{\"StateCode\":10002,\"Reason\":\"secret\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/single/tdk",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VjcmV0VGVzdEtleQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"key\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ZXhhbXBsZS5jb20=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"domain\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "description": "",
+          "domain": "",
+          "ipAddress": "",
+          "keywords": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com"
+      },
+      "name": "getSiteTDK-planRejected",
+      "operation": "getSiteTDK"
+    },
+    {
+      "callId": "4f6c1a2e-5ece-52a0-b851-f391ddceae34",
+      "exchanges": [
+        {
+          "body": "{\"StateCode\":10011}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/single/tdk",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VjcmV0VGVzdEtleQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"key\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ZXhhbXBsZS5jb20=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"domain\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com"
+      },
+      "name": "getSiteTDK-businessRateLimit",
+      "operation": "getSiteTDK"
+    },
+    {
+      "callId": "0da88d13-34fa-589a-8e43-79ba8dccb398",
+      "exchanges": [
+        {
+          "body": "{\"StateCode\":10020}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/single/tdk",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VjcmV0VGVzdEtleQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"key\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ZXhhbXBsZS5jb20=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"domain\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com"
+      },
+      "name": "getSiteTDK-businessAvailability",
+      "operation": "getSiteTDK"
+    },
+    {
+      "callId": "20311137-87a0-56bb-b85c-b195bb527ed0",
+      "exchanges": [
+        {
+          "body": "{\"Result\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/single/tdk",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VjcmV0VGVzdEtleQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"key\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ZXhhbXBsZS5jb20=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"domain\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "description": "",
+          "domain": "",
+          "ipAddress": "",
+          "keywords": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com"
+      },
+      "name": "getSiteTDK-invalidResponse",
+      "operation": "getSiteTDK"
+    },
+    {
+      "callId": "e58e7672-2a39-5a0b-b215-40b9f19f5202",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "description": "",
+          "domain": "",
+          "ipAddress": "",
+          "keywords": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com"
+      },
+      "name": "getSiteTDK-defect",
+      "operation": "getSiteTDK"
+    },
+    {
+      "callId": "45f821b3-0a5f-58e5-86aa-23dc9a5b99ff",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "description": "",
+          "domain": "",
+          "ipAddress": "",
+          "keywords": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "https://example.com"
+      },
+      "name": "getSiteTDK-invalidDomain",
+      "operation": "getSiteTDK"
+    },
+    {
+      "callId": "79901e08-9e68-5d43-b410-ed384902475d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/single/tdk",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VjcmV0VGVzdEtleQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"key\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ZXhhbXBsZS5jb20=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"domain\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com"
+      },
+      "name": "getSiteTDK-rateLimit429",
+      "operation": "getSiteTDK"
+    },
+    {
+      "callId": "1fa46db7-a6f2-5b83-b725-f9198043653d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/single/tdk",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VjcmV0VGVzdEtleQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"key\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ZXhhbXBsZS5jb20=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"domain\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com"
+      },
+      "name": "getSiteTDK-availability503",
+      "operation": "getSiteTDK"
+    },
+    {
+      "callId": "17b01e33-557d-5acb-b497-92fcc4ed25cf",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/single/tdk",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VjcmV0VGVzdEtleQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"key\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ZXhhbXBsZS5jb20=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"domain\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com"
+      },
+      "name": "getSiteTDK-transportFailure",
+      "operation": "getSiteTDK"
+    },
+    {
+      "callId": "1d887229-cfcd-5f96-a8b0-6b9fe07ce687",
+      "exchanges": [
+        {
+          "body": "{\"StateCode\":1,\"Result\":{\"Title\":\"Example Site\",\"Keywords\":\"example\",\"Description\":\"Public example\",\"IP\":\"192.0.2.1\",\"private\":\"omit\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/single/tdk",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VjcmV0VGVzdEtleQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"key\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ZXhhbXBsZS5jb20=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"domain\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "description": "",
+          "domain": "",
+          "ipAddress": "",
+          "keywords": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com"
+      },
+      "name": "getSiteTDK-oversized",
+      "operation": "getSiteTDK"
+    }
+  ],
+  "schemaVersion": 1
+}
