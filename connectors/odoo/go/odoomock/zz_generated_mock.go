@@ -19,6 +19,11 @@ import (
 type Mock struct {
 	connection     odoo.Connection
 	searchPartners *connectormock.Query[odoo.SearchPartnersInput, odoo.PartnerSearchPage]
+	listContacts   *connectormock.Query[odoo.ListContactsInput, odoo.ContactsPage]
+	getContact     *connectormock.Query[odoo.GetContactInput, odoo.Contact]
+	createContact  *connectormock.Mutation[odoo.CreateContactInput, odoo.CreatedContact]
+	updateContact  *connectormock.Mutation[odoo.UpdateContactInput, odoo.UpdatedContact]
+	deleteContact  *connectormock.Mutation[odoo.DeleteContactInput, odoo.DeletedContact]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,8 +32,18 @@ func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
 		searchPartners: connectormock.NewQuery[odoo.SearchPartnersInput, odoo.PartnerSearchPage](t, odoo.SearchPartnersDefinition),
+		listContacts:   connectormock.NewQuery[odoo.ListContactsInput, odoo.ContactsPage](t, odoo.ListContactsDefinition),
+		getContact:     connectormock.NewQuery[odoo.GetContactInput, odoo.Contact](t, odoo.GetContactDefinition),
+		createContact:  connectormock.NewMutation[odoo.CreateContactInput, odoo.CreatedContact](t, odoo.CreateContactDefinition),
+		updateContact:  connectormock.NewMutation[odoo.UpdateContactInput, odoo.UpdatedContact](t, odoo.UpdateContactDefinition),
+		deleteContact:  connectormock.NewMutation[odoo.DeleteContactInput, odoo.DeletedContact](t, odoo.DeleteContactDefinition),
 	}
 	mock.searchPartners.Default(SearchPartnersDefault())
+	mock.listContacts.Default(ListContactsDefault())
+	mock.getContact.Default(GetContactDefault())
+	mock.createContact.Default(CreateContactDefault())
+	mock.updateContact.Default(UpdateContactDefault())
+	mock.deleteContact.Default(DeleteContactDefault())
 	connection, err := odoo.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "odoo", Name: connectionName})
 	if err != nil {
 		t.Fatalf("odoo mock connection: %v", err)
@@ -45,10 +60,50 @@ func (mock *Mock) SearchPartners() *connectormock.Query[odoo.SearchPartnersInput
 	return mock.searchPartners
 }
 
+// ListContacts returns the listContacts script.
+func (mock *Mock) ListContacts() *connectormock.Query[odoo.ListContactsInput, odoo.ContactsPage] {
+	return mock.listContacts
+}
+
+// GetContact returns the getContact script.
+func (mock *Mock) GetContact() *connectormock.Query[odoo.GetContactInput, odoo.Contact] {
+	return mock.getContact
+}
+
+// CreateContact returns the createContact script.
+func (mock *Mock) CreateContact() *connectormock.Mutation[odoo.CreateContactInput, odoo.CreatedContact] {
+	return mock.createContact
+}
+
+// UpdateContact returns the updateContact script.
+func (mock *Mock) UpdateContact() *connectormock.Mutation[odoo.UpdateContactInput, odoo.UpdatedContact] {
+	return mock.updateContact
+}
+
+// DeleteContact returns the deleteContact script.
+func (mock *Mock) DeleteContact() *connectormock.Mutation[odoo.DeleteContactInput, odoo.DeletedContact] {
+	return mock.deleteContact
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SearchPartners() sdkgo.Query[odoo.SearchPartnersInput, odoo.PartnerSearchPage] {
 	return operations.mock.searchPartners
+}
+func (operations mockOperations) ListContacts() sdkgo.Query[odoo.ListContactsInput, odoo.ContactsPage] {
+	return operations.mock.listContacts
+}
+func (operations mockOperations) GetContact() sdkgo.Query[odoo.GetContactInput, odoo.Contact] {
+	return operations.mock.getContact
+}
+func (operations mockOperations) CreateContact() sdkgo.Mutation[odoo.CreateContactInput, odoo.CreatedContact] {
+	return operations.mock.createContact
+}
+func (operations mockOperations) UpdateContact() sdkgo.Mutation[odoo.UpdateContactInput, odoo.UpdatedContact] {
+	return operations.mock.updateContact
+}
+func (operations mockOperations) DeleteContact() sdkgo.Mutation[odoo.DeleteContactInput, odoo.DeletedContact] {
+	return operations.mock.deleteContact
 }
 
 // SearchPartnersFound selects the found branch: Odoo returned a bounded list of matching company partners.
@@ -85,4 +140,195 @@ func SearchPartnersFoundDefault() connectormock.Case[odoo.PartnerSearchPage] {
 // SearchPartnersDefault is the manifest default, foundDefault, which New installs.
 func SearchPartnersDefault() connectormock.Case[odoo.PartnerSearchPage] {
 	return SearchPartnersFoundDefault()
+}
+
+// ListContactsListed selects the listed branch: Odoo returned a contact page.
+func ListContactsListed(value odoo.ContactsPage, failure *sdkgo.Failure) connectormock.Case[odoo.ContactsPage] {
+	return connectormock.Branch(odoo.ListContactsBranchListed, value, failure)
+}
+
+// ListContactsProviderRejected selects the providerRejected branch: Odoo rejected the contact list.
+func ListContactsProviderRejected(value odoo.ContactsPage, failure *sdkgo.Failure) connectormock.Case[odoo.ContactsPage] {
+	return connectormock.Branch(odoo.ListContactsBranchProviderRejected, value, failure)
+}
+
+// ListContactsInvalidResponse selects the invalidResponse branch: Odoo returned invalid contact data.
+func ListContactsInvalidResponse(value odoo.ContactsPage, failure *sdkgo.Failure) connectormock.Case[odoo.ContactsPage] {
+	return connectormock.Branch(odoo.ListContactsBranchInvalidResponse, value, failure)
+}
+
+// ListContactsDefect selects the defect branch: Invalid page or credentials.
+func ListContactsDefect(value odoo.ContactsPage, failure *sdkgo.Failure) connectormock.Case[odoo.ContactsPage] {
+	return connectormock.Branch(odoo.ListContactsBranchDefect, value, failure)
+}
+
+// ListContactsRetry asks Dex to retry the listContacts Step, after the delay when it is positive.
+func ListContactsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.ContactsPage] {
+	return connectormock.Retry[odoo.ContactsPage](failure, after)
+}
+
+// ListContactsListedDefault is the manifest mock listedDefault: Example contact page.
+func ListContactsListedDefault() connectormock.Case[odoo.ContactsPage] {
+	value := connectormock.MustDecodeOutput[odoo.ContactsPage](`{"contacts":[{"id":42,"name":"Acme Company","email":"contact@example.com","phone":"4155550100"}]}`)
+	return connectormock.Branch(odoo.ListContactsBranchListed, value, nil)
+}
+
+// ListContactsDefault is the manifest default, listedDefault, which New installs.
+func ListContactsDefault() connectormock.Case[odoo.ContactsPage] { return ListContactsListedDefault() }
+
+// GetContactFound selects the found branch: Odoo returned the contact.
+func GetContactFound(value odoo.Contact, failure *sdkgo.Failure) connectormock.Case[odoo.Contact] {
+	return connectormock.Branch(odoo.GetContactBranchFound, value, failure)
+}
+
+// GetContactNotFound selects the notFound branch: Odoo did not find the contact.
+func GetContactNotFound(value odoo.Contact, failure *sdkgo.Failure) connectormock.Case[odoo.Contact] {
+	return connectormock.Branch(odoo.GetContactBranchNotFound, value, failure)
+}
+
+// GetContactProviderRejected selects the providerRejected branch: Odoo rejected the read.
+func GetContactProviderRejected(value odoo.Contact, failure *sdkgo.Failure) connectormock.Case[odoo.Contact] {
+	return connectormock.Branch(odoo.GetContactBranchProviderRejected, value, failure)
+}
+
+// GetContactInvalidResponse selects the invalidResponse branch: Odoo returned invalid contact data.
+func GetContactInvalidResponse(value odoo.Contact, failure *sdkgo.Failure) connectormock.Case[odoo.Contact] {
+	return connectormock.Branch(odoo.GetContactBranchInvalidResponse, value, failure)
+}
+
+// GetContactDefect selects the defect branch: Invalid ID or credentials.
+func GetContactDefect(value odoo.Contact, failure *sdkgo.Failure) connectormock.Case[odoo.Contact] {
+	return connectormock.Branch(odoo.GetContactBranchDefect, value, failure)
+}
+
+// GetContactRetry asks Dex to retry the getContact Step, after the delay when it is positive.
+func GetContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.Contact] {
+	return connectormock.Retry[odoo.Contact](failure, after)
+}
+
+// GetContactFoundDefault is the manifest mock foundDefault: Example contact.
+func GetContactFoundDefault() connectormock.Case[odoo.Contact] {
+	value := connectormock.MustDecodeOutput[odoo.Contact](`{"id":42,"name":"Acme Company","email":"contact@example.com","phone":"4155550100"}`)
+	return connectormock.Branch(odoo.GetContactBranchFound, value, nil)
+}
+
+// GetContactDefault is the manifest default, foundDefault, which New installs.
+func GetContactDefault() connectormock.Case[odoo.Contact] { return GetContactFoundDefault() }
+
+// CreateContactCreated selects the created branch: Odoo created the contact.
+func CreateContactCreated(value odoo.CreatedContact, failure *sdkgo.Failure) connectormock.Case[odoo.CreatedContact] {
+	return connectormock.Branch(odoo.CreateContactBranchCreated, value, failure)
+}
+
+// CreateContactProviderRejected selects the providerRejected branch: Odoo rejected the create.
+func CreateContactProviderRejected(value odoo.CreatedContact, failure *sdkgo.Failure) connectormock.Case[odoo.CreatedContact] {
+	return connectormock.Branch(odoo.CreateContactBranchProviderRejected, value, failure)
+}
+
+// CreateContactDefect selects the defect branch: Invalid contact or credentials.
+func CreateContactDefect(value odoo.CreatedContact, failure *sdkgo.Failure) connectormock.Case[odoo.CreatedContact] {
+	return connectormock.Branch(odoo.CreateContactBranchDefect, value, failure)
+}
+
+// CreateContactUncertain returns an uncertain createContact outcome.
+func CreateContactUncertain(value odoo.CreatedContact, failure sdkgo.Failure) connectormock.Case[odoo.CreatedContact] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateContactRetry asks Dex to retry the createContact Step, after the delay when it is positive.
+func CreateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.CreatedContact] {
+	return connectormock.Retry[odoo.CreatedContact](failure, after)
+}
+
+// CreateContactCreatedDefault is the manifest mock createdDefault: Example created contact.
+func CreateContactCreatedDefault() connectormock.Case[odoo.CreatedContact] {
+	value := connectormock.MustDecodeOutput[odoo.CreatedContact](`{"id":42}`)
+	return connectormock.Branch(odoo.CreateContactBranchCreated, value, nil)
+}
+
+// CreateContactDefault is the manifest default, createdDefault, which New installs.
+func CreateContactDefault() connectormock.Case[odoo.CreatedContact] {
+	return CreateContactCreatedDefault()
+}
+
+// UpdateContactUpdated selects the updated branch: Odoo updated the contact.
+func UpdateContactUpdated(value odoo.UpdatedContact, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedContact] {
+	return connectormock.Branch(odoo.UpdateContactBranchUpdated, value, failure)
+}
+
+// UpdateContactNotFound selects the notFound branch: Odoo did not find the contact.
+func UpdateContactNotFound(value odoo.UpdatedContact, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedContact] {
+	return connectormock.Branch(odoo.UpdateContactBranchNotFound, value, failure)
+}
+
+// UpdateContactProviderRejected selects the providerRejected branch: Odoo rejected the update.
+func UpdateContactProviderRejected(value odoo.UpdatedContact, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedContact] {
+	return connectormock.Branch(odoo.UpdateContactBranchProviderRejected, value, failure)
+}
+
+// UpdateContactInvalidResponse selects the invalidResponse branch: Odoo returned invalid update data.
+func UpdateContactInvalidResponse(value odoo.UpdatedContact, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedContact] {
+	return connectormock.Branch(odoo.UpdateContactBranchInvalidResponse, value, failure)
+}
+
+// UpdateContactDefect selects the defect branch: Invalid input or credentials.
+func UpdateContactDefect(value odoo.UpdatedContact, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedContact] {
+	return connectormock.Branch(odoo.UpdateContactBranchDefect, value, failure)
+}
+
+// UpdateContactRetry asks Dex to retry the updateContact Step, after the delay when it is positive.
+func UpdateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.UpdatedContact] {
+	return connectormock.Retry[odoo.UpdatedContact](failure, after)
+}
+
+// UpdateContactUpdatedDefault is the manifest mock updatedDefault: Example updated contact.
+func UpdateContactUpdatedDefault() connectormock.Case[odoo.UpdatedContact] {
+	value := connectormock.MustDecodeOutput[odoo.UpdatedContact](`{"id":42}`)
+	return connectormock.Branch(odoo.UpdateContactBranchUpdated, value, nil)
+}
+
+// UpdateContactDefault is the manifest default, updatedDefault, which New installs.
+func UpdateContactDefault() connectormock.Case[odoo.UpdatedContact] {
+	return UpdateContactUpdatedDefault()
+}
+
+// DeleteContactDeleted selects the deleted branch: Odoo deleted the contact.
+func DeleteContactDeleted(value odoo.DeletedContact, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedContact] {
+	return connectormock.Branch(odoo.DeleteContactBranchDeleted, value, failure)
+}
+
+// DeleteContactNotFound selects the notFound branch: Odoo did not find the contact.
+func DeleteContactNotFound(value odoo.DeletedContact, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedContact] {
+	return connectormock.Branch(odoo.DeleteContactBranchNotFound, value, failure)
+}
+
+// DeleteContactProviderRejected selects the providerRejected branch: Odoo rejected the delete.
+func DeleteContactProviderRejected(value odoo.DeletedContact, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedContact] {
+	return connectormock.Branch(odoo.DeleteContactBranchProviderRejected, value, failure)
+}
+
+// DeleteContactInvalidResponse selects the invalidResponse branch: Odoo returned invalid delete data.
+func DeleteContactInvalidResponse(value odoo.DeletedContact, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedContact] {
+	return connectormock.Branch(odoo.DeleteContactBranchInvalidResponse, value, failure)
+}
+
+// DeleteContactDefect selects the defect branch: Invalid ID or credentials.
+func DeleteContactDefect(value odoo.DeletedContact, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedContact] {
+	return connectormock.Branch(odoo.DeleteContactBranchDefect, value, failure)
+}
+
+// DeleteContactRetry asks Dex to retry the deleteContact Step, after the delay when it is positive.
+func DeleteContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.DeletedContact] {
+	return connectormock.Retry[odoo.DeletedContact](failure, after)
+}
+
+// DeleteContactDeletedDefault is the manifest mock deletedDefault: Example deleted contact.
+func DeleteContactDeletedDefault() connectormock.Case[odoo.DeletedContact] {
+	value := connectormock.MustDecodeOutput[odoo.DeletedContact](`{"id":42}`)
+	return connectormock.Branch(odoo.DeleteContactBranchDeleted, value, nil)
+}
+
+// DeleteContactDefault is the manifest default, deletedDefault, which New installs.
+func DeleteContactDefault() connectormock.Case[odoo.DeletedContact] {
+	return DeleteContactDeletedDefault()
 }

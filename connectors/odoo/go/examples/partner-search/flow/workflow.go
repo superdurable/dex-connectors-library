@@ -45,8 +45,19 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Odoo", Explanation: "Search company partners by name pattern."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
-			Found:               sdkgo.GoTo(completeResult{}),
+			Found:               sdkgo.GoTo(partnersFound{}),
 		})),
+		dex.DefineStep(odoo.NewGetContactStep(odoo.GetContactStepConfig[odoo.SearchPartnersResult]{
+			StepType: "GetContact", ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Odoo", Explanation: "Read the first matching contact's communication fields."},
+			Connection: flow.connection,
+			MapToOperationInput: func(result odoo.SearchPartnersResult) odoo.GetContactInput {
+				return odoo.GetContactInput{ID: result.Value.Partners[0].ID}
+			},
+			Found: sdkgo.GoTo(contactRead{}),
+		})),
+		dex.DefineStep(partnersFound{}),
+		dex.DefineStep(contactRead{}),
 		dex.DefineStep(completeResult{}),
 	}
 }
@@ -100,6 +111,32 @@ func (startRequest) WaitFor(dex.Context, odoo.SearchPartnersInput) (*dex.Wait, e
 }
 func (startRequest) Execute(_ dex.Context, input odoo.SearchPartnersInput) (*dex.StepDecision, error) {
 	return dex.GoTo(sdkgo.StepRef[odoo.SearchPartnersInput](operationStepType), input), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Read the first matching contact before completing the page."
+type partnersFound struct {
+	dex.StepDefaultsNoWaitFor[odoo.SearchPartnersResult]
+}
+
+func (partnersFound) Execute(_ dex.Context, result odoo.SearchPartnersResult) (*dex.StepDecision, error) {
+	if len(result.Value.Partners) == 0 {
+		return dex.GoTo(completeResult{}, result), nil
+	}
+	return dex.GoToMany(
+		dex.MovementOf(completeResult{}, result),
+		dex.MovementOf(sdkgo.StepRef[odoo.SearchPartnersResult]("GetContact"), result),
+	), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Finish the contact read after Odoo responds."
+type contactRead struct {
+	dex.StepDefaultsNoWaitFor[odoo.GetContactResult]
+}
+
+func (contactRead) Execute(_ dex.Context, _ odoo.GetContactResult) (*dex.StepDecision, error) {
+	return dex.DeadEnd(), nil
 }
 
 // dex:group group-id:result group-label:"Result"
