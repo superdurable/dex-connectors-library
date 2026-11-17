@@ -90,7 +90,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected creation., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
     mocks:
     - {name: createTeamDefault, branch: created, default: true, description: One team was created., output: {id: '51', slug: core, name: Core}}
   - name: getTeam
@@ -173,7 +173,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected creation., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
     mocks:
     - {name: createReleaseDefault, branch: created, default: true, description: One release was created., output: {version: app@1.0.0, status: open}}
   - name: getRelease
@@ -256,7 +256,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected creation., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
     mocks:
     - {name: createProjectDefault, branch: created, default: true, description: One project was created., output: {id: '43', slug: app, name: Application}}
   - name: assignIssue
@@ -562,7 +562,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected creation., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
     mocks:
     - {name: createOrganizationDefault, branch: created, default: true, description: One organization was created., output: {id: '789', slug: acme, name: Acme}}
   - name: getOrganization
