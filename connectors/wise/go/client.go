@@ -5,6 +5,7 @@
 package wise
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -67,6 +68,10 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.send(call, http.MethodGet, path, nil)
+}
+
+func (client *Client) send(call sdkgo.Call, method, path string, requestBody []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -75,12 +80,15 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(apiToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bytes.NewReader(requestBody))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Authorization", "Bearer "+apiToken)
+	if requestBody != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return providerResponse{err: errRequest}

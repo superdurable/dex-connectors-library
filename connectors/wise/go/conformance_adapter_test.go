@@ -22,6 +22,13 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getTransfer": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTransfer(), reference),
+		"listProfiles":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListProfiles(), reference),
+		"getProfile":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetProfile(), reference),
+		"listRecipients":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListRecipients(), reference),
+		"getExchangeRates": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetExchangeRates(), reference),
+		"getQuote":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetQuote(), reference),
+		"createTransfer":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateTransfer(), reference, scenario.CallID),
+		"cancelTransfer":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CancelTransfer(), reference, scenario.CallID),
+		"getTransfer":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTransfer(), reference),
 	}}
 }
