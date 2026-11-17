@@ -50,6 +50,11 @@ type Operations interface {
 	CreateCustomer() sdkgo.Mutation[CreateCustomerInput, CustomerSummary]
 	UpdateCustomer() sdkgo.Mutation[UpdateCustomerInput, CustomerSummary]
 	DeleteCustomer() sdkgo.Mutation[GetCustomerInput, CustomerSummary]
+	ListVendors() sdkgo.Query[ListVendorsInput, VendorList]
+	GetVendor() sdkgo.Query[GetVendorInput, VendorSummary]
+	CreateVendor() sdkgo.Mutation[CreateVendorInput, VendorSummary]
+	UpdateVendor() sdkgo.Mutation[UpdateVendorInput, VendorSummary]
+	DeleteVendor() sdkgo.Mutation[GetVendorInput, VendorSummary]
 }
 
 type clientOperations struct{ client *Client }
@@ -68,6 +73,21 @@ func (operations clientOperations) UpdateCustomer() sdkgo.Mutation[UpdateCustome
 }
 func (operations clientOperations) DeleteCustomer() sdkgo.Mutation[GetCustomerInput, CustomerSummary] {
 	return operations.client.DeleteCustomer()
+}
+func (operations clientOperations) ListVendors() sdkgo.Query[ListVendorsInput, VendorList] {
+	return operations.client.ListVendors()
+}
+func (operations clientOperations) GetVendor() sdkgo.Query[GetVendorInput, VendorSummary] {
+	return operations.client.GetVendor()
+}
+func (operations clientOperations) CreateVendor() sdkgo.Mutation[CreateVendorInput, VendorSummary] {
+	return operations.client.CreateVendor()
+}
+func (operations clientOperations) UpdateVendor() sdkgo.Mutation[UpdateVendorInput, VendorSummary] {
+	return operations.client.UpdateVendor()
+}
+func (operations clientOperations) DeleteVendor() sdkgo.Mutation[GetVendorInput, VendorSummary] {
+	return operations.client.DeleteVendor()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -436,6 +456,7 @@ func NewGetCustomerStep[IN any](config GetCustomerStepConfig[IN]) sdkgo.QuerySte
 }
 
 const CreateCustomerBranchCreated sdkgo.BranchID = "created"
+const CreateCustomerBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const CreateCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const CreateCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
@@ -443,6 +464,7 @@ var CreateCustomerDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCustomer"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateCustomerBranchCreated, Description: "NetSuite created the customer."},
+		{ID: CreateCustomerBranchUncertain, Description: "Customer creation may have succeeded but cannot be confirmed.", Optional: true},
 		{ID: CreateCustomerBranchProviderRejected, Description: "NetSuite rejected customer creation.", Optional: true},
 		{ID: CreateCustomerBranchDefect, Description: "Customer input or credentials are invalid.", Optional: true},
 	},
@@ -467,6 +489,7 @@ type CreateCustomerStepConfig[IN any] struct {
 	ConnectionName                    string                                                `connector:"connectionName"`
 	MapToOperationInput               func(IN) CreateCustomerInput                          `connector:"mapToOperationInput"`
 	Created                           sdkgo.Target[CreateCustomerResult]                    `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreateCustomerResult]                    `connector:"branch=uncertain,optional"`
 	ProviderRejected                  sdkgo.Target[CreateCustomerResult]                    `connector:"branch=providerRejected,optional"`
 	Defect                            sdkgo.Target[CreateCustomerResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CustomerSummary]] `connector:"resultAttribute"`
@@ -487,9 +510,12 @@ func NewCreateCustomerStep[IN any](config CreateCustomerStepConfig[IN]) sdkgo.Mu
 		Operation: config.Connection.operations.CreateCustomer(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateCustomerResult] {
-			branches := make([]sdkgo.BranchTarget[CreateCustomerResult], 0, 3)
+			branches := make([]sdkgo.BranchTarget[CreateCustomerResult], 0, 4)
 			if config.Created.HasStep() {
 				branches = append(branches, config.Created.BranchTarget(CreateCustomerBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateCustomerBranchUncertain))
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCustomerBranchProviderRejected))
@@ -641,6 +667,374 @@ func NewDeleteCustomerStep[IN any](config DeleteCustomerStepConfig[IN]) sdkgo.Mu
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListVendorsBranchListed sdkgo.BranchID = "listed"
+const ListVendorsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListVendorsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListVendorsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListVendorsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listVendors"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListVendorsBranchListed, Description: "NetSuite returned a page of vendors."},
+		{ID: ListVendorsBranchProviderRejected, Description: "NetSuite rejected the listing.", Optional: true},
+		{ID: ListVendorsBranchInvalidResponse, Description: "NetSuite returned an invalid list.", Optional: true},
+		{ID: ListVendorsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListVendorsResult = sdkgo.QueryResult[VendorList]
+
+type ListVendorsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=oracle-netsuite"`
+	operationID                    struct{}                                      `connector:"operationId=listVendors"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListVendorsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListVendorsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListVendorsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListVendorsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListVendorsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[VendorList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListVendorsStep[IN any](config ListVendorsStepConfig[IN]) sdkgo.QueryStep[IN, ListVendorsInput, VendorList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("oracle-netsuite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListVendorsInput, VendorList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListVendors(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListVendorsResult] {
+			branches := make([]sdkgo.BranchTarget[ListVendorsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListVendorsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListVendorsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListVendorsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListVendorsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetVendorBranchFound sdkgo.BranchID = "found"
+const GetVendorBranchNotFound sdkgo.BranchID = "notFound"
+const GetVendorBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetVendorBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetVendorBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetVendorDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getVendor"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetVendorBranchFound, Description: "NetSuite returned the vendor."},
+		{ID: GetVendorBranchNotFound, Description: "No accessible vendor has this internal ID.", Optional: true},
+		{ID: GetVendorBranchProviderRejected, Description: "Oracle NetSuite conclusively rejected the lookup.", Optional: true},
+		{ID: GetVendorBranchInvalidResponse, Description: "NetSuite returned malformed or oversized vendor JSON.", Optional: true},
+		{ID: GetVendorBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetVendorResult = sdkgo.QueryResult[VendorSummary]
+
+type GetVendorStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=oracle-netsuite"`
+	operationID                    struct{}                                         `connector:"operationId=getVendor"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetVendorInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetVendorResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetVendorResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetVendorResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetVendorResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetVendorResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[VendorSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetVendorStep[IN any](config GetVendorStepConfig[IN]) sdkgo.QueryStep[IN, GetVendorInput, VendorSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("oracle-netsuite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetVendorInput, VendorSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetVendor(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetVendorResult] {
+			branches := make([]sdkgo.BranchTarget[GetVendorResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetVendorBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetVendorBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetVendorBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetVendorBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetVendorBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateVendorBranchCreated sdkgo.BranchID = "created"
+const CreateVendorBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateVendorBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateVendorBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateVendorDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createVendor"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateVendorBranchCreated, Description: "NetSuite created the vendor."},
+		{ID: CreateVendorBranchUncertain, Description: "Vendor creation may have succeeded but cannot be confirmed.", Optional: true},
+		{ID: CreateVendorBranchProviderRejected, Description: "NetSuite rejected vendor creation.", Optional: true},
+		{ID: CreateVendorBranchDefect, Description: "Vendor input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateVendorResult = sdkgo.MutationResult[VendorSummary]
+
+type CreateVendorStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=oracle-netsuite"`
+	operationID                       struct{}                                            `connector:"operationId=createVendor"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateVendorInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateVendorResult]                    `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreateVendorResult]                    `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[CreateVendorResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateVendorResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[VendorSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateVendorStep[IN any](config CreateVendorStepConfig[IN]) sdkgo.MutationStep[IN, CreateVendorInput, VendorSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("oracle-netsuite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateVendorInput, VendorSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateVendor(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateVendorResult] {
+			branches := make([]sdkgo.BranchTarget[CreateVendorResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateVendorBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateVendorBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateVendorBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateVendorBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateVendorBranchUpdated sdkgo.BranchID = "updated"
+const UpdateVendorBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateVendorBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateVendorBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateVendorDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateVendor"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateVendorBranchUpdated, Description: "NetSuite updated the vendor."},
+		{ID: UpdateVendorBranchNotFound, Description: "Vendor is absent.", Optional: true},
+		{ID: UpdateVendorBranchProviderRejected, Description: "NetSuite rejected the update.", Optional: true},
+		{ID: UpdateVendorBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateVendorResult = sdkgo.MutationResult[VendorSummary]
+
+type UpdateVendorStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=oracle-netsuite"`
+	operationID                       struct{}                                            `connector:"operationId=updateVendor"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateVendorInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateVendorResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateVendorResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateVendorResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateVendorResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[VendorSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateVendorStep[IN any](config UpdateVendorStepConfig[IN]) sdkgo.MutationStep[IN, UpdateVendorInput, VendorSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("oracle-netsuite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateVendorInput, VendorSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateVendor(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateVendorResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateVendorResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateVendorBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateVendorBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateVendorBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateVendorBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteVendorBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteVendorBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteVendorBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteVendorBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteVendorDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteVendor"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteVendorBranchDeleted, Description: "NetSuite deleted the vendor."},
+		{ID: DeleteVendorBranchNotFound, Description: "Vendor is absent.", Optional: true},
+		{ID: DeleteVendorBranchProviderRejected, Description: "NetSuite rejected the deletion.", Optional: true},
+		{ID: DeleteVendorBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteVendorResult = sdkgo.MutationResult[VendorSummary]
+
+type DeleteVendorStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=oracle-netsuite"`
+	operationID                       struct{}                                            `connector:"operationId=deleteVendor"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetVendorInput                             `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteVendorResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteVendorResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteVendorResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteVendorResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[VendorSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteVendorStep[IN any](config DeleteVendorStepConfig[IN]) sdkgo.MutationStep[IN, GetVendorInput, VendorSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("oracle-netsuite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetVendorInput, VendorSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteVendor(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteVendorResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteVendorResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteVendorBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteVendorBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteVendorBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteVendorBranchDefect))
 			}
 			return branches
 		}(),

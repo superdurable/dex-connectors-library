@@ -36,6 +36,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[oraclenetsuite.CustomerSummary](`{"id":"107","entityId":"CUST107"}`)
 			return err
 		}},
+		{name: "listVendors/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[oraclenetsuite.VendorList](`{"items":[{"id":"107"}],"totalResults":1,"hasMore":false}`)
+			return err
+		}},
+		{name: "getVendor/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[oraclenetsuite.VendorSummary](`{"id":"107","entityId":"VEND107"}`)
+			return err
+		}},
+		{name: "createVendor/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[oraclenetsuite.VendorSummary](`{"id":"107","entityId":"VEND107"}`)
+			return err
+		}},
+		{name: "updateVendor/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[oraclenetsuite.VendorSummary](`{"id":"107","entityId":"VEND107"}`)
+			return err
+		}},
+		{name: "deleteVendor/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[oraclenetsuite.VendorSummary](`{"id":"107","entityId":"VEND107"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -60,5 +80,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteCustomer().Definition().Operation.OperationID != "deleteCustomer" {
 		t.Errorf("deleteCustomer mock has another definition")
+	}
+	if mock.ListVendors().Definition().Operation.OperationID != "listVendors" {
+		t.Errorf("listVendors mock has another definition")
+	}
+	if mock.GetVendor().Definition().Operation.OperationID != "getVendor" {
+		t.Errorf("getVendor mock has another definition")
+	}
+	if mock.CreateVendor().Definition().Operation.OperationID != "createVendor" {
+		t.Errorf("createVendor mock has another definition")
+	}
+	if mock.UpdateVendor().Definition().Operation.OperationID != "updateVendor" {
+		t.Errorf("updateVendor mock has another definition")
+	}
+	if mock.DeleteVendor().Definition().Operation.OperationID != "deleteVendor" {
+		t.Errorf("deleteVendor mock has another definition")
 	}
 }

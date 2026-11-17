@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: oracle-netsuite
   displayName: Oracle NetSuite
-  description: Read and manage customer records through NetSuite REST Web Services.
+  description: Read and manage customer and vendor records through NetSuite REST Web Services.
   company: Oracle
   categories: [finance-payments, crm-sales]
   version: v0.2.0
@@ -29,7 +29,7 @@ spec:
         goName: BaseURL
         type: url
         required: true
-        description: Non-secret account REST origin from https://system.netsuite.com > Setup > Company > Company Information > Account ID, formatted https://ACCOUNT.suitetalk.api.netsuite.com. Blank prevents customer operations.
+        description: Non-secret account REST origin from https://system.netsuite.com > Setup > Company > Company Information > Account ID, formatted https://ACCOUNT.suitetalk.api.netsuite.com. Blank prevents record operations.
       - name: authorizationEndpoint
         goName: AuthorizationEndpoint
         type: url
@@ -44,12 +44,12 @@ spec:
         goName: Timeout
         type: duration
         default: 15s
-        description: Maximum duration of one customer request as a positive Go duration such as 20s. Blank uses the displayed default; increase only for a slow account.
+        description: Maximum duration of one record request as a positive Go duration such as 20s. Blank uses the displayed default; increase only for a slow account.
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
         default: 1048576
-        description: Maximum complete customer JSON response in bytes. Blank uses the displayed default; increase only for unusually large records.
+        description: Maximum complete record JSON response in bytes. Blank uses the displayed default; increase only for unusually large records.
   auth:
     type: oauth2
     refreshable: true
@@ -79,9 +79,9 @@ spec:
       startURL: https://system.netsuite.com/
       steps:
         - At https://system.netsuite.com > Setup > Company > Enable Features > SuiteCloud, enable REST Web Services and OAuth 2.0. Record the Account ID from Setup > Company > Company Information; use its account-specific domains for all three URLs.
-        - Under Setup > Integration > Manage Integrations > New, enable OAuth 2.0 Authorization Code Grant and REST Web Services scope. Add the exact Dex Web redirect URI. Give the consenting role permission to read customer records and complete any administrator approval.
+        - Under Setup > Integration > Manage Integrations > New, enable OAuth 2.0 Authorization Code Grant and REST Web Services scope. Add the exact Dex Web redirect URI. Give the consenting role permission to read customer and vendor records and the required create, edit, and delete permissions for management operations; complete any administrator approval.
         - Save the integration, then copy the Client ID and one-time Client Secret into Dex Web. Keep the secret private. Enter the account REST origin, authorization URL, and token URL using the same account ID.
-        - Authorize in Dex Web with the rest_webservices scope. Dex stores access and refresh tokens outside Flow state; leave their fields blank. In Lists > Relationships > Customers, open a customer and use its numeric internal ID as customerId in the example Flow. The ID is not secret; blank is invalid.
+        - Authorize in Dex Web with the rest_webservices scope. Dex stores access and refresh tokens outside Flow state; leave their fields blank. In Lists > Relationships > Customers or Lists > Relationships > Vendors, open a record and use its numeric internal ID as customerId or vendorId in the relevant operation. The ID is not secret; blank is invalid.
     oauth2:
       authorizationEndpoint: {fromSetting: authorizationEndpoint}
       tokenEndpoint: {fromSetting: tokenEndpoint}
@@ -151,6 +151,7 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: created, goName: Created, description: NetSuite created the customer.}
+        - {id: uncertain, goName: Uncertain, description: Customer creation may have succeeded but cannot be confirmed., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: NetSuite rejected customer creation., optional: true}
         - {id: defect, goName: Defect, description: Customer input or credentials are invalid., optional: true}
       mocks:
@@ -199,3 +200,104 @@ spec:
           default: true
           description: A sample customer is deleted.
           output: {id: '107', entityId: CUST107}
+    - name: listVendors
+      goName: ListVendors
+      inputType: ListVendorsInput
+      outputType: VendorList
+      kind: query
+      description: List vendor records with offset pagination.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: NetSuite returned a page of vendors.}
+        - {id: providerRejected, goName: ProviderRejected, description: NetSuite rejected the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: NetSuite returned an invalid list., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample vendor page is returned.
+          output: {items: [{id: '107'}], totalResults: 1, hasMore: false}
+    - name: getVendor
+      goName: GetVendor
+      inputType: GetVendorInput
+      outputType: VendorSummary
+      kind: query
+      description: Read one vendor internal ID and entity name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: NetSuite returned the vendor.}
+        - {id: notFound, goName: NotFound, description: No accessible vendor has this internal ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Oracle NetSuite conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: NetSuite returned malformed or oversized vendor JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample vendor is returned.
+          output: {id: '107', entityId: VEND107}
+    - name: createVendor
+      goName: CreateVendor
+      inputType: CreateVendorInput
+      outputType: VendorSummary
+      kind: mutation
+      description: Create a company vendor.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: NetSuite created the vendor.}
+        - {id: uncertain, goName: Uncertain, description: Vendor creation may have succeeded but cannot be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: NetSuite rejected vendor creation., optional: true}
+        - {id: defect, goName: Defect, description: Vendor input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample vendor is created.
+          output: {id: '107', entityId: VEND107}
+    - name: updateVendor
+      goName: UpdateVendor
+      inputType: UpdateVendorInput
+      outputType: VendorSummary
+      kind: mutation
+      description: Replace a vendor's displayed entity ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: NetSuite updated the vendor.}
+        - {id: notFound, goName: NotFound, description: Vendor is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: NetSuite rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample vendor is updated.
+          output: {id: '107', entityId: VEND107}
+    - name: deleteVendor
+      goName: DeleteVendor
+      inputType: GetVendorInput
+      outputType: VendorSummary
+      kind: mutation
+      description: Delete a vendor by internal ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: NetSuite deleted the vendor.}
+        - {id: notFound, goName: NotFound, description: Vendor is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: NetSuite rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample vendor is deleted.
+          output: {id: '107', entityId: VEND107}

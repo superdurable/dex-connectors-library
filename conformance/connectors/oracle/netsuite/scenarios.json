@@ -1901,8 +1901,8 @@
         }
       ],
       "expected": {
-        "branch": "defect",
-        "failureKind": "LOCAL_DEFECT",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
           "entityId": "",
           "id": ""
@@ -1910,7 +1910,7 @@
         "requestCount": 6,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "588a9cf7-7906-5c37-8962-c41adce89c75",
       "input": {
@@ -1955,6 +1955,1961 @@
       ],
       "name": "createCustomer-send-cap",
       "operation": "createCustomer"
+    },
+    {
+      "callId": "af901109-e5a9-43ff-99f4-191a11f089a9",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"107\",\"entityId\":\"VEND107\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "entityId": "VEND107",
+          "id": "107"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "getVendor-found",
+      "operation": "getVendor"
+    },
+    {
+      "callId": "19eace61-0c51-4206-8932-878b6f4ae721",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "getVendor-not-found",
+      "operation": "getVendor"
+    },
+    {
+      "callId": "db5b8be8-06ec-498a-b3d4-fb03e49692c2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "getVendor-provider-rejected",
+      "operation": "getVendor"
+    },
+    {
+      "callId": "890fb1fc-61a1-43e2-b882-24295a666c06",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "getVendor-invalid-json",
+      "operation": "getVendor"
+    },
+    {
+      "callId": "8d9fb747-2b7c-4a80-91f1-9be3258fac9b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"107\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "getVendor-missing-entity-id",
+      "operation": "getVendor"
+    },
+    {
+      "callId": "4d5a10d2-3538-4ee9-919e-ef74b530d999",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"108\",\"entityId\":\"OTHER\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "getVendor-wrong-id",
+      "operation": "getVendor"
+    },
+    {
+      "callId": "83b74d5c-f04c-445c-8c61-1b383e695f6b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "getVendor-rate-limit",
+      "operation": "getVendor"
+    },
+    {
+      "callId": "ddaa5dd6-b7ab-4b94-9d52-b39ab352a139",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "getVendor-server-error",
+      "operation": "getVendor"
+    },
+    {
+      "callId": "b31a3658-57c9-4eec-8636-e714d8182c6e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "getVendor-request-timeout",
+      "operation": "getVendor"
+    },
+    {
+      "callId": "2f346303-3056-42d2-a926-78ba7cce2b34",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "getVendor-transport-before-send",
+      "operation": "getVendor"
+    },
+    {
+      "callId": "8a0809a3-88c5-49d7-b612-f858ac2e856f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "vendorId": "../bad"
+      },
+      "name": "getVendor-defect",
+      "operation": "getVendor"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"107\"}],\"totalResults\":3,\"hasMore\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "items": [
+            {
+              "id": "107"
+            }
+          ],
+          "totalResults": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 2
+      },
+      "name": "listVendors-listed",
+      "operation": "listVendors"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "totalResults": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 2
+      },
+      "name": "listVendors-provider-rejected",
+      "operation": "listVendors"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "totalResults": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 2
+      },
+      "name": "listVendors-invalid-response",
+      "operation": "listVendors"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 2
+      },
+      "name": "listVendors-rate-limit",
+      "operation": "listVendors"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 2
+      },
+      "name": "listVendors-service-unavailable",
+      "operation": "listVendors"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 2
+      },
+      "name": "listVendors-server-error",
+      "operation": "listVendors"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 2
+      },
+      "name": "listVendors-transport",
+      "operation": "listVendors"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000008",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "totalResults": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 0,
+        "offset": 2
+      },
+      "name": "listVendors-defect",
+      "operation": "listVendors"
+    },
+    {
+      "callId": "d6186920-244f-5dca-a548-4889492cff18",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Location": "/services/rest/record/v1/vendor/107"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/vendor",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "VEND107",
+            "externalId": "dex-d6186920-244f-5dca-a548-4889492cff18",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d6186920-244f-5dca-a548-4889492cff18",
+          "providerId": "107",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "entityId": "VEND107",
+          "id": "107"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6186920-244f-5dca-a548-4889492cff18",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "VEND107",
+        "subsidiaryId": "1"
+      },
+      "name": "createVendor-created",
+      "operation": "createVendor"
+    },
+    {
+      "callId": "d6186920-244f-5dca-a548-4889492cff18",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/vendor",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "VEND107",
+            "externalId": "dex-d6186920-244f-5dca-a548-4889492cff18",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d6186920-244f-5dca-a548-4889492cff18",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6186920-244f-5dca-a548-4889492cff18",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "VEND107",
+        "subsidiaryId": "1"
+      },
+      "name": "createVendor-provider-rejected",
+      "operation": "createVendor"
+    },
+    {
+      "callId": "d6186920-244f-5dca-a548-4889492cff18",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/vendor",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "VEND107",
+            "externalId": "dex-d6186920-244f-5dca-a548-4889492cff18",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d6186920-244f-5dca-a548-4889492cff18",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6186920-244f-5dca-a548-4889492cff18",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "VEND107",
+        "subsidiaryId": "1"
+      },
+      "name": "createVendor-rate-limit",
+      "operation": "createVendor"
+    },
+    {
+      "callId": "d6186920-244f-5dca-a548-4889492cff18",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/vendor",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "VEND107",
+            "externalId": "dex-d6186920-244f-5dca-a548-4889492cff18",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d6186920-244f-5dca-a548-4889492cff18",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6186920-244f-5dca-a548-4889492cff18",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "VEND107",
+        "subsidiaryId": "1"
+      },
+      "name": "createVendor-service-unavailable",
+      "operation": "createVendor"
+    },
+    {
+      "callId": "d6186920-244f-5dca-a548-4889492cff18",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/vendor",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "VEND107",
+            "externalId": "dex-d6186920-244f-5dca-a548-4889492cff18",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d6186920-244f-5dca-a548-4889492cff18",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6186920-244f-5dca-a548-4889492cff18",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "VEND107",
+        "subsidiaryId": "1"
+      },
+      "name": "createVendor-server-error",
+      "operation": "createVendor"
+    },
+    {
+      "callId": "d6186920-244f-5dca-a548-4889492cff18",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/vendor",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "VEND107",
+            "externalId": "dex-d6186920-244f-5dca-a548-4889492cff18",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d6186920-244f-5dca-a548-4889492cff18",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6186920-244f-5dca-a548-4889492cff18",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "VEND107",
+        "subsidiaryId": "1"
+      },
+      "name": "createVendor-transport",
+      "operation": "createVendor"
+    },
+    {
+      "callId": "d6186920-244f-5dca-a548-4889492cff18",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6186920-244f-5dca-a548-4889492cff18",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "VEND107",
+        "subsidiaryId": "bad"
+      },
+      "name": "createVendor-defect",
+      "operation": "createVendor"
+    },
+    {
+      "callId": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestBody": {
+            "entityId": "VEND108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "entityId": "VEND108",
+          "id": "107"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "input": {
+        "entityId": "VEND108",
+        "vendorId": "107"
+      },
+      "name": "updateVendor-updated",
+      "operation": "updateVendor"
+    },
+    {
+      "callId": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestBody": {
+            "entityId": "VEND108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "input": {
+        "entityId": "VEND108",
+        "vendorId": "107"
+      },
+      "name": "updateVendor-not-found",
+      "operation": "updateVendor"
+    },
+    {
+      "callId": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestBody": {
+            "entityId": "VEND108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "input": {
+        "entityId": "VEND108",
+        "vendorId": "107"
+      },
+      "name": "updateVendor-provider-rejected",
+      "operation": "updateVendor"
+    },
+    {
+      "callId": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestBody": {
+            "entityId": "VEND108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "input": {
+        "entityId": "VEND108",
+        "vendorId": "107"
+      },
+      "name": "updateVendor-rate-limit",
+      "operation": "updateVendor"
+    },
+    {
+      "callId": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestBody": {
+            "entityId": "VEND108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "input": {
+        "entityId": "VEND108",
+        "vendorId": "107"
+      },
+      "name": "updateVendor-service-unavailable",
+      "operation": "updateVendor"
+    },
+    {
+      "callId": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestBody": {
+            "entityId": "VEND108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "input": {
+        "entityId": "VEND108",
+        "vendorId": "107"
+      },
+      "name": "updateVendor-server-error",
+      "operation": "updateVendor"
+    },
+    {
+      "callId": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestBody": {
+            "entityId": "VEND108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "input": {
+        "entityId": "VEND108",
+        "vendorId": "107"
+      },
+      "name": "updateVendor-transport",
+      "operation": "updateVendor"
+    },
+    {
+      "callId": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "faa5d99e-dc58-5722-ba45-72f56af4cacf",
+      "input": {
+        "entityId": "VEND108",
+        "vendorId": "bad"
+      },
+      "name": "updateVendor-defect",
+      "operation": "updateVendor"
+    },
+    {
+      "callId": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "entityId": "",
+          "id": "107"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "deleteVendor-deleted",
+      "operation": "deleteVendor"
+    },
+    {
+      "callId": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "deleteVendor-not-found",
+      "operation": "deleteVendor"
+    },
+    {
+      "callId": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "deleteVendor-provider-rejected",
+      "operation": "deleteVendor"
+    },
+    {
+      "callId": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "deleteVendor-rate-limit",
+      "operation": "deleteVendor"
+    },
+    {
+      "callId": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "deleteVendor-service-unavailable",
+      "operation": "deleteVendor"
+    },
+    {
+      "callId": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "deleteVendor-server-error",
+      "operation": "deleteVendor"
+    },
+    {
+      "callId": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/rest/record/v1/vendor/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "input": {
+        "vendorId": "107"
+      },
+      "name": "deleteVendor-transport",
+      "operation": "deleteVendor"
+    },
+    {
+      "callId": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fabb16de-edf1-5ca2-a678-52d4e7867910",
+      "input": {
+        "vendorId": "bad"
+      },
+      "name": "deleteVendor-defect",
+      "operation": "deleteVendor"
+    },
+    {
+      "attempts": 2,
+      "callId": "d6186920-244f-5dca-a548-4889492cff18",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/vendor",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "VEND107",
+            "externalId": "dex-d6186920-244f-5dca-a548-4889492cff18",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":\"107\",\"entityId\":\"VEND107\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor/eid:dex-d6186920-244f-5dca-a548-4889492cff18",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "entityId": "VEND107",
+          "id": "107"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6186920-244f-5dca-a548-4889492cff18",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "VEND107",
+        "subsidiaryId": "1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "d6186920-244f-5dca-a548-4889492cff18",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createVendor-read-back",
+      "operation": "createVendor"
+    },
+    {
+      "attempts": 4,
+      "callId": "d6186920-244f-5dca-a548-4889492cff18",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/vendor",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "VEND107",
+            "externalId": "dex-d6186920-244f-5dca-a548-4889492cff18",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor/eid:dex-d6186920-244f-5dca-a548-4889492cff18",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/vendor",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "VEND107",
+            "externalId": "dex-d6186920-244f-5dca-a548-4889492cff18",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor/eid:dex-d6186920-244f-5dca-a548-4889492cff18",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/vendor",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "VEND107",
+            "externalId": "dex-d6186920-244f-5dca-a548-4889492cff18",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/vendor/eid:dex-d6186920-244f-5dca-a548-4889492cff18",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "d6186920-244f-5dca-a548-4889492cff18",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "VEND107",
+        "subsidiaryId": "1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "d6186920-244f-5dca-a548-4889492cff18",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "d6186920-244f-5dca-a548-4889492cff18",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 5,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "d6186920-244f-5dca-a548-4889492cff18",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createVendor-send-cap",
+      "operation": "createVendor"
     }
   ],
   "schemaVersion": 1

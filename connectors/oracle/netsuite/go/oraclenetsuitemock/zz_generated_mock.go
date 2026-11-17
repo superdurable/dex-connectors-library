@@ -23,6 +23,11 @@ type Mock struct {
 	createCustomer *connectormock.Mutation[oraclenetsuite.CreateCustomerInput, oraclenetsuite.CustomerSummary]
 	updateCustomer *connectormock.Mutation[oraclenetsuite.UpdateCustomerInput, oraclenetsuite.CustomerSummary]
 	deleteCustomer *connectormock.Mutation[oraclenetsuite.GetCustomerInput, oraclenetsuite.CustomerSummary]
+	listVendors    *connectormock.Query[oraclenetsuite.ListVendorsInput, oraclenetsuite.VendorList]
+	getVendor      *connectormock.Query[oraclenetsuite.GetVendorInput, oraclenetsuite.VendorSummary]
+	createVendor   *connectormock.Mutation[oraclenetsuite.CreateVendorInput, oraclenetsuite.VendorSummary]
+	updateVendor   *connectormock.Mutation[oraclenetsuite.UpdateVendorInput, oraclenetsuite.VendorSummary]
+	deleteVendor   *connectormock.Mutation[oraclenetsuite.GetVendorInput, oraclenetsuite.VendorSummary]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -35,12 +40,22 @@ func New(t testing.TB, connectionName string) *Mock {
 		createCustomer: connectormock.NewMutation[oraclenetsuite.CreateCustomerInput, oraclenetsuite.CustomerSummary](t, oraclenetsuite.CreateCustomerDefinition),
 		updateCustomer: connectormock.NewMutation[oraclenetsuite.UpdateCustomerInput, oraclenetsuite.CustomerSummary](t, oraclenetsuite.UpdateCustomerDefinition),
 		deleteCustomer: connectormock.NewMutation[oraclenetsuite.GetCustomerInput, oraclenetsuite.CustomerSummary](t, oraclenetsuite.DeleteCustomerDefinition),
+		listVendors:    connectormock.NewQuery[oraclenetsuite.ListVendorsInput, oraclenetsuite.VendorList](t, oraclenetsuite.ListVendorsDefinition),
+		getVendor:      connectormock.NewQuery[oraclenetsuite.GetVendorInput, oraclenetsuite.VendorSummary](t, oraclenetsuite.GetVendorDefinition),
+		createVendor:   connectormock.NewMutation[oraclenetsuite.CreateVendorInput, oraclenetsuite.VendorSummary](t, oraclenetsuite.CreateVendorDefinition),
+		updateVendor:   connectormock.NewMutation[oraclenetsuite.UpdateVendorInput, oraclenetsuite.VendorSummary](t, oraclenetsuite.UpdateVendorDefinition),
+		deleteVendor:   connectormock.NewMutation[oraclenetsuite.GetVendorInput, oraclenetsuite.VendorSummary](t, oraclenetsuite.DeleteVendorDefinition),
 	}
 	mock.listCustomers.Default(ListCustomersDefault())
 	mock.getCustomer.Default(GetCustomerDefault())
 	mock.createCustomer.Default(CreateCustomerDefault())
 	mock.updateCustomer.Default(UpdateCustomerDefault())
 	mock.deleteCustomer.Default(DeleteCustomerDefault())
+	mock.listVendors.Default(ListVendorsDefault())
+	mock.getVendor.Default(GetVendorDefault())
+	mock.createVendor.Default(CreateVendorDefault())
+	mock.updateVendor.Default(UpdateVendorDefault())
+	mock.deleteVendor.Default(DeleteVendorDefault())
 	connection, err := oraclenetsuite.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "oracle-netsuite", Name: connectionName})
 	if err != nil {
 		t.Fatalf("oracle-netsuite mock connection: %v", err)
@@ -77,6 +92,31 @@ func (mock *Mock) DeleteCustomer() *connectormock.Mutation[oraclenetsuite.GetCus
 	return mock.deleteCustomer
 }
 
+// ListVendors returns the listVendors script.
+func (mock *Mock) ListVendors() *connectormock.Query[oraclenetsuite.ListVendorsInput, oraclenetsuite.VendorList] {
+	return mock.listVendors
+}
+
+// GetVendor returns the getVendor script.
+func (mock *Mock) GetVendor() *connectormock.Query[oraclenetsuite.GetVendorInput, oraclenetsuite.VendorSummary] {
+	return mock.getVendor
+}
+
+// CreateVendor returns the createVendor script.
+func (mock *Mock) CreateVendor() *connectormock.Mutation[oraclenetsuite.CreateVendorInput, oraclenetsuite.VendorSummary] {
+	return mock.createVendor
+}
+
+// UpdateVendor returns the updateVendor script.
+func (mock *Mock) UpdateVendor() *connectormock.Mutation[oraclenetsuite.UpdateVendorInput, oraclenetsuite.VendorSummary] {
+	return mock.updateVendor
+}
+
+// DeleteVendor returns the deleteVendor script.
+func (mock *Mock) DeleteVendor() *connectormock.Mutation[oraclenetsuite.GetVendorInput, oraclenetsuite.VendorSummary] {
+	return mock.deleteVendor
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListCustomers() sdkgo.Query[oraclenetsuite.ListCustomersInput, oraclenetsuite.CustomerList] {
@@ -93,6 +133,21 @@ func (operations mockOperations) UpdateCustomer() sdkgo.Mutation[oraclenetsuite.
 }
 func (operations mockOperations) DeleteCustomer() sdkgo.Mutation[oraclenetsuite.GetCustomerInput, oraclenetsuite.CustomerSummary] {
 	return operations.mock.deleteCustomer
+}
+func (operations mockOperations) ListVendors() sdkgo.Query[oraclenetsuite.ListVendorsInput, oraclenetsuite.VendorList] {
+	return operations.mock.listVendors
+}
+func (operations mockOperations) GetVendor() sdkgo.Query[oraclenetsuite.GetVendorInput, oraclenetsuite.VendorSummary] {
+	return operations.mock.getVendor
+}
+func (operations mockOperations) CreateVendor() sdkgo.Mutation[oraclenetsuite.CreateVendorInput, oraclenetsuite.VendorSummary] {
+	return operations.mock.createVendor
+}
+func (operations mockOperations) UpdateVendor() sdkgo.Mutation[oraclenetsuite.UpdateVendorInput, oraclenetsuite.VendorSummary] {
+	return operations.mock.updateVendor
+}
+func (operations mockOperations) DeleteVendor() sdkgo.Mutation[oraclenetsuite.GetVendorInput, oraclenetsuite.VendorSummary] {
+	return operations.mock.deleteVendor
 }
 
 // ListCustomersListed selects the listed branch: NetSuite returned a page of customers.
@@ -175,6 +230,11 @@ func GetCustomerDefault() connectormock.Case[oraclenetsuite.CustomerSummary] {
 // CreateCustomerCreated selects the created branch: NetSuite created the customer.
 func CreateCustomerCreated(value oraclenetsuite.CustomerSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerSummary] {
 	return connectormock.Branch(oraclenetsuite.CreateCustomerBranchCreated, value, failure)
+}
+
+// CreateCustomerUncertain returns an uncertain createCustomer outcome.
+func CreateCustomerUncertain(value oraclenetsuite.CustomerSummary, failure sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Uncertain(value, failure)
 }
 
 // CreateCustomerProviderRejected selects the providerRejected branch: NetSuite rejected customer creation.
@@ -273,4 +333,189 @@ func DeleteCustomerDeletedDefault() connectormock.Case[oraclenetsuite.CustomerSu
 // DeleteCustomerDefault is the manifest default, deletedDefault, which New installs.
 func DeleteCustomerDefault() connectormock.Case[oraclenetsuite.CustomerSummary] {
 	return DeleteCustomerDeletedDefault()
+}
+
+// ListVendorsListed selects the listed branch: NetSuite returned a page of vendors.
+func ListVendorsListed(value oraclenetsuite.VendorList, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorList] {
+	return connectormock.Branch(oraclenetsuite.ListVendorsBranchListed, value, failure)
+}
+
+// ListVendorsProviderRejected selects the providerRejected branch: NetSuite rejected the listing.
+func ListVendorsProviderRejected(value oraclenetsuite.VendorList, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorList] {
+	return connectormock.Branch(oraclenetsuite.ListVendorsBranchProviderRejected, value, failure)
+}
+
+// ListVendorsInvalidResponse selects the invalidResponse branch: NetSuite returned an invalid list.
+func ListVendorsInvalidResponse(value oraclenetsuite.VendorList, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorList] {
+	return connectormock.Branch(oraclenetsuite.ListVendorsBranchInvalidResponse, value, failure)
+}
+
+// ListVendorsDefect selects the defect branch: Local input or credentials are invalid.
+func ListVendorsDefect(value oraclenetsuite.VendorList, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorList] {
+	return connectormock.Branch(oraclenetsuite.ListVendorsBranchDefect, value, failure)
+}
+
+// ListVendorsRetry asks Dex to retry the listVendors Step, after the delay when it is positive.
+func ListVendorsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[oraclenetsuite.VendorList] {
+	return connectormock.Retry[oraclenetsuite.VendorList](failure, after)
+}
+
+// ListVendorsListedDefault is the manifest mock listedDefault: A sample vendor page is returned.
+func ListVendorsListedDefault() connectormock.Case[oraclenetsuite.VendorList] {
+	value := connectormock.MustDecodeOutput[oraclenetsuite.VendorList](`{"items":[{"id":"107"}],"totalResults":1,"hasMore":false}`)
+	return connectormock.Branch(oraclenetsuite.ListVendorsBranchListed, value, nil)
+}
+
+// ListVendorsDefault is the manifest default, listedDefault, which New installs.
+func ListVendorsDefault() connectormock.Case[oraclenetsuite.VendorList] {
+	return ListVendorsListedDefault()
+}
+
+// GetVendorFound selects the found branch: NetSuite returned the vendor.
+func GetVendorFound(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.GetVendorBranchFound, value, failure)
+}
+
+// GetVendorNotFound selects the notFound branch: No accessible vendor has this internal ID.
+func GetVendorNotFound(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.GetVendorBranchNotFound, value, failure)
+}
+
+// GetVendorProviderRejected selects the providerRejected branch: Oracle NetSuite conclusively rejected the lookup.
+func GetVendorProviderRejected(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.GetVendorBranchProviderRejected, value, failure)
+}
+
+// GetVendorInvalidResponse selects the invalidResponse branch: NetSuite returned malformed or oversized vendor JSON.
+func GetVendorInvalidResponse(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.GetVendorBranchInvalidResponse, value, failure)
+}
+
+// GetVendorDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetVendorDefect(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.GetVendorBranchDefect, value, failure)
+}
+
+// GetVendorRetry asks Dex to retry the getVendor Step, after the delay when it is positive.
+func GetVendorRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Retry[oraclenetsuite.VendorSummary](failure, after)
+}
+
+// GetVendorFoundDefault is the manifest mock foundDefault: A sample vendor is returned.
+func GetVendorFoundDefault() connectormock.Case[oraclenetsuite.VendorSummary] {
+	value := connectormock.MustDecodeOutput[oraclenetsuite.VendorSummary](`{"id":"107","entityId":"VEND107"}`)
+	return connectormock.Branch(oraclenetsuite.GetVendorBranchFound, value, nil)
+}
+
+// GetVendorDefault is the manifest default, foundDefault, which New installs.
+func GetVendorDefault() connectormock.Case[oraclenetsuite.VendorSummary] {
+	return GetVendorFoundDefault()
+}
+
+// CreateVendorCreated selects the created branch: NetSuite created the vendor.
+func CreateVendorCreated(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.CreateVendorBranchCreated, value, failure)
+}
+
+// CreateVendorUncertain returns an uncertain createVendor outcome.
+func CreateVendorUncertain(value oraclenetsuite.VendorSummary, failure sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateVendorProviderRejected selects the providerRejected branch: NetSuite rejected vendor creation.
+func CreateVendorProviderRejected(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.CreateVendorBranchProviderRejected, value, failure)
+}
+
+// CreateVendorDefect selects the defect branch: Vendor input or credentials are invalid.
+func CreateVendorDefect(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.CreateVendorBranchDefect, value, failure)
+}
+
+// CreateVendorRetry asks Dex to retry the createVendor Step, after the delay when it is positive.
+func CreateVendorRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Retry[oraclenetsuite.VendorSummary](failure, after)
+}
+
+// CreateVendorCreatedDefault is the manifest mock createdDefault: A sample vendor is created.
+func CreateVendorCreatedDefault() connectormock.Case[oraclenetsuite.VendorSummary] {
+	value := connectormock.MustDecodeOutput[oraclenetsuite.VendorSummary](`{"id":"107","entityId":"VEND107"}`)
+	return connectormock.Branch(oraclenetsuite.CreateVendorBranchCreated, value, nil)
+}
+
+// CreateVendorDefault is the manifest default, createdDefault, which New installs.
+func CreateVendorDefault() connectormock.Case[oraclenetsuite.VendorSummary] {
+	return CreateVendorCreatedDefault()
+}
+
+// UpdateVendorUpdated selects the updated branch: NetSuite updated the vendor.
+func UpdateVendorUpdated(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.UpdateVendorBranchUpdated, value, failure)
+}
+
+// UpdateVendorNotFound selects the notFound branch: Vendor is absent.
+func UpdateVendorNotFound(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.UpdateVendorBranchNotFound, value, failure)
+}
+
+// UpdateVendorProviderRejected selects the providerRejected branch: NetSuite rejected the update.
+func UpdateVendorProviderRejected(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.UpdateVendorBranchProviderRejected, value, failure)
+}
+
+// UpdateVendorDefect selects the defect branch: Input or credentials are invalid.
+func UpdateVendorDefect(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.UpdateVendorBranchDefect, value, failure)
+}
+
+// UpdateVendorRetry asks Dex to retry the updateVendor Step, after the delay when it is positive.
+func UpdateVendorRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Retry[oraclenetsuite.VendorSummary](failure, after)
+}
+
+// UpdateVendorUpdatedDefault is the manifest mock updatedDefault: A sample vendor is updated.
+func UpdateVendorUpdatedDefault() connectormock.Case[oraclenetsuite.VendorSummary] {
+	value := connectormock.MustDecodeOutput[oraclenetsuite.VendorSummary](`{"id":"107","entityId":"VEND107"}`)
+	return connectormock.Branch(oraclenetsuite.UpdateVendorBranchUpdated, value, nil)
+}
+
+// UpdateVendorDefault is the manifest default, updatedDefault, which New installs.
+func UpdateVendorDefault() connectormock.Case[oraclenetsuite.VendorSummary] {
+	return UpdateVendorUpdatedDefault()
+}
+
+// DeleteVendorDeleted selects the deleted branch: NetSuite deleted the vendor.
+func DeleteVendorDeleted(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.DeleteVendorBranchDeleted, value, failure)
+}
+
+// DeleteVendorNotFound selects the notFound branch: Vendor is absent.
+func DeleteVendorNotFound(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.DeleteVendorBranchNotFound, value, failure)
+}
+
+// DeleteVendorProviderRejected selects the providerRejected branch: NetSuite rejected the deletion.
+func DeleteVendorProviderRejected(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.DeleteVendorBranchProviderRejected, value, failure)
+}
+
+// DeleteVendorDefect selects the defect branch: Input or credentials are invalid.
+func DeleteVendorDefect(value oraclenetsuite.VendorSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Branch(oraclenetsuite.DeleteVendorBranchDefect, value, failure)
+}
+
+// DeleteVendorRetry asks Dex to retry the deleteVendor Step, after the delay when it is positive.
+func DeleteVendorRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[oraclenetsuite.VendorSummary] {
+	return connectormock.Retry[oraclenetsuite.VendorSummary](failure, after)
+}
+
+// DeleteVendorDeletedDefault is the manifest mock deletedDefault: A sample vendor is deleted.
+func DeleteVendorDeletedDefault() connectormock.Case[oraclenetsuite.VendorSummary] {
+	value := connectormock.MustDecodeOutput[oraclenetsuite.VendorSummary](`{"id":"107","entityId":"VEND107"}`)
+	return connectormock.Branch(oraclenetsuite.DeleteVendorBranchDeleted, value, nil)
+}
+
+// DeleteVendorDefault is the manifest default, deletedDefault, which New installs.
+func DeleteVendorDefault() connectormock.Case[oraclenetsuite.VendorSummary] {
+	return DeleteVendorDeletedDefault()
 }

@@ -8,15 +8,15 @@ import type { RefreshingCredentialProvider } from '@superdurable/connectors-sdk'
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
-  /** Non-secret account REST origin from https://system.netsuite.com > Setup > Company > Company Information > Account ID, formatted https://ACCOUNT.suitetalk.api.netsuite.com. Blank prevents customer operations. */
+  /** Non-secret account REST origin from https://system.netsuite.com > Setup > Company > Company Information > Account ID, formatted https://ACCOUNT.suitetalk.api.netsuite.com. Blank prevents record operations. */
   baseUrl: string;
   /** Non-secret OAuth authorization URL https://ACCOUNT.app.netsuite.com/app/login/oauth2/authorize.nl for the same Account ID. Blank prevents authorization. */
   authorizationEndpoint: string;
   /** Non-secret OAuth token URL https://ACCOUNT.app.netsuite.com/services/rest/auth/oauth2/v1/token for the same Account ID. Blank prevents authorization and refresh. */
   tokenEndpoint: string;
-  /** Maximum duration of one customer request as a positive Go duration such as 20s. Blank uses the displayed default; increase only for a slow account. Runtime value in milliseconds. */
+  /** Maximum duration of one record request as a positive Go duration such as 20s. Blank uses the displayed default; increase only for a slow account. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete customer JSON response in bytes. Blank uses the displayed default; increase only for unusually large records. */
+  /** Maximum complete record JSON response in bytes. Blank uses the displayed default; increase only for unusually large records. */
   maxResponseBytes?: number;
 }
 
