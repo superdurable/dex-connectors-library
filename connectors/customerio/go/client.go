@@ -28,6 +28,7 @@ func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{ht
 // Client holds immutable provider settings and resolves credentials per call.
 type Client struct {
 	baseURL          string
+	trackingBaseURL  string
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
@@ -46,7 +47,11 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Customer.io API URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	trackingBaseURL, err := providerhttp.ValidateBaseURL(config.TrackingBaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("Customer.io Track API URL: %w", err)
+	}
+	client := &Client{baseURL: baseURL, trackingBaseURL: trackingBaseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Customer.io client option is required")
@@ -68,6 +73,11 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, email string) providerResponse {
+	parameters := url.Values{"email": {email}}
+	return client.getPath(call, "/v1/customers?"+parameters.Encode())
+}
+
+func (client *Client) getPath(call sdkgo.Call, path string) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -76,8 +86,7 @@ func (client *Client) get(call sdkgo.Call, email string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(privateKey) {
 		return providerResponse{err: errCredential}
 	}
-	parameters := url.Values{"email": {email}}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+"/v1/customers?"+parameters.Encode(), nil)
+	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}

@@ -24,7 +24,8 @@ import (
 func TestLeadStatusDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := coppermock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	sourcesFlow := NewCustomerSourcesFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, sourcesFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestLeadStatusDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, int64(208231), output.Statuses[0].ID)
 	require.Len(t, mock.ListLeadStatuses().Calls(), 1)
+	sourcesFlowID := "copper-customer-sources-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, sourcesFlow, sourcesFlowID, copper.ListCustomerSourcesInput{}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	sourcesResult, err := client.WaitForFlow(ctx, sourcesFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, sourcesResult.Status, sourcesResult.ErrorMessage)
+	var sources copper.CustomerSourcesList
+	require.NoError(t, sourcesResult.DecodeSingleOutput(&sources))
+	require.Equal(t, int64(331240), sources.Sources[0].ID)
+	require.Len(t, mock.ListCustomerSources().Calls(), 1)
 }

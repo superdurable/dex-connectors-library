@@ -11,7 +11,7 @@ import {
   type ExchangeRecorder, type HeartbeatContext, type Scenario,
 } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/constantcontact/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/constantcontact/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'getContact');
 const connection = { provider: 'constantcontact', name: 'constantcontact' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeContactAttempt, '/v3'));

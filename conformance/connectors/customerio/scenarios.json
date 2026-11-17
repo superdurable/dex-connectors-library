@@ -356,6 +356,2926 @@
       },
       "name": "getCustomersByEmail-transportFailure",
       "operation": "getCustomersByEmail"
+    },
+    {
+      "callId": "c0000001-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"campaign\":{\"id\":5,\"name\":\"Welcome series\",\"active\":true,\"state\":\"running\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "active": true,
+          "id": 5,
+          "name": "Welcome series",
+          "state": "running"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5
+      },
+      "name": "getCampaign-found",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000002-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "not found",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "active": false,
+          "id": 0,
+          "name": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5
+      },
+      "name": "getCampaign-notFound",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000003-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "access denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "active": false,
+          "id": 0,
+          "name": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5
+      },
+      "name": "getCampaign-providerRejected",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000004-11d6-5d97-af52-c9a551737c8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "active": false,
+          "id": 0,
+          "name": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5
+      },
+      "name": "getCampaign-invalidResponse",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000005-a049-5f1b-be0b-5006c90def90",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "active": false,
+          "id": 0,
+          "name": "",
+          "state": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 0
+      },
+      "name": "getCampaign-defect",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000006-e35f-5b33-b16c-5982c057eba7",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5
+      },
+      "name": "getCampaign-rateLimit",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000007-c514-54c1-a5cd-f6b6bdd4e39f",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5
+      },
+      "name": "getCampaign-serverUnavailable",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000008-13c4-5e48-a653-6e2606720195",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5
+      },
+      "name": "getCampaign-transportFailure",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000009-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"campaigns\":[{\"id\":5,\"name\":\"Welcome series\",\"active\":true,\"state\":\"running\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "campaigns": [
+            {
+              "active": true,
+              "id": 5,
+              "name": "Welcome series",
+              "state": "running"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-found",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c000000a-79fa-5c50-981c-c82719452587",
+      "exchanges": [
+        {
+          "body": "{\"campaigns\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "campaigns": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-empty",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c000000b-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "access denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "campaigns": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-providerRejected",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c000000c-11d6-5d97-af52-c9a551737c8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaigns": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-invalidResponse",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c000000d-a049-5f1b-be0b-5006c90def90",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "campaigns": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-defect",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c000000e-e35f-5b33-b16c-5982c057eba7",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-rateLimit",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c000000f-c514-54c1-a5cd-f6b6bdd4e39f",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-serverUnavailable",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c0000010-13c4-5e48-a653-6e2606720195",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-transportFailure",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c0000011-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"metric\":{\"series\":{\"sent\":[1],\"delivered\":[1]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5/metrics",
+          "query": {
+            "end": [
+              "1735804800"
+            ],
+            "res": [
+              "days"
+            ],
+            "start": [
+              "1735718400"
+            ],
+            "version": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "campaignId": 5,
+          "series": {
+            "delivered": [
+              1
+            ],
+            "sent": [
+              1
+            ]
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-found",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "c0000012-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "not found",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5/metrics",
+          "query": {
+            "end": [
+              "1735804800"
+            ],
+            "res": [
+              "days"
+            ],
+            "start": [
+              "1735718400"
+            ],
+            "version": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "campaignId": 0,
+          "series": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-notFound",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "c0000013-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "access denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5/metrics",
+          "query": {
+            "end": [
+              "1735804800"
+            ],
+            "res": [
+              "days"
+            ],
+            "start": [
+              "1735718400"
+            ],
+            "version": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "campaignId": 0,
+          "series": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-providerRejected",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "c0000014-11d6-5d97-af52-c9a551737c8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5/metrics",
+          "query": {
+            "end": [
+              "1735804800"
+            ],
+            "res": [
+              "days"
+            ],
+            "start": [
+              "1735718400"
+            ],
+            "version": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaignId": 0,
+          "series": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-invalidResponse",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "c0000015-a049-5f1b-be0b-5006c90def90",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaignId": 0,
+          "series": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 0,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-defect",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "c0000016-e35f-5b33-b16c-5982c057eba7",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5/metrics",
+          "query": {
+            "end": [
+              "1735804800"
+            ],
+            "res": [
+              "days"
+            ],
+            "start": [
+              "1735718400"
+            ],
+            "version": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-rateLimit",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "c0000017-c514-54c1-a5cd-f6b6bdd4e39f",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5/metrics",
+          "query": {
+            "end": [
+              "1735804800"
+            ],
+            "res": [
+              "days"
+            ],
+            "start": [
+              "1735718400"
+            ],
+            "version": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-serverUnavailable",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "c0000018-13c4-5e48-a653-6e2606720195",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5/metrics",
+          "query": {
+            "end": [
+              "1735804800"
+            ],
+            "res": [
+              "days"
+            ],
+            "start": [
+              "1735718400"
+            ],
+            "version": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-transportFailure",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "253d2bae-caa4-5aa6-b300-6db875d1f0db",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/customers/customer-123",
+          "requestBody": {
+            "first_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "identifier": "customer-123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "253d2bae-caa4-5aa6-b300-6db875d1f0db",
+      "input": {
+        "attributes": {
+          "first_name": "Ada"
+        },
+        "identifier": "customer-123"
+      },
+      "name": "upsertCustomer-success",
+      "operation": "upsertCustomer"
+    },
+    {
+      "callId": "253d2bae-caa4-5aa6-b300-6db875d1f0db",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/customers/customer-123",
+          "requestBody": {
+            "first_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "identifier": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "253d2bae-caa4-5aa6-b300-6db875d1f0db",
+      "input": {
+        "attributes": {
+          "first_name": "Ada"
+        },
+        "identifier": "customer-123"
+      },
+      "name": "upsertCustomer-providerRejected",
+      "operation": "upsertCustomer"
+    },
+    {
+      "callId": "253d2bae-caa4-5aa6-b300-6db875d1f0db",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "identifier": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "253d2bae-caa4-5aa6-b300-6db875d1f0db",
+      "input": {
+        "attributes": {
+          "first_name": "Ada"
+        },
+        "identifier": ""
+      },
+      "name": "upsertCustomer-defect",
+      "operation": "upsertCustomer"
+    },
+    {
+      "callId": "b0000004-924f-5476-9c72-69d0dc131bcc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/customers/customer-123",
+          "requestBody": {
+            "first_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0000004-924f-5476-9c72-69d0dc131bcc",
+      "input": {
+        "attributes": {
+          "first_name": "Ada"
+        },
+        "identifier": "customer-123"
+      },
+      "name": "upsertCustomer-rateLimit",
+      "operation": "upsertCustomer"
+    },
+    {
+      "callId": "b0000005-924f-5476-9c72-69d0dc131bcc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/customers/customer-123",
+          "requestBody": {
+            "first_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0000005-924f-5476-9c72-69d0dc131bcc",
+      "input": {
+        "attributes": {
+          "first_name": "Ada"
+        },
+        "identifier": "customer-123"
+      },
+      "name": "upsertCustomer-serverUnavailable",
+      "operation": "upsertCustomer"
+    },
+    {
+      "callId": "b0000006-924f-5476-9c72-69d0dc131bcc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/customers/customer-123",
+          "requestBody": {
+            "first_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0000006-924f-5476-9c72-69d0dc131bcc",
+      "input": {
+        "attributes": {
+          "first_name": "Ada"
+        },
+        "identifier": "customer-123"
+      },
+      "name": "upsertCustomer-transportFailure",
+      "operation": "upsertCustomer"
+    },
+    {
+      "callId": "e4532931-de02-54e8-b322-5a549f461f30",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/customers/customer-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "identifier": "customer-123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4532931-de02-54e8-b322-5a549f461f30",
+      "input": {
+        "identifier": "customer-123"
+      },
+      "name": "deleteCustomer-success",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "e4532931-de02-54e8-b322-5a549f461f30",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/customers/customer-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "identifier": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4532931-de02-54e8-b322-5a549f461f30",
+      "input": {
+        "identifier": "customer-123"
+      },
+      "name": "deleteCustomer-notFound",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "e4532931-de02-54e8-b322-5a549f461f30",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/customers/customer-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "identifier": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4532931-de02-54e8-b322-5a549f461f30",
+      "input": {
+        "identifier": "customer-123"
+      },
+      "name": "deleteCustomer-providerRejected",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "e4532931-de02-54e8-b322-5a549f461f30",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "identifier": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4532931-de02-54e8-b322-5a549f461f30",
+      "input": {
+        "identifier": ""
+      },
+      "name": "deleteCustomer-defect",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "b000000b-6346-5d36-94f4-d2762b5ffd0e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/customers/customer-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b000000b-6346-5d36-94f4-d2762b5ffd0e",
+      "input": {
+        "identifier": "customer-123"
+      },
+      "name": "deleteCustomer-rateLimit",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "b000000c-6346-5d36-94f4-d2762b5ffd0e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/customers/customer-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b000000c-6346-5d36-94f4-d2762b5ffd0e",
+      "input": {
+        "identifier": "customer-123"
+      },
+      "name": "deleteCustomer-serverUnavailable",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "b000000d-6346-5d36-94f4-d2762b5ffd0e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/customers/customer-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b000000d-6346-5d36-94f4-d2762b5ffd0e",
+      "input": {
+        "identifier": "customer-123"
+      },
+      "name": "deleteCustomer-transportFailure",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/customers/customer-123/events",
+          "requestBody": {
+            "data": {
+              "price": 23.45
+            },
+            "name": "purchased",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "tracked",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17660265-3c09-5522-b287-8be465d56b81",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "name": "purchased",
+          "subjectID": "customer-123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "purchased",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-success",
+      "operation": "trackCustomerEvent"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/customers/customer-123/events",
+          "requestBody": {
+            "data": {
+              "price": 23.45
+            },
+            "name": "purchased",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17660265-3c09-5522-b287-8be465d56b81",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "purchased",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-providerRejected",
+      "operation": "trackCustomerEvent"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-defect",
+      "operation": "trackCustomerEvent"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/customers/customer-123/events",
+          "requestBody": {
+            "data": {
+              "price": 23.45
+            },
+            "name": "purchased",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17660265-3c09-5522-b287-8be465d56b81",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "purchased",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-rateLimit",
+      "operation": "trackCustomerEvent"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/customers/customer-123/events",
+          "requestBody": {
+            "data": {
+              "price": 23.45
+            },
+            "name": "purchased",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17660265-3c09-5522-b287-8be465d56b81",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "purchased",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-serverUnavailable",
+      "operation": "trackCustomerEvent"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/customers/customer-123/events",
+          "requestBody": {
+            "data": {
+              "price": 23.45
+            },
+            "name": "purchased",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17660265-3c09-5522-b287-8be465d56b81",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "purchased",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-unknownServer",
+      "operation": "trackCustomerEvent"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/customers/customer-123/events",
+          "requestBody": {
+            "data": {
+              "price": 23.45
+            },
+            "name": "purchased",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17660265-3c09-5522-b287-8be465d56b81",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "purchased",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-transportFailure",
+      "operation": "trackCustomerEvent"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "purchased",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-sendCapUncertain",
+      "operation": "trackCustomerEvent",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "17660265-3c09-5522-b287-8be465d56b81",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/events",
+          "requestBody": {
+            "anonymous_id": "visitor-123",
+            "data": {
+              "video": "intro"
+            },
+            "name": "watched_video",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "tracked",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "name": "watched_video",
+          "subjectID": "visitor-123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "watched_video",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-success",
+      "operation": "trackAnonymousEvent"
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/events",
+          "requestBody": {
+            "anonymous_id": "visitor-123",
+            "data": {
+              "video": "intro"
+            },
+            "name": "watched_video",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "watched_video",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-providerRejected",
+      "operation": "trackAnonymousEvent"
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-defect",
+      "operation": "trackAnonymousEvent"
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/events",
+          "requestBody": {
+            "anonymous_id": "visitor-123",
+            "data": {
+              "video": "intro"
+            },
+            "name": "watched_video",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "watched_video",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-rateLimit",
+      "operation": "trackAnonymousEvent"
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/events",
+          "requestBody": {
+            "anonymous_id": "visitor-123",
+            "data": {
+              "video": "intro"
+            },
+            "name": "watched_video",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "watched_video",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-serverUnavailable",
+      "operation": "trackAnonymousEvent"
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/events",
+          "requestBody": {
+            "anonymous_id": "visitor-123",
+            "data": {
+              "video": "intro"
+            },
+            "name": "watched_video",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "watched_video",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-unknownServer",
+      "operation": "trackAnonymousEvent"
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/events",
+          "requestBody": {
+            "anonymous_id": "visitor-123",
+            "data": {
+              "video": "intro"
+            },
+            "name": "watched_video",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "watched_video",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-transportFailure",
+      "operation": "trackAnonymousEvent"
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "watched_video",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-sendCapUncertain",
+      "operation": "trackAnonymousEvent",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "3ba70c82-ef72-5223-9177-9100dbb3eca4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/segments/7/add_customers",
+          "query": {
+            "id_type": [
+              "email"
+            ]
+          },
+          "requestBody": {
+            "ids": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "customerIDs": [
+            "person@example.com"
+          ],
+          "segmentID": 7
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ba70c82-ef72-5223-9177-9100dbb3eca4",
+      "input": {
+        "customerIDs": [
+          "person@example.com"
+        ],
+        "idType": "email",
+        "segmentID": 7
+      },
+      "name": "addCustomersToSegment-success",
+      "operation": "addCustomersToSegment"
+    },
+    {
+      "callId": "3ba70c82-ef72-5223-9177-9100dbb3eca4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/segments/7/add_customers",
+          "query": {
+            "id_type": [
+              "email"
+            ]
+          },
+          "requestBody": {
+            "ids": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "customerIDs": [],
+          "segmentID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ba70c82-ef72-5223-9177-9100dbb3eca4",
+      "input": {
+        "customerIDs": [
+          "person@example.com"
+        ],
+        "idType": "email",
+        "segmentID": 7
+      },
+      "name": "addCustomersToSegment-providerRejected",
+      "operation": "addCustomersToSegment"
+    },
+    {
+      "callId": "3ba70c82-ef72-5223-9177-9100dbb3eca4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "customerIDs": [],
+          "segmentID": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ba70c82-ef72-5223-9177-9100dbb3eca4",
+      "input": {
+        "customerIDs": [
+          "person@example.com"
+        ],
+        "idType": "email",
+        "segmentID": 0
+      },
+      "name": "addCustomersToSegment-defect",
+      "operation": "addCustomersToSegment"
+    },
+    {
+      "callId": "3ba70c82-ef72-5223-9177-9100dbb3eca4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/segments/7/add_customers",
+          "query": {
+            "id_type": [
+              "email"
+            ]
+          },
+          "requestBody": {
+            "ids": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ba70c82-ef72-5223-9177-9100dbb3eca4",
+      "input": {
+        "customerIDs": [
+          "person@example.com"
+        ],
+        "idType": "email",
+        "segmentID": 7
+      },
+      "name": "addCustomersToSegment-rateLimit",
+      "operation": "addCustomersToSegment"
+    },
+    {
+      "callId": "3ba70c82-ef72-5223-9177-9100dbb3eca4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/segments/7/add_customers",
+          "query": {
+            "id_type": [
+              "email"
+            ]
+          },
+          "requestBody": {
+            "ids": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ba70c82-ef72-5223-9177-9100dbb3eca4",
+      "input": {
+        "customerIDs": [
+          "person@example.com"
+        ],
+        "idType": "email",
+        "segmentID": 7
+      },
+      "name": "addCustomersToSegment-serverUnavailable",
+      "operation": "addCustomersToSegment"
+    },
+    {
+      "callId": "3ba70c82-ef72-5223-9177-9100dbb3eca4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/segments/7/add_customers",
+          "query": {
+            "id_type": [
+              "email"
+            ]
+          },
+          "requestBody": {
+            "ids": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ba70c82-ef72-5223-9177-9100dbb3eca4",
+      "input": {
+        "customerIDs": [
+          "person@example.com"
+        ],
+        "idType": "email",
+        "segmentID": 7
+      },
+      "name": "addCustomersToSegment-unknownServer",
+      "operation": "addCustomersToSegment"
+    },
+    {
+      "callId": "3ba70c82-ef72-5223-9177-9100dbb3eca4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/segments/7/add_customers",
+          "query": {
+            "id_type": [
+              "email"
+            ]
+          },
+          "requestBody": {
+            "ids": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ba70c82-ef72-5223-9177-9100dbb3eca4",
+      "input": {
+        "customerIDs": [
+          "person@example.com"
+        ],
+        "idType": "email",
+        "segmentID": 7
+      },
+      "name": "addCustomersToSegment-transportFailure",
+      "operation": "addCustomersToSegment"
+    },
+    {
+      "callId": "016d0582-3d9c-5368-90d1-4a2e58348487",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/segments/7/remove_customers",
+          "query": {
+            "id_type": [
+              "email"
+            ]
+          },
+          "requestBody": {
+            "ids": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "customerIDs": [
+            "person@example.com"
+          ],
+          "segmentID": 7
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "016d0582-3d9c-5368-90d1-4a2e58348487",
+      "input": {
+        "customerIDs": [
+          "person@example.com"
+        ],
+        "idType": "email",
+        "segmentID": 7
+      },
+      "name": "removeCustomersFromSegment-success",
+      "operation": "removeCustomersFromSegment"
+    },
+    {
+      "callId": "016d0582-3d9c-5368-90d1-4a2e58348487",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/segments/7/remove_customers",
+          "query": {
+            "id_type": [
+              "email"
+            ]
+          },
+          "requestBody": {
+            "ids": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "customerIDs": [],
+          "segmentID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "016d0582-3d9c-5368-90d1-4a2e58348487",
+      "input": {
+        "customerIDs": [
+          "person@example.com"
+        ],
+        "idType": "email",
+        "segmentID": 7
+      },
+      "name": "removeCustomersFromSegment-providerRejected",
+      "operation": "removeCustomersFromSegment"
+    },
+    {
+      "callId": "016d0582-3d9c-5368-90d1-4a2e58348487",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "customerIDs": [],
+          "segmentID": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "016d0582-3d9c-5368-90d1-4a2e58348487",
+      "input": {
+        "customerIDs": [
+          "person@example.com"
+        ],
+        "idType": "email",
+        "segmentID": 0
+      },
+      "name": "removeCustomersFromSegment-defect",
+      "operation": "removeCustomersFromSegment"
+    },
+    {
+      "callId": "016d0582-3d9c-5368-90d1-4a2e58348487",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/segments/7/remove_customers",
+          "query": {
+            "id_type": [
+              "email"
+            ]
+          },
+          "requestBody": {
+            "ids": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "016d0582-3d9c-5368-90d1-4a2e58348487",
+      "input": {
+        "customerIDs": [
+          "person@example.com"
+        ],
+        "idType": "email",
+        "segmentID": 7
+      },
+      "name": "removeCustomersFromSegment-rateLimit",
+      "operation": "removeCustomersFromSegment"
+    },
+    {
+      "callId": "016d0582-3d9c-5368-90d1-4a2e58348487",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/segments/7/remove_customers",
+          "query": {
+            "id_type": [
+              "email"
+            ]
+          },
+          "requestBody": {
+            "ids": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "016d0582-3d9c-5368-90d1-4a2e58348487",
+      "input": {
+        "customerIDs": [
+          "person@example.com"
+        ],
+        "idType": "email",
+        "segmentID": 7
+      },
+      "name": "removeCustomersFromSegment-serverUnavailable",
+      "operation": "removeCustomersFromSegment"
+    },
+    {
+      "callId": "016d0582-3d9c-5368-90d1-4a2e58348487",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/segments/7/remove_customers",
+          "query": {
+            "id_type": [
+              "email"
+            ]
+          },
+          "requestBody": {
+            "ids": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "016d0582-3d9c-5368-90d1-4a2e58348487",
+      "input": {
+        "customerIDs": [
+          "person@example.com"
+        ],
+        "idType": "email",
+        "segmentID": 7
+      },
+      "name": "removeCustomersFromSegment-unknownServer",
+      "operation": "removeCustomersFromSegment"
+    },
+    {
+      "callId": "016d0582-3d9c-5368-90d1-4a2e58348487",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/segments/7/remove_customers",
+          "query": {
+            "id_type": [
+              "email"
+            ]
+          },
+          "requestBody": {
+            "ids": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "016d0582-3d9c-5368-90d1-4a2e58348487",
+      "input": {
+        "customerIDs": [
+          "person@example.com"
+        ],
+        "idType": "email",
+        "segmentID": 7
+      },
+      "name": "removeCustomersFromSegment-transportFailure",
+      "operation": "removeCustomersFromSegment"
     }
   ],
   "schemaVersion": 1

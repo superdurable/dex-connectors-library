@@ -10,10 +10,12 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 export interface Config {
   /** Customer.io App API HTTPS root. Blank uses the displayed US-region default; override with https://api-eu.customer.io for an EU workspace. Do not include path, query, or credentials. */
   baseUrl?: string;
-  /** Maximum duration of one customer lookup as a positive Go duration. Blank uses the displayed default; increase only for slow responses. Runtime value in milliseconds. */
+  /** Maximum duration of one App API request as a positive Go duration. Blank uses the displayed default; increase only for slow responses. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete customer-lookup JSON response in bytes as a positive integer. Blank uses the displayed default; increase if an email has many matching profiles. */
+  /** Maximum complete App API JSON response in bytes as a positive integer. Blank uses the displayed default; increase for large customer or campaign responses. */
   maxResponseBytes?: number;
+  /** Customer.io Track API HTTPS root. Blank uses the displayed US-region default; override with https://track-eu.customer.io for an EU workspace. Do not include a path, query, or credentials. */
+  trackingBaseUrl?: string;
 }
 
 /** Runtime schema for manifest configuration. */
@@ -21,24 +23,33 @@ export const ConfigSchema = z.object({
   "baseUrl": z.string().optional(),
   "timeoutMs": z.number().int().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "trackingBaseUrl": z.string().optional(),
 });
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret App API private key from Customer.io > Settings > API Credentials > App API > Create API Key. Copy the complete sk_ key or existing App API key, not its label; blank prevents calls. Dex sends it only as a Bearer credential. */
+  /** Secret App API private key from Customer.io > Settings > API Credentials > App API > Create API Key. Copy the complete sk_ key or existing App API key with profile and campaign read access, not its label; blank prevents calls. Dex sends it only as a Bearer credential. */
   privateKey: SecretString;
+  /** Secret API key from Customer.io > Settings > API Credentials > Track API Keys > Create Key. Copy the complete key, not its label; blank disables Track API writes. Dex uses it only as the Basic-auth password. */
+  trackingApiKey?: SecretString;
+  /** Non-secret Site ID from Customer.io > Settings > API Credentials > Track API Keys. Copy the Site ID for this workspace, not the key label; blank disables Track API writes. Dex uses it as the Basic-auth username. */
+  trackingSiteId?: string;
 }
 
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
-  const allowed = new Set<string>(["privateKey"]);
+  const allowed = new Set<string>(["privateKey", "trackingApiKey", "trackingSiteId"]);
   if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
   if (fields["privateKey"] != null && !(typeof fields["privateKey"] === 'string')) throw new TypeError("credential privateKey has an invalid type");
+  if (fields["trackingApiKey"] != null && !(typeof fields["trackingApiKey"] === 'string')) throw new TypeError("credential trackingApiKey has an invalid type");
+  if (fields["trackingSiteId"] != null && !(typeof fields["trackingSiteId"] === 'string')) throw new TypeError("credential trackingSiteId has an invalid type");
   const credentials = {} as Credentials;
   if (!fields["privateKey"]) throw new TypeError("credential privateKey is required");
   credentials.privateKey = new SecretString((fields["privateKey"] ?? '') as string);
+  credentials.trackingSiteId = (fields["trackingSiteId"] ?? '') as string;
+  credentials.trackingApiKey = new SecretString((fields["trackingApiKey"] ?? '') as string);
   return credentials;
 }
 

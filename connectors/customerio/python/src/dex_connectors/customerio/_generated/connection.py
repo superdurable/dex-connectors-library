@@ -73,14 +73,20 @@ class _ProjectCredentialSource:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
             raise ValueError("Customer.io stored credential does not match the connector credential fields")
-        if set(material) - set(('privateKey',)):
+        if set(material) - set(('privateKey', 'trackingSiteId', 'trackingApiKey')):
             raise ValueError("Customer.io stored credential does not match the connector credential fields")
         private_key = material.get("privateKey")
         if private_key is not None and not (isinstance(private_key, str)):
             raise ValueError("Customer.io credential privateKey has an invalid type")
+        tracking_site_id = material.get("trackingSiteId")
+        if tracking_site_id is not None and not (isinstance(tracking_site_id, str)):
+            raise ValueError("Customer.io credential trackingSiteId has an invalid type")
+        tracking_api_key = material.get("trackingApiKey")
+        if tracking_api_key is not None and not (isinstance(tracking_api_key, str)):
+            raise ValueError("Customer.io credential trackingApiKey has an invalid type")
         if not private_key:
             raise ValueError("Customer.io credential privateKey is required")
-        return Credentials(SecretString(private_key))
+        return Credentials(SecretString(private_key), (tracking_site_id or ''), SecretString(tracking_api_key or ''))
 
 
 def new_project_connection(
@@ -108,22 +114,27 @@ setattr(new_project_connection, '__module__', 'dex_connectors.customerio.connect
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"baseUrl", "timeout", "maxResponseBytes"}:
+    if set(value) - {"baseUrl", "timeout", "maxResponseBytes", "trackingBaseUrl"}:
         raise ValueError("Customer.io configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
-    if "baseUrl" in value:
+    if "baseUrl" in value and value["baseUrl"] != '':
         base_url = value["baseUrl"]
         if not (isinstance(base_url, str)):
             raise ValueError("Customer.io configuration baseUrl has an invalid type")
         config_arguments['base_url'] = base_url
-    if "timeout" in value:
+    if "timeout" in value and value["timeout"] != '':
         timeout = value["timeout"]
         if not (type(timeout) is int):
             raise ValueError("Customer.io configuration timeout has an invalid type")
         config_arguments['timeout_seconds'] = timeout / 1_000_000_000
-    if "maxResponseBytes" in value:
+    if "maxResponseBytes" in value and value["maxResponseBytes"] != '':
         max_response_bytes = value["maxResponseBytes"]
         if not (type(max_response_bytes) is int):
             raise ValueError("Customer.io configuration maxResponseBytes has an invalid type")
         config_arguments['max_response_bytes'] = max_response_bytes
+    if "trackingBaseUrl" in value and value["trackingBaseUrl"] != '':
+        tracking_base_url = value["trackingBaseUrl"]
+        if not (isinstance(tracking_base_url, str)):
+            raise ValueError("Customer.io configuration trackingBaseUrl has an invalid type")
+        config_arguments['tracking_base_url'] = tracking_base_url
     return Config(**config_arguments)

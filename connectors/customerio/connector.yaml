@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: customerio
   displayName: Customer.io
-  description: Look up Customer.io workspace customers by email address.
+  description: Look up customers and campaigns through the App API, and manage customers, events, and manual segments through the Track API.
   company: Customer.io
   categories: [marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: customerio
   languages:
@@ -33,13 +33,18 @@ spec:
       - name: timeout
         goName: Timeout
         type: duration
-        description: Maximum duration of one customer lookup as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
+        description: Maximum duration of one App API request as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete customer-lookup JSON response in bytes as a positive integer. Blank uses the displayed default; increase if an email has many matching profiles.
+        description: Maximum complete App API JSON response in bytes as a positive integer. Blank uses the displayed default; increase for large customer or campaign responses.
         default: 1048576
+      - name: trackingBaseUrl
+        goName: TrackingBaseURL
+        type: url
+        description: Customer.io Track API HTTPS root. Blank uses the displayed US-region default; override with https://track-eu.customer.io for an EU workspace. Do not include a path, query, or credentials.
+        default: https://track.customer.io
   auth:
     type: apiKey
     connectionKind: customerio-app-private-key
@@ -48,13 +53,201 @@ spec:
         goName: PrivateKey
         type: secretString
         required: true
-        description: Secret App API private key from Customer.io > Settings > API Credentials > App API > Create API Key. Copy the complete sk_ key or existing App API key, not its label; blank prevents calls. Dex sends it only as a Bearer credential.
+        description: Secret App API private key from Customer.io > Settings > API Credentials > App API > Create API Key. Copy the complete sk_ key or existing App API key with profile and campaign read access, not its label; blank prevents calls. Dex sends it only as a Bearer credential.
+      - name: trackingSiteId
+        goName: TrackingSiteID
+        type: string
+        description: Non-secret Site ID from Customer.io > Settings > API Credentials > Track API Keys. Copy the Site ID for this workspace, not the key label; blank disables Track API writes. Dex uses it as the Basic-auth username.
+      - name: trackingApiKey
+        goName: TrackingAPIKey
+        type: secretString
+        description: Secret API key from Customer.io > Settings > API Credentials > Track API Keys > Create Key. Copy the complete key, not its label; blank disables Track API writes. Dex uses it only as the Basic-auth password.
     guide:
       startURL: https://fly.customer.io
       steps:
-        - In Customer.io open Settings > API Credentials > App API and create or select a private key with profile-read access. Copy the complete sk_ value into secret privateKey; an existing App API key also works. Blank prevents calls. Do not put the key in Flow input.
-        - Leave baseUrl blank for the US region, or use https://api-eu.customer.io for an EU workspace. Leave timeout and maxResponseBytes blank for their displayed defaults. Find a non-secret customer email on the workspace People page, then pass its full email address as email; blank is invalid.
+        - In Customer.io open Settings > API Credentials > App API and create or select a private key with profile and campaign read access. Copy the complete sk_ value into secret privateKey; an existing App API key also works. Blank prevents calls. Do not put the key in Flow input.
+        - For customer, event, and manual segment writes, open Settings > API Credentials > Track API Keys. Copy the non-secret Site ID and create or select a secret Track API key for this workspace; enter both in trackingSiteId and trackingApiKey. Blank either field disables Track writes. Track API credentials are distinct from the App API privateKey and must match this workspace.
+        - Leave baseUrl and trackingBaseUrl blank for US-region defaults, or use https://api-eu.customer.io and https://track-eu.customer.io for an EU workspace. Leave timeout and maxResponseBytes blank for their displayed defaults. Find a non-secret customer email on the workspace People page, then pass its full email address as email; blank is invalid.
   operations:
+    - name: addCustomersToSegment
+      goName: AddCustomersToSegment
+      inputType: AddCustomersToSegmentInput
+      outputType: SegmentMembershipOutput
+      kind: mutation
+      description: Add up to 1000 identified people to an existing manual segment.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: added, goName: Added, description: Customer.io accepted the segment membership additions.}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the membership request., optional: true}
+        - {id: defect, goName: Defect, description: Input or Track credentials are invalid., optional: true}
+      mocks:
+        - name: addedDefault
+          branch: added
+          default: true
+          description: One sample person is added to a manual segment.
+          output: {segmentID: 7, customerIDs: [customer-123]}
+    - name: removeCustomersFromSegment
+      goName: RemoveCustomersFromSegment
+      inputType: RemoveCustomersFromSegmentInput
+      outputType: SegmentMembershipOutput
+      kind: mutation
+      description: Remove up to 1000 identified people from an existing manual segment.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: removed, goName: Removed, description: Customer.io accepted the segment membership removals.}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the membership request., optional: true}
+        - {id: defect, goName: Defect, description: Input or Track credentials are invalid., optional: true}
+      mocks:
+        - name: removedDefault
+          branch: removed
+          default: true
+          description: One sample person is removed from a manual segment.
+          output: {segmentID: 7, customerIDs: [customer-123]}
+    - name: trackCustomerEvent
+      goName: TrackCustomerEvent
+      inputType: TrackCustomerEventInput
+      outputType: TrackEventOutput
+      kind: mutation
+      description: Record a named event for one identified customer through the Track API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: tracked, goName: Tracked, description: Customer.io accepted the customer event.}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the event., optional: true}
+        - {id: defect, goName: Defect, description: Input or Track credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send limit was reached without a confirmed outcome., optional: true}
+      mocks:
+        - name: trackedDefault
+          branch: tracked
+          default: true
+          description: A sample customer event is accepted.
+          output: {name: purchased, subjectID: customer-123}
+    - name: trackAnonymousEvent
+      goName: TrackAnonymousEvent
+      inputType: TrackAnonymousEventInput
+      outputType: TrackEventOutput
+      kind: mutation
+      description: Record a named event for an anonymous visitor through the Track API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: tracked, goName: Tracked, description: Customer.io accepted the anonymous event.}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the event., optional: true}
+        - {id: defect, goName: Defect, description: Input or Track credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send limit was reached without a confirmed outcome., optional: true}
+      mocks:
+        - name: trackedDefault
+          branch: tracked
+          default: true
+          description: A sample anonymous event is accepted.
+          output: {name: watched_video, subjectID: visitor-123}
+    - name: upsertCustomer
+      goName: UpsertCustomer
+      inputType: UpsertCustomerInput
+      outputType: CustomerWriteOutput
+      kind: mutation
+      description: Create or update one customer through the Track API, replacing only supplied attribute values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: upserted, goName: Upserted, description: Customer.io accepted the customer upsert.}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the customer data., optional: true}
+        - {id: defect, goName: Defect, description: Input or Track credentials are invalid., optional: true}
+      mocks:
+        - name: upsertedDefault
+          branch: upserted
+          default: true
+          description: One sample customer is added or updated.
+          output: {identifier: customer-123}
+    - name: deleteCustomer
+      goName: DeleteCustomer
+      inputType: DeleteCustomerInput
+      outputType: CustomerWriteOutput
+      kind: mutation
+      description: Permanently remove one customer through the Track API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Customer.io deleted the customer.}
+        - {id: notFound, goName: NotFound, description: No customer has this identifier., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or Track credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample customer is deleted.
+          output: {identifier: customer-123}
+    - name: getCampaign
+      goName: GetCampaign
+      inputType: GetCampaignInput
+      outputType: CampaignSummary
+      kind: query
+      description: Read one campaign automation by its positive integer ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Customer.io returned the campaign.}
+        - {id: notFound, goName: NotFound, description: No accessible campaign has this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the campaign lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Customer.io returned invalid or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or App API credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample campaign is returned.
+          output: {id: 5, name: Welcome series, active: true, state: running}
+    - name: listCampaigns
+      goName: ListCampaigns
+      inputType: ListCampaignsInput
+      outputType: CampaignsPage
+      kind: query
+      description: List all accessible campaign automations.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Customer.io returned the campaign list.}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the campaign list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Customer.io returned invalid or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: App API credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample campaign is listed.
+          output: {campaigns: [{id: 5, name: Welcome series, active: true, state: running}]}
+    - name: getCampaignMetrics
+      goName: GetCampaignMetrics
+      inputType: GetCampaignMetricsInput
+      outputType: CampaignMetrics
+      kind: query
+      description: Read version-two campaign metric series for a UTC window.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Customer.io returned campaign metric series.}
+        - {id: notFound, goName: NotFound, description: No accessible campaign has this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the metrics request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Customer.io returned invalid or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or App API credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample campaign metric is returned.
+          output: {campaignId: 5, series: {sent: [1], delivered: [1]}}
     - name: getCustomersByEmail
       goName: GetCustomersByEmail
       inputType: GetCustomersByEmailInput

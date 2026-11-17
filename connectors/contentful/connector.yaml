@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: contentful
   displayName: Contentful
-  description: Contentful REST connector with two bounded operations.
+  description: Read published Contentful entries, assets, content types, spaces, and locales.
   company: Contentful
   categories: [marketing, developer-tools]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: contentful
   languages:
@@ -62,6 +62,11 @@ spec:
         it into secret delivery_token.
       - Find the Space ID on that key page; supply the space and environment IDs in
         each operation input.
+      - Find an environment under Settings > Environments, an entry or asset under
+        Content or Media, and a content type under Content model. Use their non-secret
+        alphanumeric IDs in operation inputs; blank IDs are invalid. For collection
+        calls, limit is 1 to 1000 results and skip is a zero-based offset; blank
+        values use provider defaults.
       - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
   - name: getEntry
@@ -150,3 +155,126 @@ spec:
           total: 1
           skip: 0
           limit: 100
+  - name: getAsset
+    goName: GetAsset
+    inputType: GetAssetInput
+    outputType: ContentfulReadOutput
+    kind: query
+    description: Read one published asset from the Content Delivery API.
+    idempotency: none
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+    - {id: found, goName: Found, description: Contentful returned one published asset.}
+    - {id: notFound, goName: NotFound, description: The resource does not exist or is not published., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Contentful rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Contentful returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: "Local input, configuration, or credentials are invalid.", optional: true}
+    mocks:
+    - name: defaultGetAsset
+      branch: found
+      default: true
+      description: A representative getAsset response.
+      output: {"data":{"sys":{"id":"asset-meridian","type":"Asset"},"fields":{"title":"Meridian logo"}}}
+  - name: listAssets
+    goName: ListAssets
+    inputType: ContentfulPageInput
+    outputType: ContentfulReadOutput
+    kind: query
+    description: Read a page of published assets from the Content Delivery API.
+    idempotency: none
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+    - {id: listed, goName: Listed, description: Contentful returned a page of published assets.}
+    - {id: providerRejected, goName: ProviderRejected, description: Contentful rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Contentful returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: "Local input, configuration, or credentials are invalid.", optional: true}
+    mocks:
+    - name: defaultListAssets
+      branch: listed
+      default: true
+      description: A representative listAssets response.
+      output: {"data":{"items":[{"sys":{"id":"asset-meridian","type":"Asset"}}],"total":1,"skip":0,"limit":100}}
+  - name: getContentType
+    goName: GetContentType
+    inputType: GetContentTypeInput
+    outputType: ContentfulReadOutput
+    kind: query
+    description: Read one published content type from the Content Delivery API.
+    idempotency: none
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+    - {id: found, goName: Found, description: Contentful returned one published content type.}
+    - {id: notFound, goName: NotFound, description: The resource does not exist or is not published., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Contentful rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Contentful returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: "Local input, configuration, or credentials are invalid.", optional: true}
+    mocks:
+    - name: defaultGetContentType
+      branch: found
+      default: true
+      description: A representative getContentType response.
+      output: {"data":{"sys":{"id":"article","type":"ContentType"},"name":"Article","fields":[]}}
+  - name: listContentTypes
+    goName: ListContentTypes
+    inputType: ContentfulPageInput
+    outputType: ContentfulReadOutput
+    kind: query
+    description: Read a page of published content types from the Content Delivery API.
+    idempotency: none
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+    - {id: listed, goName: Listed, description: Contentful returned a page of published content types.}
+    - {id: providerRejected, goName: ProviderRejected, description: Contentful rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Contentful returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: "Local input, configuration, or credentials are invalid.", optional: true}
+    mocks:
+    - name: defaultListContentTypes
+      branch: listed
+      default: true
+      description: A representative listContentTypes response.
+      output: {"data":{"items":[{"sys":{"id":"article","type":"ContentType"}}],"total":1,"skip":0,"limit":100}}
+  - name: getSpace
+    goName: GetSpace
+    inputType: GetSpaceInput
+    outputType: ContentfulReadOutput
+    kind: query
+    description: Read one space and its locales from the Content Delivery API.
+    idempotency: none
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+    - {id: found, goName: Found, description: Contentful returned one space and its locales.}
+    - {id: notFound, goName: NotFound, description: The resource does not exist or is not published., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Contentful rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Contentful returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: "Local input, configuration, or credentials are invalid.", optional: true}
+    mocks:
+    - name: defaultGetSpace
+      branch: found
+      default: true
+      description: A representative getSpace response.
+      output: {"data":{"sys":{"id":"space-meridian","type":"Space"},"name":"Meridian","locales":[{"code":"en-US","default":true,"name":"English"}]}}
+  - name: listLocales
+    goName: ListLocales
+    inputType: ContentfulPageInput
+    outputType: ContentfulReadOutput
+    kind: query
+    description: Read the locales of one environment from the Content Delivery API.
+    idempotency: none
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+    - {id: listed, goName: Listed, description: Contentful returned the locales of one environment.}
+    - {id: providerRejected, goName: ProviderRejected, description: Contentful rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Contentful returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: "Local input, configuration, or credentials are invalid.", optional: true}
+    mocks:
+    - name: defaultListLocales
+      branch: listed
+      default: true
+      description: A representative listLocales response.
+      output: {"data":{"items":[{"code":"en-US","default":true,"name":"English"}],"total":1,"skip":0,"limit":100}}

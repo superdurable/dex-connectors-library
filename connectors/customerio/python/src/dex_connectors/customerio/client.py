@@ -20,6 +20,7 @@ from dex_connectors.sdk import (
     QueryAttempt,
     QueryDefinition,
     Receipt,
+    SecretString,
 )
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
@@ -33,9 +34,21 @@ from dex_connectors.sdk.providerhttp import (
 )
 
 from ._generated.config import Config as Config
-from ._generated.config import Credentials as Credentials
+from ._generated.config import Credentials as _GeneratedCredentials
 from ._generated.definitions import GET_CUSTOMERS_BY_EMAIL_DEFINITION
 from .models import CustomerLookupPage, GetCustomersByEmailInput
+
+
+class Credentials(_GeneratedCredentials):
+    """App API key plus optional Track API credentials for Go-only writes."""
+
+    def __init__(
+        self,
+        private_key: SecretString,
+        tracking_site_id: str = "",
+        tracking_api_key: SecretString | None = None,
+    ) -> None:
+        super().__init__(private_key, tracking_site_id, tracking_api_key or SecretString(""))
 
 
 @dataclass(frozen=True, slots=True)

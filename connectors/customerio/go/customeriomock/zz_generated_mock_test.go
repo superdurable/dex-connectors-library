@@ -16,6 +16,42 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "addCustomersToSegment/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.SegmentMembershipOutput](`{"segmentID":7,"customerIDs":["customer-123"]}`)
+			return err
+		}},
+		{name: "removeCustomersFromSegment/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.SegmentMembershipOutput](`{"segmentID":7,"customerIDs":["customer-123"]}`)
+			return err
+		}},
+		{name: "trackCustomerEvent/trackedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.TrackEventOutput](`{"name":"purchased","subjectID":"customer-123"}`)
+			return err
+		}},
+		{name: "trackAnonymousEvent/trackedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.TrackEventOutput](`{"name":"watched_video","subjectID":"visitor-123"}`)
+			return err
+		}},
+		{name: "upsertCustomer/upsertedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.CustomerWriteOutput](`{"identifier":"customer-123"}`)
+			return err
+		}},
+		{name: "deleteCustomer/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.CustomerWriteOutput](`{"identifier":"customer-123"}`)
+			return err
+		}},
+		{name: "getCampaign/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.CampaignSummary](`{"id":5,"name":"Welcome series","active":true,"state":"running"}`)
+			return err
+		}},
+		{name: "listCampaigns/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.CampaignsPage](`{"campaigns":[{"id":5,"name":"Welcome series","active":true,"state":"running"}]}`)
+			return err
+		}},
+		{name: "getCampaignMetrics/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.CampaignMetrics](`{"campaignId":5,"series":{"sent":[1],"delivered":[1]}}`)
+			return err
+		}},
 		{name: "getCustomersByEmail/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[customerio.CustomerLookupPage](`{"email":"person@example.com","customerIDs":["a3000001"]}`)
 			return err
@@ -30,6 +66,33 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.AddCustomersToSegment().Definition().Operation.OperationID != "addCustomersToSegment" {
+		t.Errorf("addCustomersToSegment mock has another definition")
+	}
+	if mock.RemoveCustomersFromSegment().Definition().Operation.OperationID != "removeCustomersFromSegment" {
+		t.Errorf("removeCustomersFromSegment mock has another definition")
+	}
+	if mock.TrackCustomerEvent().Definition().Operation.OperationID != "trackCustomerEvent" {
+		t.Errorf("trackCustomerEvent mock has another definition")
+	}
+	if mock.TrackAnonymousEvent().Definition().Operation.OperationID != "trackAnonymousEvent" {
+		t.Errorf("trackAnonymousEvent mock has another definition")
+	}
+	if mock.UpsertCustomer().Definition().Operation.OperationID != "upsertCustomer" {
+		t.Errorf("upsertCustomer mock has another definition")
+	}
+	if mock.DeleteCustomer().Definition().Operation.OperationID != "deleteCustomer" {
+		t.Errorf("deleteCustomer mock has another definition")
+	}
+	if mock.GetCampaign().Definition().Operation.OperationID != "getCampaign" {
+		t.Errorf("getCampaign mock has another definition")
+	}
+	if mock.ListCampaigns().Definition().Operation.OperationID != "listCampaigns" {
+		t.Errorf("listCampaigns mock has another definition")
+	}
+	if mock.GetCampaignMetrics().Definition().Operation.OperationID != "getCampaignMetrics" {
+		t.Errorf("getCampaignMetrics mock has another definition")
+	}
 	if mock.GetCustomersByEmail().Definition().Operation.OperationID != "getCustomersByEmail" {
 		t.Errorf("getCustomersByEmail mock has another definition")
 	}
