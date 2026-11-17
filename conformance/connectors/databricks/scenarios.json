@@ -2,6 +2,1253 @@
   "connector": "databricks",
   "scenarios": [
     {
+      "callId": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/update",
+          "requestBody": {
+            "job_id": 123,
+            "new_settings": {
+              "name": "Dex renamed job"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "123",
+          "name": "Dex renamed job"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "input": {
+        "jobId": "123",
+        "name": "Dex renamed job"
+      },
+      "name": "updateJobName-success",
+      "operation": "updateJobName"
+    },
+    {
+      "callId": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/update",
+          "requestBody": {
+            "job_id": 123,
+            "new_settings": {
+              "name": "Dex renamed job"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "input": {
+        "jobId": "123",
+        "name": "Dex renamed job"
+      },
+      "name": "updateJobName-not-found",
+      "operation": "updateJobName"
+    },
+    {
+      "callId": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/update",
+          "requestBody": {
+            "job_id": 123,
+            "new_settings": {
+              "name": "Dex renamed job"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "input": {
+        "jobId": "123",
+        "name": "Dex renamed job"
+      },
+      "name": "updateJobName-provider-rejected",
+      "operation": "updateJobName"
+    },
+    {
+      "callId": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "input": {
+        "jobId": "bad",
+        "name": "Dex renamed job"
+      },
+      "name": "updateJobName-defect",
+      "operation": "updateJobName"
+    },
+    {
+      "callId": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/update",
+          "requestBody": {
+            "job_id": 123,
+            "new_settings": {
+              "name": "Dex renamed job"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "input": {
+        "jobId": "123",
+        "name": "Dex renamed job"
+      },
+      "name": "updateJobName-rate-limit",
+      "operation": "updateJobName"
+    },
+    {
+      "callId": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/update",
+          "requestBody": {
+            "job_id": 123,
+            "new_settings": {
+              "name": "Dex renamed job"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "input": {
+        "jobId": "123",
+        "name": "Dex renamed job"
+      },
+      "name": "updateJobName-unavailable",
+      "operation": "updateJobName"
+    },
+    {
+      "callId": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/update",
+          "requestBody": {
+            "job_id": 123,
+            "new_settings": {
+              "name": "Dex renamed job"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "input": {
+        "jobId": "123",
+        "name": "Dex renamed job"
+      },
+      "name": "updateJobName-server-error",
+      "operation": "updateJobName"
+    },
+    {
+      "callId": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/update",
+          "requestBody": {
+            "job_id": 123,
+            "new_settings": {
+              "name": "Dex renamed job"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f87ee46-0cad-5b59-bb00-55e40902cef9",
+      "input": {
+        "jobId": "123",
+        "name": "Dex renamed job"
+      },
+      "name": "updateJobName-transport",
+      "operation": "updateJobName"
+    },
+    {
+      "callId": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/delete",
+          "requestBody": {
+            "job_id": 123
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "input": {
+        "jobId": "123"
+      },
+      "name": "deleteJob-success",
+      "operation": "deleteJob"
+    },
+    {
+      "callId": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/delete",
+          "requestBody": {
+            "job_id": 123
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "input": {
+        "jobId": "123"
+      },
+      "name": "deleteJob-not-found",
+      "operation": "deleteJob"
+    },
+    {
+      "callId": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/delete",
+          "requestBody": {
+            "job_id": 123
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "input": {
+        "jobId": "123"
+      },
+      "name": "deleteJob-provider-rejected",
+      "operation": "deleteJob"
+    },
+    {
+      "callId": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "input": {
+        "jobId": "bad"
+      },
+      "name": "deleteJob-defect",
+      "operation": "deleteJob"
+    },
+    {
+      "callId": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/delete",
+          "requestBody": {
+            "job_id": 123
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "input": {
+        "jobId": "123"
+      },
+      "name": "deleteJob-rate-limit",
+      "operation": "deleteJob"
+    },
+    {
+      "callId": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/delete",
+          "requestBody": {
+            "job_id": 123
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "input": {
+        "jobId": "123"
+      },
+      "name": "deleteJob-unavailable",
+      "operation": "deleteJob"
+    },
+    {
+      "callId": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/delete",
+          "requestBody": {
+            "job_id": 123
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "input": {
+        "jobId": "123"
+      },
+      "name": "deleteJob-server-error",
+      "operation": "deleteJob"
+    },
+    {
+      "callId": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/delete",
+          "requestBody": {
+            "job_id": 123
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3608e887-b619-56ae-844c-3f6eec4c0cdf",
+      "input": {
+        "jobId": "123"
+      },
+      "name": "deleteJob-transport",
+      "operation": "deleteJob"
+    },
+    {
+      "attempts": 3,
+      "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/create",
+          "requestBody": {
+            "name": "Dex example job",
+            "tasks": [
+              {
+                "existing_cluster_id": "1234-567890-abcd",
+                "notebook_task": {
+                  "notebook_path": "/Shared/dex-example"
+                },
+                "task_key": "main"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/create",
+          "requestBody": {
+            "name": "Dex example job",
+            "tasks": [
+              {
+                "existing_cluster_id": "1234-567890-abcd",
+                "notebook_task": {
+                  "notebook_path": "/Shared/dex-example"
+                },
+                "task_key": "main"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/create",
+          "requestBody": {
+            "name": "Dex example job",
+            "tasks": [
+              {
+                "existing_cluster_id": "1234-567890-abcd",
+                "notebook_task": {
+                  "notebook_path": "/Shared/dex-example"
+                },
+                "task_key": "main"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "input": {
+        "existingClusterId": "1234-567890-abcd",
+        "name": "Dex example job",
+        "notebookPath": "/Shared/dex-example"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createJob-uncertain-after-cap",
+      "operation": "createJob"
+    },
+    {
+      "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "exchanges": [
+        {
+          "body": "{\"job_id\":123}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/create",
+          "requestBody": {
+            "name": "Dex example job",
+            "tasks": [
+              {
+                "existing_cluster_id": "1234-567890-abcd",
+                "notebook_task": {
+                  "notebook_path": "/Shared/dex-example"
+                },
+                "task_key": "main"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+          "providerId": "123",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "123",
+          "name": "Dex example job"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "input": {
+        "existingClusterId": "1234-567890-abcd",
+        "name": "Dex example job",
+        "notebookPath": "/Shared/dex-example"
+      },
+      "name": "createJob-success",
+      "operation": "createJob"
+    },
+    {
+      "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":\"PERMISSION_DENIED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/create",
+          "requestBody": {
+            "name": "Dex example job",
+            "tasks": [
+              {
+                "existing_cluster_id": "1234-567890-abcd",
+                "notebook_task": {
+                  "notebook_path": "/Shared/dex-example"
+                },
+                "task_key": "main"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "input": {
+        "existingClusterId": "1234-567890-abcd",
+        "name": "Dex example job",
+        "notebookPath": "/Shared/dex-example"
+      },
+      "name": "createJob-provider-rejected",
+      "operation": "createJob"
+    },
+    {
+      "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "input": {
+        "existingClusterId": "1234-567890-abcd",
+        "name": "Dex example job",
+        "notebookPath": "bad"
+      },
+      "name": "createJob-defect",
+      "operation": "createJob"
+    },
+    {
+      "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/create",
+          "requestBody": {
+            "name": "Dex example job",
+            "tasks": [
+              {
+                "existing_cluster_id": "1234-567890-abcd",
+                "notebook_task": {
+                  "notebook_path": "/Shared/dex-example"
+                },
+                "task_key": "main"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "input": {
+        "existingClusterId": "1234-567890-abcd",
+        "name": "Dex example job",
+        "notebookPath": "/Shared/dex-example"
+      },
+      "name": "createJob-rate-limit",
+      "operation": "createJob"
+    },
+    {
+      "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/create",
+          "requestBody": {
+            "name": "Dex example job",
+            "tasks": [
+              {
+                "existing_cluster_id": "1234-567890-abcd",
+                "notebook_task": {
+                  "notebook_path": "/Shared/dex-example"
+                },
+                "task_key": "main"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "input": {
+        "existingClusterId": "1234-567890-abcd",
+        "name": "Dex example job",
+        "notebookPath": "/Shared/dex-example"
+      },
+      "name": "createJob-unavailable",
+      "operation": "createJob"
+    },
+    {
+      "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/create",
+          "requestBody": {
+            "name": "Dex example job",
+            "tasks": [
+              {
+                "existing_cluster_id": "1234-567890-abcd",
+                "notebook_task": {
+                  "notebook_path": "/Shared/dex-example"
+                },
+                "task_key": "main"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "input": {
+        "existingClusterId": "1234-567890-abcd",
+        "name": "Dex example job",
+        "notebookPath": "/Shared/dex-example"
+      },
+      "name": "createJob-server-error",
+      "operation": "createJob"
+    },
+    {
+      "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/create",
+          "requestBody": {
+            "name": "Dex example job",
+            "tasks": [
+              {
+                "existing_cluster_id": "1234-567890-abcd",
+                "notebook_task": {
+                  "notebook_path": "/Shared/dex-example"
+                },
+                "task_key": "main"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "input": {
+        "existingClusterId": "1234-567890-abcd",
+        "name": "Dex example job",
+        "notebookPath": "/Shared/dex-example"
+      },
+      "name": "createJob-transport",
+      "operation": "createJob"
+    },
+    {
+      "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/2.2/jobs/create",
+          "requestBody": {
+            "name": "Dex example job",
+            "tasks": [
+              {
+                "existing_cluster_id": "1234-567890-abcd",
+                "notebook_task": {
+                  "notebook_path": "/Shared/dex-example"
+                },
+                "task_key": "main"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-databricks-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
+      "input": {
+        "existingClusterId": "1234-567890-abcd",
+        "name": "Dex example job",
+        "notebookPath": "/Shared/dex-example"
+      },
+      "name": "createJob-invalid-response",
+      "operation": "createJob"
+    },
+    {
       "callId": "11111111-1111-4111-8111-111111111111",
       "exchanges": [
         {

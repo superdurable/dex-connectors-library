@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package databricks reads selected Databricks job_run status in Dex Flows.
+// Package databricks creates and inspects Databricks jobs and runs in Dex Flows.
 package databricks
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -76,6 +77,10 @@ func (client *Client) post(call sdkgo.Call, path string, body []byte) providerRe
 }
 
 func (client *Client) exchange(call sdkgo.Call, method, path string, payload []byte) providerResponse {
+	return client.exchangeWithContext(call.Context, call, method, path, payload)
+}
+
+func (client *Client) exchangeWithContext(requestContext context.Context, call sdkgo.Call, method, path string, payload []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -84,7 +89,7 @@ func (client *Client) exchange(call sdkgo.Call, method, path string, payload []b
 	if !providerhttp.IsHeaderSafeCredential(apiToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bytes.NewReader(payload))
+	request, err := http.NewRequestWithContext(requestContext, method, client.baseURL+path, bytes.NewReader(payload))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}

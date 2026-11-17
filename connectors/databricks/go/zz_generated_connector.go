@@ -40,6 +40,9 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateJob() sdkgo.Mutation[CreateJobInput, JobSummary]
+	UpdateJobName() sdkgo.Mutation[UpdateJobNameInput, JobSummary]
+	DeleteJob() sdkgo.Mutation[DeleteJobInput, DeletedJob]
 	ListJobs() sdkgo.Query[ListJobsInput, JobPage]
 	GetJob() sdkgo.Query[GetJobInput, JobSummary]
 	ListJobRuns() sdkgo.Query[ListJobRunsInput, JobRunPage]
@@ -50,6 +53,15 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateJob() sdkgo.Mutation[CreateJobInput, JobSummary] {
+	return operations.client.CreateJob()
+}
+func (operations clientOperations) UpdateJobName() sdkgo.Mutation[UpdateJobNameInput, JobSummary] {
+	return operations.client.UpdateJobName()
+}
+func (operations clientOperations) DeleteJob() sdkgo.Mutation[DeleteJobInput, DeletedJob] {
+	return operations.client.DeleteJob()
+}
 func (operations clientOperations) ListJobs() sdkgo.Query[ListJobsInput, JobPage] {
 	return operations.client.ListJobs()
 }
@@ -203,6 +215,226 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_token is required")
 	}
 	return nil
+}
+
+const CreateJobBranchCreated sdkgo.BranchID = "created"
+const CreateJobBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateJobBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateJobBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateJobDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createJob"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateJobBranchCreated, Description: "Databricks created the job and returned its ID."},
+		{ID: CreateJobBranchProviderRejected, Description: "Databricks definitively rejected job creation.", Optional: true},
+		{ID: CreateJobBranchUncertain, Description: "A job may have been created but no job ID was confirmed after bounded sends.", Optional: true},
+		{ID: CreateJobBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateJobResult = sdkgo.MutationResult[JobSummary]
+
+type CreateJobStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                         `connector:"connectorId=databricks"`
+	operationID                       struct{}                                         `connector:"operationId=createJob"`
+	StepType                          string                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                        Connection                                       `connector:"connection"`
+	ConnectionName                    string                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateJobInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateJobResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateJobResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateJobResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateJobResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[JobSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateJobStep[IN any](config CreateJobStepConfig[IN]) sdkgo.MutationStep[IN, CreateJobInput, JobSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("databricks connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateJobInput, JobSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateJob(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateJobResult] {
+			branches := make([]sdkgo.BranchTarget[CreateJobResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateJobBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateJobBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateJobBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateJobBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateJobNameBranchUpdated sdkgo.BranchID = "updated"
+const UpdateJobNameBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateJobNameBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateJobNameBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateJobNameDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateJobName"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateJobNameBranchUpdated, Description: "Databricks accepted the name replacement."},
+		{ID: UpdateJobNameBranchNotFound, Description: "Databricks found no accessible job with that ID.", Optional: true},
+		{ID: UpdateJobNameBranchProviderRejected, Description: "Databricks definitively rejected the update.", Optional: true},
+		{ID: UpdateJobNameBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateJobNameResult = sdkgo.MutationResult[JobSummary]
+
+type UpdateJobNameStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                         `connector:"connectorId=databricks"`
+	operationID                       struct{}                                         `connector:"operationId=updateJobName"`
+	StepType                          string                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                        Connection                                       `connector:"connection"`
+	ConnectionName                    string                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateJobNameInput                      `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateJobNameResult]                `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateJobNameResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateJobNameResult]                `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateJobNameResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[JobSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateJobNameStep[IN any](config UpdateJobNameStepConfig[IN]) sdkgo.MutationStep[IN, UpdateJobNameInput, JobSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("databricks connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateJobNameInput, JobSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateJobName(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateJobNameResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateJobNameResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateJobNameBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateJobNameBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateJobNameBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateJobNameBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteJobBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteJobBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteJobBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteJobBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteJobDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteJob"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteJobBranchDeleted, Description: "Databricks removed the job."},
+		{ID: DeleteJobBranchNotFound, Description: "Databricks found no accessible job with that ID.", Optional: true},
+		{ID: DeleteJobBranchProviderRejected, Description: "Databricks definitively rejected deletion.", Optional: true},
+		{ID: DeleteJobBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteJobResult = sdkgo.MutationResult[DeletedJob]
+
+type DeleteJobStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                         `connector:"connectorId=databricks"`
+	operationID                       struct{}                                         `connector:"operationId=deleteJob"`
+	StepType                          string                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                        Connection                                       `connector:"connection"`
+	ConnectionName                    string                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteJobInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteJobResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteJobResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteJobResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteJobResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedJob]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteJobStep[IN any](config DeleteJobStepConfig[IN]) sdkgo.MutationStep[IN, DeleteJobInput, DeletedJob] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("databricks connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteJobInput, DeletedJob]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteJob(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteJobResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteJobResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteJobBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteJobBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteJobBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteJobBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListJobsBranchListed sdkgo.BranchID = "listed"
@@ -444,6 +676,7 @@ var RunJobDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type RunJobResult = sdkgo.MutationResult[StartedJobRun]
@@ -519,6 +752,7 @@ var CancelJobRunDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type CancelJobRunResult = sdkgo.MutationResult[CancelledJobRun]

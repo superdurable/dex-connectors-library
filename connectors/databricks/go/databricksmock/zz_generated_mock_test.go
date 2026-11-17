@@ -16,6 +16,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createJob/notebookJobCreated/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[databricks.JobSummary](`{"id":"123","name":"Dex example job"}`)
+			return err
+		}},
+		{name: "updateJobName/jobRenamed/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[databricks.JobSummary](`{"id":"123","name":"Dex renamed job"}`)
+			return err
+		}},
+		{name: "deleteJob/jobDeleted/1", decode: func() error { _, err := connectormock.DecodeOutput[databricks.DeletedJob](`{"id":"123"}`); return err }},
 		{name: "listJobs/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[databricks.JobPage](`{"jobs":[{"id":"11223344","name":"Example job"}],"nextPageToken":""}`)
 			return err
@@ -50,6 +59,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateJob().Definition().Operation.OperationID != "createJob" {
+		t.Errorf("createJob mock has another definition")
+	}
+	if mock.UpdateJobName().Definition().Operation.OperationID != "updateJobName" {
+		t.Errorf("updateJobName mock has another definition")
+	}
+	if mock.DeleteJob().Definition().Operation.OperationID != "deleteJob" {
+		t.Errorf("deleteJob mock has another definition")
+	}
 	if mock.ListJobs().Definition().Operation.OperationID != "listJobs" {
 		t.Errorf("listJobs mock has another definition")
 	}

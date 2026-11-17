@@ -1,6 +1,6 @@
 # Databricks job_run inspection Flow
 
-This worker registers `DatabricksJobRunInspection` and `DatabricksJobListing` through the static `databricks` connection. The inspection Flow calls `getJobRun`, persists selected run status, and exposes it through read-only Dex Web RPCs. The listing Flow calls `listJobs` and completes with one page of job summaries. Optional branches are unwired and fail the Flow when selected.
+This worker registers `DatabricksJobRunInspection`, `DatabricksJobListing`, and `DatabricksJobCreation` through the static `databricks` connection. The inspection Flow calls `getJobRun`, persists selected run status, and exposes it through read-only Dex Web RPCs. The listing Flow calls `listJobs` and completes with one page of job summaries. The creation Flow accepts `name`, `notebookPath`, and `existingClusterId`, creates a persistent saved job, and returns its ID. Delete that job in Jobs & Pipelines after a live trial. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 

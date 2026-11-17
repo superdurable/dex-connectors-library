@@ -17,13 +17,16 @@ import (
 
 // Mock is a scripted databricks connection. Script each operation through its accessor.
 type Mock struct {
-	connection   databricks.Connection
-	listJobs     *connectormock.Query[databricks.ListJobsInput, databricks.JobPage]
-	getJob       *connectormock.Query[databricks.GetJobInput, databricks.JobSummary]
-	listJobRuns  *connectormock.Query[databricks.ListJobRunsInput, databricks.JobRunPage]
-	runJob       *connectormock.Mutation[databricks.RunJobInput, databricks.StartedJobRun]
-	cancelJobRun *connectormock.Mutation[databricks.CancelJobRunInput, databricks.CancelledJobRun]
-	getJobRun    *connectormock.Query[databricks.GetJobRunInput, databricks.JobRunStatus]
+	connection    databricks.Connection
+	createJob     *connectormock.Mutation[databricks.CreateJobInput, databricks.JobSummary]
+	updateJobName *connectormock.Mutation[databricks.UpdateJobNameInput, databricks.JobSummary]
+	deleteJob     *connectormock.Mutation[databricks.DeleteJobInput, databricks.DeletedJob]
+	listJobs      *connectormock.Query[databricks.ListJobsInput, databricks.JobPage]
+	getJob        *connectormock.Query[databricks.GetJobInput, databricks.JobSummary]
+	listJobRuns   *connectormock.Query[databricks.ListJobRunsInput, databricks.JobRunPage]
+	runJob        *connectormock.Mutation[databricks.RunJobInput, databricks.StartedJobRun]
+	cancelJobRun  *connectormock.Mutation[databricks.CancelJobRunInput, databricks.CancelledJobRun]
+	getJobRun     *connectormock.Query[databricks.GetJobRunInput, databricks.JobRunStatus]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -31,13 +34,19 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listJobs:     connectormock.NewQuery[databricks.ListJobsInput, databricks.JobPage](t, databricks.ListJobsDefinition),
-		getJob:       connectormock.NewQuery[databricks.GetJobInput, databricks.JobSummary](t, databricks.GetJobDefinition),
-		listJobRuns:  connectormock.NewQuery[databricks.ListJobRunsInput, databricks.JobRunPage](t, databricks.ListJobRunsDefinition),
-		runJob:       connectormock.NewMutation[databricks.RunJobInput, databricks.StartedJobRun](t, databricks.RunJobDefinition),
-		cancelJobRun: connectormock.NewMutation[databricks.CancelJobRunInput, databricks.CancelledJobRun](t, databricks.CancelJobRunDefinition),
-		getJobRun:    connectormock.NewQuery[databricks.GetJobRunInput, databricks.JobRunStatus](t, databricks.GetJobRunDefinition),
+		createJob:     connectormock.NewMutation[databricks.CreateJobInput, databricks.JobSummary](t, databricks.CreateJobDefinition),
+		updateJobName: connectormock.NewMutation[databricks.UpdateJobNameInput, databricks.JobSummary](t, databricks.UpdateJobNameDefinition),
+		deleteJob:     connectormock.NewMutation[databricks.DeleteJobInput, databricks.DeletedJob](t, databricks.DeleteJobDefinition),
+		listJobs:      connectormock.NewQuery[databricks.ListJobsInput, databricks.JobPage](t, databricks.ListJobsDefinition),
+		getJob:        connectormock.NewQuery[databricks.GetJobInput, databricks.JobSummary](t, databricks.GetJobDefinition),
+		listJobRuns:   connectormock.NewQuery[databricks.ListJobRunsInput, databricks.JobRunPage](t, databricks.ListJobRunsDefinition),
+		runJob:        connectormock.NewMutation[databricks.RunJobInput, databricks.StartedJobRun](t, databricks.RunJobDefinition),
+		cancelJobRun:  connectormock.NewMutation[databricks.CancelJobRunInput, databricks.CancelledJobRun](t, databricks.CancelJobRunDefinition),
+		getJobRun:     connectormock.NewQuery[databricks.GetJobRunInput, databricks.JobRunStatus](t, databricks.GetJobRunDefinition),
 	}
+	mock.createJob.Default(CreateJobDefault())
+	mock.updateJobName.Default(UpdateJobNameDefault())
+	mock.deleteJob.Default(DeleteJobDefault())
 	mock.listJobs.Default(ListJobsDefault())
 	mock.getJob.Default(GetJobDefault())
 	mock.listJobRuns.Default(ListJobRunsDefault())
@@ -54,6 +63,21 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() databricks.Connection { return mock.connection }
+
+// CreateJob returns the createJob script.
+func (mock *Mock) CreateJob() *connectormock.Mutation[databricks.CreateJobInput, databricks.JobSummary] {
+	return mock.createJob
+}
+
+// UpdateJobName returns the updateJobName script.
+func (mock *Mock) UpdateJobName() *connectormock.Mutation[databricks.UpdateJobNameInput, databricks.JobSummary] {
+	return mock.updateJobName
+}
+
+// DeleteJob returns the deleteJob script.
+func (mock *Mock) DeleteJob() *connectormock.Mutation[databricks.DeleteJobInput, databricks.DeletedJob] {
+	return mock.deleteJob
+}
 
 // ListJobs returns the listJobs script.
 func (mock *Mock) ListJobs() *connectormock.Query[databricks.ListJobsInput, databricks.JobPage] {
@@ -87,6 +111,15 @@ func (mock *Mock) GetJobRun() *connectormock.Query[databricks.GetJobRunInput, da
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateJob() sdkgo.Mutation[databricks.CreateJobInput, databricks.JobSummary] {
+	return operations.mock.createJob
+}
+func (operations mockOperations) UpdateJobName() sdkgo.Mutation[databricks.UpdateJobNameInput, databricks.JobSummary] {
+	return operations.mock.updateJobName
+}
+func (operations mockOperations) DeleteJob() sdkgo.Mutation[databricks.DeleteJobInput, databricks.DeletedJob] {
+	return operations.mock.deleteJob
+}
 func (operations mockOperations) ListJobs() sdkgo.Query[databricks.ListJobsInput, databricks.JobPage] {
 	return operations.mock.listJobs
 }
@@ -105,6 +138,112 @@ func (operations mockOperations) CancelJobRun() sdkgo.Mutation[databricks.Cancel
 func (operations mockOperations) GetJobRun() sdkgo.Query[databricks.GetJobRunInput, databricks.JobRunStatus] {
 	return operations.mock.getJobRun
 }
+
+// CreateJobCreated selects the created branch: Databricks created the job and returned its ID.
+func CreateJobCreated(value databricks.JobSummary, failure *sdkgo.Failure) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Branch(databricks.CreateJobBranchCreated, value, failure)
+}
+
+// CreateJobProviderRejected selects the providerRejected branch: Databricks definitively rejected job creation.
+func CreateJobProviderRejected(value databricks.JobSummary, failure *sdkgo.Failure) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Branch(databricks.CreateJobBranchProviderRejected, value, failure)
+}
+
+// CreateJobUncertain returns an uncertain createJob outcome.
+func CreateJobUncertain(value databricks.JobSummary, failure sdkgo.Failure) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateJobDefect selects the defect branch: Local input or credentials are invalid.
+func CreateJobDefect(value databricks.JobSummary, failure *sdkgo.Failure) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Branch(databricks.CreateJobBranchDefect, value, failure)
+}
+
+// CreateJobRetry asks Dex to retry the createJob Step, after the delay when it is positive.
+func CreateJobRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Retry[databricks.JobSummary](failure, after)
+}
+
+// CreateJobNotebookJobCreated is the manifest mock notebookJobCreated: Create a notebook job for the disposable example.
+func CreateJobNotebookJobCreated() connectormock.Case[databricks.JobSummary] {
+	value := connectormock.MustDecodeOutput[databricks.JobSummary](`{"id":"123","name":"Dex example job"}`)
+	return connectormock.Branch(databricks.CreateJobBranchCreated, value, nil)
+}
+
+// CreateJobDefault is the manifest default, notebookJobCreated, which New installs.
+func CreateJobDefault() connectormock.Case[databricks.JobSummary] {
+	return CreateJobNotebookJobCreated()
+}
+
+// UpdateJobNameUpdated selects the updated branch: Databricks accepted the name replacement.
+func UpdateJobNameUpdated(value databricks.JobSummary, failure *sdkgo.Failure) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Branch(databricks.UpdateJobNameBranchUpdated, value, failure)
+}
+
+// UpdateJobNameNotFound selects the notFound branch: Databricks found no accessible job with that ID.
+func UpdateJobNameNotFound(value databricks.JobSummary, failure *sdkgo.Failure) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Branch(databricks.UpdateJobNameBranchNotFound, value, failure)
+}
+
+// UpdateJobNameProviderRejected selects the providerRejected branch: Databricks definitively rejected the update.
+func UpdateJobNameProviderRejected(value databricks.JobSummary, failure *sdkgo.Failure) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Branch(databricks.UpdateJobNameBranchProviderRejected, value, failure)
+}
+
+// UpdateJobNameDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateJobNameDefect(value databricks.JobSummary, failure *sdkgo.Failure) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Branch(databricks.UpdateJobNameBranchDefect, value, failure)
+}
+
+// UpdateJobNameRetry asks Dex to retry the updateJobName Step, after the delay when it is positive.
+func UpdateJobNameRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Retry[databricks.JobSummary](failure, after)
+}
+
+// UpdateJobNameJobRenamed is the manifest mock jobRenamed: Rename the example job.
+func UpdateJobNameJobRenamed() connectormock.Case[databricks.JobSummary] {
+	value := connectormock.MustDecodeOutput[databricks.JobSummary](`{"id":"123","name":"Dex renamed job"}`)
+	return connectormock.Branch(databricks.UpdateJobNameBranchUpdated, value, nil)
+}
+
+// UpdateJobNameDefault is the manifest default, jobRenamed, which New installs.
+func UpdateJobNameDefault() connectormock.Case[databricks.JobSummary] {
+	return UpdateJobNameJobRenamed()
+}
+
+// DeleteJobDeleted selects the deleted branch: Databricks removed the job.
+func DeleteJobDeleted(value databricks.DeletedJob, failure *sdkgo.Failure) connectormock.Case[databricks.DeletedJob] {
+	return connectormock.Branch(databricks.DeleteJobBranchDeleted, value, failure)
+}
+
+// DeleteJobNotFound selects the notFound branch: Databricks found no accessible job with that ID.
+func DeleteJobNotFound(value databricks.DeletedJob, failure *sdkgo.Failure) connectormock.Case[databricks.DeletedJob] {
+	return connectormock.Branch(databricks.DeleteJobBranchNotFound, value, failure)
+}
+
+// DeleteJobProviderRejected selects the providerRejected branch: Databricks definitively rejected deletion.
+func DeleteJobProviderRejected(value databricks.DeletedJob, failure *sdkgo.Failure) connectormock.Case[databricks.DeletedJob] {
+	return connectormock.Branch(databricks.DeleteJobBranchProviderRejected, value, failure)
+}
+
+// DeleteJobDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteJobDefect(value databricks.DeletedJob, failure *sdkgo.Failure) connectormock.Case[databricks.DeletedJob] {
+	return connectormock.Branch(databricks.DeleteJobBranchDefect, value, failure)
+}
+
+// DeleteJobRetry asks Dex to retry the deleteJob Step, after the delay when it is positive.
+func DeleteJobRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[databricks.DeletedJob] {
+	return connectormock.Retry[databricks.DeletedJob](failure, after)
+}
+
+// DeleteJobJobDeleted is the manifest mock jobDeleted: Delete the disposable example job.
+func DeleteJobJobDeleted() connectormock.Case[databricks.DeletedJob] {
+	value := connectormock.MustDecodeOutput[databricks.DeletedJob](`{"id":"123"}`)
+	return connectormock.Branch(databricks.DeleteJobBranchDeleted, value, nil)
+}
+
+// DeleteJobDefault is the manifest default, jobDeleted, which New installs.
+func DeleteJobDefault() connectormock.Case[databricks.DeletedJob] { return DeleteJobJobDeleted() }
 
 // ListJobsListed selects the listed branch: Databricks returned a job page.
 func ListJobsListed(value databricks.JobPage, failure *sdkgo.Failure) connectormock.Case[databricks.JobPage] {

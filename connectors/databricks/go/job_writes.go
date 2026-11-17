@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -18,6 +19,26 @@ import (
 type RunJobInput struct {
 	// JobID is the decimal job ID shown under Jobs & Pipelines.
 	JobID string `json:"jobId"`
+}
+
+// UpdateJobNameInput replaces only a saved job's visible name.
+type UpdateJobNameInput struct {
+	// JobID is the decimal ID of the saved job.
+	JobID string `json:"jobId"`
+	// Name is the complete replacement job name, 1 to 255 UTF-8 bytes.
+	Name string `json:"name"`
+}
+
+// DeleteJobInput selects a saved job by immutable ID.
+type DeleteJobInput struct {
+	// JobID is the decimal ID of the saved job.
+	JobID string `json:"jobId"`
+}
+
+// DeletedJob identifies the saved job removed by Databricks.
+type DeletedJob struct {
+	// ID is the decimal job ID.
+	ID string `json:"id"`
 }
 
 // StartedJobRun identifies the run accepted by Databricks.
@@ -44,17 +65,35 @@ type RunJobOperation struct{ client *Client }
 // CancelJobRunOperation requests cancellation of a job run.
 type CancelJobRunOperation struct{ client *Client }
 
+// UpdateJobNameOperation replaces a saved job's name.
+type UpdateJobNameOperation struct{ client *Client }
+
+// DeleteJobOperation removes a saved job.
+type DeleteJobOperation struct{ client *Client }
+
 // RunJob binds the mutation to this client.
 func (client *Client) RunJob() RunJobOperation { return RunJobOperation{client} }
 
 // CancelJobRun binds the mutation to this client.
 func (client *Client) CancelJobRun() CancelJobRunOperation { return CancelJobRunOperation{client} }
 
+// UpdateJobName binds the mutation to this client.
+func (client *Client) UpdateJobName() UpdateJobNameOperation { return UpdateJobNameOperation{client} }
+
+// DeleteJob binds the mutation to this client.
+func (client *Client) DeleteJob() DeleteJobOperation { return DeleteJobOperation{client} }
+
 // Definition returns the generated RunJob mutation definition.
 func (RunJobOperation) Definition() sdkgo.MutationDefinition { return RunJobDefinition }
 
 // Definition returns the generated CancelJobRun mutation definition.
 func (CancelJobRunOperation) Definition() sdkgo.MutationDefinition { return CancelJobRunDefinition }
+
+// Definition returns the generated UpdateJobName mutation definition.
+func (UpdateJobNameOperation) Definition() sdkgo.MutationDefinition { return UpdateJobNameDefinition }
+
+// Definition returns the generated DeleteJob mutation definition.
+func (DeleteJobOperation) Definition() sdkgo.MutationDefinition { return DeleteJobDefinition }
 
 // IdempotencyKey derives the provider token from the stable Dex call ID.
 func (RunJobOperation) IdempotencyKey(callID sdkgo.CallID, _ RunJobInput) sdkgo.IdempotencyKey {
@@ -64,6 +103,63 @@ func (RunJobOperation) IdempotencyKey(callID sdkgo.CallID, _ RunJobInput) sdkgo.
 // IdempotencyKey identifies the repeated cancellation attempt in its receipt.
 func (CancelJobRunOperation) IdempotencyKey(callID sdkgo.CallID, _ CancelJobRunInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
+}
+
+// IdempotencyKey correlates the absolute replacement across retries.
+func (UpdateJobNameOperation) IdempotencyKey(callID sdkgo.CallID, _ UpdateJobNameInput) sdkgo.IdempotencyKey {
+	return sdkgo.IdempotencyKey(callID)
+}
+
+// IdempotencyKey correlates repeated deletion by immutable ID.
+func (DeleteJobOperation) IdempotencyKey(callID sdkgo.CallID, _ DeleteJobInput) sdkgo.IdempotencyKey {
+	return sdkgo.IdempotencyKey(callID)
+}
+
+// Invoke replaces only the job name, preserving the task and schedule settings.
+func (operation UpdateJobNameOperation) Invoke(call sdkgo.Call, input UpdateJobNameInput) sdkgo.MutationAttempt[JobSummary] {
+	if !validRunID(input.JobID) || strings.TrimSpace(input.Name) == "" || !validListText(input.Name, 255) {
+		return mutationBranch[JobSummary](UpdateJobNameBranchDefect, "updateJobName", sdkgo.FailureValidation, "valid job ID and replacement name are required")
+	}
+	body, err := json.Marshal(struct {
+		JobID       json.Number `json:"job_id"`
+		NewSettings struct {
+			Name string `json:"name"`
+		} `json:"new_settings"`
+	}{JobID: json.Number(input.JobID), NewSettings: struct {
+		Name string `json:"name"`
+	}{Name: input.Name}})
+	if err != nil {
+		return mutationBranch[JobSummary](UpdateJobNameBranchDefect, "updateJobName", sdkgo.FailureLocalDefect, "job update could not be encoded")
+	}
+	response := operation.client.post(call, "/api/2.2/jobs/update", body)
+	if attempt, handled := classifyMutationResponse[JobSummary](response, "updateJobName", UpdateJobNameBranchProviderRejected, UpdateJobNameBranchDefect, UpdateJobNameBranchNotFound); handled {
+		return attempt
+	}
+	if response.err != nil {
+		return mutationRetry[JobSummary]("updateJobName", sdkgo.FailureTransport, "Databricks update response was interrupted", response.retryAfter)
+	}
+	return sdkgo.NewMutationBranch(UpdateJobNameBranchUpdated, JobSummary{ID: input.JobID, Name: input.Name}, nil, jobReceipt(call, input.JobID))
+}
+
+// Invoke deletes one saved job; repeating deletion targets the same ID.
+func (operation DeleteJobOperation) Invoke(call sdkgo.Call, input DeleteJobInput) sdkgo.MutationAttempt[DeletedJob] {
+	if !validRunID(input.JobID) {
+		return mutationBranch[DeletedJob](DeleteJobBranchDefect, "deleteJob", sdkgo.FailureValidation, "job ID must be a positive decimal integer")
+	}
+	body, err := json.Marshal(struct {
+		JobID json.Number `json:"job_id"`
+	}{JobID: json.Number(input.JobID)})
+	if err != nil {
+		return mutationBranch[DeletedJob](DeleteJobBranchDefect, "deleteJob", sdkgo.FailureLocalDefect, "job deletion could not be encoded")
+	}
+	response := operation.client.post(call, "/api/2.2/jobs/delete", body)
+	if attempt, handled := classifyMutationResponse[DeletedJob](response, "deleteJob", DeleteJobBranchProviderRejected, DeleteJobBranchDefect, DeleteJobBranchNotFound); handled {
+		return attempt
+	}
+	if response.err != nil {
+		return mutationRetry[DeletedJob]("deleteJob", sdkgo.FailureTransport, "Databricks deletion response was interrupted", response.retryAfter)
+	}
+	return sdkgo.NewMutationBranch(DeleteJobBranchDeleted, DeletedJob{ID: input.JobID}, nil, jobReceipt(call, input.JobID))
 }
 
 // Invoke starts a job once; Databricks deduplicates repeat requests by token.
@@ -150,7 +246,7 @@ func classifyMutationResponse[T any](response providerResponse, operation string
 	if response.status == http.StatusNotFound {
 		return mutationBranch[T](notFound, operation, sdkgo.FailureNotFound, "Databricks did not expose the resource"), true
 	}
-	if response.status != http.StatusOK {
+	if response.status != http.StatusOK && response.status != http.StatusNoContent {
 		return mutationBranch[T](rejected, operation, sdkgo.FailureProviderRejection, "Databricks rejected HTTP "+strconv.Itoa(response.status)), true
 	}
 	return sdkgo.MutationAttempt[T]{}, false

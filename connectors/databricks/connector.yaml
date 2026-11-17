@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: databricks
   displayName: Databricks
-  description: Inspect Databricks jobs and runs, start idempotent runs, and cancel runs.
+  description: Create, inspect, rename, and delete Databricks jobs; inspect, start, and cancel runs.
   company: Databricks
   categories: [analytics, databases-storage]
   version: v0.2.0
@@ -54,7 +54,68 @@ spec:
       steps:
         - Sign in to the target Databricks workspace, open Settings > Developer > Access Tokens > Manage > Generate new token, select Other APIs and the jobs scope when scope selection is required, then copy the secret opaque token into Dex Web api_token. Blank is invalid. Token creation can be disabled by a workspace administrator; revoke or rotate it on the same page.
         - Set the required baseUrl to the non-secret HTTPS workspace root shown in your browser address, without /api or a trailing path. Leave timeout and maxResponseBytes blank for their displayed defaults. In Jobs & Pipelines select a job to find its numeric job ID, then open Runs to find a numeric run ID. Pass IDs as decimal strings; getJobRun accepts IDs through 9007199254740991 for cross-language JSON safety. A blank ID is invalid.
+        - To create a job, open Jobs & Pipelines > Create job in the same workspace. Choose a name, then select a notebook under Workspace and an existing cluster under Compute; pass the notebook's absolute workspace path beginning with / and the cluster's opaque ID copied from its Compute details page. All three fields are required. A created job consumes workspace quota and remains until deleted in Databricks.
   operations:
+    - name: createJob
+      goName: CreateJob
+      inputType: CreateJobInput
+      outputType: JobSummary
+      kind: mutation
+      description: Create a notebook job on an existing cluster.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Databricks created the job and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Databricks definitively rejected job creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A job may have been created but no job ID was confirmed after bounded sends., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      mocks:
+        - name: notebookJobCreated
+          branch: created
+          description: Create a notebook job for the disposable example.
+          default: true
+          output: {id: "123", name: "Dex example job"}
+    - name: updateJobName
+      goName: UpdateJobName
+      inputType: UpdateJobNameInput
+      outputType: JobSummary
+      kind: mutation
+      description: Replace the name of one existing job without changing its tasks or schedule.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Databricks accepted the name replacement.}
+        - {id: notFound, goName: NotFound, description: Databricks found no accessible job with that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Databricks definitively rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: jobRenamed
+          branch: updated
+          description: Rename the example job.
+          default: true
+          output: {id: "123", name: "Dex renamed job"}
+    - name: deleteJob
+      goName: DeleteJob
+      inputType: DeleteJobInput
+      outputType: DeletedJob
+      kind: mutation
+      description: Delete one saved job by immutable ID; active runs may stop asynchronously.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: Databricks removed the job.}
+        - {id: notFound, goName: NotFound, description: Databricks found no accessible job with that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Databricks definitively rejected deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: jobDeleted
+          branch: deleted
+          description: Delete the disposable example job.
+          default: true
+          output: {id: "123"}
     - name: listJobs
       goName: ListJobs
       inputType: ListJobsInput
