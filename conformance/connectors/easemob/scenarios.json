@@ -1,0 +1,873 @@
+{
+  "connector": "easemob",
+  "scenarios": [
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"token-one\",\"expires_in\":3600}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"count\":1,\"entities\":[{\"uuid\":\"uuid-test\",\"created\":1542795196504,\"modified\":1542795196504,\"username\":\"user1\",\"activated\":true,\"nickname\":\"Sample User\",\"push_token\":\"PRIVATE-PUSH-TOKEN\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/demo/chat/users/user1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer token-one"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "activated": true,
+          "createdAtMilliseconds": 1542795196504,
+          "modifiedAtMilliseconds": 1542795196504,
+          "nickname": "Sample User",
+          "userId": "user1",
+          "userUuid": "uuid-test"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-success",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"token-one\",\"expires_in\":3600}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/demo/chat/users/user1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer token-one"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        },
+        {
+          "body": "{\"access_token\":\"token-two\",\"expires_in\":3600}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"count\":1,\"entities\":[{\"uuid\":\"uuid-test\",\"created\":1542795196504,\"modified\":1542795196504,\"username\":\"user1\",\"activated\":true,\"nickname\":\"Sample User\",\"push_token\":\"PRIVATE-PUSH-TOKEN\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/demo/chat/users/user1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer token-two"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "activated": true,
+          "createdAtMilliseconds": 1542795196504,
+          "modifiedAtMilliseconds": 1542795196504,
+          "nickname": "Sample User",
+          "userId": "user1",
+          "userUuid": "uuid-test"
+        },
+        "requestCount": 4,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-refresh-on-401",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid_grant\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "activated": false,
+          "createdAtMilliseconds": 0,
+          "modifiedAtMilliseconds": 0,
+          "nickname": "",
+          "userId": "",
+          "userUuid": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-token-rejected",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-token-rate-limit",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-token-server-error",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "activated": false,
+          "createdAtMilliseconds": 0,
+          "modifiedAtMilliseconds": 0,
+          "nickname": "",
+          "userId": "",
+          "userUuid": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-token-malformed",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-token-transport",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"token-one\",\"expires_in\":3600}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/demo/chat/users/user1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer token-one"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "activated": false,
+          "createdAtMilliseconds": 0,
+          "modifiedAtMilliseconds": 0,
+          "nickname": "",
+          "userId": "",
+          "userUuid": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-user-missing",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"token-one\",\"expires_in\":3600}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/demo/chat/users/user1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer token-one"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-user-rate-limit",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"token-one\",\"expires_in\":3600}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/demo/chat/users/user1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer token-one"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-user-unavailable",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"token-one\",\"expires_in\":3600}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"count\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/demo/chat/users/user1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer token-one"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "activated": false,
+          "createdAtMilliseconds": 0,
+          "modifiedAtMilliseconds": 0,
+          "nickname": "",
+          "userId": "",
+          "userUuid": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-user-malformed",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"token-one\",\"expires_in\":3600}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"count\":1,\"entities\":[{\"uuid\":\"uuid-test\",\"created\":1,\"modified\":1,\"username\":\"other\",\"activated\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/demo/chat/users/user1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer token-one"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "activated": false,
+          "createdAtMilliseconds": 0,
+          "modifiedAtMilliseconds": 0,
+          "nickname": "",
+          "userId": "",
+          "userUuid": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-user-wrong-identity",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"token-one\",\"expires_in\":3600}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"count\":1,\"entities\":[{\"uuid\":\"uuid-test\",\"created\":1542795196504,\"modified\":1542795196504,\"username\":\"user1\",\"activated\":true,\"nickname\":\"Sample User\",\"push_token\":\"PRIVATE-PUSH-TOKEN\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/demo/chat/users/user1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer token-one"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "activated": false,
+          "createdAtMilliseconds": 0,
+          "modifiedAtMilliseconds": 0,
+          "nickname": "",
+          "userId": "",
+          "userUuid": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-oversize-user",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"token-one\",\"expires_in\":3600}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/demo/chat/token",
+          "requestBody": {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "grant_type": "client_credentials"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/demo/chat/users/user1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer token-one"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-user-transport",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "activated": false,
+          "createdAtMilliseconds": 0,
+          "modifiedAtMilliseconds": 0,
+          "nickname": "",
+          "userId": "",
+          "userUuid": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "user1"
+      },
+      "name": "getUserDetail-missing-credentials",
+      "operation": "getUserDetail"
+    },
+    {
+      "callId": "213e4667-62ed-5bf8-baf7-77df8022a3a9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "activated": false,
+          "createdAtMilliseconds": 0,
+          "modifiedAtMilliseconds": 0,
+          "nickname": "",
+          "userId": "",
+          "userUuid": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "BAD"
+      },
+      "name": "getUserDetail-invalid-input",
+      "operation": "getUserDetail"
+    }
+  ],
+  "schemaVersion": 1
+}
