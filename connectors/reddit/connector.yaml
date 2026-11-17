@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: reddit
   displayName: Reddit
-  description: Read posts, list subreddit posts, and search posts through Reddit's approved OAuth Data API.
+  description: Read posts, comments, subreddit information and listings, and public user profiles through Reddit's approved OAuth Data API.
   company: Reddit
   categories: [social-media]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: reddit
   languages:
@@ -76,7 +76,7 @@ spec:
         - Request Reddit Data API access through the link in the Reddit Data API Wiki and wait for explicit approval before connecting. Commercial uses require separate written approval under Reddit's Responsible Builder Policy.
         - Sign in at https://www.reddit.com/prefs/apps, create or open an approved web app, and register the exact HTTPS redirect URI displayed by Dex Web. Copy the client ID beneath the app name and its client secret into the fields below.
         - Open your Reddit profile menu > Profile and enter your username without /u/ in redditUsername. Dex sends a User-Agent containing the app client ID, connector version, and this username; do not use another person's identity.
-        - Choose Authorize in Dex Web and grant the read scope with permanent duration; read covers post reads, subreddit listings, and post search. Dex stores access and refresh tokens; leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+        - Choose Authorize in Dex Web and grant the read scope with permanent duration; read covers public posts, comments, users, and subreddits. Dex stores access and refresh tokens; leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
     oauth2:
       authorizationEndpoint: https://www.reddit.com/api/v1/authorize
       tokenEndpoint: https://www.reddit.com/api/v1/access_token
@@ -97,6 +97,141 @@ spec:
         requiredScopes: [read]
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: getUser
+      goName: GetUser
+      inputType: GetUserInput
+      outputType: UserProfile
+      kind: query
+      description: Read one public Reddit user's profile and karma.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Reddit returned the public user profile.}
+        - {id: notFound, goName: NotFound, description: The user is missing or unavailable., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Reddit rejected the profile read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Reddit returned malformed or oversized profile data., optional: true}
+        - {id: defect, goName: Defect, description: The username or OAuth connection is invalid., optional: true}
+      agent:
+        exposed: true
+        branches: {notFound: rejected, providerRejected: rejected, defect: rejected}
+        description: Read a public Reddit user profile by username without u/, including comment karma and link karma.
+      mocks:
+        - name: publicUser
+          branch: found
+          default: true
+          description: A public user profile with nonzero karma.
+          output: {name: example_user, id: t2_abc123, commentKarma: 12, linkKarma: 34, profileUrl: "https://www.reddit.com/user/example_user"}
+    - name: getSubreddit
+      goName: GetSubreddit
+      inputType: GetSubredditInput
+      outputType: Subreddit
+      kind: query
+      description: Read public information about one subreddit.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Reddit returned the subreddit.}
+        - {id: unavailable, goName: Unavailable, description: "The subreddit is missing, private, banned, or restricted.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Reddit rejected the subreddit read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Reddit returned malformed or oversized subreddit data., optional: true}
+        - {id: defect, goName: Defect, description: The subreddit name or OAuth connection is invalid., optional: true}
+      agent:
+        exposed: true
+        branches: {unavailable: rejected, providerRejected: rejected, defect: rejected}
+        description: Read one subreddit's public description, subscriber count, and visibility by community name without r/.
+      mocks:
+        - name: publicSubreddit
+          branch: found
+          default: true
+          description: A public community with its subscriber count.
+          output: {name: golang, id: t5_abc123, title: Go, subscribers: 100, url: "https://www.reddit.com/r/golang/"}
+    - name: searchSubreddits
+      goName: SearchSubreddits
+      inputType: SearchSubredditsInput
+      outputType: SubredditPage
+      kind: query
+      description: Search public subreddits by title and description, one page at a time.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      pagination: {inputField: after, nextField: after}
+      branches:
+        - {id: searched, goName: Searched, description: Reddit returned a page of subreddits; it can be empty.}
+        - {id: providerRejected, goName: ProviderRejected, description: Reddit rejected the subreddit search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Reddit returned a malformed or oversized subreddit page., optional: true}
+        - {id: defect, goName: Defect, description: "The query, cursor, or OAuth connection is invalid.", optional: true}
+      agent:
+        exposed: true
+        branches: {providerRejected: rejected, defect: rejected}
+        description: Search public Reddit communities by text and read one bounded page, continuing with the returned after cursor.
+      mocks:
+        - name: foundSubreddits
+          branch: searched
+          default: true
+          description: Search finds three pages of public communities.
+          pages:
+            - subreddits: [{name: example, id: t5_abc123, title: Example, subscribers: 100, url: "https://www.reddit.com/r/example/"}]
+              after: t5_abc123
+            - subreddits: [{name: examples, id: t5_def456, title: Examples, subscribers: 50, url: "https://www.reddit.com/r/examples/"}]
+              after: t5_def456
+            - subreddits: [{name: examplecode, id: t5_ghi789, title: Example Code, subscribers: 25, url: "https://www.reddit.com/r/examplecode/"}]
+    - name: listSubreddits
+      goName: ListSubreddits
+      inputType: ListSubredditsInput
+      outputType: SubredditPage
+      kind: query
+      description: List public communities from Reddit's popular, new, or default directory.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      pagination: {inputField: after, nextField: after}
+      branches:
+        - {id: listed, goName: Listed, description: Reddit returned one page of communities; it can be empty.}
+        - {id: providerRejected, goName: ProviderRejected, description: Reddit rejected the directory read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Reddit returned a malformed or oversized directory page., optional: true}
+        - {id: defect, goName: Defect, description: "The directory, limit, cursor, or OAuth connection is invalid.", optional: true}
+      agent:
+        exposed: true
+        branches: {providerRejected: rejected, defect: rejected}
+        description: List public Reddit communities, sorted by popular, new, or default directory, one page at a time using an after cursor.
+      mocks:
+        - name: popularCommunities
+          branch: listed
+          default: true
+          description: Three pages of popular public communities.
+          pages:
+            - subreddits: [{name: golang, id: t5_abc123, title: Go, subscribers: 100, url: "https://www.reddit.com/r/golang/"}]
+              after: t5_abc123
+            - subreddits: [{name: programming, id: t5_def456, title: Programming, subscribers: 80, url: "https://www.reddit.com/r/programming/"}]
+              after: t5_def456
+            - subreddits: [{name: learnprogramming, id: t5_ghi789, title: Learn Programming, subscribers: 50, url: "https://www.reddit.com/r/learnprogramming/"}]
+    - name: listPostComments
+      goName: ListPostComments
+      inputType: ListPostCommentsInput
+      outputType: CommentPage
+      kind: query
+      description: Read one bounded page of top-level comments under a post.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Reddit returned top-level comments; the page can be empty.}
+        - {id: postUnavailable, goName: PostUnavailable, description: The post is missing or unavailable., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Reddit rejected the comment read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Reddit returned malformed or oversized comment data., optional: true}
+        - {id: defect, goName: Defect, description: "The post ID, limit, or OAuth connection is invalid.", optional: true}
+      agent:
+        exposed: true
+        branches: {postUnavailable: rejected, providerRejected: rejected, defect: rejected}
+        description: Read top-level comments on a Reddit post by its full t3_ ID; the bounded response excludes deeper replies and morechildren placeholders.
+      mocks:
+        - name: sampleComments
+          branch: listed
+          default: true
+          description: One top-level comment is returned.
+          output: {comments: [{id: t1_abc123, parentId: t3_abc123, author: example_user, body: Sample comment, permalink: "https://www.reddit.com/r/example/comments/abc123/_/abc123/", score: 3}]}
     - name: getPost
       goName: GetPost
       inputType: GetPostInput
