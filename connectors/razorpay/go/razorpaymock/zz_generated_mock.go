@@ -17,8 +17,11 @@ import (
 
 // Mock is a scripted razorpay connection. Script each operation through its accessor.
 type Mock struct {
-	connection razorpay.Connection
-	getPayment *connectormock.Query[razorpay.GetPaymentInput, razorpay.PaymentStatus]
+	connection  razorpay.Connection
+	listOrders  *connectormock.Query[razorpay.ListOrdersInput, razorpay.OrderPage]
+	getOrder    *connectormock.Query[razorpay.GetOrderInput, razorpay.OrderSummary]
+	createOrder *connectormock.Mutation[razorpay.CreateOrderInput, razorpay.OrderSummary]
+	getPayment  *connectormock.Query[razorpay.GetPaymentInput, razorpay.PaymentStatus]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +29,14 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getPayment: connectormock.NewQuery[razorpay.GetPaymentInput, razorpay.PaymentStatus](t, razorpay.GetPaymentDefinition),
+		listOrders:  connectormock.NewQuery[razorpay.ListOrdersInput, razorpay.OrderPage](t, razorpay.ListOrdersDefinition),
+		getOrder:    connectormock.NewQuery[razorpay.GetOrderInput, razorpay.OrderSummary](t, razorpay.GetOrderDefinition),
+		createOrder: connectormock.NewMutation[razorpay.CreateOrderInput, razorpay.OrderSummary](t, razorpay.CreateOrderDefinition),
+		getPayment:  connectormock.NewQuery[razorpay.GetPaymentInput, razorpay.PaymentStatus](t, razorpay.GetPaymentDefinition),
 	}
+	mock.listOrders.Default(ListOrdersDefault())
+	mock.getOrder.Default(GetOrderDefault())
+	mock.createOrder.Default(CreateOrderDefault())
 	mock.getPayment.Default(GetPaymentDefault())
 	connection, err := razorpay.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "razorpay", Name: connectionName})
 	if err != nil {
@@ -40,6 +49,21 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() razorpay.Connection { return mock.connection }
 
+// ListOrders returns the listOrders script.
+func (mock *Mock) ListOrders() *connectormock.Query[razorpay.ListOrdersInput, razorpay.OrderPage] {
+	return mock.listOrders
+}
+
+// GetOrder returns the getOrder script.
+func (mock *Mock) GetOrder() *connectormock.Query[razorpay.GetOrderInput, razorpay.OrderSummary] {
+	return mock.getOrder
+}
+
+// CreateOrder returns the createOrder script.
+func (mock *Mock) CreateOrder() *connectormock.Mutation[razorpay.CreateOrderInput, razorpay.OrderSummary] {
+	return mock.createOrder
+}
+
 // GetPayment returns the getPayment script.
 func (mock *Mock) GetPayment() *connectormock.Query[razorpay.GetPaymentInput, razorpay.PaymentStatus] {
 	return mock.getPayment
@@ -47,8 +71,121 @@ func (mock *Mock) GetPayment() *connectormock.Query[razorpay.GetPaymentInput, ra
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListOrders() sdkgo.Query[razorpay.ListOrdersInput, razorpay.OrderPage] {
+	return operations.mock.listOrders
+}
+func (operations mockOperations) GetOrder() sdkgo.Query[razorpay.GetOrderInput, razorpay.OrderSummary] {
+	return operations.mock.getOrder
+}
+func (operations mockOperations) CreateOrder() sdkgo.Mutation[razorpay.CreateOrderInput, razorpay.OrderSummary] {
+	return operations.mock.createOrder
+}
 func (operations mockOperations) GetPayment() sdkgo.Query[razorpay.GetPaymentInput, razorpay.PaymentStatus] {
 	return operations.mock.getPayment
+}
+
+// ListOrdersListed selects the listed branch: Razorpay returned an order page.
+func ListOrdersListed(value razorpay.OrderPage, failure *sdkgo.Failure) connectormock.Case[razorpay.OrderPage] {
+	return connectormock.Branch(razorpay.ListOrdersBranchListed, value, failure)
+}
+
+// ListOrdersProviderRejected selects the providerRejected branch: Razorpay conclusively rejected the order list.
+func ListOrdersProviderRejected(value razorpay.OrderPage, failure *sdkgo.Failure) connectormock.Case[razorpay.OrderPage] {
+	return connectormock.Branch(razorpay.ListOrdersBranchProviderRejected, value, failure)
+}
+
+// ListOrdersInvalidResponse selects the invalidResponse branch: Razorpay returned unusable order data.
+func ListOrdersInvalidResponse(value razorpay.OrderPage, failure *sdkgo.Failure) connectormock.Case[razorpay.OrderPage] {
+	return connectormock.Branch(razorpay.ListOrdersBranchInvalidResponse, value, failure)
+}
+
+// ListOrdersDefect selects the defect branch: The page input or credentials are invalid.
+func ListOrdersDefect(value razorpay.OrderPage, failure *sdkgo.Failure) connectormock.Case[razorpay.OrderPage] {
+	return connectormock.Branch(razorpay.ListOrdersBranchDefect, value, failure)
+}
+
+// ListOrdersRetry asks Dex to retry the listOrders Step, after the delay when it is positive.
+func ListOrdersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[razorpay.OrderPage] {
+	return connectormock.Retry[razorpay.OrderPage](failure, after)
+}
+
+// ListOrdersListedDefault is the manifest mock listedDefault: One sample order page was returned.
+func ListOrdersListedDefault() connectormock.Case[razorpay.OrderPage] {
+	value := connectormock.MustDecodeOutput[razorpay.OrderPage](`{"orders":[{"id":"order_RB58MiP5SPFYyM","status":"created","amount":5000,"currencyCode":"INR","receipt":"receipt-1"}],"count":1}`)
+	return connectormock.Branch(razorpay.ListOrdersBranchListed, value, nil)
+}
+
+// ListOrdersDefault is the manifest default, listedDefault, which New installs.
+func ListOrdersDefault() connectormock.Case[razorpay.OrderPage] { return ListOrdersListedDefault() }
+
+// GetOrderFound selects the found branch: Razorpay returned the order.
+func GetOrderFound(value razorpay.OrderSummary, failure *sdkgo.Failure) connectormock.Case[razorpay.OrderSummary] {
+	return connectormock.Branch(razorpay.GetOrderBranchFound, value, failure)
+}
+
+// GetOrderNotFound selects the notFound branch: The order was not found.
+func GetOrderNotFound(value razorpay.OrderSummary, failure *sdkgo.Failure) connectormock.Case[razorpay.OrderSummary] {
+	return connectormock.Branch(razorpay.GetOrderBranchNotFound, value, failure)
+}
+
+// GetOrderProviderRejected selects the providerRejected branch: Razorpay conclusively rejected the order lookup.
+func GetOrderProviderRejected(value razorpay.OrderSummary, failure *sdkgo.Failure) connectormock.Case[razorpay.OrderSummary] {
+	return connectormock.Branch(razorpay.GetOrderBranchProviderRejected, value, failure)
+}
+
+// GetOrderInvalidResponse selects the invalidResponse branch: Razorpay returned unusable order data.
+func GetOrderInvalidResponse(value razorpay.OrderSummary, failure *sdkgo.Failure) connectormock.Case[razorpay.OrderSummary] {
+	return connectormock.Branch(razorpay.GetOrderBranchInvalidResponse, value, failure)
+}
+
+// GetOrderDefect selects the defect branch: The order ID or credentials are invalid.
+func GetOrderDefect(value razorpay.OrderSummary, failure *sdkgo.Failure) connectormock.Case[razorpay.OrderSummary] {
+	return connectormock.Branch(razorpay.GetOrderBranchDefect, value, failure)
+}
+
+// GetOrderRetry asks Dex to retry the getOrder Step, after the delay when it is positive.
+func GetOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[razorpay.OrderSummary] {
+	return connectormock.Retry[razorpay.OrderSummary](failure, after)
+}
+
+// GetOrderFoundDefault is the manifest mock foundDefault: One sample order was returned.
+func GetOrderFoundDefault() connectormock.Case[razorpay.OrderSummary] {
+	value := connectormock.MustDecodeOutput[razorpay.OrderSummary](`{"id":"order_RB58MiP5SPFYyM","status":"created","amount":5000,"currencyCode":"INR","receipt":"receipt-1"}`)
+	return connectormock.Branch(razorpay.GetOrderBranchFound, value, nil)
+}
+
+// GetOrderDefault is the manifest default, foundDefault, which New installs.
+func GetOrderDefault() connectormock.Case[razorpay.OrderSummary] { return GetOrderFoundDefault() }
+
+// CreateOrderCreated selects the created branch: Razorpay created or confirmed this order.
+func CreateOrderCreated(value razorpay.OrderSummary, failure *sdkgo.Failure) connectormock.Case[razorpay.OrderSummary] {
+	return connectormock.Branch(razorpay.CreateOrderBranchCreated, value, failure)
+}
+
+// CreateOrderProviderRejected selects the providerRejected branch: Razorpay conclusively rejected order creation.
+func CreateOrderProviderRejected(value razorpay.OrderSummary, failure *sdkgo.Failure) connectormock.Case[razorpay.OrderSummary] {
+	return connectormock.Branch(razorpay.CreateOrderBranchProviderRejected, value, failure)
+}
+
+// CreateOrderDefect selects the defect branch: The order input or credentials are invalid.
+func CreateOrderDefect(value razorpay.OrderSummary, failure *sdkgo.Failure) connectormock.Case[razorpay.OrderSummary] {
+	return connectormock.Branch(razorpay.CreateOrderBranchDefect, value, failure)
+}
+
+// CreateOrderRetry asks Dex to retry the createOrder Step, after the delay when it is positive.
+func CreateOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[razorpay.OrderSummary] {
+	return connectormock.Retry[razorpay.OrderSummary](failure, after)
+}
+
+// CreateOrderCreatedDefault is the manifest mock createdDefault: One sample INR order was created.
+func CreateOrderCreatedDefault() connectormock.Case[razorpay.OrderSummary] {
+	value := connectormock.MustDecodeOutput[razorpay.OrderSummary](`{"id":"order_RB58MiP5SPFYyM","status":"created","amount":5000,"currencyCode":"INR","receipt":"dex_0123456789abcdef0123456789abcdef"}`)
+	return connectormock.Branch(razorpay.CreateOrderBranchCreated, value, nil)
+}
+
+// CreateOrderDefault is the manifest default, createdDefault, which New installs.
+func CreateOrderDefault() connectormock.Case[razorpay.OrderSummary] {
+	return CreateOrderCreatedDefault()
 }
 
 // GetPaymentFound selects the found branch: Razorpay returned the payment.

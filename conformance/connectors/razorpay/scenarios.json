@@ -367,6 +367,1114 @@
       },
       "name": "getPayment-otherBadRequest",
       "operation": "getPayment"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"order_RB58MiP5SPFYyM\",\"entity\":\"order\",\"amount\":5000,\"currency\":\"INR\",\"receipt\":\"receipt-1\",\"status\":\"created\",\"notes\":{\"private\":\"ignored\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_RB58MiP5SPFYyM",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "amount": 5000,
+          "currencyCode": "INR",
+          "id": "order_RB58MiP5SPFYyM",
+          "receipt": "receipt-1",
+          "status": "created"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_RB58MiP5SPFYyM"
+      },
+      "name": "getOrder-found",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_RB58MiP5SPFYyM",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "receipt": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_RB58MiP5SPFYyM"
+      },
+      "name": "getOrder-notFound",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_RB58MiP5SPFYyM",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "receipt": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_RB58MiP5SPFYyM"
+      },
+      "name": "getOrder-providerRejected",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_RB58MiP5SPFYyM",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "receipt": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_RB58MiP5SPFYyM"
+      },
+      "name": "getOrder-invalidResponse",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "receipt": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": ""
+      },
+      "name": "getOrder-defect",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_RB58MiP5SPFYyM",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_RB58MiP5SPFYyM"
+      },
+      "name": "getOrder-rateLimit",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_RB58MiP5SPFYyM",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_RB58MiP5SPFYyM"
+      },
+      "name": "getOrder-serviceUnavailable",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_RB58MiP5SPFYyM",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_RB58MiP5SPFYyM"
+      },
+      "name": "getOrder-serverError",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_RB58MiP5SPFYyM",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_RB58MiP5SPFYyM"
+      },
+      "name": "getOrder-transportFailure",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "body": "{\"entity\":\"collection\",\"count\":1,\"items\":[{\"id\":\"order_RB58MiP5SPFYyM\",\"entity\":\"order\",\"amount\":5000,\"currency\":\"INR\",\"receipt\":\"receipt-1\",\"status\":\"created\",\"notes\":{\"private\":\"ignored\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "count": 1,
+          "orders": [
+            {
+              "amount": 5000,
+              "currencyCode": "INR",
+              "id": "order_RB58MiP5SPFYyM",
+              "receipt": "receipt-1",
+              "status": "created"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listOrders-listed",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "count": 0,
+          "orders": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listOrders-providerRejected",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "count": 0,
+          "orders": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listOrders-invalidResponse",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "count": 0,
+          "orders": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 0,
+        "skip": 1
+      },
+      "name": "listOrders-defect",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listOrders-rateLimit",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listOrders-serviceUnavailable",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listOrders-serverError",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "e95f4716-37a6-4de0-9af0-f7068cd84f10",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "skip": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "skip": 1
+      },
+      "name": "listOrders-transportFailure",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"order_RB58MiP5SPFYyM\",\"entity\":\"order\",\"amount\":5000,\"currency\":\"INR\",\"receipt\":\"dex_6cdd1ff738b1504fb0bd1db1b9a9cfe1\",\"status\":\"created\",\"notes\":{\"private\":\"ignored\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "amount": 5000,
+            "currency": "INR",
+            "receipt": "dex_6cdd1ff738b1504fb0bd1db1b9a9cfe1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amount": 5000,
+          "currencyCode": "INR",
+          "id": "order_RB58MiP5SPFYyM",
+          "receipt": "dex_6cdd1ff738b1504fb0bd1db1b9a9cfe1",
+          "status": "created"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "input": {
+        "amount": 5000,
+        "currencyCode": "INR"
+      },
+      "name": "createOrder-created",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "amount": 5000,
+            "currency": "INR",
+            "receipt": "dex_6cdd1ff738b1504fb0bd1db1b9a9cfe1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "receipt": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "input": {
+        "amount": 5000,
+        "currencyCode": "INR"
+      },
+      "name": "createOrder-providerRejected",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "receipt": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "input": {
+        "amount": 0,
+        "currencyCode": "INR"
+      },
+      "name": "createOrder-defect",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "amount": 5000,
+            "currency": "INR",
+            "receipt": "dex_6cdd1ff738b1504fb0bd1db1b9a9cfe1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "input": {
+        "amount": 5000,
+        "currencyCode": "INR"
+      },
+      "name": "createOrder-rateLimit",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "amount": 5000,
+            "currency": "INR",
+            "receipt": "dex_6cdd1ff738b1504fb0bd1db1b9a9cfe1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "input": {
+        "amount": 5000,
+        "currencyCode": "INR"
+      },
+      "name": "createOrder-serviceUnavailable",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "amount": 5000,
+            "currency": "INR",
+            "receipt": "dex_6cdd1ff738b1504fb0bd1db1b9a9cfe1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "input": {
+        "amount": 5000,
+        "currencyCode": "INR"
+      },
+      "name": "createOrder-serverError",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "amount": 5000,
+            "currency": "INR",
+            "receipt": "dex_6cdd1ff738b1504fb0bd1db1b9a9cfe1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "input": {
+        "amount": 5000,
+        "currencyCode": "INR"
+      },
+      "name": "createOrder-transportFailure",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"description\":\"Duplicate request. This request has already been processed.\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "amount": 5000,
+            "currency": "INR",
+            "receipt": "dex_6cdd1ff738b1504fb0bd1db1b9a9cfe1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"entity\":\"collection\",\"count\":1,\"items\":[{\"id\":\"order_RB58MiP5SPFYyM\",\"entity\":\"order\",\"amount\":5000,\"currency\":\"INR\",\"receipt\":\"dex_6cdd1ff738b1504fb0bd1db1b9a9cfe1\",\"status\":\"created\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "receipt": [
+              "dex_6cdd1ff738b1504fb0bd1db1b9a9cfe1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amount": 5000,
+          "currencyCode": "INR",
+          "id": "order_RB58MiP5SPFYyM",
+          "receipt": "dex_6cdd1ff738b1504fb0bd1db1b9a9cfe1",
+          "status": "created"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "input": {
+        "amount": 5000,
+        "currencyCode": "INR"
+      },
+      "name": "createOrder-duplicateConfirmed",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"description\":\"Duplicate request. This request has already been processed.\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "amount": 5000,
+            "currency": "INR",
+            "receipt": "dex_6cdd1ff738b1504fb0bd1db1b9a9cfe1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"entity\":\"collection\",\"count\":0,\"items\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "receipt": [
+              "dex_6cdd1ff738b1504fb0bd1db1b9a9cfe1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6cdd1ff7-38b1-504f-b0bd-1db1b9a9cfe1",
+      "input": {
+        "amount": 5000,
+        "currencyCode": "INR"
+      },
+      "name": "createOrder-duplicatePending",
+      "operation": "createOrder"
     }
   ],
   "schemaVersion": 1

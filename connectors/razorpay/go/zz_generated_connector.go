@@ -41,11 +41,23 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListOrders() sdkgo.Query[ListOrdersInput, OrderPage]
+	GetOrder() sdkgo.Query[GetOrderInput, OrderSummary]
+	CreateOrder() sdkgo.Mutation[CreateOrderInput, OrderSummary]
 	GetPayment() sdkgo.Query[GetPaymentInput, PaymentStatus]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListOrders() sdkgo.Query[ListOrdersInput, OrderPage] {
+	return operations.client.ListOrders()
+}
+func (operations clientOperations) GetOrder() sdkgo.Query[GetOrderInput, OrderSummary] {
+	return operations.client.GetOrder()
+}
+func (operations clientOperations) CreateOrder() sdkgo.Mutation[CreateOrderInput, OrderSummary] {
+	return operations.client.CreateOrder()
+}
 func (operations clientOperations) GetPayment() sdkgo.Query[GetPaymentInput, PaymentStatus] {
 	return operations.client.GetPayment()
 }
@@ -190,6 +202,220 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential key_secret is required")
 	}
 	return nil
+}
+
+const ListOrdersBranchListed sdkgo.BranchID = "listed"
+const ListOrdersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListOrdersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListOrdersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListOrdersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listOrders"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListOrdersBranchListed, Description: "Razorpay returned an order page."},
+		{ID: ListOrdersBranchProviderRejected, Description: "Razorpay conclusively rejected the order list.", Optional: true},
+		{ID: ListOrdersBranchInvalidResponse, Description: "Razorpay returned unusable order data.", Optional: true},
+		{ID: ListOrdersBranchDefect, Description: "The page input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListOrdersResult = sdkgo.QueryResult[OrderPage]
+
+type ListOrdersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=razorpay"`
+	operationID                    struct{}                                     `connector:"operationId=listOrders"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListOrdersInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListOrdersResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListOrdersResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListOrdersResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListOrdersResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[OrderPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListOrdersStep[IN any](config ListOrdersStepConfig[IN]) sdkgo.QueryStep[IN, ListOrdersInput, OrderPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("razorpay connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListOrdersInput, OrderPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListOrders(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListOrdersResult] {
+			branches := make([]sdkgo.BranchTarget[ListOrdersResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListOrdersBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListOrdersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListOrdersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListOrdersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetOrderBranchFound sdkgo.BranchID = "found"
+const GetOrderBranchNotFound sdkgo.BranchID = "notFound"
+const GetOrderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetOrderBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetOrderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetOrderDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getOrder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetOrderBranchFound, Description: "Razorpay returned the order."},
+		{ID: GetOrderBranchNotFound, Description: "The order was not found.", Optional: true},
+		{ID: GetOrderBranchProviderRejected, Description: "Razorpay conclusively rejected the order lookup.", Optional: true},
+		{ID: GetOrderBranchInvalidResponse, Description: "Razorpay returned unusable order data.", Optional: true},
+		{ID: GetOrderBranchDefect, Description: "The order ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetOrderResult = sdkgo.QueryResult[OrderSummary]
+
+type GetOrderStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=razorpay"`
+	operationID                    struct{}                                        `connector:"operationId=getOrder"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetOrderInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetOrderResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetOrderResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetOrderResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetOrderResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetOrderResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[OrderSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetOrderStep[IN any](config GetOrderStepConfig[IN]) sdkgo.QueryStep[IN, GetOrderInput, OrderSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("razorpay connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetOrderInput, OrderSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetOrder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetOrderResult] {
+			branches := make([]sdkgo.BranchTarget[GetOrderResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetOrderBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetOrderBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetOrderBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetOrderBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetOrderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateOrderBranchCreated sdkgo.BranchID = "created"
+const CreateOrderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateOrderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateOrderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createOrder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateOrderBranchCreated, Description: "Razorpay created or confirmed this order."},
+		{ID: CreateOrderBranchProviderRejected, Description: "Razorpay conclusively rejected order creation.", Optional: true},
+		{ID: CreateOrderBranchDefect, Description: "The order input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CreateOrderResult = sdkgo.MutationResult[OrderSummary]
+
+type CreateOrderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=razorpay"`
+	operationID                       struct{}                                           `connector:"operationId=createOrder"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateOrderInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateOrderResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateOrderResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateOrderResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[OrderSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewCreateOrderStep[IN any](config CreateOrderStepConfig[IN]) sdkgo.MutationStep[IN, CreateOrderInput, OrderSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("razorpay connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateOrderInput, OrderSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateOrder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateOrderResult] {
+			branches := make([]sdkgo.BranchTarget[CreateOrderResult], 0, 3)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateOrderBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateOrderBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateOrderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetPaymentBranchFound sdkgo.BranchID = "found"

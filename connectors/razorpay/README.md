@@ -2,6 +2,8 @@
 
 The Go, Python, and TypeScript `getPayment` Query reads a payment's ID, status, amount in currency subunits, and currency code. Customer contact and payment method details are excluded from Dex Results. Razorpay's HTTP 400 `BAD_REQUEST_ERROR` with description `The id provided does not exist`, returned for an unknown ID or one from another account or test/live mode, selects `notFound`; other rejections select `providerRejected`.
 
+Go also provides `listOrders`, `getOrder`, and `createOrder` through the [Orders API](https://razorpay.com/docs/api/orders/). Order summaries contain only ID, status, amount in currency subunits, currency code, and non-secret receipt. `listOrders` takes `count` from 1 to 100 and a non-negative `skip` offset. `getOrder` takes an `order_` ID. `createOrder` takes a positive amount in currency subunits and an uppercase three-letter currency code, such as `INR`; it derives a unique receipt from the Dex Call ID. Razorpay treats that receipt as a duplicate guard. On a duplicate response, the connector reads back orders by receipt and verifies amount and currency before confirming success. An unavailable or inconclusive read-back retries.
+
 ## Connect
 
 In the [Razorpay Dashboard](https://dashboard.razorpay.com), choose Test or Live Mode, then open **Account & Settings > API Keys > Generate Key**. Copy the Key ID (beginning `rzp_test_` or `rzp_live_`) and the paired Key Secret into Dex Web `key_id` and `key_secret`. Both are stored as secrets and sent only in HTTP Basic authentication. Blank is invalid. Regenerate the pair on the same page to rotate it; do not mix Test and Live keys. See [Razorpay API keys](https://razorpay.com/docs/server-integration/python/test-app/).
@@ -10,4 +12,4 @@ Leave `baseUrl` blank for `https://api.razorpay.com/v1`. `timeout` is a per-requ
 
 ## Examples and verification
 
-Run the [Go](go/examples/payment-inspection/README.md), [Python](python/examples/payment_inspection/README.md), or [TypeScript](typescript/examples/payment-inspection/README.md) payment inspection Flow with the static `razorpay` connection. Go-recorded conformance checks exact requests, branches, retries, and outputs across all three languages. Local integration tests exercise real Dex with fixture providers. Real Razorpay authorization and retrieval remain unverified.
+Run the [Go](go/examples/payment-inspection/README.md), [Python](python/examples/payment_inspection/README.md), or [TypeScript](typescript/examples/payment-inspection/README.md) payment inspection Flow with the static `razorpay` connection. The Go Worker also registers an order creation Flow. Go-recorded conformance checks exact requests, branches, retries, and outputs for each implemented language capability. Local integration tests exercise real Dex with fixture providers. Real Razorpay authorization and retrieval remain unverified.

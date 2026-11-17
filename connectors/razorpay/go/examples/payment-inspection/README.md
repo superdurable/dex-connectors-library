@@ -1,6 +1,6 @@
 # Razorpay payment inspection Flow
 
-This runnable Flow calls `getPayment` through the static `razorpay` connection. It persists the selected payment status in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Worker registers `RazorpayPaymentInspection` and `RazorpayCreateOrder` through the static `razorpay` connection. Both persist only safe status or order metadata and expose read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -23,5 +23,7 @@ GOWORK=off go run ./examples/payment-inspection
 ```
 
 Start `RazorpayPaymentInspection` with a unique Flow ID and input `{"paymentId":"pay_DG4ZdRK8ZnXC3k"}`. Replace the sample with a payment ID returned by Razorpay. The Worker connects to Dex Server without an inbound listener.
+
+Start `RazorpayCreateOrder` with a unique Flow ID and input `{"amount":5000,"currencyCode":"INR"}`. The amount is in currency subunits. The connector derives a unique receipt from the Dex Call ID and returns it with the created order; no customer data enters the Flow.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real Razorpay authorization and retrieval remain unverified.

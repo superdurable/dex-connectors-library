@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: razorpay
   displayName: Razorpay
-  description: Read selected Razorpay payment fields from the Payments API.
+  description: Read payment status and create or inspect Razorpay orders.
   company: Razorpay
   categories: [finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: razorpay
   languages:
@@ -60,6 +60,66 @@ spec:
         - Sign in to the Razorpay Dashboard, select Test or Live Mode, then open Account & Settings > API Keys > Generate Key. Copy the Key ID beginning rzp_test_ or rzp_live_ and its paired opaque Key Secret into Dex Web secret key_id and key_secret. Blank is invalid. Regenerate the pair on the same page to rotate it; Test and Live keys cannot be mixed.
         - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret pay_ payment ID on the Dashboard Payments page or from an API response and pass it as paymentId; blank is invalid. The payment amount returned is in currency subunits.
   operations:
+    - name: listOrders
+      goName: ListOrders
+      inputType: ListOrdersInput
+      outputType: OrderPage
+      kind: query
+      description: List one bounded page of order summaries.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Razorpay returned an order page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the order list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned unusable order data., optional: true}
+        - {id: defect, goName: Defect, description: The page input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample order page was returned.
+          output: {orders: [{id: order_RB58MiP5SPFYyM, status: created, amount: 5000, currencyCode: INR, receipt: receipt-1}], count: 1}
+    - name: getOrder
+      goName: GetOrder
+      inputType: GetOrderInput
+      outputType: OrderSummary
+      kind: query
+      description: Read one order by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Razorpay returned the order.}
+        - {id: notFound, goName: NotFound, description: The order was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the order lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned unusable order data., optional: true}
+        - {id: defect, goName: Defect, description: The order ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample order was returned.
+          output: {id: order_RB58MiP5SPFYyM, status: created, amount: 5000, currencyCode: INR, receipt: receipt-1}
+    - name: createOrder
+      goName: CreateOrder
+      inputType: CreateOrderInput
+      outputType: OrderSummary
+      kind: mutation
+      description: Create an order with a call-derived unique receipt for safe retries.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Razorpay created or confirmed this order.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected order creation., optional: true}
+        - {id: defect, goName: Defect, description: The order input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample INR order was created.
+          output: {id: order_RB58MiP5SPFYyM, status: created, amount: 5000, currencyCode: INR, receipt: dex_0123456789abcdef0123456789abcdef}
     - name: getPayment
       goName: GetPayment
       inputType: GetPaymentInput
