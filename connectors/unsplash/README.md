@@ -22,8 +22,9 @@ Public Unsplash photo, collection, user, and topic reads for Dex. The connector 
 | `listTopics` | `GET /topics` | `listed` with a topic page |
 | `getTopic` | `GET /topics/{id}` | `found` with one topic |
 | `listTopicPhotos` | `GET /topics/{id}/photos` | `listed` with a photo page |
+| `trackPhotoDownload` | `GET /photos/{id}/download` | `tracked` with the provider image URL |
 
-Each photo result includes Unsplash-hosted image URLs and attribution URLs. Applications must hotlink `regularUrl` and attribute the photographer and Unsplash; do not download and serve the image from your own host. A download-like action requires Unsplash's separate download tracking endpoint, which this connector does not expose.
+Each photo result includes Unsplash-hosted image URLs and attribution URLs. Applications must hotlink `regularUrl` and attribute the photographer and Unsplash; do not download and serve the image from your own host. For a download-like action, call `trackPhotoDownload` once for the selected photo. It is a limited Mutation because Unsplash counts each successful call and offers no call-level deduplication; an uncertain outcome can cause up to three possible events.
 
 The Python package is [`dex-connector-unsplash`](python/README.md), imported as
 `dex_connectors.unsplash`. The TypeScript package is
@@ -43,12 +44,15 @@ method and connection migration.
 
 | Condition | Route |
 | --- | --- |
-| Valid search or photo lookup | `searched` or `found` |
+| Valid read or download tracking | Its operation's happy branch |
 | Missing photo | `notFound` |
 | Definite provider rejection | `providerRejected` |
 | Malformed or oversized response | `invalidResponse` |
 | Invalid input or missing credentials | `defect` |
 | Transport failure, 408, 429, or 5xx | Retry with Dex's default one-hour budget |
+
+`trackPhotoDownload` selects `uncertain` if its event may have succeeded but
+cannot be confirmed after the send cap; it never exposes the application key.
 
 Only the happy branch is wired in the [Go photo search example](go/examples/photo-search) and [TypeScript photo search example](typescript/examples/photo-search); optional branches fail each Flow.
 

@@ -54,6 +54,7 @@ type Operations interface {
 	ListTopics() sdkgo.Query[ListTopicsInput, TopicList]
 	GetTopic() sdkgo.Query[GetTopicInput, Topic]
 	ListTopicPhotos() sdkgo.Query[ListTopicPhotosInput, PhotoList]
+	TrackPhotoDownload() sdkgo.Mutation[TrackPhotoDownloadInput, TrackedPhotoDownload]
 }
 
 type clientOperations struct{ client *Client }
@@ -99,6 +100,9 @@ func (operations clientOperations) GetTopic() sdkgo.Query[GetTopicInput, Topic] 
 }
 func (operations clientOperations) ListTopicPhotos() sdkgo.Query[ListTopicPhotosInput, PhotoList] {
 	return operations.client.ListTopicPhotos()
+}
+func (operations clientOperations) TrackPhotoDownload() sdkgo.Mutation[TrackPhotoDownloadInput, TrackedPhotoDownload] {
+	return operations.client.TrackPhotoDownload()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1307,5 +1311,87 @@ func NewListTopicPhotosStep[IN any](config ListTopicPhotosStepConfig[IN]) sdkgo.
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const TrackPhotoDownloadBranchTracked sdkgo.BranchID = "tracked"
+const TrackPhotoDownloadBranchNotFound sdkgo.BranchID = "notFound"
+const TrackPhotoDownloadBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const TrackPhotoDownloadBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const TrackPhotoDownloadBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var TrackPhotoDownloadDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "trackPhotoDownload"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: TrackPhotoDownloadBranchTracked, Description: "Unsplash recorded the download event and returned an image URL."},
+		{ID: TrackPhotoDownloadBranchNotFound, Description: "The photo does not exist.", Optional: true},
+		{ID: TrackPhotoDownloadBranchProviderRejected, Description: "Unsplash conclusively rejected the event or application key.", Optional: true},
+		{ID: TrackPhotoDownloadBranchUncertain, Description: "The event may have been recorded but its outcome cannot be confirmed after bounded sends.", Optional: true},
+		{ID: TrackPhotoDownloadBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type TrackPhotoDownloadResult = sdkgo.MutationResult[TrackedPhotoDownload]
+
+type TrackPhotoDownloadStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=unsplash"`
+	operationID                       struct{}                                                   `connector:"operationId=trackPhotoDownload"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) TrackPhotoDownloadInput                           `connector:"mapToOperationInput"`
+	Tracked                           sdkgo.Target[TrackPhotoDownloadResult]                     `connector:"branch=tracked"`
+	NotFound                          sdkgo.Target[TrackPhotoDownloadResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[TrackPhotoDownloadResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[TrackPhotoDownloadResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[TrackPhotoDownloadResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TrackedPhotoDownload]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewTrackPhotoDownloadStep[IN any](config TrackPhotoDownloadStepConfig[IN]) sdkgo.MutationStep[IN, TrackPhotoDownloadInput, TrackedPhotoDownload] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("unsplash connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TrackPhotoDownloadInput, TrackedPhotoDownload]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.TrackPhotoDownload(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[TrackPhotoDownloadResult] {
+			branches := make([]sdkgo.BranchTarget[TrackPhotoDownloadResult], 0, 5)
+			if config.Tracked.HasStep() {
+				branches = append(branches, config.Tracked.BranchTarget(TrackPhotoDownloadBranchTracked))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(TrackPhotoDownloadBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(TrackPhotoDownloadBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(TrackPhotoDownloadBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(TrackPhotoDownloadBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

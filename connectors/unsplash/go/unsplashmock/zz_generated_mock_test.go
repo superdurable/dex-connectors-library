@@ -72,6 +72,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[unsplash.PhotoList](`{"photos":[{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}]}`)
 			return err
 		}},
+		{name: "trackPhotoDownload/trackedDefaultPhoto/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[unsplash.TrackedPhotoDownload](`{"url":"https://images.unsplash.com/photo-office-1"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -123,5 +127,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListTopicPhotos().Definition().Operation.OperationID != "listTopicPhotos" {
 		t.Errorf("listTopicPhotos mock has another definition")
+	}
+	if mock.TrackPhotoDownload().Definition().Operation.OperationID != "trackPhotoDownload" {
+		t.Errorf("trackPhotoDownload mock has another definition")
 	}
 }

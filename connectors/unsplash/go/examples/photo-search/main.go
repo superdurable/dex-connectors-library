@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{photosearch.NewFlow(connection), photosearch.NewCollectionBrowserFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{photosearch.NewFlow(connection), photosearch.NewCollectionBrowserFlow(connection), photosearch.NewDownloadTrackingFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Unsplash photo search Flow: %w", err)
 	}

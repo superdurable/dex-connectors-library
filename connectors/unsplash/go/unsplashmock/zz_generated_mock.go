@@ -32,6 +32,7 @@ type Mock struct {
 	listTopics           *connectormock.Query[unsplash.ListTopicsInput, unsplash.TopicList]
 	getTopic             *connectormock.Query[unsplash.GetTopicInput, unsplash.Topic]
 	listTopicPhotos      *connectormock.Query[unsplash.ListTopicPhotosInput, unsplash.PhotoList]
+	trackPhotoDownload   *connectormock.Mutation[unsplash.TrackPhotoDownloadInput, unsplash.TrackedPhotoDownload]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -53,6 +54,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		listTopics:           connectormock.NewQuery[unsplash.ListTopicsInput, unsplash.TopicList](t, unsplash.ListTopicsDefinition),
 		getTopic:             connectormock.NewQuery[unsplash.GetTopicInput, unsplash.Topic](t, unsplash.GetTopicDefinition),
 		listTopicPhotos:      connectormock.NewQuery[unsplash.ListTopicPhotosInput, unsplash.PhotoList](t, unsplash.ListTopicPhotosDefinition),
+		trackPhotoDownload:   connectormock.NewMutation[unsplash.TrackPhotoDownloadInput, unsplash.TrackedPhotoDownload](t, unsplash.TrackPhotoDownloadDefinition),
 	}
 	mock.searchPhotos.Default(SearchPhotosDefault())
 	mock.getPhoto.Default(GetPhotoDefault())
@@ -68,6 +70,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listTopics.Default(ListTopicsDefault())
 	mock.getTopic.Default(GetTopicDefault())
 	mock.listTopicPhotos.Default(ListTopicPhotosDefault())
+	mock.trackPhotoDownload.Default(TrackPhotoDownloadDefault())
 	connection, err := unsplash.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "unsplash", Name: connectionName})
 	if err != nil {
 		t.Fatalf("unsplash mock connection: %v", err)
@@ -149,6 +152,11 @@ func (mock *Mock) ListTopicPhotos() *connectormock.Query[unsplash.ListTopicPhoto
 	return mock.listTopicPhotos
 }
 
+// TrackPhotoDownload returns the trackPhotoDownload script.
+func (mock *Mock) TrackPhotoDownload() *connectormock.Mutation[unsplash.TrackPhotoDownloadInput, unsplash.TrackedPhotoDownload] {
+	return mock.trackPhotoDownload
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SearchPhotos() sdkgo.Query[unsplash.SearchPhotosInput, unsplash.PhotoPage] {
@@ -192,6 +200,9 @@ func (operations mockOperations) GetTopic() sdkgo.Query[unsplash.GetTopicInput, 
 }
 func (operations mockOperations) ListTopicPhotos() sdkgo.Query[unsplash.ListTopicPhotosInput, unsplash.PhotoList] {
 	return operations.mock.listTopicPhotos
+}
+func (operations mockOperations) TrackPhotoDownload() sdkgo.Mutation[unsplash.TrackPhotoDownloadInput, unsplash.TrackedPhotoDownload] {
+	return operations.mock.trackPhotoDownload
 }
 
 // SearchPhotosSearched selects the searched branch: Unsplash returned a page of photos, possibly empty.
@@ -751,4 +762,45 @@ func ListTopicPhotosListTopicPhotosDefault() connectormock.Case[unsplash.PhotoLi
 // ListTopicPhotosDefault is the manifest default, listTopicPhotosDefault, which New installs.
 func ListTopicPhotosDefault() connectormock.Case[unsplash.PhotoList] {
 	return ListTopicPhotosListTopicPhotosDefault()
+}
+
+// TrackPhotoDownloadTracked selects the tracked branch: Unsplash recorded the download event and returned an image URL.
+func TrackPhotoDownloadTracked(value unsplash.TrackedPhotoDownload, failure *sdkgo.Failure) connectormock.Case[unsplash.TrackedPhotoDownload] {
+	return connectormock.Branch(unsplash.TrackPhotoDownloadBranchTracked, value, failure)
+}
+
+// TrackPhotoDownloadNotFound selects the notFound branch: The photo does not exist.
+func TrackPhotoDownloadNotFound(value unsplash.TrackedPhotoDownload, failure *sdkgo.Failure) connectormock.Case[unsplash.TrackedPhotoDownload] {
+	return connectormock.Branch(unsplash.TrackPhotoDownloadBranchNotFound, value, failure)
+}
+
+// TrackPhotoDownloadProviderRejected selects the providerRejected branch: Unsplash conclusively rejected the event or application key.
+func TrackPhotoDownloadProviderRejected(value unsplash.TrackedPhotoDownload, failure *sdkgo.Failure) connectormock.Case[unsplash.TrackedPhotoDownload] {
+	return connectormock.Branch(unsplash.TrackPhotoDownloadBranchProviderRejected, value, failure)
+}
+
+// TrackPhotoDownloadUncertain returns an uncertain trackPhotoDownload outcome.
+func TrackPhotoDownloadUncertain(value unsplash.TrackedPhotoDownload, failure sdkgo.Failure) connectormock.Case[unsplash.TrackedPhotoDownload] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// TrackPhotoDownloadDefect selects the defect branch: Local input or credentials are invalid.
+func TrackPhotoDownloadDefect(value unsplash.TrackedPhotoDownload, failure *sdkgo.Failure) connectormock.Case[unsplash.TrackedPhotoDownload] {
+	return connectormock.Branch(unsplash.TrackPhotoDownloadBranchDefect, value, failure)
+}
+
+// TrackPhotoDownloadRetry asks Dex to retry the trackPhotoDownload Step, after the delay when it is positive.
+func TrackPhotoDownloadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[unsplash.TrackedPhotoDownload] {
+	return connectormock.Retry[unsplash.TrackedPhotoDownload](failure, after)
+}
+
+// TrackPhotoDownloadTrackedDefaultPhoto is the manifest mock trackedDefaultPhoto: Unsplash recorded an office photo download event.
+func TrackPhotoDownloadTrackedDefaultPhoto() connectormock.Case[unsplash.TrackedPhotoDownload] {
+	value := connectormock.MustDecodeOutput[unsplash.TrackedPhotoDownload](`{"url":"https://images.unsplash.com/photo-office-1"}`)
+	return connectormock.Branch(unsplash.TrackPhotoDownloadBranchTracked, value, nil)
+}
+
+// TrackPhotoDownloadDefault is the manifest default, trackedDefaultPhoto, which New installs.
+func TrackPhotoDownloadDefault() connectormock.Case[unsplash.TrackedPhotoDownload] {
+	return TrackPhotoDownloadTrackedDefaultPhoto()
 }

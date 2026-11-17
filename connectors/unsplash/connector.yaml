@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: unsplash
   displayName: Unsplash
-  description: Search and browse public Unsplash photos, collections, users, and topics.
+  description: Search and browse public Unsplash photos, collections, users, and topics, and track photo downloads.
   company: Unsplash
   categories: [data-search]
   version: v0.3.0
@@ -360,3 +360,24 @@ spec:
           description: "Returns representative public Unsplash data for listTopicPhotos."
           default: true
           output: {"photos":[{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}]}
+    - name: trackPhotoDownload
+      goName: TrackPhotoDownload
+      inputType: TrackPhotoDownloadInput
+      outputType: TrackedPhotoDownload
+      kind: mutation
+      description: "Record a download-like use of a public photo through Unsplash's event endpoint; a repeated event can increment the count again."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: tracked, goName: Tracked, description: "Unsplash recorded the download event and returned an image URL."}
+        - {id: notFound, goName: NotFound, description: "The photo does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Unsplash conclusively rejected the event or application key.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The event may have been recorded but its outcome cannot be confirmed after bounded sends.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
+      mocks:
+        - name: trackedDefaultPhoto
+          branch: tracked
+          description: "Unsplash recorded an office photo download event."
+          default: true
+          output: {url: "https://images.unsplash.com/photo-office-1"}

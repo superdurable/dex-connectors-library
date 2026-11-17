@@ -4680,6 +4680,391 @@
       },
       "name": "listTopicPhotos-defect",
       "operation": "listTopicPhotos"
+    },
+    {
+      "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "exchanges": [
+        {
+          "body": "{\"url\":\"https://images.unsplash.com/photo-office-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1/download",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "tracked",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "url": "https://images.unsplash.com/photo-office-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "input": {
+        "id": "office-1"
+      },
+      "name": "trackPhotoDownload-success",
+      "operation": "trackPhotoDownload"
+    },
+    {
+      "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1/download",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "input": {
+        "id": "office-1"
+      },
+      "name": "trackPhotoDownload-rejected",
+      "operation": "trackPhotoDownload"
+    },
+    {
+      "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "exchanges": [
+        {
+          "body": "{\"url\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1/download",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "input": {
+        "id": "office-1"
+      },
+      "name": "trackPhotoDownload-invalid",
+      "operation": "trackPhotoDownload"
+    },
+    {
+      "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1/download",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "input": {
+        "id": "office-1"
+      },
+      "name": "trackPhotoDownload-not-found",
+      "operation": "trackPhotoDownload"
+    },
+    {
+      "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1/download",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+          "sendCount": 1,
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "input": {
+        "id": "office-1"
+      },
+      "name": "trackPhotoDownload-rate-limit",
+      "operation": "trackPhotoDownload"
+    },
+    {
+      "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1/download",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "input": {
+        "id": "office-1"
+      },
+      "name": "trackPhotoDownload-server-error",
+      "operation": "trackPhotoDownload"
+    },
+    {
+      "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1/download",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "input": {
+        "id": "office-1"
+      },
+      "name": "trackPhotoDownload-transport",
+      "operation": "trackPhotoDownload"
+    },
+    {
+      "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "input": {
+        "id": "bad/id"
+      },
+      "name": "trackPhotoDownload-defect",
+      "operation": "trackPhotoDownload"
+    },
+    {
+      "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1/download",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+          "sendCount": 1,
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "input": {
+        "id": "office-1"
+      },
+      "name": "trackPhotoDownload-service-unavailable",
+      "operation": "trackPhotoDownload"
+    },
+    {
+      "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+      "input": {
+        "id": "office-1"
+      },
+      "name": "trackPhotoDownload-exhausted-unknown",
+      "operation": "trackPhotoDownload",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "86b3bfce-d3bb-5dbb-b1c8-1c053cbf4943",
+        "state": "claimed"
+      }
     }
   ],
   "schemaVersion": 1

@@ -5,6 +5,10 @@ This runnable Flow searches public Unsplash photos from Dex Web Start Flow. The 
 The same Worker registers `UnsplashCollectionBrowser`. Start it with
 `{"page":1,"perPage":10}` to list public collections. The integration test
 exercises both Flows with the generated mock and a real Dex Worker and Client.
+It also registers `UnsplashDownloadTracking`: start with
+`{"photoId":"<chosen photo ID>"}` only when the application performs a
+download-like action, so Unsplash records the event before using the URL it
+returns.
 
 ## Generate strict FDG 2.0
 
