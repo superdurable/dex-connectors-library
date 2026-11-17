@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { newFence, type Decision, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import type { ClickUpClient, Exchange } from './client.js';
 import { AddCommentDefinition, CreateTaskDefinition, FindMemberByEmailDefinition, GetTaskDefinition, SearchTasksDefinition, UpdateTaskDefinition, UpdateTaskTagsDefinition } from './generated/definitions.js';
 import type { AddCommentInput, AddCommentOutput, CreateTaskInput, CreateTaskOutput, FindMemberByEmailInput, GetTaskInput, Member, SearchTasksInput, SearchTasksOutput, Task, UpdateTaskInput, UpdateTaskOutput, UpdateTaskTagsInput, UpdateTaskTagsOutput } from './generated/models.js';
@@ -23,6 +24,30 @@ function mutationExchange<T>(exchange: Outcome, output: T, receipt: ReceiptDraft
   if (isRetryable(exchange)) return newMutationRetry(exchange.failure, exchange.retryAfterMs);
   const branch = exchange.kind === 'notFound' ? 'notFound' : exchange.kind === 'invalid' && hasInvalidResponse ? 'invalidResponse' : exchange.kind === 'defect' ? 'defect' : 'providerRejected';
   return newMutationBranch(branch, output, receipt, exchange.failure);
+}
+/** What a sent write proves: only a definite refusal status selects a refusal branch. */
+type WriteOutcome = 'accepted' | 'notApplied' | 'notFound' | 'rejected' | 'unknown' | 'defect';
+const definiteWriteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+/** Classify a sent write; `notApplied` is a 429, a 503, or a request that never left, and `unknown` may have applied. */
+function classifyWrite(exchange: Exchange): WriteOutcome {
+  if (exchange.kind === 'succeeded') return 'accepted';
+  if (exchange.kind === 'notSent' || exchange.kind === 'rateLimited') return 'notApplied';
+  if (exchange.kind === 'defect') return 'defect';
+  if (exchange.kind === 'invalid') return 'unknown';
+  if (exchange.status === 503) return 'notApplied';
+  if (exchange.kind === 'notFound' && exchange.status !== 410) return 'notFound';
+  if (exchange.kind === 'rejected' && definiteWriteRefusalStatuses.has(exchange.status)) return 'rejected';
+  return 'unknown';
+}
+/** Map a repeat-safe write without a 2xx: only a definite outcome selects a branch, and an unknown one retries. */
+function repeatableWriteFailure<T>(exchange: Outcome, output: T, receipt: ReceiptDraft): MutationAttempt<T> {
+  // A 2xx proves the change applied, so only its body is unusable.
+  if (exchange.kind === 'invalid') return newMutationBranch('invalidResponse', output, receipt, exchange.failure);
+  const outcome = classifyWrite(exchange);
+  if (outcome === 'notFound') return newMutationBranch('notFound', output, receipt, exchange.failure);
+  if (outcome === 'rejected') return newMutationBranch('providerRejected', output, receipt, exchange.failure);
+  if (outcome === 'defect') return newMutationBranch('defect', output, receipt, exchange.failure);
+  return newMutationRetry(exchange.failure, exchange.retryAfterMs);
 }
 function defect<T>(operation: string, output: T, message: string): QueryAttempt<T> {
   const cause = failure('VALIDATION', operation, message);
@@ -217,7 +242,7 @@ export class UpdateTaskOperation implements Mutation<UpdateTaskInput, UpdateTask
     if (input.addAssigneeIds?.length || input.removeAssigneeIds?.length) payload.assignees = { add: input.addAssigneeIds ?? [], rem: input.removeAssigneeIds ?? [] };
     const result = await this.client.exchange(call, 'updateTask', 'PUT', path(input.taskId), undefined, payload);
     const responseReceipt = receipt(this.client, call, input.taskId);
-    if (result.kind !== 'succeeded') return mutationExchange(result, output, responseReceipt);
+    if (result.kind !== 'succeeded') return repeatableWriteFailure(result, output, responseReceipt);
     try { return newMutationBranch('updated', { task: taskBody(result.response.body, false) }, responseReceipt); }
     catch { return failedDecode('updateTask', output, responseReceipt); }
   }
@@ -238,7 +263,7 @@ export class UpdateTaskTagsOperation implements Mutation<UpdateTaskTagsInput, Up
     const operationSignal = AbortSignal.any([call.context.cancellationSignal, AbortSignal.timeout(25_000)]);
     for (const change of changes) { const result = await this.client.exchange(call, 'updateTaskTags', change.method, `${path(input.taskId)}/tag/${pathEscape(change.tag)}`, undefined, undefined, operationSignal);
       if (result.kind === 'succeeded' || result.kind === 'invalid') { output.appliedChanges++; continue; }
-      return mutationExchange(result, output, responseReceipt);
+      return repeatableWriteFailure(result, output, responseReceipt);
     }
     const result = await this.client.exchange(call, 'updateTaskTags', 'GET', path(input.taskId), undefined, undefined, operationSignal);
     if (result.kind !== 'succeeded') return mutationExchange(result, output, responseReceipt);
@@ -247,24 +272,104 @@ export class UpdateTaskTagsOperation implements Mutation<UpdateTaskTagsInput, Up
   }
 }
 
-interface WriteDispatchMarker { clickupDispatchedCallId: string; clickupDispatchedAt: number }
-function previousDispatch(call: Call): WriteDispatchMarker | undefined {
-  if (!call.context.hasLastHeartbeatValue()) return undefined;
-  const value: unknown = call.context.getLastHeartbeatValue();
-  if (value === null) return undefined;
-  if (!value || typeof value !== 'object') return { clickupDispatchedCallId: call.id, clickupDispatchedAt: 0 };
-  const marker = value as Record<string, unknown>;
-  return { clickupDispatchedCallId: String(marker.clickupDispatchedCallId ?? ''), clickupDispatchedAt: Number(marker.clickupDispatchedAt ?? 0) };
-}
-async function clearDispatch(call: Call): Promise<void> { try { await call.context.recordHeartbeat(undefined); } catch { /* An uncleared marker keeps the next attempt in read back. */ } }
+/** Tolerated difference between the Worker's and ClickUp's clocks. */
+const writeReconciliationSkewMs = 300_000;
+/** Lets an unconfirmed write appear before the next attempt reads it back. */
+const unknownWriteSettleMs = 5_000;
 function matchText(value: string): string { return value.trim().replace(/\s+/g, ' '); }
+/** Return the earliest Unix milliseconds an earlier send of this Step can have created at, or 0 when unknown. */
+function readBackCreatedSince(call: Call): number {
+  const context = call.context as { firstAttemptAt?: unknown; flowStartedAt?: unknown };
+  const firstAttemptAt = context.firstAttemptAt instanceof Date ? context.firstAttemptAt : context.flowStartedAt;
+  if (!(firstAttemptAt instanceof Date)) return 0;
+  const since = firstAttemptAt.getTime() - writeReconciliationSkewMs;
+  return since > 0 ? since : 0;
+}
 
-/** Create one task with a Dex checkpoint and read back on an ambiguous result. */
+/** One attempt of an unkeyed ClickUp write behind the shared single-dispatch fence. */
+class FencedWrite {
+  /** Whether an earlier send of this call may have taken effect. */
+  readonly hasPossibleEarlierSend: boolean;
+  /** The identity an earlier accepted send saved, or an empty string. */
+  readonly providerId: string;
+
+  private constructor(private readonly operation: string, private readonly fence: Fence, private readonly decision: Decision) {
+    this.hasPossibleEarlierSend = (decision.priorSendUpperBound ?? 0) > 0;
+    this.providerId = decision.marker?.providerId ?? '';
+  }
+
+  /** Decide whether this attempt may send, or return the attempt that forbids it. */
+  static start<Output>(call: Call, definition: MutationDefinition, operation: string, output: Output): FencedWrite | MutationAttempt<Output> {
+    let fence: Fence;
+    try { fence = newFence(call, 30_000, { maxSends: definitionMaxSends(definition) }); }
+    catch { return newMutationBranch('defect', output, {}, failure('LOCAL_DEFECT', operation, 'ClickUp dispatch fence could not be constructed')); }
+    const decision = fence.decide();
+    if (decision.kind === 'failClosed') return newMutationRetry(failure('AVAILABILITY', operation, 'the ClickUp dispatch checkpoint is unreadable, so nothing was sent in this attempt'));
+    return new FencedWrite(operation, fence, decision);
+  }
+
+  /** Whether an earlier send may have taken effect, so this attempt reads back first. */
+  get needsReadBack(): boolean { return this.decision.kind !== 'sendAllowed' || this.providerId !== ''; }
+
+  /** Send once behind the fence, or return the Retry when the fence refuses to send. */
+  async dispatch<Output>(send: (signal: AbortSignal) => Promise<Exchange>): Promise<{ exchange: Exchange } | { attempt: MutationAttempt<Output> }> {
+    try { return { exchange: await this.fence.dispatch(send) }; }
+    catch { return { attempt: newMutationRetry(failure('AVAILABILITY', this.operation, 'the ClickUp dispatch checkpoint or request budget is unavailable, so nothing was sent')) }; }
+  }
+
+  /** Map a sent write without a 2xx; an unknown outcome retries so the next attempt reads back. */
+  async unaccepted<Output>(exchange: Outcome, output: Output, responseReceipt: ReceiptDraft): Promise<MutationAttempt<Output>> {
+    const outcome = classifyWrite(exchange);
+    if (outcome === 'notApplied') {
+      try { await this.fence.recordCanResend(); } catch { return newMutationRetry(failure('AVAILABILITY', this.operation, 'ClickUp retry checkpoint could not be recorded'), exchange.retryAfterMs); }
+      return newMutationRetry(exchange.failure, exchange.retryAfterMs);
+    }
+    if (outcome === 'defect') {
+      // Credentials were unavailable or the request was never built, so nothing was sent.
+      try { await this.fence.recordCanResend(); } catch { /* A lost checkpoint only keeps the claim. */ }
+      return this.hasPossibleEarlierSend ? newMutationUncertain(output, exchange.failure, responseReceipt) : newMutationBranch('defect', output, responseReceipt, exchange.failure);
+    }
+    if (outcome === 'notFound' || outcome === 'rejected') {
+      if (this.hasPossibleEarlierSend) return newMutationUncertain(output, exchange.failure, responseReceipt);
+      try { await this.fence.recordCanResend(); } catch { return newMutationRetry(failure('AVAILABILITY', this.operation, 'ClickUp rejection checkpoint could not be recorded')); }
+      return newMutationBranch(outcome === 'notFound' ? 'notFound' : 'providerRejected', output, responseReceipt, exchange.failure);
+    }
+    // The claim stays the last marker, so the next attempt counts this send.
+    return newMutationRetry(exchange.failure, Math.max(exchange.retryAfterMs, unknownWriteSettleMs));
+  }
+
+  /** Save the accepted identity so a replayed attempt never resends it. */
+  async recordAccepted(providerId: string): Promise<void> {
+    try { await this.fence.recordProviderId(providerId); } catch { /* The accepted result stands; a lost checkpoint keeps the claim. */ }
+  }
+
+  /** Permit one send when the fence allows it after a read-back that confirmed nothing, and otherwise select uncertain. */
+  missingReadBack<Output>(output: Output, responseReceipt: ReceiptDraft, subject: 'create' | 'comment', cause: Failure): MutationAttempt<Output> | undefined {
+    if (this.decision.kind === 'readBackThenResendAllowed' && !this.providerId) return undefined;
+    const confirmed = subject === 'create' ? 'task' : subject;
+    return newMutationUncertain(output, failure(cause.kind, this.operation, `earlier attempts of this Step sent the ${subject} up to the send cap or were accepted, and read-back cannot confirm the ${confirmed}, so it is not sent again: ${cause.message}`), responseReceipt);
+  }
+}
+
+function createTaskPayload(input: CreateTaskInput): Record<string, unknown> {
+  const payload: Record<string, unknown> = { name: input.name };
+  if (input.isCreatorNotified) payload.notify_all = true;
+  if (input.markdownDescription) payload.markdown_content = input.markdownDescription;
+  if (input.status) payload.status = input.status; if (input.priority) payload.priority = input.priority;
+  if (input.dueAt) { payload.due_date = dateMilliseconds(input.dueAt); payload.due_date_time = true; }
+  if (input.assigneeIds?.length) payload.assignees = input.assigneeIds;
+  if (input.tags?.length) payload.tags = input.tags;
+  if (input.parentTaskId) payload.parent = input.parentTaskId;
+  if (input.customFields?.length) payload.custom_fields = input.customFields.map(field => ({ id: field.id, value: field.value }));
+  return payload;
+}
+
+/** Create one task behind the single-dispatch fence, reading back an unknown earlier send and resending only within the send cap. */
 export class CreateTaskOperation implements Mutation<CreateTaskInput, CreateTaskOutput> {
   /** Bind a client. */ constructor(private readonly client: ClickUpClient) {}
   /** Return the generated definition. */ definition() { return CreateTaskDefinition; }
   /** Correlate the checkpoint with the Dex Call ID. */ idempotencyKey(callId: string): string { return callId; }
-  /** Create or reconcile one task. */
+  /** Create, read back, or resend one task. */
   async invoke(call: Call, input: CreateTaskInput): Promise<MutationAttempt<CreateTaskOutput>> {
     const output: CreateTaskOutput = { listId: input.listId, name: input.name, task: zeroTask };
     try { validateNumericId(input.listId); validateName(input.name); if (Buffer.byteLength(input.markdownDescription ?? '') > 65_536) throw new TypeError('description too long');
@@ -273,93 +378,115 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, CreateTask
       if (input.parentTaskId) validateTaskId(input.parentTaskId);
       if (input.customFields?.some(field => !taskIdPattern.test(field.id) || !isJSONValue(field.value)) || hasDuplicate(input.customFields?.map(field => field.id))) throw new TypeError('invalid custom field');
     } catch (error) { return defect('createTask', output, String(error)); }
-    const prior = previousDispatch(call);
-    if (prior) return this.reconcile(call, input, output, prior);
-    try { await call.context.recordHeartbeat({ clickupDispatchedCallId: call.id, clickupDispatchedAt: this.client.currentTime().getTime() } satisfies WriteDispatchMarker); }
-    catch { return newMutationRetry(failure('AVAILABILITY', 'createTask', 'Dex did not record the dispatch checkpoint; nothing was sent')); }
-    const payload: Record<string, unknown> = { name: input.name };
-    if (input.isCreatorNotified) payload.notify_all = true;
-    if (input.markdownDescription) payload.markdown_content = input.markdownDescription;
-    if (input.status) payload.status = input.status; if (input.priority) payload.priority = input.priority;
-    if (input.dueAt) { payload.due_date = dateMilliseconds(input.dueAt); payload.due_date_time = true; }
-    if (input.assigneeIds?.length) payload.assignees = input.assigneeIds;
-    if (input.tags?.length) payload.tags = input.tags;
-    if (input.parentTaskId) payload.parent = input.parentTaskId;
-    if (input.customFields?.length) payload.custom_fields = input.customFields.map(field => ({ id: field.id, value: field.value }));
-    const result = await this.client.exchange(call, 'createTask', 'POST', `/list/${input.listId}/task`, undefined, payload);
-    const responseReceipt = receipt(this.client, call, input.listId);
-    if (result.kind !== 'succeeded') {
-      if (result.kind === 'notSent' || result.kind === 'rateLimited') { await clearDispatch(call); return newMutationRetry(result.failure, result.retryAfterMs); }
-      if (result.kind === 'unconfirmed' || result.kind === 'invalid') return newMutationRetry(result.failure, result.retryAfterMs);
-      if (result.kind === 'defect') await clearDispatch(call);
-      return newMutationBranch(result.kind === 'notFound' ? 'notFound' : result.kind === 'defect' ? 'defect' : 'providerRejected', output, responseReceipt, result.failure);
+    const write = FencedWrite.start(call, CreateTaskDefinition, 'createTask', output);
+    if (!(write instanceof FencedWrite)) return write;
+    if (write.needsReadBack) {
+      const reconciled = await this.reconcile(call, input, output, write);
+      if (reconciled) return reconciled;
     }
-    try { const task = taskBody(result.response.body, false); return newMutationBranch('created', { ...output, task }, receipt(this.client, call, task.id)); }
-    catch { return newMutationRetry(failure('PROTOCOL', 'createTask', 'ClickUp accepted the task but returned an invalid task, so the next attempt reads the List back')); }
+    const payload = createTaskPayload(input);
+    const sent = await write.dispatch<CreateTaskOutput>(signal => this.client.exchange(call, 'createTask', 'POST', `/list/${input.listId}/task`, undefined, payload, signal));
+    if ('attempt' in sent) return sent.attempt;
+    const result = sent.exchange;
+    const responseReceipt = receipt(this.client, call, input.listId);
+    if (result.kind !== 'succeeded') return write.unaccepted(result, output, responseReceipt);
+    let task: Task;
+    try { task = taskBody(result.response.body, false); }
+    catch {
+      const reference = createdTaskReference(result.response.body);
+      // The next attempt reads this task back by ID and never resends it.
+      if (reference) await write.recordAccepted(reference);
+      return newMutationRetry(failure('PROTOCOL', 'createTask', 'ClickUp accepted the task but returned an invalid task, so the next attempt reads it back'), unknownWriteSettleMs);
+    }
+    await write.recordAccepted(task.id);
+    return newMutationBranch('created', { ...output, task }, receipt(this.client, call, task.id));
   }
 
-  private async reconcile(call: Call, input: CreateTaskInput, output: CreateTaskOutput, marker: WriteDispatchMarker): Promise<MutationAttempt<CreateTaskOutput>> {
-    const since = marker.clickupDispatchedAt > 0 ? marker.clickupDispatchedAt - 300_000 : 0;
+  /** Never send; return undefined when read-back confirmed nothing and the fence permits a resend. */
+  private async reconcile(call: Call, input: CreateTaskInput, output: CreateTaskOutput, write: FencedWrite): Promise<MutationAttempt<CreateTaskOutput> | undefined> {
+    const responseReceipt = receipt(this.client, call, input.listId);
+    if (write.providerId) {
+      const result = await this.client.exchange(call, 'createTask', 'GET', path(write.providerId));
+      if (result.kind !== 'succeeded') {
+        if (isRetryable(result)) return newMutationRetry(result.failure, result.retryAfterMs);
+        return write.missingReadBack(output, responseReceipt, 'create', result.failure);
+      }
+      let task: Task;
+      try { task = taskBody(result.response.body, false); if (task.id !== write.providerId) throw new TypeError('another task'); }
+      catch { return write.missingReadBack(output, responseReceipt, 'create', failure('PROTOCOL', 'createTask', 'the accepted task read back is invalid')); }
+      return newMutationBranch('created', { ...output, task, wasAlreadyApplied: true }, receipt(this.client, call, task.id));
+    }
+    const since = readBackCreatedSince(call);
     const query = new URLSearchParams({ include_closed: 'true', subtasks: 'true', page: '0' });
     if (since > 0) query.set('date_created_gt', String(since));
     const result = await this.client.exchange(call, 'createTask', 'GET', `/list/${input.listId}/task`, query);
-    const responseReceipt = receipt(this.client, call, input.listId);
     if (result.kind !== 'succeeded') {
       if (isRetryable(result)) return newMutationRetry(result.failure, result.retryAfterMs);
       if (result.kind === 'notFound') return newMutationBranch('notFound', output, responseReceipt, result.failure);
-      return newMutationUncertain(output, failure(result.failure.kind, 'createTask', 'an earlier attempt of this Step sent the create, and the List could not be read back: ' + result.failure.message), responseReceipt);
+      return write.missingReadBack(output, responseReceipt, 'create', result.failure);
     }
     let matches: Task[];
     try { matches = (searchPage(result.response.body, 0).tasks ?? []).filter(task => task.name.trim() === input.name.trim() && (task.parentTaskId ?? '') === (input.parentTaskId ?? '') && (!since || (task.createdAt !== undefined && Date.parse(task.createdAt) >= since))); }
-    catch { return newMutationUncertain(output, failure('PROTOCOL', 'createTask', 'an earlier attempt of this Step sent the create, and the List read back is invalid'), responseReceipt); }
-    if (matches.length !== 1) return newMutationUncertain(output, failure('TRANSPORT', 'createTask', `an earlier attempt of this Step sent the create without a confirmed outcome, and the List shows ${matches.length} tasks with the name created since, so it is not sent again`), responseReceipt);
+    catch { return write.missingReadBack(output, responseReceipt, 'create', failure('PROTOCOL', 'createTask', 'the List read back is invalid')); }
+    if (!matches.length) return write.missingReadBack(output, responseReceipt, 'create', failure('TRANSPORT', 'createTask', 'the List shows no task with the name created since'));
+    if (matches.length > 1) return newMutationUncertain(output, failure('TRANSPORT', 'createTask', `an earlier attempt of this Step sent the create without a confirmed outcome, and the List shows ${matches.length} tasks with the name created since, so it is not sent again`), responseReceipt);
     const task = matches[0]!;
     return newMutationBranch('created', { ...output, task, wasAlreadyApplied: true }, receipt(this.client, call, task.id));
   }
 }
 
-/** Add one comment with a Dex checkpoint and read back on an ambiguous result. */
+/** Return the task ID of an accepted create whose task is otherwise unusable, or an empty string. */
+function createdTaskReference(body: Uint8Array): string {
+  try { const id = decodeObject(body).id; return typeof id === 'string' && taskIdPattern.test(id) ? id : ''; }
+  catch { return ''; }
+}
+
+/** Add one comment behind the single-dispatch fence, reading back an unknown earlier send and resending only within the send cap. */
 export class AddCommentOperation implements Mutation<AddCommentInput, AddCommentOutput> {
   /** Bind a client. */ constructor(private readonly client: ClickUpClient) {}
   /** Return the generated definition. */ definition() { return AddCommentDefinition; }
   /** Correlate the checkpoint with the Dex Call ID. */ idempotencyKey(callId: string): string { return callId; }
-  /** Add or reconcile one comment. */
+  /** Add, read back, or resend one comment. */
   async invoke(call: Call, input: AddCommentInput): Promise<MutationAttempt<AddCommentOutput>> {
     const output: AddCommentOutput = { taskId: input.taskId };
     try { validateTaskId(input.taskId); if (!input.text.trim() || Buffer.byteLength(input.text) > 32_768) throw new TypeError('invalid comment text'); }
     catch (error) { return defect('addComment', output, String(error)); }
-    const prior = previousDispatch(call);
-    if (prior) return this.reconcile(call, input, output, prior);
-    try { await call.context.recordHeartbeat({ clickupDispatchedCallId: call.id, clickupDispatchedAt: this.client.currentTime().getTime() } satisfies WriteDispatchMarker); }
-    catch { return newMutationRetry(failure('AVAILABILITY', 'addComment', 'Dex did not record the dispatch checkpoint; nothing was sent')); }
-    const result = await this.client.exchange(call, 'addComment', 'POST', `${path(input.taskId)}/comment`, undefined, { comment_text: input.text, notify_all: input.isCreatorNotified ?? false });
-    const responseReceipt = receipt(this.client, call, input.taskId);
-    if (result.kind !== 'succeeded') {
-      if (result.kind === 'notSent' || result.kind === 'rateLimited') { await clearDispatch(call); return newMutationRetry(result.failure, result.retryAfterMs); }
-      if (result.kind === 'unconfirmed' || result.kind === 'invalid') return newMutationRetry(result.failure, result.retryAfterMs);
-      if (result.kind === 'defect') await clearDispatch(call);
-      return newMutationBranch(result.kind === 'notFound' ? 'notFound' : result.kind === 'defect' ? 'defect' : 'providerRejected', output, responseReceipt, result.failure);
+    const write = FencedWrite.start(call, AddCommentDefinition, 'addComment', output);
+    if (!(write instanceof FencedWrite)) return write;
+    if (write.needsReadBack) {
+      const reconciled = await this.reconcile(call, input, output, write);
+      if (reconciled) return reconciled;
     }
-    try { const data = decodeObject(result.response.body); const id = identifier(data.id); if (!taskIdPattern.test(id)) throw new TypeError('invalid comment ID');
-      const createdAt = milliseconds(data.date);
-      return newMutationBranch('added', { ...output, commentId: id, ...(createdAt ? { createdAt } : {}) }, { ...responseReceipt, metadata: { commentId: id } });
-    } catch { return newMutationRetry(failure('PROTOCOL', 'addComment', 'ClickUp accepted the comment but returned no valid comment ID, so the next attempt reads the comments back')); }
+    const sent = await write.dispatch<AddCommentOutput>(signal => this.client.exchange(call, 'addComment', 'POST', `${path(input.taskId)}/comment`, undefined, { comment_text: input.text, notify_all: input.isCreatorNotified ?? false }, signal));
+    if ('attempt' in sent) return sent.attempt;
+    const result = sent.exchange;
+    const responseReceipt = receipt(this.client, call, input.taskId);
+    if (result.kind !== 'succeeded') return write.unaccepted(result, output, responseReceipt);
+    let id: string, createdAt: string | undefined;
+    try { const data = decodeObject(result.response.body); id = identifier(data.id); if (!taskIdPattern.test(id)) throw new TypeError('invalid comment ID'); createdAt = milliseconds(data.date); }
+    catch { return newMutationRetry(failure('PROTOCOL', 'addComment', 'ClickUp accepted the comment but returned no valid comment ID, so the next attempt reads the comments back'), unknownWriteSettleMs); }
+    await write.recordAccepted(id);
+    return newMutationBranch('added', { ...output, commentId: id, ...(createdAt ? { createdAt } : {}) }, { ...responseReceipt, metadata: { commentId: id } });
   }
 
-  private async reconcile(call: Call, input: AddCommentInput, output: AddCommentOutput, marker: WriteDispatchMarker): Promise<MutationAttempt<AddCommentOutput>> {
+  /** Never send; return undefined when read-back confirmed nothing and the fence permits a resend. */
+  private async reconcile(call: Call, input: AddCommentInput, output: AddCommentOutput, write: FencedWrite): Promise<MutationAttempt<AddCommentOutput> | undefined> {
     const result = await this.client.exchange(call, 'addComment', 'GET', `${path(input.taskId)}/comment`);
     const responseReceipt = receipt(this.client, call, input.taskId);
     if (result.kind !== 'succeeded') {
       if (isRetryable(result)) return newMutationRetry(result.failure, result.retryAfterMs);
       if (result.kind === 'notFound') return newMutationBranch('notFound', output, responseReceipt, result.failure);
-      return newMutationUncertain(output, failure(result.failure.kind, 'addComment', "an earlier attempt of this Step sent the comment, and the task's comments could not be read back: " + result.failure.message), responseReceipt);
+      return write.missingReadBack(output, responseReceipt, 'comment', result.failure);
     }
     let matches: { id: string; createdAt?: string | undefined }[];
     try { const data = decodeObject(result.response.body); if (!Array.isArray(data.comments)) throw new TypeError('missing comments');
-      const since = marker.clickupDispatchedAt > 0 ? marker.clickupDispatchedAt - 300_000 : 0;
-      matches = data.comments.map(value => object(value)).filter(value => matchText(String(value.comment_text ?? '')) === matchText(input.text) && (!since || (milliseconds(value.date) !== undefined && Date.parse(milliseconds(value.date)!) >= since))).map(value => ({ id: identifier(value.id), ...(milliseconds(value.date) ? { createdAt: milliseconds(value.date) } : {}) }));
-    } catch { return newMutationUncertain(output, failure('PROTOCOL', 'addComment', 'an earlier attempt of this Step sent the comment, and the comments read back are invalid'), responseReceipt); }
-    if (matches.length !== 1 || !taskIdPattern.test(matches[0]!.id)) return newMutationUncertain(output, failure('TRANSPORT', 'addComment', `an earlier attempt of this Step sent the comment without a confirmed outcome, and the task shows ${matches.length} matching comments since, so it is not sent again`), responseReceipt);
+      const since = readBackCreatedSince(call);
+      const isSentByThisStep = (value: Record<string, unknown>): boolean => write.providerId ? identifier(value.id) === write.providerId
+        : matchText(String(value.comment_text ?? '')) === matchText(input.text) && (!since || (milliseconds(value.date) !== undefined && Date.parse(milliseconds(value.date)!) >= since));
+      matches = data.comments.map(value => object(value)).filter(isSentByThisStep).map(value => ({ id: identifier(value.id), ...(milliseconds(value.date) ? { createdAt: milliseconds(value.date) } : {}) }));
+    } catch { return write.missingReadBack(output, responseReceipt, 'comment', failure('PROTOCOL', 'addComment', 'the comments read back are invalid')); }
+    if (matches.length > 1) return newMutationUncertain(output, failure('TRANSPORT', 'addComment', `an earlier attempt of this Step sent the comment without a confirmed outcome, and the task shows ${matches.length} matching comments since, so it is not sent again`), responseReceipt);
+    if (!matches.length || !taskIdPattern.test(matches[0]!.id)) return write.missingReadBack(output, responseReceipt, 'comment', failure('TRANSPORT', 'addComment', 'the task shows no matching comment'));
     const match = matches[0]!;
     return newMutationBranch('added', { ...output, commentId: match.id, ...(match.createdAt ? { createdAt: match.createdAt } : {}), wasAlreadyApplied: true }, { ...responseReceipt, metadata: { commentId: match.id } });
   }

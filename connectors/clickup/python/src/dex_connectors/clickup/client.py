@@ -56,6 +56,9 @@ _TEAM_NOT_AUTHORIZED = {
 }
 
 
+_DEFINITE_WRITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+
+
 @dataclass(frozen=True)
 class Exchange:
     """One classified provider request."""
@@ -64,11 +67,36 @@ class Exchange:
     failure: Failure | None = None
     body: bytes = b""
     retry_after: timedelta = timedelta()
+    status: int = 0
+    """The HTTP status of a non-2xx response, or 0."""
 
     @property
     def is_retryable(self) -> bool:
         """Whether a read or repeat-safe write may try again."""
         return self.kind in ("not_sent", "rate_limited", "unconfirmed")
+
+    @property
+    def write_outcome(self) -> str:
+        """Classify a sent write; only a definite refusal status selects a refusal branch.
+
+        Returns `accepted`, `not_applied` (429, 503, or never sent), `not_found`,
+        `rejected`, `defect`, or `unknown`, when ClickUp may have applied it.
+        """
+        if self.kind == "succeeded":
+            return "accepted"
+        if self.kind in ("not_sent", "rate_limited"):
+            return "not_applied"
+        if self.kind == "defect":
+            return "defect"
+        if self.kind == "invalid":
+            return "unknown"
+        if self.status == 503:
+            return "not_applied"
+        if self.kind == "not_found" and self.status != 410:
+            return "not_found"
+        if self.kind == "rejected" and self.status in _DEFINITE_WRITE_REFUSAL_STATUSES:
+            return "rejected"
+        return "unknown"
 
 
 class Client:
@@ -205,7 +233,11 @@ class Client:
             error_body = b""
         except ProviderTransportError:
             return outcome(
-                "unconfirmed", operation, FailureKind.TRANSPORT, "ClickUp response could not be read"
+                "unconfirmed",
+                operation,
+                FailureKind.TRANSPORT,
+                "ClickUp response could not be read",
+                status=status,
             )
         error_code = ""
         try:
@@ -237,6 +269,7 @@ class Client:
                 FailureKind.RATE_LIMIT,
                 f"ClickUp rate limited the token (HTTP 429){suffix}",
                 min(delay, 60.0),
+                status,
             )
         if status == 408 or status >= 500:
             return outcome(
@@ -244,6 +277,7 @@ class Client:
                 operation,
                 FailureKind.AVAILABILITY,
                 f"ClickUp could not complete the request (HTTP {status}){suffix}",
+                status=status,
             )
         if status in (404, 410):
             return outcome(
@@ -251,6 +285,7 @@ class Client:
                 operation,
                 FailureKind.NOT_FOUND,
                 f"ClickUp found no such resource (HTTP {status}){suffix}",
+                status=status,
             )
         if status == 401 and error_code in _TEAM_NOT_AUTHORIZED:
             return outcome(
@@ -259,10 +294,15 @@ class Client:
                 FailureKind.AUTHORIZATION,
                 "ClickUp reports that the resource's Workspace is not authorized for the token "
                 f"(HTTP 401){suffix}",
+                status=status,
             )
         if 300 <= status < 400:
             return outcome(
-                "rejected", operation, FailureKind.PROTOCOL, f"ClickUp redirected the request (HTTP {status})"
+                "rejected",
+                operation,
+                FailureKind.PROTOCOL,
+                f"ClickUp redirected the request (HTTP {status})",
+                status=status,
             )
         if status == 401:
             return outcome(
@@ -270,6 +310,7 @@ class Client:
                 operation,
                 FailureKind.AUTHENTICATION,
                 f"ClickUp rejected the personal API token (HTTP 401){suffix}",
+                status=status,
             )
         kind = (
             FailureKind.AUTHORIZATION
@@ -280,7 +321,13 @@ class Client:
             if status in (400, 422)
             else FailureKind.PROVIDER_REJECTION
         )
-        return outcome("rejected", operation, kind, f"ClickUp rejected the request (HTTP {status}){suffix}")
+        return outcome(
+            "rejected",
+            operation,
+            kind,
+            f"ClickUp rejected the request (HTTP {status}){suffix}",
+            status=status,
+        )
 
     def search_tasks(self) -> "SearchTasksOperation":
         """Bind Workspace search."""
@@ -331,10 +378,12 @@ def failure(operation: str, kind: FailureKind, message: str) -> Failure:
 
 
 def outcome(
-    kind: str, operation: str, failure_kind: FailureKind, message: str, delay: float = 0.0
+    kind: str, operation: str, failure_kind: FailureKind, message: str, delay: float = 0.0, status: int = 0
 ) -> Exchange:
-    """Create a failed exchange."""
-    return Exchange(kind, failure(operation, failure_kind, message), retry_after=timedelta(seconds=delay))
+    """Create a failed exchange; status is the HTTP status of a non-2xx response."""
+    return Exchange(
+        kind, failure(operation, failure_kind, message), retry_after=timedelta(seconds=delay), status=status
+    )
 
 
 _TASK_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
@@ -538,8 +587,7 @@ def decode_task(value: Any, details: bool = False) -> "Task":
                 raise ValueError("task custom field has no valid ID")
             custom_fields.append(
                 CustomFieldValue(
-                    field_id, field_name, field_type,
-                    _exact_custom_field_value(field.get("value"), field_id)
+                    field_id, field_name, field_type, _exact_custom_field_value(field.get("value"), field_id)
                 )
             )
     description = value.get("markdown_description")

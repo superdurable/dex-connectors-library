@@ -422,7 +422,7 @@ var CreateTaskDefinition = sdkgo.MutationDefinition{
 		{ID: CreateTaskBranchCreated, Description: "ClickUp created the task; a retried attempt that found its own earlier task in the List reports it instead of creating another."},
 		{ID: CreateTaskBranchNotFound, Description: "The List does not exist or the connection cannot see it; nothing was created.", Optional: true},
 		{ID: CreateTaskBranchProviderRejected, Description: "ClickUp conclusively rejected the task, such as an unknown status, assignee, or custom field value, or missing permission; nothing was created.", Optional: true},
-		{ID: CreateTaskBranchUncertain, Description: "An earlier attempt sent the create but its outcome cannot be confirmed and the List shows no single matching task, so the task may exist; the connector never sends it again.", Optional: true},
+		{ID: CreateTaskBranchUncertain, Description: "Earlier attempts sent the create up to the send cap, or ClickUp accepted it, and read-back cannot confirm a single matching task, so the task may exist; the connector does not send it again.", Optional: true},
 		{ID: CreateTaskBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -430,6 +430,8 @@ var CreateTaskDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateTaskResult = sdkgo.MutationResult[CreateTaskOutput]
@@ -451,6 +453,8 @@ type CreateTaskStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateTaskResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateTaskOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateTaskStep[IN any](config CreateTaskStepConfig[IN]) sdkgo.MutationStep[IN, CreateTaskInput, CreateTaskOutput] {
@@ -486,6 +490,7 @@ func NewCreateTaskStep[IN any](config CreateTaskStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -509,6 +514,7 @@ var UpdateTaskDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateTaskResult = sdkgo.MutationResult[UpdateTaskOutput]
@@ -588,6 +594,7 @@ var UpdateTaskTagsDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateTaskTagsResult = sdkgo.MutationResult[UpdateTaskTagsOutput]
@@ -659,7 +666,7 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		{ID: AddCommentBranchAdded, Description: "The comment is on the task; a retried attempt that found its own earlier comment reports it instead of adding another."},
 		{ID: AddCommentBranchNotFound, Description: "The task does not exist or the connection cannot see it; nothing was added.", Optional: true},
 		{ID: AddCommentBranchProviderRejected, Description: "ClickUp conclusively rejected the comment, such as missing permission; nothing was added.", Optional: true},
-		{ID: AddCommentBranchUncertain, Description: "An earlier attempt sent the comment but its outcome cannot be confirmed and the task shows no matching comment, so the comment may exist; the connector never sends it again.", Optional: true},
+		{ID: AddCommentBranchUncertain, Description: "Earlier attempts sent the comment up to the send cap, or ClickUp accepted it, and read-back cannot confirm a single matching comment, so the comment may exist; the connector does not send it again.", Optional: true},
 		{ID: AddCommentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -667,6 +674,8 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type AddCommentResult = sdkgo.MutationResult[AddCommentOutput]
@@ -688,6 +697,8 @@ type AddCommentStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[AddCommentResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AddCommentOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewAddCommentStep[IN any](config AddCommentStepConfig[IN]) sdkgo.MutationStep[IN, AddCommentInput, AddCommentOutput] {
@@ -723,6 +734,7 @@ func NewAddCommentStep[IN any](config AddCommentStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 

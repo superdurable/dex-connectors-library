@@ -81,7 +81,7 @@ export interface CreateTaskStepConfig<StepInput, OperationInput = CreateTaskInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** ClickUp conclusively rejected the task, such as an unknown status, assignee, or custom field value, or missing permission; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** An earlier attempt sent the create but its outcome cannot be confirmed and the List shows no single matching task, so the task may exist; the connector never sends it again. */
+  /** Earlier attempts sent the create up to the send cap, or ClickUp accepted it, and read-back cannot confirm a single matching task, so the task may exist; the connector does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -174,7 +174,7 @@ export interface AddCommentStepConfig<StepInput, OperationInput = AddCommentInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** ClickUp conclusively rejected the comment, such as missing permission; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** An earlier attempt sent the comment but its outcome cannot be confirmed and the task shows no matching comment, so the comment may exist; the connector never sends it again. */
+  /** Earlier attempts sent the comment up to the send cap, or ClickUp accepted it, and read-back cannot confirm a single matching comment, so the comment may exist; the connector does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

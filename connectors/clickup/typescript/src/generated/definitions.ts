@@ -89,7 +89,7 @@ export const CreateTaskBranchCreated = CreateTaskBranch.Created;
 export const CreateTaskBranchNotFound = CreateTaskBranch.NotFound;
 /** ClickUp conclusively rejected the task, such as an unknown status, assignee, or custom field value, or missing permission; nothing was created. */
 export const CreateTaskBranchProviderRejected = CreateTaskBranch.ProviderRejected;
-/** An earlier attempt sent the create but its outcome cannot be confirmed and the List shows no single matching task, so the task may exist; the connector never sends it again. */
+/** Earlier attempts sent the create up to the send cap, or ClickUp accepted it, and read-back cannot confirm a single matching task, so the task may exist; the connector does not send it again. */
 export const CreateTaskBranchUncertain = CreateTaskBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateTaskBranchDefect = CreateTaskBranch.Defect;
@@ -100,10 +100,12 @@ export const CreateTaskDefinition: MutationDefinition = {
     { id: "created", description: "ClickUp created the task; a retried attempt that found its own earlier task in the List reports it instead of creating another." },
     { id: "notFound", description: "The List does not exist or the connection cannot see it; nothing was created.", optional: true },
     { id: "providerRejected", description: "ClickUp conclusively rejected the task, such as an unknown status, assignee, or custom field value, or missing permission; nothing was created.", optional: true },
-    { id: "uncertain", description: "An earlier attempt sent the create but its outcome cannot be confirmed and the List shows no single matching task, so the task may exist; the connector never sends it again.", optional: true },
+    { id: "uncertain", description: "Earlier attempts sent the create up to the send cap, or ClickUp accepted it, and read-back cannot confirm a single matching task, so the task may exist; the connector does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for createTask. */
 export const CreateTaskMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -137,6 +139,7 @@ export const UpdateTaskDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateTask. */
 export const UpdateTaskMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -170,6 +173,7 @@ export const UpdateTaskTagsDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateTaskTags. */
 export const UpdateTaskTagsMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -188,7 +192,7 @@ export const AddCommentBranchAdded = AddCommentBranch.Added;
 export const AddCommentBranchNotFound = AddCommentBranch.NotFound;
 /** ClickUp conclusively rejected the comment, such as missing permission; nothing was added. */
 export const AddCommentBranchProviderRejected = AddCommentBranch.ProviderRejected;
-/** An earlier attempt sent the comment but its outcome cannot be confirmed and the task shows no matching comment, so the comment may exist; the connector never sends it again. */
+/** Earlier attempts sent the comment up to the send cap, or ClickUp accepted it, and read-back cannot confirm a single matching comment, so the comment may exist; the connector does not send it again. */
 export const AddCommentBranchUncertain = AddCommentBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddCommentBranchDefect = AddCommentBranch.Defect;
@@ -199,10 +203,12 @@ export const AddCommentDefinition: MutationDefinition = {
     { id: "added", description: "The comment is on the task; a retried attempt that found its own earlier comment reports it instead of adding another." },
     { id: "notFound", description: "The task does not exist or the connection cannot see it; nothing was added.", optional: true },
     { id: "providerRejected", description: "ClickUp conclusively rejected the comment, such as missing permission; nothing was added.", optional: true },
-    { id: "uncertain", description: "An earlier attempt sent the comment but its outcome cannot be confirmed and the task shows no matching comment, so the comment may exist; the connector never sends it again.", optional: true },
+    { id: "uncertain", description: "Earlier attempts sent the comment up to the send cap, or ClickUp accepted it, and read-back cannot confirm a single matching comment, so the comment may exist; the connector does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for addComment. */
 export const AddCommentMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

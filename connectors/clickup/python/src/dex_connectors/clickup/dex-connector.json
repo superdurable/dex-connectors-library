@@ -1,10 +1,10 @@
 {
   "connectorId": "clickup",
-  "releaseTag": "connectors/clickup/go/v0.23.0",
+  "releaseTag": "connectors/clickup/go/v0.23.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-clickup",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -204,7 +204,7 @@
       "kind": "mutation",
       "operationId": "createTask",
       "inputType": "CreateTaskInput",
-      "description": "Create one task in a List with a name, Markdown description, status, priority, due time, assignees, tags, parent task, and custom field values. ClickUp has no idempotency key, so the Step runs with sync durability, records a Dex heartbeat checkpoint before sending, and reconciles an unconfirmed attempt by reading the List back instead of resending.",
+      "description": "Create one task in a List with a name, Markdown description, status, priority, due time, assignees, tags, parent task, and custom field values. ClickUp has no idempotency key, so the Step runs with sync durability and counts each send in a Dex heartbeat checkpoint. After an unknown outcome the next attempt reads the task back, by ID or among the List's tasks with the same name and parent, and resends only while the send cap allows.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -504,7 +504,7 @@
       "kind": "mutation",
       "operationId": "addComment",
       "inputType": "AddCommentInput",
-      "description": "Add one plain-text comment, authored by the token's user, to a task. ClickUp has no idempotency key, so the Step runs with sync durability, records a Dex heartbeat checkpoint before sending, and reconciles an unconfirmed attempt by reading the task's comments back instead of resending.",
+      "description": "Add one plain-text comment, authored by the token's user, to a task. ClickUp has no idempotency key, so the Step runs with sync durability and counts each send in a Dex heartbeat checkpoint. After an unknown outcome the next attempt reads the task's comments back, by ID or by text, and resends only while the send cap allows.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
