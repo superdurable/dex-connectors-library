@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listSections/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.SectionsPage](`{"sections":[{"id":"72","name":"Example Section","status":"1","projectId":"123"}],"page":1}`)
+			return err
+		}},
+		{name: "getSection/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.SectionSummary](`{"id":"72","name":"Example Section","status":"1","projectId":"123"}`)
+			return err
+		}},
+		{name: "updateSection/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.SectionSummary](`{"id":"72","name":"Updated Section","status":"1","projectId":"123"}`)
+			return err
+		}},
+		{name: "createSection/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.SectionSummary](`{"id":"72","name":"Example Section","status":"1","projectId":"123"}`)
+			return err
+		}},
 		{name: "listProjects/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[meistertask.ProjectsPage](`{"projects":[{"id":"123","name":"Example Project","status":"1"}],"page":1}`)
 			return err
@@ -58,6 +74,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListSections().Definition().Operation.OperationID != "listSections" {
+		t.Errorf("listSections mock has another definition")
+	}
+	if mock.GetSection().Definition().Operation.OperationID != "getSection" {
+		t.Errorf("getSection mock has another definition")
+	}
+	if mock.UpdateSection().Definition().Operation.OperationID != "updateSection" {
+		t.Errorf("updateSection mock has another definition")
+	}
+	if mock.CreateSection().Definition().Operation.OperationID != "createSection" {
+		t.Errorf("createSection mock has another definition")
+	}
 	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
 		t.Errorf("listProjects mock has another definition")
 	}

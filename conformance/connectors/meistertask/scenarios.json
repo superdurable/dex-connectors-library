@@ -2681,6 +2681,1266 @@
       ],
       "name": "createProject-uncertain",
       "operation": "createProject"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "[{\"id\":72,\"name\":\"Example Section\",\"status\":1,\"project_id\":123}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sections",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ],
+            "status": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "page": 1,
+          "sections": [
+            {
+              "id": "72",
+              "name": "Example Section",
+              "projectId": "123",
+              "status": "1"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "status": "all"
+      },
+      "name": "listSections-success",
+      "operation": "listSections"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sections",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ],
+            "status": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "page": 0,
+          "sections": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "status": "all"
+      },
+      "name": "listSections-providerRejected",
+      "operation": "listSections"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sections",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ],
+            "status": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "sections": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "status": "all"
+      },
+      "name": "listSections-invalidResponse",
+      "operation": "listSections"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sections",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ],
+            "status": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "status": "all"
+      },
+      "name": "listSections-429",
+      "operation": "listSections"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sections",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ],
+            "status": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "status": "all"
+      },
+      "name": "listSections-503",
+      "operation": "listSections"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sections",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ],
+            "status": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "status": "all"
+      },
+      "name": "listSections-transport",
+      "operation": "listSections"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{\"id\":72,\"name\":\"Example Section\",\"status\":1,\"project_id\":123}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sections/72",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "72",
+          "name": "Example Section",
+          "projectId": "123",
+          "status": "1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sectionId": "72"
+      },
+      "name": "getSection-success",
+      "operation": "getSection"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sections/72",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sectionId": "72"
+      },
+      "name": "getSection-notFound",
+      "operation": "getSection"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sections/72",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sectionId": "72"
+      },
+      "name": "getSection-providerRejected",
+      "operation": "getSection"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sections/72",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sectionId": "72"
+      },
+      "name": "getSection-invalidResponse",
+      "operation": "getSection"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sections/72",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sectionId": "72"
+      },
+      "name": "getSection-429",
+      "operation": "getSection"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sections/72",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sectionId": "72"
+      },
+      "name": "getSection-503",
+      "operation": "getSection"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sections/72",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sectionId": "72"
+      },
+      "name": "getSection-transport",
+      "operation": "getSection"
+    },
+    {
+      "callId": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
+      "exchanges": [
+        {
+          "body": "{\"id\":72,\"name\":\"Updated Section\",\"status\":1,\"project_id\":123}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sections/72",
+          "requestBody": {
+            "name": "Updated Section",
+            "status": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "72",
+          "name": "Updated Section",
+          "projectId": "123",
+          "status": "1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
+      "input": {
+        "name": "Updated Section",
+        "sectionId": "72",
+        "status": 1
+      },
+      "name": "updateSection-success",
+      "operation": "updateSection"
+    },
+    {
+      "callId": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sections/72",
+          "requestBody": {
+            "name": "Updated Section",
+            "status": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
+      "input": {
+        "name": "Updated Section",
+        "sectionId": "72",
+        "status": 1
+      },
+      "name": "updateSection-notFound",
+      "operation": "updateSection"
+    },
+    {
+      "callId": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sections/72",
+          "requestBody": {
+            "name": "Updated Section",
+            "status": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
+      "input": {
+        "name": "Updated Section",
+        "sectionId": "72",
+        "status": 1
+      },
+      "name": "updateSection-providerRejected",
+      "operation": "updateSection"
+    },
+    {
+      "callId": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sections/72",
+          "requestBody": {
+            "name": "Updated Section",
+            "status": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
+      "input": {
+        "name": "Updated Section",
+        "sectionId": "72",
+        "status": 1
+      },
+      "name": "updateSection-invalidResponse",
+      "operation": "updateSection"
+    },
+    {
+      "callId": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sections/72",
+          "requestBody": {
+            "name": "Updated Section",
+            "status": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
+      "input": {
+        "name": "Updated Section",
+        "sectionId": "72",
+        "status": 1
+      },
+      "name": "updateSection-429",
+      "operation": "updateSection"
+    },
+    {
+      "callId": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sections/72",
+          "requestBody": {
+            "name": "Updated Section",
+            "status": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
+      "input": {
+        "name": "Updated Section",
+        "sectionId": "72",
+        "status": 1
+      },
+      "name": "updateSection-503",
+      "operation": "updateSection"
+    },
+    {
+      "callId": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sections/72",
+          "requestBody": {
+            "name": "Updated Section",
+            "status": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
+      "input": {
+        "name": "Updated Section",
+        "sectionId": "72",
+        "status": 1
+      },
+      "name": "updateSection-transport",
+      "operation": "updateSection"
+    },
+    {
+      "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "exchanges": [
+        {
+          "body": "{\"id\":72,\"name\":\"Example Section\",\"status\":1,\"project_id\":123}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+          "providerId": "72",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "72",
+          "name": "Example Section",
+          "projectId": "123",
+          "status": "1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "input": {
+        "name": "Example Section",
+        "projectId": "123"
+      },
+      "name": "createSection-success",
+      "operation": "createSection"
+    },
+    {
+      "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "input": {
+        "name": "Example Section",
+        "projectId": "123"
+      },
+      "name": "createSection-providerRejected",
+      "operation": "createSection"
+    },
+    {
+      "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "input": {
+        "name": "Example Section",
+        "projectId": "123"
+      },
+      "name": "createSection-429",
+      "operation": "createSection"
+    },
+    {
+      "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "input": {
+        "name": "Example Section",
+        "projectId": "123"
+      },
+      "name": "createSection-503",
+      "operation": "createSection"
+    },
+    {
+      "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "input": {
+        "name": "Example Section",
+        "projectId": "123"
+      },
+      "name": "createSection-transport",
+      "operation": "createSection"
+    },
+    {
+      "attempts": 3,
+      "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "input": {
+        "name": "Example Section",
+        "projectId": "123"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createSection-uncertain",
+      "operation": "createSection"
     }
   ],
   "schemaVersion": 1

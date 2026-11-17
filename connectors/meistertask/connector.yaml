@@ -55,7 +55,90 @@ spec:
         - Sign in at MindMeister API page > Add personal access token, select userinfo.profile, userinfo.email, and meistertask scopes, and copy the secret opaque token into Dex Web api_token. Blank is invalid. Revoke it on the same page. A MindMeister Basic account and team-admin approval may be required to access that page.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret positive numeric task ID in MeisterTask task details or GET /tasks and pass it as taskId; blank is invalid. The token owner needs access to the task.
         - Find non-secret positive project IDs in MeisterTask Projects or GET /projects. Pass one as projectId for getProject or updateProject; blank is invalid. ListProjects page and items are positive integers, with zero selecting the provider first page or size; blank status uses active projects.
+        - Find non-secret positive section IDs in a MeisterTask project board or GET /sections. Pass one as sectionId for getSection or updateSection; createSection needs its parent projectId. Blank IDs or names are invalid; blank list status uses active sections.
   operations:
+    - name: listSections
+      goName: ListSections
+      inputType: ListSectionsInput
+      outputType: SectionsPage
+      kind: query
+      description: Read one page of sections visible to the token owner.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: MeisterTask returned the section.}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample section is available.
+          output: {sections: [{id: '72', name: Example Section, status: '1', projectId: '123'}], page: 1}
+    - name: getSection
+      goName: GetSection
+      inputType: GetSectionInput
+      outputType: SectionSummary
+      kind: query
+      description: Read one section's identity, parent project, and status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: MeisterTask returned the section.}
+        - {id: notFound, goName: NotFound, description: MeisterTask did not expose the section., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample section is available.
+          output: {id: '72', name: Example Section, status: '1', projectId: '123'}
+    - name: updateSection
+      goName: UpdateSection
+      inputType: UpdateSectionInput
+      outputType: SectionSummary
+      kind: mutation
+      description: Set a section's name or status to absolute values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: MeisterTask returned the section.}
+        - {id: notFound, goName: NotFound, description: MeisterTask did not expose the section., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample section is available.
+          output: {id: '72', name: Updated Section, status: '1', projectId: '123'}
+    - name: createSection
+      goName: CreateSection
+      inputType: CreateSectionInput
+      outputType: SectionSummary
+      kind: mutation
+      description: Create a named section in a project.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, dispatchFence: true, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: MeisterTask returned the section.}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded; inspect sections before manual retry., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample section is available.
+          output: {id: '72', name: Example Section, status: '1', projectId: '123'}
     - name: listProjects
       goName: ListProjects
       inputType: ListProjectsInput

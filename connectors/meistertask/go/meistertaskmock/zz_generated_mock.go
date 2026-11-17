@@ -18,6 +18,10 @@ import (
 // Mock is a scripted meistertask connection. Script each operation through its accessor.
 type Mock struct {
 	connection    meistertask.Connection
+	listSections  *connectormock.Query[meistertask.ListSectionsInput, meistertask.SectionsPage]
+	getSection    *connectormock.Query[meistertask.GetSectionInput, meistertask.SectionSummary]
+	updateSection *connectormock.Mutation[meistertask.UpdateSectionInput, meistertask.SectionSummary]
+	createSection *connectormock.Mutation[meistertask.CreateSectionInput, meistertask.SectionSummary]
 	listProjects  *connectormock.Query[meistertask.ListProjectsInput, meistertask.ProjectsPage]
 	getProject    *connectormock.Query[meistertask.GetProjectInput, meistertask.ProjectSummary]
 	updateProject *connectormock.Mutation[meistertask.UpdateProjectInput, meistertask.ProjectSummary]
@@ -33,6 +37,10 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listSections:  connectormock.NewQuery[meistertask.ListSectionsInput, meistertask.SectionsPage](t, meistertask.ListSectionsDefinition),
+		getSection:    connectormock.NewQuery[meistertask.GetSectionInput, meistertask.SectionSummary](t, meistertask.GetSectionDefinition),
+		updateSection: connectormock.NewMutation[meistertask.UpdateSectionInput, meistertask.SectionSummary](t, meistertask.UpdateSectionDefinition),
+		createSection: connectormock.NewMutation[meistertask.CreateSectionInput, meistertask.SectionSummary](t, meistertask.CreateSectionDefinition),
 		listProjects:  connectormock.NewQuery[meistertask.ListProjectsInput, meistertask.ProjectsPage](t, meistertask.ListProjectsDefinition),
 		getProject:    connectormock.NewQuery[meistertask.GetProjectInput, meistertask.ProjectSummary](t, meistertask.GetProjectDefinition),
 		updateProject: connectormock.NewMutation[meistertask.UpdateProjectInput, meistertask.ProjectSummary](t, meistertask.UpdateProjectDefinition),
@@ -42,6 +50,10 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateTask:    connectormock.NewMutation[meistertask.UpdateTaskInput, meistertask.TaskSummary](t, meistertask.UpdateTaskDefinition),
 		createTask:    connectormock.NewMutation[meistertask.CreateTaskInput, meistertask.TaskSummary](t, meistertask.CreateTaskDefinition),
 	}
+	mock.listSections.Default(ListSectionsDefault())
+	mock.getSection.Default(GetSectionDefault())
+	mock.updateSection.Default(UpdateSectionDefault())
+	mock.createSection.Default(CreateSectionDefault())
 	mock.listProjects.Default(ListProjectsDefault())
 	mock.getProject.Default(GetProjectDefault())
 	mock.updateProject.Default(UpdateProjectDefault())
@@ -60,6 +72,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() meistertask.Connection { return mock.connection }
+
+// ListSections returns the listSections script.
+func (mock *Mock) ListSections() *connectormock.Query[meistertask.ListSectionsInput, meistertask.SectionsPage] {
+	return mock.listSections
+}
+
+// GetSection returns the getSection script.
+func (mock *Mock) GetSection() *connectormock.Query[meistertask.GetSectionInput, meistertask.SectionSummary] {
+	return mock.getSection
+}
+
+// UpdateSection returns the updateSection script.
+func (mock *Mock) UpdateSection() *connectormock.Mutation[meistertask.UpdateSectionInput, meistertask.SectionSummary] {
+	return mock.updateSection
+}
+
+// CreateSection returns the createSection script.
+func (mock *Mock) CreateSection() *connectormock.Mutation[meistertask.CreateSectionInput, meistertask.SectionSummary] {
+	return mock.createSection
+}
 
 // ListProjects returns the listProjects script.
 func (mock *Mock) ListProjects() *connectormock.Query[meistertask.ListProjectsInput, meistertask.ProjectsPage] {
@@ -103,6 +135,18 @@ func (mock *Mock) CreateTask() *connectormock.Mutation[meistertask.CreateTaskInp
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListSections() sdkgo.Query[meistertask.ListSectionsInput, meistertask.SectionsPage] {
+	return operations.mock.listSections
+}
+func (operations mockOperations) GetSection() sdkgo.Query[meistertask.GetSectionInput, meistertask.SectionSummary] {
+	return operations.mock.getSection
+}
+func (operations mockOperations) UpdateSection() sdkgo.Mutation[meistertask.UpdateSectionInput, meistertask.SectionSummary] {
+	return operations.mock.updateSection
+}
+func (operations mockOperations) CreateSection() sdkgo.Mutation[meistertask.CreateSectionInput, meistertask.SectionSummary] {
+	return operations.mock.createSection
+}
 func (operations mockOperations) ListProjects() sdkgo.Query[meistertask.ListProjectsInput, meistertask.ProjectsPage] {
 	return operations.mock.listProjects
 }
@@ -126,6 +170,160 @@ func (operations mockOperations) UpdateTask() sdkgo.Mutation[meistertask.UpdateT
 }
 func (operations mockOperations) CreateTask() sdkgo.Mutation[meistertask.CreateTaskInput, meistertask.TaskSummary] {
 	return operations.mock.createTask
+}
+
+// ListSectionsListed selects the listed branch: MeisterTask returned the section.
+func ListSectionsListed(value meistertask.SectionsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionsPage] {
+	return connectormock.Branch(meistertask.ListSectionsBranchListed, value, failure)
+}
+
+// ListSectionsProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func ListSectionsProviderRejected(value meistertask.SectionsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionsPage] {
+	return connectormock.Branch(meistertask.ListSectionsBranchProviderRejected, value, failure)
+}
+
+// ListSectionsInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+func ListSectionsInvalidResponse(value meistertask.SectionsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionsPage] {
+	return connectormock.Branch(meistertask.ListSectionsBranchInvalidResponse, value, failure)
+}
+
+// ListSectionsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListSectionsDefect(value meistertask.SectionsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionsPage] {
+	return connectormock.Branch(meistertask.ListSectionsBranchDefect, value, failure)
+}
+
+// ListSectionsRetry asks Dex to retry the listSections Step, after the delay when it is positive.
+func ListSectionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.SectionsPage] {
+	return connectormock.Retry[meistertask.SectionsPage](failure, after)
+}
+
+// ListSectionsListedDefault is the manifest mock listedDefault: A sample section is available.
+func ListSectionsListedDefault() connectormock.Case[meistertask.SectionsPage] {
+	value := connectormock.MustDecodeOutput[meistertask.SectionsPage](`{"sections":[{"id":"72","name":"Example Section","status":"1","projectId":"123"}],"page":1}`)
+	return connectormock.Branch(meistertask.ListSectionsBranchListed, value, nil)
+}
+
+// ListSectionsDefault is the manifest default, listedDefault, which New installs.
+func ListSectionsDefault() connectormock.Case[meistertask.SectionsPage] {
+	return ListSectionsListedDefault()
+}
+
+// GetSectionFound selects the found branch: MeisterTask returned the section.
+func GetSectionFound(value meistertask.SectionSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Branch(meistertask.GetSectionBranchFound, value, failure)
+}
+
+// GetSectionNotFound selects the notFound branch: MeisterTask did not expose the section.
+func GetSectionNotFound(value meistertask.SectionSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Branch(meistertask.GetSectionBranchNotFound, value, failure)
+}
+
+// GetSectionProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func GetSectionProviderRejected(value meistertask.SectionSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Branch(meistertask.GetSectionBranchProviderRejected, value, failure)
+}
+
+// GetSectionInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+func GetSectionInvalidResponse(value meistertask.SectionSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Branch(meistertask.GetSectionBranchInvalidResponse, value, failure)
+}
+
+// GetSectionDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetSectionDefect(value meistertask.SectionSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Branch(meistertask.GetSectionBranchDefect, value, failure)
+}
+
+// GetSectionRetry asks Dex to retry the getSection Step, after the delay when it is positive.
+func GetSectionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Retry[meistertask.SectionSummary](failure, after)
+}
+
+// GetSectionFoundDefault is the manifest mock foundDefault: A sample section is available.
+func GetSectionFoundDefault() connectormock.Case[meistertask.SectionSummary] {
+	value := connectormock.MustDecodeOutput[meistertask.SectionSummary](`{"id":"72","name":"Example Section","status":"1","projectId":"123"}`)
+	return connectormock.Branch(meistertask.GetSectionBranchFound, value, nil)
+}
+
+// GetSectionDefault is the manifest default, foundDefault, which New installs.
+func GetSectionDefault() connectormock.Case[meistertask.SectionSummary] {
+	return GetSectionFoundDefault()
+}
+
+// UpdateSectionUpdated selects the updated branch: MeisterTask returned the section.
+func UpdateSectionUpdated(value meistertask.SectionSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Branch(meistertask.UpdateSectionBranchUpdated, value, failure)
+}
+
+// UpdateSectionNotFound selects the notFound branch: MeisterTask did not expose the section.
+func UpdateSectionNotFound(value meistertask.SectionSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Branch(meistertask.UpdateSectionBranchNotFound, value, failure)
+}
+
+// UpdateSectionProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func UpdateSectionProviderRejected(value meistertask.SectionSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Branch(meistertask.UpdateSectionBranchProviderRejected, value, failure)
+}
+
+// UpdateSectionInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+func UpdateSectionInvalidResponse(value meistertask.SectionSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Branch(meistertask.UpdateSectionBranchInvalidResponse, value, failure)
+}
+
+// UpdateSectionDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateSectionDefect(value meistertask.SectionSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Branch(meistertask.UpdateSectionBranchDefect, value, failure)
+}
+
+// UpdateSectionRetry asks Dex to retry the updateSection Step, after the delay when it is positive.
+func UpdateSectionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Retry[meistertask.SectionSummary](failure, after)
+}
+
+// UpdateSectionUpdatedDefault is the manifest mock updatedDefault: A sample section is available.
+func UpdateSectionUpdatedDefault() connectormock.Case[meistertask.SectionSummary] {
+	value := connectormock.MustDecodeOutput[meistertask.SectionSummary](`{"id":"72","name":"Updated Section","status":"1","projectId":"123"}`)
+	return connectormock.Branch(meistertask.UpdateSectionBranchUpdated, value, nil)
+}
+
+// UpdateSectionDefault is the manifest default, updatedDefault, which New installs.
+func UpdateSectionDefault() connectormock.Case[meistertask.SectionSummary] {
+	return UpdateSectionUpdatedDefault()
+}
+
+// CreateSectionCreated selects the created branch: MeisterTask returned the section.
+func CreateSectionCreated(value meistertask.SectionSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Branch(meistertask.CreateSectionBranchCreated, value, failure)
+}
+
+// CreateSectionProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func CreateSectionProviderRejected(value meistertask.SectionSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Branch(meistertask.CreateSectionBranchProviderRejected, value, failure)
+}
+
+// CreateSectionUncertain returns an uncertain createSection outcome.
+func CreateSectionUncertain(value meistertask.SectionSummary, failure sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateSectionDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateSectionDefect(value meistertask.SectionSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Branch(meistertask.CreateSectionBranchDefect, value, failure)
+}
+
+// CreateSectionRetry asks Dex to retry the createSection Step, after the delay when it is positive.
+func CreateSectionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.SectionSummary] {
+	return connectormock.Retry[meistertask.SectionSummary](failure, after)
+}
+
+// CreateSectionCreatedDefault is the manifest mock createdDefault: A sample section is available.
+func CreateSectionCreatedDefault() connectormock.Case[meistertask.SectionSummary] {
+	value := connectormock.MustDecodeOutput[meistertask.SectionSummary](`{"id":"72","name":"Example Section","status":"1","projectId":"123"}`)
+	return connectormock.Branch(meistertask.CreateSectionBranchCreated, value, nil)
+}
+
+// CreateSectionDefault is the manifest default, createdDefault, which New installs.
+func CreateSectionDefault() connectormock.Case[meistertask.SectionSummary] {
+	return CreateSectionCreatedDefault()
 }
 
 // ListProjectsListed selects the listed branch: MeisterTask returned the projects.

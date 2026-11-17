@@ -40,6 +40,10 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListSections() sdkgo.Query[ListSectionsInput, SectionsPage]
+	GetSection() sdkgo.Query[GetSectionInput, SectionSummary]
+	UpdateSection() sdkgo.Mutation[UpdateSectionInput, SectionSummary]
+	CreateSection() sdkgo.Mutation[CreateSectionInput, SectionSummary]
 	ListProjects() sdkgo.Query[ListProjectsInput, ProjectsPage]
 	GetProject() sdkgo.Query[GetProjectInput, ProjectSummary]
 	UpdateProject() sdkgo.Mutation[UpdateProjectInput, ProjectSummary]
@@ -52,6 +56,18 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListSections() sdkgo.Query[ListSectionsInput, SectionsPage] {
+	return operations.client.ListSections()
+}
+func (operations clientOperations) GetSection() sdkgo.Query[GetSectionInput, SectionSummary] {
+	return operations.client.GetSection()
+}
+func (operations clientOperations) UpdateSection() sdkgo.Mutation[UpdateSectionInput, SectionSummary] {
+	return operations.client.UpdateSection()
+}
+func (operations clientOperations) CreateSection() sdkgo.Mutation[CreateSectionInput, SectionSummary] {
+	return operations.client.CreateSection()
+}
 func (operations clientOperations) ListProjects() sdkgo.Query[ListProjectsInput, ProjectsPage] {
 	return operations.client.ListProjects()
 }
@@ -212,6 +228,308 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_token is required")
 	}
 	return nil
+}
+
+const ListSectionsBranchListed sdkgo.BranchID = "listed"
+const ListSectionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSectionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSectionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSectionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSections"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSectionsBranchListed, Description: "MeisterTask returned the section."},
+		{ID: ListSectionsBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: ListSectionsBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: ListSectionsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSectionsResult = sdkgo.QueryResult[SectionsPage]
+
+type ListSectionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=meistertask"`
+	operationID                    struct{}                                        `connector:"operationId=listSections"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSectionsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSectionsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSectionsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSectionsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSectionsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SectionsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListSectionsStep[IN any](config ListSectionsStepConfig[IN]) sdkgo.QueryStep[IN, ListSectionsInput, SectionsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSectionsInput, SectionsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSections(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSectionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListSectionsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSectionsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSectionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSectionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSectionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSectionBranchFound sdkgo.BranchID = "found"
+const GetSectionBranchNotFound sdkgo.BranchID = "notFound"
+const GetSectionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSectionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSectionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSectionDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSection"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSectionBranchFound, Description: "MeisterTask returned the section."},
+		{ID: GetSectionBranchNotFound, Description: "MeisterTask did not expose the section.", Optional: true},
+		{ID: GetSectionBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: GetSectionBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: GetSectionBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSectionResult = sdkgo.QueryResult[SectionSummary]
+
+type GetSectionStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=meistertask"`
+	operationID                    struct{}                                          `connector:"operationId=getSection"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSectionInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSectionResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetSectionResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetSectionResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSectionResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSectionResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SectionSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetSectionStep[IN any](config GetSectionStepConfig[IN]) sdkgo.QueryStep[IN, GetSectionInput, SectionSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSectionInput, SectionSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSection(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSectionResult] {
+			branches := make([]sdkgo.BranchTarget[GetSectionResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSectionBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetSectionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSectionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSectionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSectionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateSectionBranchUpdated sdkgo.BranchID = "updated"
+const UpdateSectionBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateSectionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateSectionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateSectionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateSectionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateSection"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateSectionBranchUpdated, Description: "MeisterTask returned the section."},
+		{ID: UpdateSectionBranchNotFound, Description: "MeisterTask did not expose the section.", Optional: true},
+		{ID: UpdateSectionBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: UpdateSectionBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateSectionBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateSectionResult = sdkgo.MutationResult[SectionSummary]
+
+type UpdateSectionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=meistertask"`
+	operationID                       struct{}                                             `connector:"operationId=updateSection"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateSectionInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateSectionResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateSectionResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateSectionResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateSectionResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateSectionResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SectionSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateSectionStep[IN any](config UpdateSectionStepConfig[IN]) sdkgo.MutationStep[IN, UpdateSectionInput, SectionSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateSectionInput, SectionSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateSection(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateSectionResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateSectionResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateSectionBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateSectionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateSectionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateSectionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateSectionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateSectionBranchCreated sdkgo.BranchID = "created"
+const CreateSectionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateSectionBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateSectionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateSectionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createSection"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateSectionBranchCreated, Description: "MeisterTask returned the section."},
+		{ID: CreateSectionBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
+		{ID: CreateSectionBranchUncertain, Description: "Creation may have succeeded; inspect sections before manual retry.", Optional: true},
+		{ID: CreateSectionBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateSectionResult = sdkgo.MutationResult[SectionSummary]
+
+type CreateSectionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=meistertask"`
+	operationID                       struct{}                                             `connector:"operationId=createSection"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateSectionInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateSectionResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateSectionResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateSectionResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateSectionResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SectionSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateSectionStep[IN any](config CreateSectionStepConfig[IN]) sdkgo.MutationStep[IN, CreateSectionInput, SectionSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meistertask connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateSectionInput, SectionSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateSection(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateSectionResult] {
+			branches := make([]sdkgo.BranchTarget[CreateSectionResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateSectionBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateSectionBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateSectionBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateSectionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
 }
 
 const ListProjectsBranchListed sdkgo.BranchID = "listed"
