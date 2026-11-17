@@ -78,15 +78,6 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		return mutationBranch(CreateContactBranchDefect, "createContact", ContactMetadata{}, sdkgo.FailureLocalDefect, "dispatch checkpoint is unavailable")
 	}
 	decision := fence.Decide()
-	if decision.Kind != singledispatch.SendAllowed && input.EmailAddress != "" {
-		contact, found, readError := operation.client.readBackCreatedContact(call, input)
-		if found {
-			return sdkgo.NewMutationBranch(CreateContactBranchCreated, contact, nil, sdkgo.Receipt{})
-		}
-		if readError != nil {
-			return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("createContact", sdkgo.FailureAvailability, "contact read-back is unavailable"), 0)
-		}
-	}
 	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(ContactMetadata{}, queryFailure("createContact", sdkgo.FailureTransport, "an earlier contact create may have succeeded"), sdkgo.Receipt{})
 	}
@@ -141,38 +132,6 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		return sdkgo.NewMutationUncertain(ContactMetadata{}, queryFailure("createContact", sdkgo.FailureProtocol, "Nimble accepted the create but did not identify the contact"), sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(CreateContactBranchCreated, contact, nil, sdkgo.Receipt{})
-}
-
-func (client *Client) readBackCreatedContact(call sdkgo.Call, input CreateContactInput) (ContactMetadata, bool, error) {
-	query := url.Values{"keyword": {input.EmailAddress}, "page": {"1"}, "per_page": {"100"}}
-	body, status, _, err := client.get(call, "/contacts?"+query.Encode())
-	if err != nil || status != http.StatusOK {
-		return ContactMetadata{}, false, fmt.Errorf("contact read-back failed")
-	}
-	var page struct {
-		Resources []struct {
-			ID     string                         `json:"id"`
-			Fields map[string][]ContactFieldValue `json:"fields"`
-		} `json:"resources"`
-	}
-	if err := json.Unmarshal(body, &page); err != nil {
-		return ContactMetadata{}, false, err
-	}
-	for _, contact := range page.Resources {
-		if !isContactID(contact.ID) {
-			continue
-		}
-		first := func(name string) string {
-			if len(contact.Fields[name]) > 0 {
-				return contact.Fields[name][0].Value
-			}
-			return ""
-		}
-		if strings.EqualFold(first("email"), input.EmailAddress) && first("first name") == input.FirstName && first("last name") == input.LastName {
-			return ContactMetadata{ID: contact.ID, FirstName: input.FirstName, LastName: input.LastName, EmailAddress: input.EmailAddress}, true, nil
-		}
-	}
-	return ContactMetadata{}, false, nil
 }
 
 // UpdateContactInput replaces all Nimble contact fields with the supplied field collection.

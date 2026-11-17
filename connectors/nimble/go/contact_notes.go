@@ -215,7 +215,7 @@ func (CreateContactNoteOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateCo
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates a note and reads back by contact and exact note text after an ambiguous send.
+// Invoke creates a note under a persisted send cap.
 func (operation CreateContactNoteOperation) Invoke(call sdkgo.Call, input CreateContactNoteInput) sdkgo.MutationAttempt[ContactNote] {
 	noteWrite := ContactNoteWrite{ContactIDs: input.ContactIDs, Note: input.Note, NotePreview: input.NotePreview}
 	if err := validateContactNoteWrite(noteWrite); err != nil {
@@ -230,15 +230,6 @@ func (operation CreateContactNoteOperation) Invoke(call sdkgo.Call, input Create
 		return mutationBranch(CreateContactNoteBranchDefect, "createContactNote", ContactNote{}, sdkgo.FailureLocalDefect, "dispatch checkpoint is unavailable")
 	}
 	decision := fence.Decide()
-	if decision.Kind != singledispatch.SendAllowed {
-		note, found, readError := operation.client.readBackCreatedNote(call, noteWrite)
-		if found {
-			return sdkgo.NewMutationBranch(CreateContactNoteBranchCreated, note, nil, sdkgo.Receipt{})
-		}
-		if readError != nil {
-			return sdkgo.NewMutationRetry[ContactNote](queryFailure("createContactNote", sdkgo.FailureAvailability, "note read-back is unavailable"), 0)
-		}
-	}
 	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(ContactNote{}, queryFailure("createContactNote", sdkgo.FailureTransport, "an earlier note create may have succeeded"), sdkgo.Receipt{})
 	}
@@ -289,24 +280,6 @@ func (operation CreateContactNoteOperation) Invoke(call sdkgo.Call, input Create
 		return sdkgo.NewMutationUncertain(ContactNote{}, queryFailure("createContactNote", sdkgo.FailureProtocol, "Nimble accepted the note but did not identify it"), sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(CreateContactNoteBranchCreated, note, nil, sdkgo.Receipt{})
-}
-
-func (client *Client) readBackCreatedNote(call sdkgo.Call, input ContactNoteWrite) (ContactNote, bool, error) {
-	query := url.Values{"page": {"1"}, "per_page": {"100"}}
-	body, status, _, err := client.get(call, "/contacts/"+url.PathEscape(input.ContactIDs[0])+"/notes?"+query.Encode())
-	if err != nil || status != http.StatusOK {
-		return ContactNote{}, false, fmt.Errorf("note read-back failed")
-	}
-	page, err := decodeContactNotesPage(body)
-	if err != nil {
-		return ContactNote{}, false, err
-	}
-	for _, note := range page.Notes {
-		if note.Note == input.Note && note.NotePreview == input.NotePreview {
-			return note, true, nil
-		}
-	}
-	return ContactNote{}, false, nil
 }
 
 // UpdateContactNoteOperation replaces a contact note.
