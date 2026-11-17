@@ -11,3 +11,5 @@ For the China cloud, sign in at [cloud.fastgpt.cn](https://cloud.fastgpt.cn/), o
 ## Example
 
 The [dataset details Flow](go/examples/dataset-details/) is a runnable Worker with static Dex connection name `fastgpt`. Its local mock uses synthetic data and can be verified through a real Dex Worker and Client. Live key authorization and actual knowledge-base access remain unverified without a user-controlled connection.
+
+The [Python package](python/) implements the same read-only Query. Its [Python Flow](python/examples/get_dataset_details/) includes a Worker, a real Dex integration test, and strict FDG 2.0 generation. All 16 Go-recorded provider scenarios replay in Python. Live personal-key access remains unverified without a user-controlled FastGPT connection.

@@ -12,6 +12,11 @@ spec:
   codegen:
     go:
       package: fastgpt
+  languages:
+    python:
+      version: v0.1.0
+      operations: [getDatasetDetails]
+      triggers: []
   configuration:
     fields:
       - name: baseUrl
