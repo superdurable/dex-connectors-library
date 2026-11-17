@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: emq
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-emq
+      operations: [listDeployments]
+      triggers: []
   codegen:
     go:
       package: emq
