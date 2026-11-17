@@ -6,6 +6,7 @@ package support_test
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -83,4 +84,24 @@ func TestOrganizationWritesClassifyProviderResponses(t *testing.T) {
 	deleted, err := sdkgo.RunMutation(newZendeskDexContext("delete-organization"), client.DeleteOrganization(), zendeskConnection, support.DeleteOrganizationInput{OrganizationID: 1201})
 	require.NoError(t, err)
 	require.Equal(t, support.DeleteOrganizationBranchDeleted, deleted.Branch)
+}
+
+func TestCreateOrganizationDerivesStableExternalIDWhenBlank(t *testing.T) {
+	var provider *recordingZendesk
+	provider = newRecordingZendesk(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		var envelope struct {
+			Organization struct {
+				Name       string `json:"name"`
+				ExternalID string `json:"external_id"`
+			} `json:"organization"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(provider.request(index).body), &envelope))
+		require.True(t, strings.HasPrefix(envelope.Organization.ExternalID, "dex-"))
+		require.NotEqual(t, "dex-", envelope.Organization.ExternalID)
+		writeJSON(t, response, http.StatusCreated, `{"organization":{"id":1201,"name":"Acme","external_id":"`+envelope.Organization.ExternalID+`"}}`)
+	})
+	result, err := sdkgo.RunMutation(newZendeskDexContext("create-organization-derived-id"), newZendeskClient(t, provider.URL).CreateOrganization(), zendeskConnection, support.CreateOrganizationInput{Name: "Acme"})
+	require.NoError(t, err)
+	require.Equal(t, support.CreateOrganizationBranchCreated, result.Branch)
+	require.True(t, strings.HasPrefix(result.Value.Organization.ExternalID, "dex-"))
 }

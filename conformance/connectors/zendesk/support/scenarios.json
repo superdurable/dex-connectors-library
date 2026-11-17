@@ -10593,6 +10593,138 @@
       ],
       "name": "createOrganization-uncertain-cap",
       "operation": "createOrganization"
+    },
+    {
+      "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "exchanges": [
+        {
+          "body": "{\"user\":{\"id\":7701,\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\",\"external_id\":\"dex-4383fa5b-dc0f-5702-a10a-e8c031f4a8e0\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "user": {
+              "email": "jane@acme.example.com",
+              "external_id": "dex-4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+              "name": "Jane Smith",
+              "role": "end-user"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+          "providerId": "7701",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "user": {
+            "email": "jane@acme.example.com",
+            "externalId": "dex-4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+            "id": 7701,
+            "name": "Jane Smith",
+            "suspended": false
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4383fa5b-dc0f-5702-a10a-e8c031f4a8e0",
+      "input": {
+        "email": "jane@acme.example.com",
+        "name": "Jane Smith"
+      },
+      "name": "createUser-derived-external-id",
+      "operation": "createUser"
+    },
+    {
+      "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "exchanges": [
+        {
+          "body": "{\"organization\":{\"id\":1201,\"name\":\"Acme\",\"external_id\":\"dex-bf1216b3-f943-59f9-b7f8-bbafe122e140\",\"domain_names\":[\"acme.example.com\"]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "external_id": "dex-bf1216b3-f943-59f9-b7f8-bbafe122e140",
+              "name": "Acme"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+          "providerId": "1201",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "organization": {
+            "domainNames": [
+              "acme.example.com"
+            ],
+            "externalId": "dex-bf1216b3-f943-59f9-b7f8-bbafe122e140",
+            "id": 1201,
+            "name": "Acme",
+            "sharedComments": false,
+            "sharedTickets": false
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "name": "Acme"
+      },
+      "name": "createOrganization-derived-external-id",
+      "operation": "createOrganization"
     }
   ],
   "schemaVersion": 1

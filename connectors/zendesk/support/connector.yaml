@@ -243,7 +243,7 @@ spec:
       inputType: CreateUserInput
       outputType: CreateUserOutput
       kind: mutation
-      description: Create an end user with an application-unique external ID for retry reconciliation.
+      description: Create an end user with an optional external ID; blank derives one from the Dex call ID for retry reconciliation.
       idempotency: required
       execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
       branches:
@@ -426,7 +426,7 @@ spec:
       inputType: CreateOrganizationInput
       outputType: CreateOrganizationOutput
       kind: mutation
-      description: Create an organization with an account-unique external ID for exact retry read-back.
+      description: Create an organization with an optional external ID; blank derives one from the Dex call ID for exact retry read-back.
       idempotency: required
       execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
       branches:

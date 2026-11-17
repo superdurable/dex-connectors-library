@@ -4,7 +4,9 @@
 package support_test
 
 import (
+	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -81,4 +83,25 @@ func TestUserWritesClassifyProviderOutcomes(t *testing.T) {
 	deleted, err := sdkgo.RunMutation(newZendeskDexContext("delete-user"), client.DeleteUser(), zendeskConnection, support.DeleteUserInput{UserID: 7701})
 	require.NoError(t, err)
 	require.Equal(t, support.DeleteUserBranchDeleted, deleted.Branch)
+}
+
+func TestCreateUserDerivesStableExternalIDWhenBlank(t *testing.T) {
+	var provider *recordingZendesk
+	provider = newRecordingZendesk(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		var envelope struct {
+			User struct {
+				Name       string `json:"name"`
+				Email      string `json:"email"`
+				ExternalID string `json:"external_id"`
+			} `json:"user"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(provider.request(index).body), &envelope))
+		require.True(t, strings.HasPrefix(envelope.User.ExternalID, "dex-"))
+		require.NotEqual(t, "dex-", envelope.User.ExternalID)
+		writeJSON(t, response, http.StatusCreated, `{"user":{"id":7701,"name":"Jane Smith","email":"jane@acme.example.com","external_id":"`+envelope.User.ExternalID+`"}}`)
+	})
+	result, err := sdkgo.RunMutation(newZendeskDexContext("create-user-derived-id"), newZendeskClient(t, provider.URL).CreateUser(), zendeskConnection, support.CreateUserInput{Name: "Jane Smith", Email: "jane@acme.example.com"})
+	require.NoError(t, err)
+	require.Equal(t, support.CreateUserBranchCreated, result.Branch)
+	require.True(t, strings.HasPrefix(result.Value.User.ExternalID, "dex-"))
 }

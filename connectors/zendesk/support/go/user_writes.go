@@ -15,13 +15,13 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
-// CreateUserInput creates an end user with an account-unique application identifier.
+// CreateUserInput creates an end user with an optional account-unique application identifier.
 type CreateUserInput struct {
 	// Name is the end user's nonempty display name.
 	Name string `json:"name"`
 	// Email is one bare email address.
 	Email string `json:"email"`
-	// ExternalID is a stable account-unique identifier that enables exact read-back.
+	// ExternalID is a stable account-unique identifier; blank derives one from the Dex call ID.
 	ExternalID string `json:"externalId"`
 }
 
@@ -108,8 +108,11 @@ func (DeleteUserOperation) IdempotencyKey(callID sdkgo.CallID, _ DeleteUserInput
 // Invoke creates one end user and reads back by its account-unique external ID after an unknown result.
 func (operation CreateUserOperation) Invoke(call sdkgo.Call, input CreateUserInput) sdkgo.MutationAttempt[CreateUserOutput] {
 	const operationName = "createUser"
+	if input.ExternalID == "" {
+		input.ExternalID = "dex-" + string(call.ID)
+	}
 	if strings.TrimSpace(input.Name) == "" || !isBareEmailAddress(input.Email) || strings.TrimSpace(input.ExternalID) == "" || len(input.ExternalID) > 255 || strings.ContainsAny(input.ExternalID, "\r\n\t") {
-		return sdkgo.NewMutationBranch(CreateUserBranchDefect, CreateUserOutput{}, zendeskFailurePointer(sdkgo.FailureValidation, operationName, "name, bare email, and a unique externalId are required"), sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(CreateUserBranchDefect, CreateUserOutput{}, zendeskFailurePointer(sdkgo.FailureValidation, operationName, "name, bare email, and a valid unique externalId are required"), sdkgo.Receipt{})
 	}
 	fence, err := singledispatch.NewFence(call, CreateUserDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
 	if err != nil {

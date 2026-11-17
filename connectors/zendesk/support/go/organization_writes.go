@@ -15,11 +15,11 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
-// CreateOrganizationInput creates an organization with a unique application identifier.
+// CreateOrganizationInput creates an organization with an optional application identifier.
 type CreateOrganizationInput struct {
 	// Name is the nonempty Zendesk organization name.
 	Name string `json:"name"`
-	// ExternalID is an account-unique identifier that enables exact read-back.
+	// ExternalID is account-unique; blank derives one from the Dex call ID.
 	ExternalID string `json:"externalId"`
 	// DomainNames are domains Zendesk uses for automatic organization matching.
 	DomainNames []string `json:"domainNames,omitempty"`
@@ -124,8 +124,11 @@ func (DeleteOrganizationOperation) IdempotencyKey(callID sdkgo.CallID, _ DeleteO
 // Invoke creates an organization and reads back its unique external ID after an unknown result.
 func (operation CreateOrganizationOperation) Invoke(call sdkgo.Call, input CreateOrganizationInput) sdkgo.MutationAttempt[CreateOrganizationOutput] {
 	const operationName = "createOrganization"
+	if input.ExternalID == "" {
+		input.ExternalID = "dex-" + string(call.ID)
+	}
 	if strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.ExternalID) == "" || len(input.ExternalID) > 255 || strings.ContainsAny(input.ExternalID, "\r\n\t") || !validOrganizationDomains(input.DomainNames) {
-		return sdkgo.NewMutationBranch(CreateOrganizationBranchDefect, CreateOrganizationOutput{}, zendeskFailurePointer(sdkgo.FailureValidation, operationName, "name, unique externalId, and valid domainNames are required"), sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(CreateOrganizationBranchDefect, CreateOrganizationOutput{}, zendeskFailurePointer(sdkgo.FailureValidation, operationName, "name, valid unique externalId, and valid domainNames are required"), sdkgo.Receipt{})
 	}
 	fence, err := singledispatch.NewFence(call, CreateOrganizationDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
 	if err != nil {
