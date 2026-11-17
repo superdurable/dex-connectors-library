@@ -28,6 +28,46 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[wordpress.PostPage](`{"posts":[{"id":42,"slug":"meridian-release","status":"publish","link":"https://example.test/meridian-release/","title":{"rendered":"Meridian release"},"content":{"rendered":"\u003cp\u003eReleased.\u003c/p\u003e"},"dateGMT":"2026-11-07T12:00:00"}],"page":1,"total":1,"totalPages":1}`)
 			return err
 		}},
+		{name: "updatePost/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wordpress.CreatedPost](`{"id":42,"status":"publish"}`)
+			return err
+		}},
+		{name: "deletePost/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wordpress.CreatedPost](`{"id":42,"status":"trash"}`)
+			return err
+		}},
+		{name: "createPage/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wordpress.Page](`{"id":51,"slug":"sample-page","status":"draft","link":"https://example.test/sample-page/","title":{"rendered":"Sample page"}}`)
+			return err
+		}},
+		{name: "getPage/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wordpress.Page](`{"id":51,"slug":"sample-page","status":"publish","link":"https://example.test/sample-page/","title":{"rendered":"Sample page"}}`)
+			return err
+		}},
+		{name: "listPages/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wordpress.PagePage](`{"pages":[{"id":51,"slug":"sample-page","status":"publish","link":"https://example.test/sample-page/","title":{"rendered":"Sample page"}}]}`)
+			return err
+		}},
+		{name: "updatePage/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wordpress.Page](`{"id":51,"slug":"sample-page","status":"publish","link":"https://example.test/sample-page/","title":{"rendered":"Sample page"}}`)
+			return err
+		}},
+		{name: "deletePage/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wordpress.Page](`{"id":51,"slug":"sample-page","status":"trash","link":"https://example.test/sample-page/","title":{"rendered":"Sample page"}}`)
+			return err
+		}},
+		{name: "getUser/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wordpress.User](`{"id":7,"name":"Sample Editor","slug":"sample-editor"}`)
+			return err
+		}},
+		{name: "listUsers/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wordpress.UserPage](`{"users":[{"id":7,"name":"Sample Editor","slug":"sample-editor"}]}`)
+			return err
+		}},
+		{name: "updateUser/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wordpress.User](`{"id":7,"name":"Sample Editor","slug":"sample-editor"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -46,5 +86,35 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListPosts().Definition().Operation.OperationID != "listPosts" {
 		t.Errorf("listPosts mock has another definition")
+	}
+	if mock.UpdatePost().Definition().Operation.OperationID != "updatePost" {
+		t.Errorf("updatePost mock has another definition")
+	}
+	if mock.DeletePost().Definition().Operation.OperationID != "deletePost" {
+		t.Errorf("deletePost mock has another definition")
+	}
+	if mock.CreatePage().Definition().Operation.OperationID != "createPage" {
+		t.Errorf("createPage mock has another definition")
+	}
+	if mock.GetPage().Definition().Operation.OperationID != "getPage" {
+		t.Errorf("getPage mock has another definition")
+	}
+	if mock.ListPages().Definition().Operation.OperationID != "listPages" {
+		t.Errorf("listPages mock has another definition")
+	}
+	if mock.UpdatePage().Definition().Operation.OperationID != "updatePage" {
+		t.Errorf("updatePage mock has another definition")
+	}
+	if mock.DeletePage().Definition().Operation.OperationID != "deletePage" {
+		t.Errorf("deletePage mock has another definition")
+	}
+	if mock.GetUser().Definition().Operation.OperationID != "getUser" {
+		t.Errorf("getUser mock has another definition")
+	}
+	if mock.ListUsers().Definition().Operation.OperationID != "listUsers" {
+		t.Errorf("listUsers mock has another definition")
+	}
+	if mock.UpdateUser().Definition().Operation.OperationID != "updateUser" {
+		t.Errorf("updateUser mock has another definition")
 	}
 }

@@ -24,7 +24,8 @@ import (
 func TestWorkerInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := workdaymock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	searchFlow := NewSearchFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, searchFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -57,4 +58,15 @@ func TestWorkerInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "0123456789abcdef0123456789abcdef", output.ID)
 	require.Equal(t, "Ada Lovelace", output.Descriptor)
 	require.Len(t, mock.GetWorker().Calls(), 1)
+	searchFlowID := "workday-workersearch-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, searchFlow, searchFlowID, workday.ListWorkersInput{Limit: 5, Search: "Ada"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	searchResult, err := client.WaitForFlow(ctx, searchFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, searchResult.Status, searchResult.ErrorMessage)
+	var workerPage workday.WorkerPage
+	require.NoError(t, searchResult.DecodeSingleOutput(&workerPage))
+	require.Equal(t, 1, workerPage.Total)
+	require.Equal(t, "Ada Lovelace", workerPage.Data[0].Descriptor)
+	require.Len(t, mock.ListWorkers().Calls(), 1)
 }

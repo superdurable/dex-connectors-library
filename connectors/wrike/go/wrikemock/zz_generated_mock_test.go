@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listTasks/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wrike.TaskPage](`{"data":[{"id":"IEAAAABC","title":"Example task","status":"Active"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "createTask/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wrike.TaskStatus](`{"id":"IEAAAABC","title":"Example task","status":"Active"}`)
+			return err
+		}},
+		{name: "updateTask/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wrike.TaskStatus](`{"id":"IEAAAABC","title":"Updated task","status":"Active"}`)
+			return err
+		}},
+		{name: "deleteTask/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wrike.TaskStatus](`{"id":"IEAAAABC","title":"Example task","status":"Active"}`)
+			return err
+		}},
 		{name: "getTask/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[wrike.TaskStatus](`{"id":"IEAAAABC","title":"Example task","status":"Active"}`)
 			return err
@@ -30,6 +46,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListTasks().Definition().Operation.OperationID != "listTasks" {
+		t.Errorf("listTasks mock has another definition")
+	}
+	if mock.CreateTask().Definition().Operation.OperationID != "createTask" {
+		t.Errorf("createTask mock has another definition")
+	}
+	if mock.UpdateTask().Definition().Operation.OperationID != "updateTask" {
+		t.Errorf("updateTask mock has another definition")
+	}
+	if mock.DeleteTask().Definition().Operation.OperationID != "deleteTask" {
+		t.Errorf("deleteTask mock has another definition")
+	}
 	if mock.GetTask().Definition().Operation.OperationID != "getTask" {
 		t.Errorf("getTask mock has another definition")
 	}

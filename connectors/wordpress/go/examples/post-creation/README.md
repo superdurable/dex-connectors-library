@@ -1,6 +1,6 @@
-# WordPress post creation Flow
+# WordPress post creation and update Flows
 
-This runnable Flow calls `createPost` with the static `wordpress` connection and completes with the new post's numeric ID and status. Empty status creates a draft for editorial review. Optional branches, including `uncertain`, are unwired so they fail the Flow. If creation becomes uncertain, inspect WordPress Posts before considering a new Flow.
+The worker registers a create Flow and a post-update Flow on the static `wordpress` connection. The update Flow calls `updatePost` with an absolute replacement of title, content, and status; the mock-backed real Dex test exercises both. Empty creation status creates a draft for editorial review. Optional branches, including `uncertain`, are unwired so they fail the Flow. If creation becomes uncertain, inspect WordPress Posts before considering a new Flow.
 
 ## Strict FDG 2.0 generation
 

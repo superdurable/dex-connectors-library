@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: workday
   displayName: Workday
-  description: Read a worker profile from a Workday tenant REST API.
+  description: Read and search worker profiles from a Workday tenant REST API.
   company: Workday
   categories: [hr-recruiting]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: workday
   languages:
@@ -104,6 +104,26 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: listWorkers
+      goName: ListWorkers
+      inputType: ListWorkersInput
+      outputType: WorkerPage
+      kind: query
+      description: List a page of accessible Workday workers, optionally searching by name prefix.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Workday returned the requested worker page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Workday conclusively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Workday returned malformed or oversized worker JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample worker page is returned.
+          output: {total: 1, data: [{id: 0123456789abcdef0123456789abcdef, descriptor: Ada Lovelace}]}
     - name: getWorker
       goName: GetWorker
       inputType: GetWorkerInput

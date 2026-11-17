@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "searchRecentPosts/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[x.PostPage](`{"data":[{"id":"1845123456789012345","text":"Example public Post"}],"nextToken":""}`)
+			return err
+		}},
+		{name: "getUser/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[x.UserMetadata](`{"id":"123456789","name":"Ada Lovelace","username":"ada"}`)
+			return err
+		}},
 		{name: "getPost/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[x.PostMetadata](`{"id":"1845123456789012345","text":"Example public Post"}`)
 			return err
@@ -30,6 +38,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.SearchRecentPosts().Definition().Operation.OperationID != "searchRecentPosts" {
+		t.Errorf("searchRecentPosts mock has another definition")
+	}
+	if mock.GetUser().Definition().Operation.OperationID != "getUser" {
+		t.Errorf("getUser mock has another definition")
+	}
 	if mock.GetPost().Definition().Operation.OperationID != "getPost" {
 		t.Errorf("getPost mock has another definition")
 	}

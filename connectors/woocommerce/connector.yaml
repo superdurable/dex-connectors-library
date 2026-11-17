@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: woocommerce
   displayName: WooCommerce
-  description: "Read WooCommerce resources through typed Dex Query Steps."
+  description: "Read and manage WooCommerce orders, customers, and products through typed Dex Steps."
   company: WooCommerce
   categories: [ecommerce]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: woocommerce
   languages:
@@ -46,7 +46,7 @@ spec:
       - name: consumer_key
         goName: ConsumerKey
         type: secretString
-        description: "Secret WooCommerce consumer key from your store admin at WooCommerce > Settings > Advanced > REST API > Add key. Choose Read permission; key normally starts ck_. Pair with consumer_secret. Blank prevents calls."
+        description: "Secret WooCommerce consumer key from your store admin at WooCommerce > Settings > Advanced > REST API > Add key. Choose Read/Write permission for mutations; key normally starts ck_. Pair with consumer_secret. Blank prevents calls."
         required: true
       - name: consumer_secret
         goName: ConsumerSecret
@@ -56,7 +56,7 @@ spec:
     guide:
       startURL: https://woocommerce.com/document/woocommerce-rest-api/
       steps:
-        - "At your HTTPS WordPress store admin, open WooCommerce > Settings > Advanced > REST API > Add key, select a user and Read permission, then generate the key. Copy the secret ck_ consumer key into consumer_key and cs_ consumer secret into consumer_secret; both are stored only as Dex credentials. Set storeUrl to the Site Address (URL) from WordPress > Settings > General; blank credentials prevent calls."
+        - "At your HTTPS WordPress store admin, open WooCommerce > Settings > Advanced > REST API > Add key, select a user and Read/Write permission for mutations, then generate the key. Copy the secret ck_ consumer key into consumer_key and cs_ consumer secret into consumer_secret; both are stored only as Dex credentials. Set storeUrl to the Site Address (URL) from WordPress > Settings > General; blank credentials prevent calls."
         - "Set storeUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
   operations:
     - name: listOrders
@@ -105,3 +105,320 @@ spec:
           description: "A realistic read-only getOrder response for a Meridian account."
           default: true
           output: {"id":101,"status":"processing","total":"29.00","currency":"USD"}
+    - name: createOrder
+      goName: CreateOrder
+      inputType: CreateOrderInput
+      outputType: Order
+      kind: mutation
+      description: "Create an order with product line items."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "The order was created."}
+        - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the order.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned malformed or oversized JSON.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The capped create outcome could not be confirmed.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        repeatOnUnknown: limited
+        maxSends: 3
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          description: "A newly created sample order."
+          default: true
+          output: {"id":102,"status":"pending","total":"29.00","currency":"USD"}
+    - name: updateOrder
+      goName: UpdateOrder
+      inputType: UpdateOrderInput
+      outputType: Order
+      kind: mutation
+      description: "Replace an order status."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "The order status was updated."}
+        - {id: notFound, goName: NotFound, description: "The order was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the update.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          description: "An updated sample order."
+          default: true
+          output: {"id":101,"status":"completed","total":"29.00","currency":"USD"}
+    - name: listCustomers
+      goName: ListCustomers
+      inputType: ListCustomersInput
+      outputType: CustomerPage
+      kind: query
+      description: "ListCustomers in WooCommerce."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "The customer listed successfully."}
+        - {id: notFound, goName: NotFound, description: "The customer was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: "A sample customer listed result."
+          default: true
+          output: {"customers":[{"id":11,"email":"sample@example.com","first_name":"Ava","last_name":"Lee"}]}
+    - name: getCustomer
+      goName: GetCustomer
+      inputType: GetCustomerInput
+      outputType: Customer
+      kind: query
+      description: "GetCustomer in WooCommerce."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "The customer found successfully."}
+        - {id: notFound, goName: NotFound, description: "The customer was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: "A sample customer found result."
+          default: true
+          output: {"id":11,"email":"sample@example.com","first_name":"Ava","last_name":"Lee"}
+    - name: createCustomer
+      goName: CreateCustomer
+      inputType: CreateCustomerInput
+      outputType: Customer
+      kind: mutation
+      description: "CreateCustomer in WooCommerce."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "The customer created successfully."}
+        - {id: notFound, goName: NotFound, description: "The customer was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned malformed or oversized JSON.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The capped create outcome could not be confirmed.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        repeatOnUnknown: limited
+        maxSends: 3
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          description: "A sample customer created result."
+          default: true
+          output: {"id":11,"email":"sample@example.com","first_name":"Ava","last_name":"Lee"}
+    - name: updateCustomer
+      goName: UpdateCustomer
+      inputType: UpdateCustomerInput
+      outputType: Customer
+      kind: mutation
+      description: "UpdateCustomer in WooCommerce."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "The customer updated successfully."}
+        - {id: notFound, goName: NotFound, description: "The customer was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          description: "A sample customer updated result."
+          default: true
+          output: {"id":11,"email":"sample@example.com","first_name":"Ava","last_name":"Lee"}
+    - name: deleteCustomer
+      goName: DeleteCustomer
+      inputType: DeleteCustomerInput
+      outputType: Customer
+      kind: mutation
+      description: "DeleteCustomer in WooCommerce."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: "The customer deleted successfully."}
+        - {id: notFound, goName: NotFound, description: "The customer was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          description: "A sample customer deleted result."
+          default: true
+          output: {"id":11,"email":"sample@example.com","first_name":"Ava","last_name":"Lee"}
+    - name: listProducts
+      goName: ListProducts
+      inputType: ListProductsInput
+      outputType: ProductPage
+      kind: query
+      description: "ListProducts in WooCommerce."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "The product listed successfully."}
+        - {id: notFound, goName: NotFound, description: "The product was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: "A sample product listed result."
+          default: true
+          output: {"products":[{"id":21,"name":"Sample mug","sku":"MUG-21","regular_price":"12.00"}]}
+    - name: getProduct
+      goName: GetProduct
+      inputType: GetProductInput
+      outputType: Product
+      kind: query
+      description: "GetProduct in WooCommerce."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "The product found successfully."}
+        - {id: notFound, goName: NotFound, description: "The product was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: "A sample product found result."
+          default: true
+          output: {"id":21,"name":"Sample mug","sku":"MUG-21","regular_price":"12.00"}
+    - name: createProduct
+      goName: CreateProduct
+      inputType: CreateProductInput
+      outputType: Product
+      kind: mutation
+      description: "CreateProduct in WooCommerce."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "The product created successfully."}
+        - {id: notFound, goName: NotFound, description: "The product was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned malformed or oversized JSON.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The capped create outcome could not be confirmed.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        repeatOnUnknown: limited
+        maxSends: 3
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          description: "A sample product created result."
+          default: true
+          output: {"id":21,"name":"Sample mug","sku":"MUG-21","regular_price":"12.00"}
+    - name: updateProduct
+      goName: UpdateProduct
+      inputType: UpdateProductInput
+      outputType: Product
+      kind: mutation
+      description: "UpdateProduct in WooCommerce."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "The product updated successfully."}
+        - {id: notFound, goName: NotFound, description: "The product was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          description: "A sample product updated result."
+          default: true
+          output: {"id":21,"name":"Sample mug","sku":"MUG-21","regular_price":"12.00"}
+    - name: deleteProduct
+      goName: DeleteProduct
+      inputType: DeleteProductInput
+      outputType: Product
+      kind: mutation
+      description: "DeleteProduct in WooCommerce."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: "The product deleted successfully."}
+        - {id: notFound, goName: NotFound, description: "The product was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          description: "A sample product deleted result."
+          default: true
+          output: {"id":21,"name":"Sample mug","sku":"MUG-21","regular_price":"12.00"}
+    - name: deleteOrder
+      goName: DeleteOrder
+      inputType: DeleteOrderInput
+      outputType: Order
+      kind: mutation
+      description: "Permanently delete an order."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: "The order was deleted."}
+        - {id: notFound, goName: NotFound, description: "The order was not found.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The provider conclusively rejected the delete.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          description: "A deleted sample order."
+          default: true
+          output: {"id":101,"status":"completed","total":"29.00","currency":"USD"}
