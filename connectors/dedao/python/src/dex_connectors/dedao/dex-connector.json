@@ -1,0 +1,60 @@
+{
+  "connectorId": "dedao",
+  "releaseTag": "connectors/dedao/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-dedao",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_note_task_status_step",
+      "kind": "query",
+      "operationId": "getNoteTaskStatus",
+      "inputType": "GetNoteTaskStatusInput",
+      "description": "Read status of an existing asynchronous Get Note task.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetNoteTaskStatusInput identifies an existing asynchronous note-save task.",
+        "properties": {
+          "taskID": {
+            "description": "TaskID is data.tasks[0].task_id returned by a prior note-save call.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskID"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
