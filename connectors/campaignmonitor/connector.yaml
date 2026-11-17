@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: campaignmonitor
   displayName: Campaign Monitor
-  description: Discover Campaign Monitor clients accessible to an account API key.
+  description: Discover Campaign Monitor clients and lists and manage subscribers.
   company: Campaign Monitor
   categories: [marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: campaignmonitor
   languages:
@@ -55,6 +55,108 @@ spec:
         - Save the key in secret api_key. Dex sends it as the HTTP Basic username with a blank password. Rotate it on the same page when access should end.
         - This key is for an account you control. Public integrations should use Campaign Monitor OAuth. Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
   operations:
+    - name: listSubscriberLists
+      goName: ListSubscriberLists
+      inputType: ListSubscriberListsInput
+      outputType: SubscriberLists
+      kind: query
+      description: List subscriber list IDs and names for one client.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Campaign Monitor returned the client's lists.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the list lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample subscriber list.
+          output: {lists: [{id: list-1, name: Newsletter}]}
+    - name: getSubscriber
+      goName: GetSubscriber
+      inputType: GetSubscriberInput
+      outputType: SubscriberProfile
+      kind: query
+      description: Read one subscriber's email, name, and state.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Campaign Monitor returned the subscriber.}
+        - {id: notFound, goName: NotFound, description: Campaign Monitor did not find the subscriber., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample active subscriber.
+          output: {email: member@example.com, name: Member, state: Active}
+    - name: upsertSubscriber
+      goName: UpsertSubscriber
+      inputType: UpsertSubscriberInput
+      outputType: SubscriberIdentity
+      kind: mutation
+      description: Add a subscriber or replace the existing subscriber's name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: saved, goName: Saved, description: Campaign Monitor queued the subscriber upsert.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the upsert., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: savedDefault
+          branch: saved
+          default: true
+          description: Sample subscriber identity.
+          output: {email: member@example.com}
+    - name: updateSubscriber
+      goName: UpdateSubscriber
+      inputType: UpdateSubscriberInput
+      outputType: SubscriberIdentity
+      kind: mutation
+      description: Replace one existing subscriber's name without resubscribing.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Campaign Monitor updated the subscriber.}
+        - {id: notFound, goName: NotFound, description: Campaign Monitor did not find the subscriber., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample updated subscriber.
+          output: {email: member@example.com}
+    - name: deleteSubscriber
+      goName: DeleteSubscriber
+      inputType: DeleteSubscriberInput
+      outputType: SubscriberIdentity
+      kind: mutation
+      description: Mark one active subscriber deleted in a list.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Campaign Monitor accepted the deletion.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned an oversized response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample deleted subscriber.
+          output: {email: member@example.com}
     - name: listClients
       goName: ListClients
       inputType: ListClientsInput

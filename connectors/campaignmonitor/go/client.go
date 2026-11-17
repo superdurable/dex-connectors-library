@@ -1,10 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package campaignmonitor exposes typed Campaign Monitor metadata Queries to Dex Flows.
+// Package campaignmonitor queries clients and lists and manages subscribers in Dex Flows.
 package campaignmonitor
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -60,6 +62,10 @@ var errCredential = errors.New("Campaign Monitor credential unavailable")
 var errRequest = errors.New("Campaign Monitor request failed")
 
 func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Duration, error) {
+	return client.request(call, http.MethodGet, path, nil)
+}
+
+func (client *Client) request(call sdkgo.Call, method, path string, payload any) ([]byte, int, time.Duration, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return nil, 0, 0, errCredential
@@ -68,11 +74,24 @@ func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Durat
 	if !providerhttp.IsHeaderSafeCredential(apiKey) {
 		return nil, 0, 0, errCredential
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	var bodyReader *bytes.Reader
+	if payload != nil {
+		body, marshalErr := json.Marshal(payload)
+		if marshalErr != nil {
+			return nil, 0, 0, errRequest
+		}
+		bodyReader = bytes.NewReader(body)
+	} else {
+		bodyReader = bytes.NewReader(nil)
+	}
+	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bodyReader)
 	if err != nil {
 		return nil, 0, 0, errRequest
 	}
 	request.Header.Set("Accept", "application/json")
+	if payload != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.SetBasicAuth(apiKey, "")
 	response, err := client.httpClient.Do(request)
 	if err != nil {

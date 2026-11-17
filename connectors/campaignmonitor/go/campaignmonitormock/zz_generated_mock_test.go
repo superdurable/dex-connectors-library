@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listSubscriberLists/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.SubscriberLists](`{"lists":[{"id":"list-1","name":"Newsletter"}]}`)
+			return err
+		}},
+		{name: "getSubscriber/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.SubscriberProfile](`{"email":"member@example.com","name":"Member","state":"Active"}`)
+			return err
+		}},
+		{name: "upsertSubscriber/savedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.SubscriberIdentity](`{"email":"member@example.com"}`)
+			return err
+		}},
+		{name: "updateSubscriber/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.SubscriberIdentity](`{"email":"member@example.com"}`)
+			return err
+		}},
+		{name: "deleteSubscriber/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.SubscriberIdentity](`{"email":"member@example.com"}`)
+			return err
+		}},
 		{name: "listClients/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[campaignmonitor.ClientsList](`{"clients":[{"id":"sample-client-id","name":"Sample Client"}]}`)
 			return err
@@ -30,6 +50,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListSubscriberLists().Definition().Operation.OperationID != "listSubscriberLists" {
+		t.Errorf("listSubscriberLists mock has another definition")
+	}
+	if mock.GetSubscriber().Definition().Operation.OperationID != "getSubscriber" {
+		t.Errorf("getSubscriber mock has another definition")
+	}
+	if mock.UpsertSubscriber().Definition().Operation.OperationID != "upsertSubscriber" {
+		t.Errorf("upsertSubscriber mock has another definition")
+	}
+	if mock.UpdateSubscriber().Definition().Operation.OperationID != "updateSubscriber" {
+		t.Errorf("updateSubscriber mock has another definition")
+	}
+	if mock.DeleteSubscriber().Definition().Operation.OperationID != "deleteSubscriber" {
+		t.Errorf("deleteSubscriber mock has another definition")
+	}
 	if mock.ListClients().Definition().Operation.OperationID != "listClients" {
 		t.Errorf("listClients mock has another definition")
 	}

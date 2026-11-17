@@ -17,8 +17,13 @@ import (
 
 // Mock is a scripted campaignmonitor connection. Script each operation through its accessor.
 type Mock struct {
-	connection  campaignmonitor.Connection
-	listClients *connectormock.Query[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList]
+	connection          campaignmonitor.Connection
+	listSubscriberLists *connectormock.Query[campaignmonitor.ListSubscriberListsInput, campaignmonitor.SubscriberLists]
+	getSubscriber       *connectormock.Query[campaignmonitor.GetSubscriberInput, campaignmonitor.SubscriberProfile]
+	upsertSubscriber    *connectormock.Mutation[campaignmonitor.UpsertSubscriberInput, campaignmonitor.SubscriberIdentity]
+	updateSubscriber    *connectormock.Mutation[campaignmonitor.UpdateSubscriberInput, campaignmonitor.SubscriberIdentity]
+	deleteSubscriber    *connectormock.Mutation[campaignmonitor.DeleteSubscriberInput, campaignmonitor.SubscriberIdentity]
+	listClients         *connectormock.Query[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +31,18 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listClients: connectormock.NewQuery[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList](t, campaignmonitor.ListClientsDefinition),
+		listSubscriberLists: connectormock.NewQuery[campaignmonitor.ListSubscriberListsInput, campaignmonitor.SubscriberLists](t, campaignmonitor.ListSubscriberListsDefinition),
+		getSubscriber:       connectormock.NewQuery[campaignmonitor.GetSubscriberInput, campaignmonitor.SubscriberProfile](t, campaignmonitor.GetSubscriberDefinition),
+		upsertSubscriber:    connectormock.NewMutation[campaignmonitor.UpsertSubscriberInput, campaignmonitor.SubscriberIdentity](t, campaignmonitor.UpsertSubscriberDefinition),
+		updateSubscriber:    connectormock.NewMutation[campaignmonitor.UpdateSubscriberInput, campaignmonitor.SubscriberIdentity](t, campaignmonitor.UpdateSubscriberDefinition),
+		deleteSubscriber:    connectormock.NewMutation[campaignmonitor.DeleteSubscriberInput, campaignmonitor.SubscriberIdentity](t, campaignmonitor.DeleteSubscriberDefinition),
+		listClients:         connectormock.NewQuery[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList](t, campaignmonitor.ListClientsDefinition),
 	}
+	mock.listSubscriberLists.Default(ListSubscriberListsDefault())
+	mock.getSubscriber.Default(GetSubscriberDefault())
+	mock.upsertSubscriber.Default(UpsertSubscriberDefault())
+	mock.updateSubscriber.Default(UpdateSubscriberDefault())
+	mock.deleteSubscriber.Default(DeleteSubscriberDefault())
 	mock.listClients.Default(ListClientsDefault())
 	connection, err := campaignmonitor.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "campaignmonitor", Name: connectionName})
 	if err != nil {
@@ -40,6 +55,31 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() campaignmonitor.Connection { return mock.connection }
 
+// ListSubscriberLists returns the listSubscriberLists script.
+func (mock *Mock) ListSubscriberLists() *connectormock.Query[campaignmonitor.ListSubscriberListsInput, campaignmonitor.SubscriberLists] {
+	return mock.listSubscriberLists
+}
+
+// GetSubscriber returns the getSubscriber script.
+func (mock *Mock) GetSubscriber() *connectormock.Query[campaignmonitor.GetSubscriberInput, campaignmonitor.SubscriberProfile] {
+	return mock.getSubscriber
+}
+
+// UpsertSubscriber returns the upsertSubscriber script.
+func (mock *Mock) UpsertSubscriber() *connectormock.Mutation[campaignmonitor.UpsertSubscriberInput, campaignmonitor.SubscriberIdentity] {
+	return mock.upsertSubscriber
+}
+
+// UpdateSubscriber returns the updateSubscriber script.
+func (mock *Mock) UpdateSubscriber() *connectormock.Mutation[campaignmonitor.UpdateSubscriberInput, campaignmonitor.SubscriberIdentity] {
+	return mock.updateSubscriber
+}
+
+// DeleteSubscriber returns the deleteSubscriber script.
+func (mock *Mock) DeleteSubscriber() *connectormock.Mutation[campaignmonitor.DeleteSubscriberInput, campaignmonitor.SubscriberIdentity] {
+	return mock.deleteSubscriber
+}
+
 // ListClients returns the listClients script.
 func (mock *Mock) ListClients() *connectormock.Query[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList] {
 	return mock.listClients
@@ -47,8 +87,213 @@ func (mock *Mock) ListClients() *connectormock.Query[campaignmonitor.ListClients
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListSubscriberLists() sdkgo.Query[campaignmonitor.ListSubscriberListsInput, campaignmonitor.SubscriberLists] {
+	return operations.mock.listSubscriberLists
+}
+func (operations mockOperations) GetSubscriber() sdkgo.Query[campaignmonitor.GetSubscriberInput, campaignmonitor.SubscriberProfile] {
+	return operations.mock.getSubscriber
+}
+func (operations mockOperations) UpsertSubscriber() sdkgo.Mutation[campaignmonitor.UpsertSubscriberInput, campaignmonitor.SubscriberIdentity] {
+	return operations.mock.upsertSubscriber
+}
+func (operations mockOperations) UpdateSubscriber() sdkgo.Mutation[campaignmonitor.UpdateSubscriberInput, campaignmonitor.SubscriberIdentity] {
+	return operations.mock.updateSubscriber
+}
+func (operations mockOperations) DeleteSubscriber() sdkgo.Mutation[campaignmonitor.DeleteSubscriberInput, campaignmonitor.SubscriberIdentity] {
+	return operations.mock.deleteSubscriber
+}
 func (operations mockOperations) ListClients() sdkgo.Query[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList] {
 	return operations.mock.listClients
+}
+
+// ListSubscriberListsListed selects the listed branch: Campaign Monitor returned the client's lists.
+func ListSubscriberListsListed(value campaignmonitor.SubscriberLists, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberLists] {
+	return connectormock.Branch(campaignmonitor.ListSubscriberListsBranchListed, value, failure)
+}
+
+// ListSubscriberListsProviderRejected selects the providerRejected branch: Campaign Monitor rejected the list lookup.
+func ListSubscriberListsProviderRejected(value campaignmonitor.SubscriberLists, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberLists] {
+	return connectormock.Branch(campaignmonitor.ListSubscriberListsBranchProviderRejected, value, failure)
+}
+
+// ListSubscriberListsInvalidResponse selects the invalidResponse branch: Campaign Monitor returned invalid JSON.
+func ListSubscriberListsInvalidResponse(value campaignmonitor.SubscriberLists, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberLists] {
+	return connectormock.Branch(campaignmonitor.ListSubscriberListsBranchInvalidResponse, value, failure)
+}
+
+// ListSubscriberListsDefect selects the defect branch: Local input or credentials are invalid.
+func ListSubscriberListsDefect(value campaignmonitor.SubscriberLists, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberLists] {
+	return connectormock.Branch(campaignmonitor.ListSubscriberListsBranchDefect, value, failure)
+}
+
+// ListSubscriberListsRetry asks Dex to retry the listSubscriberLists Step, after the delay when it is positive.
+func ListSubscriberListsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.SubscriberLists] {
+	return connectormock.Retry[campaignmonitor.SubscriberLists](failure, after)
+}
+
+// ListSubscriberListsListedDefault is the manifest mock listedDefault: Sample subscriber list.
+func ListSubscriberListsListedDefault() connectormock.Case[campaignmonitor.SubscriberLists] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.SubscriberLists](`{"lists":[{"id":"list-1","name":"Newsletter"}]}`)
+	return connectormock.Branch(campaignmonitor.ListSubscriberListsBranchListed, value, nil)
+}
+
+// ListSubscriberListsDefault is the manifest default, listedDefault, which New installs.
+func ListSubscriberListsDefault() connectormock.Case[campaignmonitor.SubscriberLists] {
+	return ListSubscriberListsListedDefault()
+}
+
+// GetSubscriberFound selects the found branch: Campaign Monitor returned the subscriber.
+func GetSubscriberFound(value campaignmonitor.SubscriberProfile, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberProfile] {
+	return connectormock.Branch(campaignmonitor.GetSubscriberBranchFound, value, failure)
+}
+
+// GetSubscriberNotFound selects the notFound branch: Campaign Monitor did not find the subscriber.
+func GetSubscriberNotFound(value campaignmonitor.SubscriberProfile, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberProfile] {
+	return connectormock.Branch(campaignmonitor.GetSubscriberBranchNotFound, value, failure)
+}
+
+// GetSubscriberProviderRejected selects the providerRejected branch: Campaign Monitor rejected the lookup.
+func GetSubscriberProviderRejected(value campaignmonitor.SubscriberProfile, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberProfile] {
+	return connectormock.Branch(campaignmonitor.GetSubscriberBranchProviderRejected, value, failure)
+}
+
+// GetSubscriberInvalidResponse selects the invalidResponse branch: Campaign Monitor returned invalid JSON.
+func GetSubscriberInvalidResponse(value campaignmonitor.SubscriberProfile, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberProfile] {
+	return connectormock.Branch(campaignmonitor.GetSubscriberBranchInvalidResponse, value, failure)
+}
+
+// GetSubscriberDefect selects the defect branch: Local input or credentials are invalid.
+func GetSubscriberDefect(value campaignmonitor.SubscriberProfile, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberProfile] {
+	return connectormock.Branch(campaignmonitor.GetSubscriberBranchDefect, value, failure)
+}
+
+// GetSubscriberRetry asks Dex to retry the getSubscriber Step, after the delay when it is positive.
+func GetSubscriberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.SubscriberProfile] {
+	return connectormock.Retry[campaignmonitor.SubscriberProfile](failure, after)
+}
+
+// GetSubscriberFoundDefault is the manifest mock foundDefault: Sample active subscriber.
+func GetSubscriberFoundDefault() connectormock.Case[campaignmonitor.SubscriberProfile] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.SubscriberProfile](`{"email":"member@example.com","name":"Member","state":"Active"}`)
+	return connectormock.Branch(campaignmonitor.GetSubscriberBranchFound, value, nil)
+}
+
+// GetSubscriberDefault is the manifest default, foundDefault, which New installs.
+func GetSubscriberDefault() connectormock.Case[campaignmonitor.SubscriberProfile] {
+	return GetSubscriberFoundDefault()
+}
+
+// UpsertSubscriberSaved selects the saved branch: Campaign Monitor queued the subscriber upsert.
+func UpsertSubscriberSaved(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.UpsertSubscriberBranchSaved, value, failure)
+}
+
+// UpsertSubscriberProviderRejected selects the providerRejected branch: Campaign Monitor rejected the upsert.
+func UpsertSubscriberProviderRejected(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.UpsertSubscriberBranchProviderRejected, value, failure)
+}
+
+// UpsertSubscriberInvalidResponse selects the invalidResponse branch: Campaign Monitor returned invalid JSON.
+func UpsertSubscriberInvalidResponse(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.UpsertSubscriberBranchInvalidResponse, value, failure)
+}
+
+// UpsertSubscriberDefect selects the defect branch: Local input or credentials are invalid.
+func UpsertSubscriberDefect(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.UpsertSubscriberBranchDefect, value, failure)
+}
+
+// UpsertSubscriberRetry asks Dex to retry the upsertSubscriber Step, after the delay when it is positive.
+func UpsertSubscriberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Retry[campaignmonitor.SubscriberIdentity](failure, after)
+}
+
+// UpsertSubscriberSavedDefault is the manifest mock savedDefault: Sample subscriber identity.
+func UpsertSubscriberSavedDefault() connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.SubscriberIdentity](`{"email":"member@example.com"}`)
+	return connectormock.Branch(campaignmonitor.UpsertSubscriberBranchSaved, value, nil)
+}
+
+// UpsertSubscriberDefault is the manifest default, savedDefault, which New installs.
+func UpsertSubscriberDefault() connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return UpsertSubscriberSavedDefault()
+}
+
+// UpdateSubscriberUpdated selects the updated branch: Campaign Monitor updated the subscriber.
+func UpdateSubscriberUpdated(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.UpdateSubscriberBranchUpdated, value, failure)
+}
+
+// UpdateSubscriberNotFound selects the notFound branch: Campaign Monitor did not find the subscriber.
+func UpdateSubscriberNotFound(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.UpdateSubscriberBranchNotFound, value, failure)
+}
+
+// UpdateSubscriberProviderRejected selects the providerRejected branch: Campaign Monitor rejected the update.
+func UpdateSubscriberProviderRejected(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.UpdateSubscriberBranchProviderRejected, value, failure)
+}
+
+// UpdateSubscriberInvalidResponse selects the invalidResponse branch: Campaign Monitor returned invalid JSON.
+func UpdateSubscriberInvalidResponse(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.UpdateSubscriberBranchInvalidResponse, value, failure)
+}
+
+// UpdateSubscriberDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateSubscriberDefect(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.UpdateSubscriberBranchDefect, value, failure)
+}
+
+// UpdateSubscriberRetry asks Dex to retry the updateSubscriber Step, after the delay when it is positive.
+func UpdateSubscriberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Retry[campaignmonitor.SubscriberIdentity](failure, after)
+}
+
+// UpdateSubscriberUpdatedDefault is the manifest mock updatedDefault: Sample updated subscriber.
+func UpdateSubscriberUpdatedDefault() connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.SubscriberIdentity](`{"email":"member@example.com"}`)
+	return connectormock.Branch(campaignmonitor.UpdateSubscriberBranchUpdated, value, nil)
+}
+
+// UpdateSubscriberDefault is the manifest default, updatedDefault, which New installs.
+func UpdateSubscriberDefault() connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return UpdateSubscriberUpdatedDefault()
+}
+
+// DeleteSubscriberDeleted selects the deleted branch: Campaign Monitor accepted the deletion.
+func DeleteSubscriberDeleted(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.DeleteSubscriberBranchDeleted, value, failure)
+}
+
+// DeleteSubscriberProviderRejected selects the providerRejected branch: Campaign Monitor rejected the deletion.
+func DeleteSubscriberProviderRejected(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.DeleteSubscriberBranchProviderRejected, value, failure)
+}
+
+// DeleteSubscriberInvalidResponse selects the invalidResponse branch: Campaign Monitor returned an oversized response.
+func DeleteSubscriberInvalidResponse(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.DeleteSubscriberBranchInvalidResponse, value, failure)
+}
+
+// DeleteSubscriberDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteSubscriberDefect(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.DeleteSubscriberBranchDefect, value, failure)
+}
+
+// DeleteSubscriberRetry asks Dex to retry the deleteSubscriber Step, after the delay when it is positive.
+func DeleteSubscriberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Retry[campaignmonitor.SubscriberIdentity](failure, after)
+}
+
+// DeleteSubscriberDeletedDefault is the manifest mock deletedDefault: Sample deleted subscriber.
+func DeleteSubscriberDeletedDefault() connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.SubscriberIdentity](`{"email":"member@example.com"}`)
+	return connectormock.Branch(campaignmonitor.DeleteSubscriberBranchDeleted, value, nil)
+}
+
+// DeleteSubscriberDefault is the manifest default, deletedDefault, which New installs.
+func DeleteSubscriberDefault() connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return DeleteSubscriberDeletedDefault()
 }
 
 // ListClientsListed selects the listed branch: Campaign Monitor returned the account's clients.

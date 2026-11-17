@@ -1,6 +1,6 @@
 # Campaign Monitor client discovery Flow
 
-This runnable Flow calls `listClients` with the static `campaignmonitor` Dex Web connection. It stores client IDs and names in an Attribute and completes with the typed result. Optional branches are unwired and fail the Flow when selected. The API key does not enter Flow state.
+This runnable Flow calls `listClients`, then `listSubscriberLists` for the first returned client, with the static `campaignmonitor` Dex Web connection. It stores client IDs and names in an Attribute and completes with the typed client result. An account with no clients completes without the second call. Optional branches are unwired and fail the Flow when selected. The API key does not enter Flow state.
 
 ## Strict FDG 2.0 generation
 

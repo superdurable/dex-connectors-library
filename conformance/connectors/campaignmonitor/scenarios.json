@@ -224,6 +224,1635 @@
       "input": {},
       "name": "listClients-transportFailure",
       "operation": "listClients"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "[{\"ListID\":\"list-1\",\"Name\":\"Newsletter\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/lists.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "lists": [
+            {
+              "id": "list-1",
+              "name": "Newsletter"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1"
+      },
+      "name": "listSubscriberLists-success",
+      "operation": "listSubscriberLists"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/lists.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "lists": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1"
+      },
+      "name": "listSubscriberLists-providerRejected",
+      "operation": "listSubscriberLists"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/lists.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "lists": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1"
+      },
+      "name": "listSubscriberLists-invalidResponse",
+      "operation": "listSubscriberLists"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/lists.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1"
+      },
+      "name": "listSubscriberLists-429",
+      "operation": "listSubscriberLists"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/lists.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1"
+      },
+      "name": "listSubscriberLists-503",
+      "operation": "listSubscriberLists"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/lists.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1"
+      },
+      "name": "listSubscriberLists-500",
+      "operation": "listSubscriberLists"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/lists.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1"
+      },
+      "name": "listSubscriberLists-transportFailure",
+      "operation": "listSubscriberLists"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"EmailAddress\":\"member@example.com\",\"Name\":\"Member\",\"State\":\"Active\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "member@example.com",
+          "name": "Member",
+          "state": "Active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "getSubscriber-success",
+      "operation": "getSubscriber"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "name": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "getSubscriber-providerRejected",
+      "operation": "getSubscriber"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "name": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "getSubscriber-invalidResponse",
+      "operation": "getSubscriber"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "getSubscriber-429",
+      "operation": "getSubscriber"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "getSubscriber-503",
+      "operation": "getSubscriber"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "getSubscriber-500",
+      "operation": "getSubscriber"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "getSubscriber-transportFailure",
+      "operation": "getSubscriber"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "name": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "getSubscriber-notFound",
+      "operation": "getSubscriber"
+    },
+    {
+      "callId": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
+      "exchanges": [
+        {
+          "body": "\"member@example.com\"",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/subscribers/list-1.json",
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Member",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "saved",
+        "failureKind": "",
+        "output": {
+          "email": "member@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Member"
+      },
+      "name": "upsertSubscriber-success",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/subscribers/list-1.json",
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Member",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Member"
+      },
+      "name": "upsertSubscriber-providerRejected",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/subscribers/list-1.json",
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Member",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Member"
+      },
+      "name": "upsertSubscriber-invalidResponse",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/subscribers/list-1.json",
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Member",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Member"
+      },
+      "name": "upsertSubscriber-429",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/subscribers/list-1.json",
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Member",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Member"
+      },
+      "name": "upsertSubscriber-503",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/subscribers/list-1.json",
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Member",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Member"
+      },
+      "name": "upsertSubscriber-500",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/subscribers/list-1.json",
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Member",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Member"
+      },
+      "name": "upsertSubscriber-transportFailure",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "exchanges": [
+        {
+          "body": "\"member@example.com\"",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Updated",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "email": "member@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Updated"
+      },
+      "name": "updateSubscriber-success",
+      "operation": "updateSubscriber"
+    },
+    {
+      "callId": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Updated",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Updated"
+      },
+      "name": "updateSubscriber-providerRejected",
+      "operation": "updateSubscriber"
+    },
+    {
+      "callId": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Updated",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Updated"
+      },
+      "name": "updateSubscriber-invalidResponse",
+      "operation": "updateSubscriber"
+    },
+    {
+      "callId": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Updated",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Updated"
+      },
+      "name": "updateSubscriber-429",
+      "operation": "updateSubscriber"
+    },
+    {
+      "callId": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Updated",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Updated"
+      },
+      "name": "updateSubscriber-503",
+      "operation": "updateSubscriber"
+    },
+    {
+      "callId": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Updated",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Updated"
+      },
+      "name": "updateSubscriber-500",
+      "operation": "updateSubscriber"
+    },
+    {
+      "callId": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Updated",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Updated"
+      },
+      "name": "updateSubscriber-transportFailure",
+      "operation": "updateSubscriber"
+    },
+    {
+      "callId": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestBody": {
+            "EmailAddress": "member@example.com",
+            "Name": "Updated",
+            "RestartSubscriptionBasedAutoresponders": false,
+            "Resubscribe": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f31de6ce-5716-5402-927b-af57f3da1c9f",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1",
+        "name": "Updated"
+      },
+      "name": "updateSubscriber-notFound",
+      "operation": "updateSubscriber"
+    },
+    {
+      "callId": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "email": "member@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "deleteSubscriber-success",
+      "operation": "deleteSubscriber"
+    },
+    {
+      "callId": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "deleteSubscriber-providerRejected",
+      "operation": "deleteSubscriber"
+    },
+    {
+      "callId": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "deleteSubscriber-invalidResponse",
+      "operation": "deleteSubscriber"
+    },
+    {
+      "callId": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "deleteSubscriber-429",
+      "operation": "deleteSubscriber"
+    },
+    {
+      "callId": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "deleteSubscriber-503",
+      "operation": "deleteSubscriber"
+    },
+    {
+      "callId": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "deleteSubscriber-500",
+      "operation": "deleteSubscriber"
+    },
+    {
+      "callId": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/subscribers/list-1.json",
+          "query": {
+            "email": [
+              "member@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
+      "input": {
+        "email": "member@example.com",
+        "listId": "list-1"
+      },
+      "name": "deleteSubscriber-transportFailure",
+      "operation": "deleteSubscriber"
     }
   ],
   "schemaVersion": 1
