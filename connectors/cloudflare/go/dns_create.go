@@ -157,6 +157,7 @@ func (operation CreateDNSRecordOperation) invokeCreate(call sdkgo.Call, zoneID s
 	if err != nil {
 		return cloudflareCreateUncertain(sdkgo.FailureProtocol, "creation succeeded but response identity is invalid")
 	}
+	// The response already confirms creation; a failed read-back checkpoint cannot undo it.
 	_ = fence.RecordProviderID(record.ID)
 	return sdkgo.NewMutationBranch(CreateDNSRecordBranchCreated, record, nil, sdkgo.Receipt{})
 }
