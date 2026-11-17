@@ -23,7 +23,8 @@ import (
 func TestPhotoSearchUsesMockWithRealDex(t *testing.T) {
 	mock := unsplashmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	collectionFlow := NewCollectionBrowserFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, collectionFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -60,4 +61,13 @@ func TestPhotoSearchUsesMockWithRealDex(t *testing.T) {
 	require.Len(t, calls, 1)
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, "office", calls[0].Input.Query)
+	collectionFlowID := "unsplash-collection-browse-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, collectionFlow, collectionFlowID, CollectionBrowserInput{Page: 1, PerPage: 10}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	collectionResult, err := client.WaitForFlow(ctx, collectionFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, collectionResult.Status, collectionResult.ErrorMessage)
+	collectionCalls := mock.ListCollections().Calls()
+	require.Len(t, collectionCalls, 1)
+	require.Equal(t, collectionFlowID, collectionCalls[0].FlowID)
 }

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: unsplash
   displayName: Unsplash
-  description: Search public photos and retrieve one photo through Unsplash.
+  description: Search and browse public Unsplash photos, collections, users, and topics.
   company: Unsplash
   categories: [data-search]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: unsplash
   languages:
@@ -96,3 +96,267 @@ spec:
           description: The same office photo is available by ID.
           default: true
           output: {id: "office-1", description: "A sunlit office", altDescription: "sunlit office interior", htmlUrl: "https://unsplash.com/photos/office-1", regularUrl: "https://images.unsplash.com/photo-office-1", photographerName: "A. Photographer", photographerURL: "https://unsplash.com/@photographer"}
+
+    - name: listPhotos
+      goName: ListPhotos
+      inputType: ListPhotosInput
+      outputType: PhotoList
+      kind: query
+      description: "Read public Unsplash listPhotos data with the application Access Key."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Unsplash returned the public listPhotos data."}
+        - {id: notFound, goName: NotFound, description: "The requested public resource does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Unsplash rejected the request or application key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Unsplash returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: listPhotosDefault
+          branch: listed
+          description: "Returns representative public Unsplash data for listPhotos."
+          default: true
+          output: {"photos":[{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}]}
+
+    - name: getRandomPhoto
+      goName: GetRandomPhoto
+      inputType: GetRandomPhotoInput
+      outputType: Photo
+      kind: query
+      description: "Read public Unsplash getRandomPhoto data with the application Access Key."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Unsplash returned the public getRandomPhoto data."}
+        - {id: notFound, goName: NotFound, description: "The requested public resource does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Unsplash rejected the request or application key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Unsplash returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: getRandomPhotoDefault
+          branch: found
+          description: "Returns representative public Unsplash data for getRandomPhoto."
+          default: true
+          output: {"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}
+
+    - name: searchCollections
+      goName: SearchCollections
+      inputType: SearchCollectionsInput
+      outputType: CollectionPage
+      kind: query
+      description: "Read public Unsplash searchCollections data with the application Access Key."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: "Unsplash returned the public searchCollections data."}
+        - {id: notFound, goName: NotFound, description: "The requested public resource does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Unsplash rejected the request or application key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Unsplash returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: searchCollectionsDefault
+          branch: searched
+          description: "Returns representative public Unsplash data for searchCollections."
+          default: true
+          output: {"total":1,"totalPages":1,"collections":[{"id":"206","title":"Office","description":"Workspaces","htmlUrl":"https://unsplash.com/collections/206/office","totalPhotos":12}]}
+
+    - name: listCollections
+      goName: ListCollections
+      inputType: ListCollectionsInput
+      outputType: CollectionList
+      kind: query
+      description: "Read public Unsplash listCollections data with the application Access Key."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Unsplash returned the public listCollections data."}
+        - {id: notFound, goName: NotFound, description: "The requested public resource does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Unsplash rejected the request or application key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Unsplash returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: listCollectionsDefault
+          branch: listed
+          description: "Returns representative public Unsplash data for listCollections."
+          default: true
+          output: {"collections":[{"id":"206","title":"Office","description":"Workspaces","htmlUrl":"https://unsplash.com/collections/206/office","totalPhotos":12}]}
+
+    - name: getCollection
+      goName: GetCollection
+      inputType: GetCollectionInput
+      outputType: Collection
+      kind: query
+      description: "Read public Unsplash getCollection data with the application Access Key."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Unsplash returned the public getCollection data."}
+        - {id: notFound, goName: NotFound, description: "The requested public resource does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Unsplash rejected the request or application key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Unsplash returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: getCollectionDefault
+          branch: found
+          description: "Returns representative public Unsplash data for getCollection."
+          default: true
+          output: {"id":"206","title":"Office","description":"Workspaces","htmlUrl":"https://unsplash.com/collections/206/office","totalPhotos":12}
+
+    - name: listCollectionPhotos
+      goName: ListCollectionPhotos
+      inputType: ListCollectionPhotosInput
+      outputType: PhotoList
+      kind: query
+      description: "Read public Unsplash listCollectionPhotos data with the application Access Key."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Unsplash returned the public listCollectionPhotos data."}
+        - {id: notFound, goName: NotFound, description: "The requested public resource does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Unsplash rejected the request or application key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Unsplash returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: listCollectionPhotosDefault
+          branch: listed
+          description: "Returns representative public Unsplash data for listCollectionPhotos."
+          default: true
+          output: {"photos":[{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}]}
+
+    - name: getUser
+      goName: GetUser
+      inputType: GetUserInput
+      outputType: User
+      kind: query
+      description: "Read public Unsplash getUser data with the application Access Key."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Unsplash returned the public getUser data."}
+        - {id: notFound, goName: NotFound, description: "The requested public resource does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Unsplash rejected the request or application key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Unsplash returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: getUserDefault
+          branch: found
+          description: "Returns representative public Unsplash data for getUser."
+          default: true
+          output: {"id":"user-1","username":"photographer","name":"A. Photographer","htmlUrl":"https://unsplash.com/@photographer"}
+
+    - name: listUserPhotos
+      goName: ListUserPhotos
+      inputType: ListUserPhotosInput
+      outputType: PhotoList
+      kind: query
+      description: "Read public Unsplash listUserPhotos data with the application Access Key."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Unsplash returned the public listUserPhotos data."}
+        - {id: notFound, goName: NotFound, description: "The requested public resource does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Unsplash rejected the request or application key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Unsplash returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: listUserPhotosDefault
+          branch: listed
+          description: "Returns representative public Unsplash data for listUserPhotos."
+          default: true
+          output: {"photos":[{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}]}
+
+    - name: searchUsers
+      goName: SearchUsers
+      inputType: SearchUsersInput
+      outputType: UserPage
+      kind: query
+      description: "Read public Unsplash searchUsers data with the application Access Key."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: "Unsplash returned the public searchUsers data."}
+        - {id: notFound, goName: NotFound, description: "The requested public resource does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Unsplash rejected the request or application key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Unsplash returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: searchUsersDefault
+          branch: searched
+          description: "Returns representative public Unsplash data for searchUsers."
+          default: true
+          output: {"total":1,"totalPages":1,"users":[{"id":"user-1","username":"photographer","name":"A. Photographer","htmlUrl":"https://unsplash.com/@photographer"}]}
+
+    - name: listTopics
+      goName: ListTopics
+      inputType: ListTopicsInput
+      outputType: TopicList
+      kind: query
+      description: "Read public Unsplash listTopics data with the application Access Key."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Unsplash returned the public listTopics data."}
+        - {id: notFound, goName: NotFound, description: "The requested public resource does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Unsplash rejected the request or application key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Unsplash returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: listTopicsDefault
+          branch: listed
+          description: "Returns representative public Unsplash data for listTopics."
+          default: true
+          output: {"topics":[{"id":"topic-1","slug":"architecture","title":"Architecture","htmlUrl":"https://unsplash.com/t/architecture"}]}
+
+    - name: getTopic
+      goName: GetTopic
+      inputType: GetTopicInput
+      outputType: Topic
+      kind: query
+      description: "Read public Unsplash getTopic data with the application Access Key."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Unsplash returned the public getTopic data."}
+        - {id: notFound, goName: NotFound, description: "The requested public resource does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Unsplash rejected the request or application key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Unsplash returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: getTopicDefault
+          branch: found
+          description: "Returns representative public Unsplash data for getTopic."
+          default: true
+          output: {"id":"topic-1","slug":"architecture","title":"Architecture","htmlUrl":"https://unsplash.com/t/architecture"}
+
+    - name: listTopicPhotos
+      goName: ListTopicPhotos
+      inputType: ListTopicPhotosInput
+      outputType: PhotoList
+      kind: query
+      description: "Read public Unsplash listTopicPhotos data with the application Access Key."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Unsplash returned the public listTopicPhotos data."}
+        - {id: notFound, goName: NotFound, description: "The requested public resource does not exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Unsplash rejected the request or application key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Unsplash returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: listTopicPhotosDefault
+          branch: listed
+          description: "Returns representative public Unsplash data for listTopicPhotos."
+          default: true
+          output: {"photos":[{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}]}

@@ -24,6 +24,54 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[unsplash.Photo](`{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}`)
 			return err
 		}},
+		{name: "listPhotos/listPhotosDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[unsplash.PhotoList](`{"photos":[{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}]}`)
+			return err
+		}},
+		{name: "getRandomPhoto/getRandomPhotoDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[unsplash.Photo](`{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}`)
+			return err
+		}},
+		{name: "searchCollections/searchCollectionsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[unsplash.CollectionPage](`{"total":1,"totalPages":1,"collections":[{"id":"206","title":"Office","description":"Workspaces","htmlUrl":"https://unsplash.com/collections/206/office","totalPhotos":12}]}`)
+			return err
+		}},
+		{name: "listCollections/listCollectionsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[unsplash.CollectionList](`{"collections":[{"id":"206","title":"Office","description":"Workspaces","htmlUrl":"https://unsplash.com/collections/206/office","totalPhotos":12}]}`)
+			return err
+		}},
+		{name: "getCollection/getCollectionDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[unsplash.Collection](`{"id":"206","title":"Office","description":"Workspaces","htmlUrl":"https://unsplash.com/collections/206/office","totalPhotos":12}`)
+			return err
+		}},
+		{name: "listCollectionPhotos/listCollectionPhotosDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[unsplash.PhotoList](`{"photos":[{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}]}`)
+			return err
+		}},
+		{name: "getUser/getUserDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[unsplash.User](`{"id":"user-1","username":"photographer","name":"A. Photographer","htmlUrl":"https://unsplash.com/@photographer"}`)
+			return err
+		}},
+		{name: "listUserPhotos/listUserPhotosDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[unsplash.PhotoList](`{"photos":[{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}]}`)
+			return err
+		}},
+		{name: "searchUsers/searchUsersDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[unsplash.UserPage](`{"total":1,"totalPages":1,"users":[{"id":"user-1","username":"photographer","name":"A. Photographer","htmlUrl":"https://unsplash.com/@photographer"}]}`)
+			return err
+		}},
+		{name: "listTopics/listTopicsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[unsplash.TopicList](`{"topics":[{"id":"topic-1","slug":"architecture","title":"Architecture","htmlUrl":"https://unsplash.com/t/architecture"}]}`)
+			return err
+		}},
+		{name: "getTopic/getTopicDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[unsplash.Topic](`{"id":"topic-1","slug":"architecture","title":"Architecture","htmlUrl":"https://unsplash.com/t/architecture"}`)
+			return err
+		}},
+		{name: "listTopicPhotos/listTopicPhotosDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[unsplash.PhotoList](`{"photos":[{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +87,41 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetPhoto().Definition().Operation.OperationID != "getPhoto" {
 		t.Errorf("getPhoto mock has another definition")
+	}
+	if mock.ListPhotos().Definition().Operation.OperationID != "listPhotos" {
+		t.Errorf("listPhotos mock has another definition")
+	}
+	if mock.GetRandomPhoto().Definition().Operation.OperationID != "getRandomPhoto" {
+		t.Errorf("getRandomPhoto mock has another definition")
+	}
+	if mock.SearchCollections().Definition().Operation.OperationID != "searchCollections" {
+		t.Errorf("searchCollections mock has another definition")
+	}
+	if mock.ListCollections().Definition().Operation.OperationID != "listCollections" {
+		t.Errorf("listCollections mock has another definition")
+	}
+	if mock.GetCollection().Definition().Operation.OperationID != "getCollection" {
+		t.Errorf("getCollection mock has another definition")
+	}
+	if mock.ListCollectionPhotos().Definition().Operation.OperationID != "listCollectionPhotos" {
+		t.Errorf("listCollectionPhotos mock has another definition")
+	}
+	if mock.GetUser().Definition().Operation.OperationID != "getUser" {
+		t.Errorf("getUser mock has another definition")
+	}
+	if mock.ListUserPhotos().Definition().Operation.OperationID != "listUserPhotos" {
+		t.Errorf("listUserPhotos mock has another definition")
+	}
+	if mock.SearchUsers().Definition().Operation.OperationID != "searchUsers" {
+		t.Errorf("searchUsers mock has another definition")
+	}
+	if mock.ListTopics().Definition().Operation.OperationID != "listTopics" {
+		t.Errorf("listTopics mock has another definition")
+	}
+	if mock.GetTopic().Definition().Operation.OperationID != "getTopic" {
+		t.Errorf("getTopic mock has another definition")
+	}
+	if mock.ListTopicPhotos().Definition().Operation.OperationID != "listTopicPhotos" {
+		t.Errorf("listTopicPhotos mock has another definition")
 	}
 }
