@@ -1801,6 +1801,1392 @@
       ],
       "name": "createOpportunity-sendCap",
       "operation": "createOpportunity"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"f2f01e16-27f8-4711-a728-7d49499795a0\",\"text\":\"Infrastructure Engineer\",\"state\":\"draft\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/postings/f2f01e16-27f8-4711-a728-7d49499795a0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "f2f01e16-27f8-4711-a728-7d49499795a0",
+          "state": "draft",
+          "title": "Infrastructure Engineer"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "f2f01e16-27f8-4711-a728-7d49499795a0"
+      },
+      "name": "getPosting-found",
+      "operation": "getPosting"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/postings/f2f01e16-27f8-4711-a728-7d49499795a0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "f2f01e16-27f8-4711-a728-7d49499795a0"
+      },
+      "name": "getPosting-notFound",
+      "operation": "getPosting"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/postings/f2f01e16-27f8-4711-a728-7d49499795a0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "f2f01e16-27f8-4711-a728-7d49499795a0"
+      },
+      "name": "getPosting-providerRejected",
+      "operation": "getPosting"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"bad\",\"text\":\"x\",\"state\":\"draft\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/postings/f2f01e16-27f8-4711-a728-7d49499795a0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "f2f01e16-27f8-4711-a728-7d49499795a0"
+      },
+      "name": "getPosting-invalidResponse",
+      "operation": "getPosting"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "invalid"
+      },
+      "name": "getPosting-defect",
+      "operation": "getPosting"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/postings/f2f01e16-27f8-4711-a728-7d49499795a0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "f2f01e16-27f8-4711-a728-7d49499795a0"
+      },
+      "name": "getPosting-final429",
+      "operation": "getPosting"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/postings/f2f01e16-27f8-4711-a728-7d49499795a0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "f2f01e16-27f8-4711-a728-7d49499795a0"
+      },
+      "name": "getPosting-final503",
+      "operation": "getPosting"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/postings/f2f01e16-27f8-4711-a728-7d49499795a0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "f2f01e16-27f8-4711-a728-7d49499795a0"
+      },
+      "name": "getPosting-transportFailure",
+      "operation": "getPosting"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"f2f01e16-27f8-4711-a728-7d49499795a0\",\"text\":\"Infrastructure Engineer\",\"state\":\"draft\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/postings",
+          "query": {
+            "state": [
+              "draft"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "postings": [
+            {
+              "id": "f2f01e16-27f8-4711-a728-7d49499795a0",
+              "state": "draft",
+              "title": "Infrastructure Engineer"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "state": "draft"
+      },
+      "name": "listPostings-listed",
+      "operation": "listPostings"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/postings",
+          "query": {
+            "state": [
+              "draft"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "postings": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "state": "draft"
+      },
+      "name": "listPostings-providerRejected",
+      "operation": "listPostings"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"bad\",\"text\":\"x\",\"state\":\"draft\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/postings",
+          "query": {
+            "state": [
+              "draft"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "postings": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "state": "draft"
+      },
+      "name": "listPostings-invalidResponse",
+      "operation": "listPostings"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "postings": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "state": "invalid"
+      },
+      "name": "listPostings-defect",
+      "operation": "listPostings"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/postings",
+          "query": {
+            "state": [
+              "draft"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "state": "draft"
+      },
+      "name": "listPostings-final429",
+      "operation": "listPostings"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/postings",
+          "query": {
+            "state": [
+              "draft"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "state": "draft"
+      },
+      "name": "listPostings-final503",
+      "operation": "listPostings"
+    },
+    {
+      "callId": "71111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/postings",
+          "query": {
+            "state": [
+              "draft"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "state": "draft"
+      },
+      "name": "listPostings-transportFailure",
+      "operation": "listPostings"
+    },
+    {
+      "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"f2f01e16-27f8-4711-a728-7d49499795a0\",\"text\":\"Infrastructure Engineer\",\"state\":\"draft\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+          "providerId": "f2f01e16-27f8-4711-a728-7d49499795a0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "f2f01e16-27f8-4711-a728-7d49499795a0",
+          "state": "draft",
+          "title": "Infrastructure Engineer"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "input": {
+        "department": "Engineering",
+        "location": "San Francisco",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "team": "Platform",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "createPosting-created",
+      "operation": "createPosting"
+    },
+    {
+      "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "input": {
+        "department": "Engineering",
+        "location": "San Francisco",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "team": "Platform",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "createPosting-providerRejected",
+      "operation": "createPosting"
+    },
+    {
+      "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "input": {
+        "department": "Engineering",
+        "location": "San Francisco",
+        "performAsUserId": "invalid",
+        "team": "Platform",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "createPosting-defect",
+      "operation": "createPosting"
+    },
+    {
+      "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "input": {
+        "department": "Engineering",
+        "location": "San Francisco",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "team": "Platform",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "createPosting-final429",
+      "operation": "createPosting"
+    },
+    {
+      "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "input": {
+        "department": "Engineering",
+        "location": "San Francisco",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "team": "Platform",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "createPosting-final503",
+      "operation": "createPosting"
+    },
+    {
+      "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "input": {
+        "department": "Engineering",
+        "location": "San Francisco",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "team": "Platform",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "createPosting-transportFailure",
+      "operation": "createPosting"
+    },
+    {
+      "attempts": 3,
+      "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "input": {
+        "department": "Engineering",
+        "location": "San Francisco",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "team": "Platform",
+        "title": "Infrastructure Engineer"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createPosting-sendCap",
+      "operation": "createPosting"
+    },
+    {
+      "callId": "ce927edd-6018-51d7-8998-152f5cd373f6",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"f2f01e16-27f8-4711-a728-7d49499795a0\",\"text\":\"Infrastructure Engineer\",\"state\":\"draft\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings/f2f01e16-27f8-4711-a728-7d49499795a0",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "f2f01e16-27f8-4711-a728-7d49499795a0",
+          "state": "draft",
+          "title": "Infrastructure Engineer"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce927edd-6018-51d7-8998-152f5cd373f6",
+      "input": {
+        "id": "f2f01e16-27f8-4711-a728-7d49499795a0",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "state": "draft",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "updatePosting-updated",
+      "operation": "updatePosting"
+    },
+    {
+      "callId": "ce927edd-6018-51d7-8998-152f5cd373f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings/f2f01e16-27f8-4711-a728-7d49499795a0",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce927edd-6018-51d7-8998-152f5cd373f6",
+      "input": {
+        "id": "f2f01e16-27f8-4711-a728-7d49499795a0",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "state": "draft",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "updatePosting-notFound",
+      "operation": "updatePosting"
+    },
+    {
+      "callId": "ce927edd-6018-51d7-8998-152f5cd373f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings/f2f01e16-27f8-4711-a728-7d49499795a0",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce927edd-6018-51d7-8998-152f5cd373f6",
+      "input": {
+        "id": "f2f01e16-27f8-4711-a728-7d49499795a0",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "state": "draft",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "updatePosting-providerRejected",
+      "operation": "updatePosting"
+    },
+    {
+      "callId": "ce927edd-6018-51d7-8998-152f5cd373f6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce927edd-6018-51d7-8998-152f5cd373f6",
+      "input": {
+        "id": "invalid",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "state": "draft",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "updatePosting-defect",
+      "operation": "updatePosting"
+    },
+    {
+      "callId": "ce927edd-6018-51d7-8998-152f5cd373f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings/f2f01e16-27f8-4711-a728-7d49499795a0",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce927edd-6018-51d7-8998-152f5cd373f6",
+      "input": {
+        "id": "f2f01e16-27f8-4711-a728-7d49499795a0",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "state": "draft",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "updatePosting-final429",
+      "operation": "updatePosting"
+    },
+    {
+      "callId": "ce927edd-6018-51d7-8998-152f5cd373f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings/f2f01e16-27f8-4711-a728-7d49499795a0",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce927edd-6018-51d7-8998-152f5cd373f6",
+      "input": {
+        "id": "f2f01e16-27f8-4711-a728-7d49499795a0",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "state": "draft",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "updatePosting-final503",
+      "operation": "updatePosting"
+    },
+    {
+      "callId": "ce927edd-6018-51d7-8998-152f5cd373f6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings/f2f01e16-27f8-4711-a728-7d49499795a0",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce927edd-6018-51d7-8998-152f5cd373f6",
+      "input": {
+        "id": "f2f01e16-27f8-4711-a728-7d49499795a0",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "state": "draft",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "updatePosting-transportFailure",
+      "operation": "updatePosting"
     }
   ],
   "schemaVersion": 1

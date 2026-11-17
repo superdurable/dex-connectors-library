@@ -1,6 +1,6 @@
 # Lever opportunity inspection Flow
 
-This runnable Flow calls `getOpportunity` and then `listOpportunities` for the selected stage through the static `lever` connection. It persists both results in Attributes and exposes them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+The runnable Flows call `getOpportunity` followed by `listOpportunities`, or `listPostings`, through the static `lever` connection. They persist results in Attributes and expose them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -8,6 +8,7 @@ From `connectors/lever/go`, run:
 
 ```bash
 dexcli visualize ./examples/opportunity-inspection/flow/workflow.go --schema-version 2.0 --lint app --json --out /tmp/lever-opportunity-inspection-fdg
+dexcli visualize ./examples/opportunity-inspection/flow/posting_list.go --schema-version 2.0 --lint app --json --out /tmp/lever-posting-list-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.
@@ -23,5 +24,7 @@ GOWORK=off go run ./examples/opportunity-inspection
 ```
 
 Start `LeverOpportunityInspection` with a unique Flow ID and input `{"opportunityId":"250d8f03-738a-4bba-a671-8a3d73477145"}`. Replace the sample with a opportunity ID returned by Lever. The Worker connects to Dex Server without an inbound listener.
+
+Start `LeverPostingList` with `{"state":"draft"}` to list draft postings; an empty state includes all visible states.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real Lever authorization and retrieval remain unverified.

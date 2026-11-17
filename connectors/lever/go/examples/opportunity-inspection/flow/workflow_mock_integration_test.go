@@ -24,7 +24,8 @@ import (
 func TestOpportunityInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := levermock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	postingFlow := NewPostingListFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, postingFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -59,4 +60,14 @@ func TestOpportunityInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "00922a60-7c15-422b-b086-f62000824fd7", output.Stage)
 	require.Len(t, mock.GetOpportunity().Calls(), 1)
 	require.Len(t, mock.ListOpportunities().Calls(), 1)
+	postingFlowID := "lever-postings-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, postingFlow, postingFlowID, lever.ListPostingsInput{State: "draft"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	postingResult, err := client.WaitForFlow(ctx, postingFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, postingResult.Status, postingResult.ErrorMessage)
+	var postings lever.PostingsPage
+	require.NoError(t, postingResult.DecodeSingleOutput(&postings))
+	require.Equal(t, "f2f01e16-27f8-4711-a728-7d49499795a0", postings.Postings[0].ID)
+	require.Len(t, mock.ListPostings().Calls(), 1)
 }

@@ -36,6 +36,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[lever.CreatedOpportunity](`{"id":"250d8f03-738a-4bba-a671-8a3d73477145"}`)
 			return err
 		}},
+		{name: "getPosting/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.Posting](`{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}`)
+			return err
+		}},
+		{name: "listPostings/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.PostingsPage](`{"postings":[{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}]}`)
+			return err
+		}},
+		{name: "createPosting/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.Posting](`{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}`)
+			return err
+		}},
+		{name: "updatePosting/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.Posting](`{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -60,5 +76,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.CreateOpportunity().Definition().Operation.OperationID != "createOpportunity" {
 		t.Errorf("createOpportunity mock has another definition")
+	}
+	if mock.GetPosting().Definition().Operation.OperationID != "getPosting" {
+		t.Errorf("getPosting mock has another definition")
+	}
+	if mock.ListPostings().Definition().Operation.OperationID != "listPostings" {
+		t.Errorf("listPostings mock has another definition")
+	}
+	if mock.CreatePosting().Definition().Operation.OperationID != "createPosting" {
+		t.Errorf("createPosting mock has another definition")
+	}
+	if mock.UpdatePosting().Definition().Operation.OperationID != "updatePosting" {
+		t.Errorf("updatePosting mock has another definition")
 	}
 }

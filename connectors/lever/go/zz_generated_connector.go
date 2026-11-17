@@ -45,6 +45,10 @@ type Operations interface {
 	UpdateOpportunityStage() sdkgo.Mutation[UpdateOpportunityStageInput, OpportunityStage]
 	SetOpportunityArchiveState() sdkgo.Mutation[SetOpportunityArchiveStateInput, OpportunityArchiveState]
 	CreateOpportunity() sdkgo.Mutation[CreateOpportunityInput, CreatedOpportunity]
+	GetPosting() sdkgo.Query[GetPostingInput, Posting]
+	ListPostings() sdkgo.Query[ListPostingsInput, PostingsPage]
+	CreatePosting() sdkgo.Mutation[CreatePostingInput, Posting]
+	UpdatePosting() sdkgo.Mutation[UpdatePostingInput, Posting]
 }
 
 type clientOperations struct{ client *Client }
@@ -63,6 +67,18 @@ func (operations clientOperations) SetOpportunityArchiveState() sdkgo.Mutation[S
 }
 func (operations clientOperations) CreateOpportunity() sdkgo.Mutation[CreateOpportunityInput, CreatedOpportunity] {
 	return operations.client.CreateOpportunity()
+}
+func (operations clientOperations) GetPosting() sdkgo.Query[GetPostingInput, Posting] {
+	return operations.client.GetPosting()
+}
+func (operations clientOperations) ListPostings() sdkgo.Query[ListPostingsInput, PostingsPage] {
+	return operations.client.ListPostings()
+}
+func (operations clientOperations) CreatePosting() sdkgo.Mutation[CreatePostingInput, Posting] {
+	return operations.client.CreatePosting()
+}
+func (operations clientOperations) UpdatePosting() sdkgo.Mutation[UpdatePostingInput, Posting] {
+	return operations.client.UpdatePosting()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -579,5 +595,301 @@ func NewCreateOpportunityStep[IN any](config CreateOpportunityStepConfig[IN]) sd
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetPostingBranchFound sdkgo.BranchID = "found"
+const GetPostingBranchNotFound sdkgo.BranchID = "notFound"
+const GetPostingBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPostingBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPostingBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPostingDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPosting"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPostingBranchFound, Description: "Lever returned the posting."},
+		{ID: GetPostingBranchNotFound, Description: "Lever did not expose the posting.", Optional: true},
+		{ID: GetPostingBranchProviderRejected, Description: "Lever conclusively rejected the read.", Optional: true},
+		{ID: GetPostingBranchInvalidResponse, Description: "Lever returned malformed or oversized posting JSON.", Optional: true},
+		{ID: GetPostingBranchDefect, Description: "Posting ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPostingResult = sdkgo.QueryResult[Posting]
+
+type GetPostingStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=lever"`
+	operationID                    struct{}                                   `connector:"operationId=getPosting"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetPostingInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPostingResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPostingResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetPostingResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPostingResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPostingResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Posting]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetPostingStep[IN any](config GetPostingStepConfig[IN]) sdkgo.QueryStep[IN, GetPostingInput, Posting] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPostingInput, Posting]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPosting(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPostingResult] {
+			branches := make([]sdkgo.BranchTarget[GetPostingResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPostingBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPostingBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPostingBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPostingBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPostingBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListPostingsBranchListed sdkgo.BranchID = "listed"
+const ListPostingsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPostingsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPostingsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPostingsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPostings"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPostingsBranchListed, Description: "Lever returned the postings."},
+		{ID: ListPostingsBranchProviderRejected, Description: "Lever conclusively rejected the read.", Optional: true},
+		{ID: ListPostingsBranchInvalidResponse, Description: "Lever returned malformed or oversized posting JSON.", Optional: true},
+		{ID: ListPostingsBranchDefect, Description: "Posting filter or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPostingsResult = sdkgo.QueryResult[PostingsPage]
+
+type ListPostingsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=lever"`
+	operationID                    struct{}                                        `connector:"operationId=listPostings"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPostingsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPostingsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListPostingsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPostingsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPostingsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PostingsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListPostingsStep[IN any](config ListPostingsStepConfig[IN]) sdkgo.QueryStep[IN, ListPostingsInput, PostingsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPostingsInput, PostingsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListPostings(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPostingsResult] {
+			branches := make([]sdkgo.BranchTarget[ListPostingsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPostingsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPostingsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPostingsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPostingsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreatePostingBranchCreated sdkgo.BranchID = "created"
+const CreatePostingBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreatePostingBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreatePostingBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreatePostingDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createPosting"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreatePostingBranchCreated, Description: "Lever confirmed the new posting."},
+		{ID: CreatePostingBranchProviderRejected, Description: "Lever conclusively rejected the create.", Optional: true},
+		{ID: CreatePostingBranchUncertain, Description: "Lever may have created the posting but no ID was confirmed at the send cap.", Optional: true},
+		{ID: CreatePostingBranchDefect, Description: "Posting input or dispatch checkpoint is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreatePostingResult = sdkgo.MutationResult[Posting]
+
+type CreatePostingStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=lever"`
+	operationID                       struct{}                                      `connector:"operationId=createPosting"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreatePostingInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreatePostingResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreatePostingResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreatePostingResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreatePostingResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Posting]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreatePostingStep[IN any](config CreatePostingStepConfig[IN]) sdkgo.MutationStep[IN, CreatePostingInput, Posting] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreatePostingInput, Posting]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreatePosting(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreatePostingResult] {
+			branches := make([]sdkgo.BranchTarget[CreatePostingResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreatePostingBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreatePostingBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreatePostingBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreatePostingBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdatePostingBranchUpdated sdkgo.BranchID = "updated"
+const UpdatePostingBranchNotFound sdkgo.BranchID = "notFound"
+const UpdatePostingBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdatePostingBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdatePostingDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updatePosting"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdatePostingBranchUpdated, Description: "Lever confirmed the requested title and state."},
+		{ID: UpdatePostingBranchNotFound, Description: "Lever did not expose the posting.", Optional: true},
+		{ID: UpdatePostingBranchProviderRejected, Description: "Lever conclusively rejected the update.", Optional: true},
+		{ID: UpdatePostingBranchDefect, Description: "Posting input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdatePostingResult = sdkgo.MutationResult[Posting]
+
+type UpdatePostingStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=lever"`
+	operationID                       struct{}                                      `connector:"operationId=updatePosting"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdatePostingInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdatePostingResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdatePostingResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdatePostingResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdatePostingResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Posting]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewUpdatePostingStep[IN any](config UpdatePostingStepConfig[IN]) sdkgo.MutationStep[IN, UpdatePostingInput, Posting] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdatePostingInput, Posting]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdatePosting(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdatePostingResult] {
+			branches := make([]sdkgo.BranchTarget[UpdatePostingResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdatePostingBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdatePostingBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdatePostingBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdatePostingBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }

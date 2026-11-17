@@ -23,6 +23,10 @@ type Mock struct {
 	updateOpportunityStage     *connectormock.Mutation[lever.UpdateOpportunityStageInput, lever.OpportunityStage]
 	setOpportunityArchiveState *connectormock.Mutation[lever.SetOpportunityArchiveStateInput, lever.OpportunityArchiveState]
 	createOpportunity          *connectormock.Mutation[lever.CreateOpportunityInput, lever.CreatedOpportunity]
+	getPosting                 *connectormock.Query[lever.GetPostingInput, lever.Posting]
+	listPostings               *connectormock.Query[lever.ListPostingsInput, lever.PostingsPage]
+	createPosting              *connectormock.Mutation[lever.CreatePostingInput, lever.Posting]
+	updatePosting              *connectormock.Mutation[lever.UpdatePostingInput, lever.Posting]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -35,12 +39,20 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateOpportunityStage:     connectormock.NewMutation[lever.UpdateOpportunityStageInput, lever.OpportunityStage](t, lever.UpdateOpportunityStageDefinition),
 		setOpportunityArchiveState: connectormock.NewMutation[lever.SetOpportunityArchiveStateInput, lever.OpportunityArchiveState](t, lever.SetOpportunityArchiveStateDefinition),
 		createOpportunity:          connectormock.NewMutation[lever.CreateOpportunityInput, lever.CreatedOpportunity](t, lever.CreateOpportunityDefinition),
+		getPosting:                 connectormock.NewQuery[lever.GetPostingInput, lever.Posting](t, lever.GetPostingDefinition),
+		listPostings:               connectormock.NewQuery[lever.ListPostingsInput, lever.PostingsPage](t, lever.ListPostingsDefinition),
+		createPosting:              connectormock.NewMutation[lever.CreatePostingInput, lever.Posting](t, lever.CreatePostingDefinition),
+		updatePosting:              connectormock.NewMutation[lever.UpdatePostingInput, lever.Posting](t, lever.UpdatePostingDefinition),
 	}
 	mock.listOpportunities.Default(ListOpportunitiesDefault())
 	mock.getOpportunity.Default(GetOpportunityDefault())
 	mock.updateOpportunityStage.Default(UpdateOpportunityStageDefault())
 	mock.setOpportunityArchiveState.Default(SetOpportunityArchiveStateDefault())
 	mock.createOpportunity.Default(CreateOpportunityDefault())
+	mock.getPosting.Default(GetPostingDefault())
+	mock.listPostings.Default(ListPostingsDefault())
+	mock.createPosting.Default(CreatePostingDefault())
+	mock.updatePosting.Default(UpdatePostingDefault())
 	connection, err := lever.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "lever", Name: connectionName})
 	if err != nil {
 		t.Fatalf("lever mock connection: %v", err)
@@ -77,6 +89,26 @@ func (mock *Mock) CreateOpportunity() *connectormock.Mutation[lever.CreateOpport
 	return mock.createOpportunity
 }
 
+// GetPosting returns the getPosting script.
+func (mock *Mock) GetPosting() *connectormock.Query[lever.GetPostingInput, lever.Posting] {
+	return mock.getPosting
+}
+
+// ListPostings returns the listPostings script.
+func (mock *Mock) ListPostings() *connectormock.Query[lever.ListPostingsInput, lever.PostingsPage] {
+	return mock.listPostings
+}
+
+// CreatePosting returns the createPosting script.
+func (mock *Mock) CreatePosting() *connectormock.Mutation[lever.CreatePostingInput, lever.Posting] {
+	return mock.createPosting
+}
+
+// UpdatePosting returns the updatePosting script.
+func (mock *Mock) UpdatePosting() *connectormock.Mutation[lever.UpdatePostingInput, lever.Posting] {
+	return mock.updatePosting
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOpportunities() sdkgo.Query[lever.ListOpportunitiesInput, lever.OpportunitiesPage] {
@@ -93,6 +125,18 @@ func (operations mockOperations) SetOpportunityArchiveState() sdkgo.Mutation[lev
 }
 func (operations mockOperations) CreateOpportunity() sdkgo.Mutation[lever.CreateOpportunityInput, lever.CreatedOpportunity] {
 	return operations.mock.createOpportunity
+}
+func (operations mockOperations) GetPosting() sdkgo.Query[lever.GetPostingInput, lever.Posting] {
+	return operations.mock.getPosting
+}
+func (operations mockOperations) ListPostings() sdkgo.Query[lever.ListPostingsInput, lever.PostingsPage] {
+	return operations.mock.listPostings
+}
+func (operations mockOperations) CreatePosting() sdkgo.Mutation[lever.CreatePostingInput, lever.Posting] {
+	return operations.mock.createPosting
+}
+func (operations mockOperations) UpdatePosting() sdkgo.Mutation[lever.UpdatePostingInput, lever.Posting] {
+	return operations.mock.updatePosting
 }
 
 // ListOpportunitiesListed selects the listed branch: Lever returned the opportunity page.
@@ -289,3 +333,144 @@ func CreateOpportunityCreatedDefault() connectormock.Case[lever.CreatedOpportuni
 func CreateOpportunityDefault() connectormock.Case[lever.CreatedOpportunity] {
 	return CreateOpportunityCreatedDefault()
 }
+
+// GetPostingFound selects the found branch: Lever returned the posting.
+func GetPostingFound(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.GetPostingBranchFound, value, failure)
+}
+
+// GetPostingNotFound selects the notFound branch: Lever did not expose the posting.
+func GetPostingNotFound(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.GetPostingBranchNotFound, value, failure)
+}
+
+// GetPostingProviderRejected selects the providerRejected branch: Lever conclusively rejected the read.
+func GetPostingProviderRejected(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.GetPostingBranchProviderRejected, value, failure)
+}
+
+// GetPostingInvalidResponse selects the invalidResponse branch: Lever returned malformed or oversized posting JSON.
+func GetPostingInvalidResponse(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.GetPostingBranchInvalidResponse, value, failure)
+}
+
+// GetPostingDefect selects the defect branch: Posting ID or credentials are invalid.
+func GetPostingDefect(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.GetPostingBranchDefect, value, failure)
+}
+
+// GetPostingRetry asks Dex to retry the getPosting Step, after the delay when it is positive.
+func GetPostingRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.Posting] {
+	return connectormock.Retry[lever.Posting](failure, after)
+}
+
+// GetPostingFoundDefault is the manifest mock foundDefault: One draft posting is visible.
+func GetPostingFoundDefault() connectormock.Case[lever.Posting] {
+	value := connectormock.MustDecodeOutput[lever.Posting](`{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}`)
+	return connectormock.Branch(lever.GetPostingBranchFound, value, nil)
+}
+
+// GetPostingDefault is the manifest default, foundDefault, which New installs.
+func GetPostingDefault() connectormock.Case[lever.Posting] { return GetPostingFoundDefault() }
+
+// ListPostingsListed selects the listed branch: Lever returned the postings.
+func ListPostingsListed(value lever.PostingsPage, failure *sdkgo.Failure) connectormock.Case[lever.PostingsPage] {
+	return connectormock.Branch(lever.ListPostingsBranchListed, value, failure)
+}
+
+// ListPostingsProviderRejected selects the providerRejected branch: Lever conclusively rejected the read.
+func ListPostingsProviderRejected(value lever.PostingsPage, failure *sdkgo.Failure) connectormock.Case[lever.PostingsPage] {
+	return connectormock.Branch(lever.ListPostingsBranchProviderRejected, value, failure)
+}
+
+// ListPostingsInvalidResponse selects the invalidResponse branch: Lever returned malformed or oversized posting JSON.
+func ListPostingsInvalidResponse(value lever.PostingsPage, failure *sdkgo.Failure) connectormock.Case[lever.PostingsPage] {
+	return connectormock.Branch(lever.ListPostingsBranchInvalidResponse, value, failure)
+}
+
+// ListPostingsDefect selects the defect branch: Posting filter or credentials are invalid.
+func ListPostingsDefect(value lever.PostingsPage, failure *sdkgo.Failure) connectormock.Case[lever.PostingsPage] {
+	return connectormock.Branch(lever.ListPostingsBranchDefect, value, failure)
+}
+
+// ListPostingsRetry asks Dex to retry the listPostings Step, after the delay when it is positive.
+func ListPostingsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.PostingsPage] {
+	return connectormock.Retry[lever.PostingsPage](failure, after)
+}
+
+// ListPostingsListedDefault is the manifest mock listedDefault: One draft posting is visible.
+func ListPostingsListedDefault() connectormock.Case[lever.PostingsPage] {
+	value := connectormock.MustDecodeOutput[lever.PostingsPage](`{"postings":[{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}]}`)
+	return connectormock.Branch(lever.ListPostingsBranchListed, value, nil)
+}
+
+// ListPostingsDefault is the manifest default, listedDefault, which New installs.
+func ListPostingsDefault() connectormock.Case[lever.PostingsPage] { return ListPostingsListedDefault() }
+
+// CreatePostingCreated selects the created branch: Lever confirmed the new posting.
+func CreatePostingCreated(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.CreatePostingBranchCreated, value, failure)
+}
+
+// CreatePostingProviderRejected selects the providerRejected branch: Lever conclusively rejected the create.
+func CreatePostingProviderRejected(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.CreatePostingBranchProviderRejected, value, failure)
+}
+
+// CreatePostingUncertain returns an uncertain createPosting outcome.
+func CreatePostingUncertain(value lever.Posting, failure sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreatePostingDefect selects the defect branch: Posting input or dispatch checkpoint is invalid.
+func CreatePostingDefect(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.CreatePostingBranchDefect, value, failure)
+}
+
+// CreatePostingRetry asks Dex to retry the createPosting Step, after the delay when it is positive.
+func CreatePostingRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.Posting] {
+	return connectormock.Retry[lever.Posting](failure, after)
+}
+
+// CreatePostingCreatedDefault is the manifest mock createdDefault: Lever created a draft posting.
+func CreatePostingCreatedDefault() connectormock.Case[lever.Posting] {
+	value := connectormock.MustDecodeOutput[lever.Posting](`{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}`)
+	return connectormock.Branch(lever.CreatePostingBranchCreated, value, nil)
+}
+
+// CreatePostingDefault is the manifest default, createdDefault, which New installs.
+func CreatePostingDefault() connectormock.Case[lever.Posting] { return CreatePostingCreatedDefault() }
+
+// UpdatePostingUpdated selects the updated branch: Lever confirmed the requested title and state.
+func UpdatePostingUpdated(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.UpdatePostingBranchUpdated, value, failure)
+}
+
+// UpdatePostingNotFound selects the notFound branch: Lever did not expose the posting.
+func UpdatePostingNotFound(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.UpdatePostingBranchNotFound, value, failure)
+}
+
+// UpdatePostingProviderRejected selects the providerRejected branch: Lever conclusively rejected the update.
+func UpdatePostingProviderRejected(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.UpdatePostingBranchProviderRejected, value, failure)
+}
+
+// UpdatePostingDefect selects the defect branch: Posting input or credentials are invalid.
+func UpdatePostingDefect(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.UpdatePostingBranchDefect, value, failure)
+}
+
+// UpdatePostingRetry asks Dex to retry the updatePosting Step, after the delay when it is positive.
+func UpdatePostingRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.Posting] {
+	return connectormock.Retry[lever.Posting](failure, after)
+}
+
+// UpdatePostingUpdatedDefault is the manifest mock updatedDefault: Lever confirmed the changed posting.
+func UpdatePostingUpdatedDefault() connectormock.Case[lever.Posting] {
+	value := connectormock.MustDecodeOutput[lever.Posting](`{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}`)
+	return connectormock.Branch(lever.UpdatePostingBranchUpdated, value, nil)
+}
+
+// UpdatePostingDefault is the manifest default, updatedDefault, which New installs.
+func UpdatePostingDefault() connectormock.Case[lever.Posting] { return UpdatePostingUpdatedDefault() }

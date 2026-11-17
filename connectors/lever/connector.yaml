@@ -52,8 +52,8 @@ spec:
     guide:
       startURL: https://hire.lever.co
       steps:
-        - In Lever, open Settings > Integrations and API > API Credentials, create an API key with read access to opportunities and write access if using Go mutations, then copy the opaque secret into Dex Web api_key. Blank is invalid; revoke or rotate it on the same page.
-        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret opportunity UID in Lever or the list opportunities API and pass it as opportunityId; blank is invalid. Confidential opportunities require corresponding account access.
+        - In Lever, open Settings > Integrations and API > API Credentials, create an API key with read access to opportunities and postings and write access if using Go mutations, then copy the opaque secret into Dex Web api_key. Blank is invalid; revoke or rotate it on the same page.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret opportunity or posting UID in Lever or the respective list operation and pass it as the relevant ID; blank is invalid. Confidential records require corresponding account access.
   operations:
     - name: listOpportunities
       goName: ListOpportunities
@@ -163,3 +163,84 @@ spec:
           default: true
           description: Lever created a candidate opportunity.
           output: {id: 250d8f03-738a-4bba-a671-8a3d73477145}
+    - name: getPosting
+      goName: GetPosting
+      inputType: GetPostingInput
+      outputType: Posting
+      kind: query
+      description: Read selected fields of one Lever job posting.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Lever returned the posting.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the posting., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned malformed or oversized posting JSON., optional: true}
+        - {id: defect, goName: Defect, description: Posting ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One draft posting is visible.
+          output: {id: f2f01e16-27f8-4711-a728-7d49499795a0, title: Infrastructure Engineer, state: draft}
+    - name: listPostings
+      goName: ListPostings
+      inputType: ListPostingsInput
+      outputType: PostingsPage
+      kind: query
+      description: List selected fields of Lever job postings, optionally filtered by state.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Lever returned the postings.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned malformed or oversized posting JSON., optional: true}
+        - {id: defect, goName: Defect, description: Posting filter or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One draft posting is visible.
+          output: {postings: [{id: f2f01e16-27f8-4711-a728-7d49499795a0, title: Infrastructure Engineer, state: draft}]}
+    - name: createPosting
+      goName: CreatePosting
+      inputType: CreatePostingInput
+      outputType: Posting
+      kind: mutation
+      description: Create a draft job posting with required team, department, and location categories.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Lever confirmed the new posting.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the create., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Lever may have created the posting but no ID was confirmed at the send cap., optional: true}
+        - {id: defect, goName: Defect, description: Posting input or dispatch checkpoint is invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Lever created a draft posting.
+          output: {id: f2f01e16-27f8-4711-a728-7d49499795a0, title: Infrastructure Engineer, state: draft}
+    - name: updatePosting
+      goName: UpdatePosting
+      inputType: UpdatePostingInput
+      outputType: Posting
+      kind: mutation
+      description: Set a posting's title and state to absolute values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Lever confirmed the requested title and state.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the posting., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Posting input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Lever confirmed the changed posting.
+          output: {id: f2f01e16-27f8-4711-a728-7d49499795a0, title: Infrastructure Engineer, state: draft}

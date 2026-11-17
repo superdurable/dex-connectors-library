@@ -29,6 +29,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"updateOpportunityStage":     newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.UpdateOpportunityStage(), reference, scenario.CallID),
 		"setOpportunityArchiveState": newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.SetOpportunityArchiveState(), reference, scenario.CallID),
 		"createOpportunity":          newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.CreateOpportunity(), reference, scenario.CallID),
+		"getPosting":                 newConformanceQueryInvocation(t, scenario.Input, attemptContext, client.GetPosting(), reference),
+		"listPostings":               newConformanceQueryInvocation(t, scenario.Input, attemptContext, client.ListPostings(), reference),
+		"createPosting":              newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.CreatePosting(), reference, scenario.CallID),
+		"updatePosting":              newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.UpdatePosting(), reference, scenario.CallID),
 	}}
 }
 
