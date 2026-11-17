@@ -1,10 +1,10 @@
 {
   "connectorId": "hootsuite",
-  "releaseTag": "connectors/hootsuite/go/v0.1.0",
+  "releaseTag": "connectors/hootsuite/go/v0.1.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-hootsuite",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -115,7 +115,7 @@
       "kind": "mutation",
       "operationId": "schedulePost",
       "inputType": "SchedulePostInput",
-      "description": "Schedule a text message on one social profile; inspect Hootsuite Planner if the outcome is uncertain.",
+      "description": "Schedule a text message on one social profile. An unknown outcome resends up to the send cap, so Planner may show a duplicate; inspect Planner if the outcome is uncertain.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

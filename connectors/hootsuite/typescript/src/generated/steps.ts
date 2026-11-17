@@ -73,9 +73,9 @@ export interface SchedulePostStepConfig<StepInput, OperationInput = SchedulePost
   scheduled: StepTarget<MutationResult<OperationOutput>>;
   /** Hootsuite definitively rejected the schedule request. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request may have reached Hootsuite but no message ID was confirmed; inspect Planner before resending. */
+  /** Hootsuite may have scheduled the message, but the send cap was reached or Hootsuite returned a message ID without a complete confirmation; inspect Planner before resending. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local post input, credentials, or dispatch checkpoint is invalid. */
+  /** Local post input, credentials, or dispatch fence is invalid before any send. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 

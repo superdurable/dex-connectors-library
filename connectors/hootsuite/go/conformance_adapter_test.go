@@ -27,10 +27,14 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	scheduleContext := singledispatchtest.NewContext("hootsuite-conformance", "schedule-post")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			scheduleContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
 		"listSocialProfiles": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSocialProfiles(), reference),
 		"listScheduledPosts": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListScheduledPosts(), reference),
-		"schedulePost": newConformanceMutationInvocation(t, scenario.Input,
-			singledispatchtest.NewContext("hootsuite-conformance", "schedule-post"), client.SchedulePost(), reference, scenario.CallID),
+		"schedulePost":       newConformanceMutationInvocation(t, scenario.Input, scheduleContext, client.SchedulePost(), reference, scenario.CallID),
 	}}
 }
