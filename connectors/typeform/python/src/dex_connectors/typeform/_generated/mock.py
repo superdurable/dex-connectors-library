@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import Form, FormAnswer, FormAnswerChoice, FormAnswerChoices, FormAnswerMultiFormat, FormAnswerPayment, FormAnswerSignature, FormField, FormFieldChoice, FormPage, FormResponse, FormSummary, FormVariable, GetFormInput, ListFormsInput, ListResponsesInput, ResponsePage, UpsertWebhookInput, Webhook
+from ..models import Form, FormAnswer, FormAnswerChoice, FormAnswerChoices, FormAnswerMultiFormat, FormAnswerPayment, FormAnswerSignature, FormField, FormFieldChoice, FormPage, FormResponse, FormResponseEvent, FormSummary, FormVariable, GetFormInput, ListFormsInput, ListResponsesInput, ResponsePage, ResponseSubmittedTriggerConfiguration, UpsertWebhookInput, Webhook
 from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_FORM_DEFINITION, INVALID_RESPONSE, LISTED, LIST_FORMS_DEFINITION, LIST_RESPONSES_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, UPSERTED, UPSERT_WEBHOOK_DEFINITION
 
 def list_forms_listed(value: FormPage, failure: Failure | None = None) -> Case[FormPage]:

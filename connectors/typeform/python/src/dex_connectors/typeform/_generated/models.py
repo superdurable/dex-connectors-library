@@ -443,3 +443,35 @@ class Webhook:
 Webhook.__annotations__['event_types'] = tuple[str, ...] | None
 Webhook.__dataclass_fields__['event_types'].type = tuple[str, ...] | None
 setattr(Webhook, '__module__', 'dex_connectors.typeform.models')
+
+
+# FormResponseEvent is one verified form_response webhook. The Trigger event ID is the form ID and the
+# response token, such as lT4Z3j:a3a12ec67a1365927098a606107fac15, so every redelivery of one submission,
+# and a copy sent by a second webhook of the same form, keeps one ID.
+@dataclass(frozen=True, slots=True)
+class FormResponseEvent:
+    # WebhookEventID is Typeform's event_id for this delivery; it is not the Trigger event ID.
+    webhook_event_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'webhookEventId'})
+    # FormID is the submitted form's ID.
+    form_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'formId'})
+    # FormTitle is the form's title from the delivery's form definition.
+    form_title: str = _dataclass_field(default='', metadata={'dex_json_name': 'formTitle', 'dex_json_omit_default': True})
+    # Response is the submission, with each answer's field ref, type, title, and typed value, and the
+    # hidden fields.
+    response: FormResponse = _dataclass_field(default_factory=FormResponse)
+
+
+setattr(FormResponseEvent, '__module__', 'dex_connectors.typeform.models')
+
+
+# ResponseSubmittedTriggerConfiguration filters the submissions one binding records. The zero value
+# records every form's submissions. It reduces what a binding stores; the application's TriggerFilter
+# remains its admission rule.
+@dataclass(frozen=True, slots=True)
+class ResponseSubmittedTriggerConfiguration:
+    # FormID accepts only submissions of this form, such as the formPicker unit's formId; blank accepts
+    # every form whose webhook points at the endpoint.
+    form_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'formId', 'dex_json_omit_default': True})
+
+
+setattr(ResponseSubmittedTriggerConfiguration, '__module__', 'dex_connectors.typeform.models')
