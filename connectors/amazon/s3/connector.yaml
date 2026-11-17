@@ -147,6 +147,7 @@ spec:
         maxSends: 3
         executeMethodTimeout: 30s
         durability: sync
+        dispatchFence: true
       mocks:
         - name: createdBucket
           branch: created
@@ -438,6 +439,7 @@ spec:
         maxSends: 3
         executeMethodTimeout: 30s
         durability: sync
+        dispatchFence: true
       mocks:
         - name: copiedReport
           branch: copied

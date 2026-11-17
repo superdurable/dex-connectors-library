@@ -226,7 +226,7 @@ spec:
       description: Create one ecommerce customer with bounded sends.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: ActiveCampaign completed the ecommerce customer operation.}
         - {id: uncertain, goName: Uncertain, description: Bounded customer creation could not be confirmed., optional: true}
@@ -328,7 +328,7 @@ spec:
       description: Create one ecommerce connection with bounded sends.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: ActiveCampaign completed the ecommerce connection operation.}
         - {id: uncertain, goName: Uncertain, description: Bounded connection creation could not be confirmed., optional: true}
@@ -430,7 +430,7 @@ spec:
       description: Link one contact to one CRM account with bounded sends.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: ActiveCampaign completed the contact-account link operation.}
         - {id: uncertain, goName: Uncertain, description: Bounded link creation could not be confirmed., optional: true}
@@ -532,7 +532,7 @@ spec:
       description: Create a CRM account with bounded sends and name read-back.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: ActiveCampaign completed the account operation.}
         - {id: uncertain, goName: Uncertain, description: Bounded account creation could not be confirmed., optional: true}
@@ -613,7 +613,7 @@ spec:
       description: Subscribe a contact to an email list with bounded sends and read-back.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: subscribed, goName: Subscribed, description: ActiveCampaign completed the list-membership operation.}
         - {id: uncertain, goName: Uncertain, description: A bounded subscription change could not be confirmed., optional: true}
@@ -634,7 +634,7 @@ spec:
       description: Unsubscribe a contact from an email list with bounded sends and read-back.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: unsubscribed, goName: Unsubscribed, description: ActiveCampaign completed the list-membership operation.}
         - {id: uncertain, goName: Uncertain, description: A bounded subscription change could not be confirmed., optional: true}
@@ -758,7 +758,7 @@ spec:
       description: Create a deal note with bounded sends and read-back.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: ActiveCampaign completed the note operation.}
         - {id: uncertain, goName: Uncertain, description: A bounded note create could not be confirmed., optional: true}
@@ -841,7 +841,7 @@ spec:
       description: Create a deal for a contact with bounded sends and read-back.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: ActiveCampaign completed the deal operation.}
         - {id: uncertain, goName: Uncertain, description: A bounded deal create could not be confirmed., optional: true}

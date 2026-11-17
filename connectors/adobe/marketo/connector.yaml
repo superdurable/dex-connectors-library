@@ -108,7 +108,7 @@ spec:
       idempotency: required
       authorization: required
       description: Create one opportunity by external ID with bounded sends and read-back.
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Marketo created the opportunity.}
         - {id: alreadyExists, goName: AlreadyExists, description: An opportunity already uses the external ID., optional: true}
@@ -174,7 +174,7 @@ spec:
       idempotency: required
       authorization: required
       description: Create one company by external ID with bounded sends and read-back.
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Marketo created the company.}
         - {id: alreadyExists, goName: AlreadyExists, description: A company already uses the external ID., optional: true}
@@ -271,7 +271,7 @@ spec:
       description: Create one lead by email with createOnly, refusing an existing lead and reading back after an unknown send.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Marketo created the lead.}
         - {id: alreadyExists, goName: AlreadyExists, description: Marketo found an existing lead for this email., optional: true}

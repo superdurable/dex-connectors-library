@@ -64,7 +64,7 @@ spec:
       description: Schedule one immediate reminder for specified participant IDs with bounded duplicate sends.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Acrobat Sign created the reminder.}
         - {id: providerRejected, goName: ProviderRejected, description: Acrobat Sign conclusively rejected the reminder., optional: true}

@@ -136,7 +136,8 @@ spec:
         - {id: defect, goName: Defect, description: Local input or connector configuration is invalid., optional: true}
       execution:
         executeMethodTimeout: 30s
-        durability: async
+        durability: sync
+        dispatchFence: true
         repeatOnUnknown: limited
         maxSends: 3
       mocks:
