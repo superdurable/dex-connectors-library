@@ -7,3 +7,12 @@ The [REST authentication contract](https://doc.yuntongxun.com/p/5a533ac73b8496dd
 `getBalance` selects `fetched`, `providerRejected`, `invalidResponse`, or `defect`. HTTP 429, temporary 5xx, transport failures, and documented concurrency or internal errors retry. Optional branches fail the example Flow unless wired by an application.
 
 [Run the balance Flow](go/examples/balance/README.md). Its mock is synthetic; live balance lookup has not been verified without user-controlled credentials in Dex Web Connections.
+
+## Python package
+
+The [Python v0.1.0 package](python/README.md) implements `getBalance` with the
+same Go-recorded signed requests and outcomes. Its
+[runnable Flow](python/examples/balance/README.md) reads through a real Dex
+Worker and Client and persists only the decimal balance string. The local
+integration test uses inert credentials and a fake provider; live Cloopen
+authorization remains unverified.
