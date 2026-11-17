@@ -12,6 +12,8 @@ The Worker also registers `AshbyCandidateSearch`, which calls `searchCandidates`
 
 The Worker also registers `AshbyCandidateProject`, which calls `addCandidateProject` with `{"candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","projectId":"bcffca12-5b09-4a76-acf2-00a8e267b222"}`. Replace both UUIDs with an existing candidate and project from Ashby **Sourcing > Projects**; the key needs **Candidates write**. Optional branches are unwired.
 
+The Worker also registers `AshbyCandidateNote`, which calls `createCandidateNote` with `{"candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","note":"Example candidate note"}`. Find the candidate ID under **Candidates > Search**; supply plaintext up to 8192 bytes with no secrets. The API key needs **Candidates write**. A repeated unknown send can create duplicate notes, and the optional `uncertain` branch is unwired.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/ashby/go`, run:
@@ -23,6 +25,7 @@ dexcli visualize ./examples/candidate-inspection/flow/tag_workflow.go --schema-v
 dexcli visualize ./examples/candidate-inspection/flow/create_workflow.go --schema-version 2.0 --json --out /tmp/ashby-candidate-create-fdg
 dexcli visualize ./examples/candidate-inspection/flow/search_workflow.go --schema-version 2.0 --json --out /tmp/ashby-candidate-search-fdg
 dexcli visualize ./examples/candidate-inspection/flow/project_workflow.go --schema-version 2.0 --json --out /tmp/ashby-candidate-project-fdg
+dexcli visualize ./examples/candidate-inspection/flow/note_workflow.go --schema-version 2.0 --json --out /tmp/ashby-candidate-note-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.

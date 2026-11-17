@@ -40,6 +40,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListCandidateNotes() sdkgo.Query[ListCandidateNotesInput, CandidateNotePage]
+	CreateCandidateNote() sdkgo.Mutation[CreateCandidateNoteInput, CandidateNoteSummary]
 	ListCandidateProjects() sdkgo.Query[ListCandidateProjectsInput, CandidateProjectPage]
 	AddCandidateProject() sdkgo.Mutation[CandidateProjectInput, CandidateProfile]
 	RemoveCandidateProject() sdkgo.Mutation[CandidateProjectInput, CandidateProfile]
@@ -54,6 +56,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListCandidateNotes() sdkgo.Query[ListCandidateNotesInput, CandidateNotePage] {
+	return operations.client.ListCandidateNotes()
+}
+func (operations clientOperations) CreateCandidateNote() sdkgo.Mutation[CreateCandidateNoteInput, CandidateNoteSummary] {
+	return operations.client.CreateCandidateNote()
+}
 func (operations clientOperations) ListCandidateProjects() sdkgo.Query[ListCandidateProjectsInput, CandidateProjectPage] {
 	return operations.client.ListCandidateProjects()
 }
@@ -220,6 +228,153 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListCandidateNotesBranchListed sdkgo.BranchID = "listed"
+const ListCandidateNotesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCandidateNotesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCandidateNotesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCandidateNotesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCandidateNotes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCandidateNotesBranchListed, Description: "Ashby returned the candidate's note page."},
+		{ID: ListCandidateNotesBranchProviderRejected, Description: "Ashby conclusively rejected the note list.", Optional: true},
+		{ID: ListCandidateNotesBranchInvalidResponse, Description: "Ashby returned malformed or oversized JSON.", Optional: true},
+		{ID: ListCandidateNotesBranchDefect, Description: "Candidate ID or pagination fields or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCandidateNotesResult = sdkgo.QueryResult[CandidateNotePage]
+
+type ListCandidateNotesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=ashby"`
+	operationID                    struct{}                                             `connector:"operationId=listCandidateNotes"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCandidateNotesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCandidateNotesResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCandidateNotesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCandidateNotesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCandidateNotesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CandidateNotePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewListCandidateNotesStep[IN any](config ListCandidateNotesStepConfig[IN]) sdkgo.QueryStep[IN, ListCandidateNotesInput, CandidateNotePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCandidateNotesInput, CandidateNotePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCandidateNotes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCandidateNotesResult] {
+			branches := make([]sdkgo.BranchTarget[ListCandidateNotesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCandidateNotesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCandidateNotesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCandidateNotesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCandidateNotesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateCandidateNoteBranchCreated sdkgo.BranchID = "created"
+const CreateCandidateNoteBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCandidateNoteBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateCandidateNoteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateCandidateNoteDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCandidateNote"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateCandidateNoteBranchCreated, Description: "Ashby returned the new note identity."},
+		{ID: CreateCandidateNoteBranchProviderRejected, Description: "Ashby definitively rejected the note.", Optional: true},
+		{ID: CreateCandidateNoteBranchUncertain, Description: "The note may have been created but the bounded send cap was reached.", Optional: true},
+		{ID: CreateCandidateNoteBranchDefect, Description: "Candidate ID, note content, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateCandidateNoteResult = sdkgo.MutationResult[CandidateNoteSummary]
+
+type CreateCandidateNoteStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=ashby"`
+	operationID                       struct{}                                                   `connector:"operationId=createCandidateNote"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateCandidateNoteInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateCandidateNoteResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateCandidateNoteResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateCandidateNoteResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateCandidateNoteResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CandidateNoteSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateCandidateNoteStep[IN any](config CreateCandidateNoteStepConfig[IN]) sdkgo.MutationStep[IN, CreateCandidateNoteInput, CandidateNoteSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCandidateNoteInput, CandidateNoteSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateCandidateNote(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateCandidateNoteResult] {
+			branches := make([]sdkgo.BranchTarget[CreateCandidateNoteResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateCandidateNoteBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCandidateNoteBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateCandidateNoteBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateCandidateNoteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
 }
 
 const ListCandidateProjectsBranchListed sdkgo.BranchID = "listed"

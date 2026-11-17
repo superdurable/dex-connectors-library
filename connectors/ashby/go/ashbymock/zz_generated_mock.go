@@ -18,6 +18,8 @@ import (
 // Mock is a scripted ashby connection. Script each operation through its accessor.
 type Mock struct {
 	connection             ashby.Connection
+	listCandidateNotes     *connectormock.Query[ashby.ListCandidateNotesInput, ashby.CandidateNotePage]
+	createCandidateNote    *connectormock.Mutation[ashby.CreateCandidateNoteInput, ashby.CandidateNoteSummary]
 	listCandidateProjects  *connectormock.Query[ashby.ListCandidateProjectsInput, ashby.CandidateProjectPage]
 	addCandidateProject    *connectormock.Mutation[ashby.CandidateProjectInput, ashby.CandidateProfile]
 	removeCandidateProject *connectormock.Mutation[ashby.CandidateProjectInput, ashby.CandidateProfile]
@@ -35,6 +37,8 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listCandidateNotes:     connectormock.NewQuery[ashby.ListCandidateNotesInput, ashby.CandidateNotePage](t, ashby.ListCandidateNotesDefinition),
+		createCandidateNote:    connectormock.NewMutation[ashby.CreateCandidateNoteInput, ashby.CandidateNoteSummary](t, ashby.CreateCandidateNoteDefinition),
 		listCandidateProjects:  connectormock.NewQuery[ashby.ListCandidateProjectsInput, ashby.CandidateProjectPage](t, ashby.ListCandidateProjectsDefinition),
 		addCandidateProject:    connectormock.NewMutation[ashby.CandidateProjectInput, ashby.CandidateProfile](t, ashby.AddCandidateProjectDefinition),
 		removeCandidateProject: connectormock.NewMutation[ashby.CandidateProjectInput, ashby.CandidateProfile](t, ashby.RemoveCandidateProjectDefinition),
@@ -46,6 +50,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateCandidate:        connectormock.NewMutation[ashby.UpdateCandidateInput, ashby.CandidateProfile](t, ashby.UpdateCandidateDefinition),
 		getCandidate:           connectormock.NewQuery[ashby.GetCandidateInput, ashby.CandidateProfile](t, ashby.GetCandidateDefinition),
 	}
+	mock.listCandidateNotes.Default(ListCandidateNotesDefault())
+	mock.createCandidateNote.Default(CreateCandidateNoteDefault())
 	mock.listCandidateProjects.Default(ListCandidateProjectsDefault())
 	mock.addCandidateProject.Default(AddCandidateProjectDefault())
 	mock.removeCandidateProject.Default(RemoveCandidateProjectDefault())
@@ -66,6 +72,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() ashby.Connection { return mock.connection }
+
+// ListCandidateNotes returns the listCandidateNotes script.
+func (mock *Mock) ListCandidateNotes() *connectormock.Query[ashby.ListCandidateNotesInput, ashby.CandidateNotePage] {
+	return mock.listCandidateNotes
+}
+
+// CreateCandidateNote returns the createCandidateNote script.
+func (mock *Mock) CreateCandidateNote() *connectormock.Mutation[ashby.CreateCandidateNoteInput, ashby.CandidateNoteSummary] {
+	return mock.createCandidateNote
+}
 
 // ListCandidateProjects returns the listCandidateProjects script.
 func (mock *Mock) ListCandidateProjects() *connectormock.Query[ashby.ListCandidateProjectsInput, ashby.CandidateProjectPage] {
@@ -119,6 +135,12 @@ func (mock *Mock) GetCandidate() *connectormock.Query[ashby.GetCandidateInput, a
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListCandidateNotes() sdkgo.Query[ashby.ListCandidateNotesInput, ashby.CandidateNotePage] {
+	return operations.mock.listCandidateNotes
+}
+func (operations mockOperations) CreateCandidateNote() sdkgo.Mutation[ashby.CreateCandidateNoteInput, ashby.CandidateNoteSummary] {
+	return operations.mock.createCandidateNote
+}
 func (operations mockOperations) ListCandidateProjects() sdkgo.Query[ashby.ListCandidateProjectsInput, ashby.CandidateProjectPage] {
 	return operations.mock.listCandidateProjects
 }
@@ -148,6 +170,78 @@ func (operations mockOperations) UpdateCandidate() sdkgo.Mutation[ashby.UpdateCa
 }
 func (operations mockOperations) GetCandidate() sdkgo.Query[ashby.GetCandidateInput, ashby.CandidateProfile] {
 	return operations.mock.getCandidate
+}
+
+// ListCandidateNotesListed selects the listed branch: Ashby returned the candidate's note page.
+func ListCandidateNotesListed(value ashby.CandidateNotePage, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateNotePage] {
+	return connectormock.Branch(ashby.ListCandidateNotesBranchListed, value, failure)
+}
+
+// ListCandidateNotesProviderRejected selects the providerRejected branch: Ashby conclusively rejected the note list.
+func ListCandidateNotesProviderRejected(value ashby.CandidateNotePage, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateNotePage] {
+	return connectormock.Branch(ashby.ListCandidateNotesBranchProviderRejected, value, failure)
+}
+
+// ListCandidateNotesInvalidResponse selects the invalidResponse branch: Ashby returned malformed or oversized JSON.
+func ListCandidateNotesInvalidResponse(value ashby.CandidateNotePage, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateNotePage] {
+	return connectormock.Branch(ashby.ListCandidateNotesBranchInvalidResponse, value, failure)
+}
+
+// ListCandidateNotesDefect selects the defect branch: Candidate ID or pagination fields or credentials are invalid.
+func ListCandidateNotesDefect(value ashby.CandidateNotePage, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateNotePage] {
+	return connectormock.Branch(ashby.ListCandidateNotesBranchDefect, value, failure)
+}
+
+// ListCandidateNotesRetry asks Dex to retry the listCandidateNotes Step, after the delay when it is positive.
+func ListCandidateNotesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.CandidateNotePage] {
+	return connectormock.Retry[ashby.CandidateNotePage](failure, after)
+}
+
+// ListCandidateNotesListedDefault is the manifest mock listedDefault: One sample candidate note is listed.
+func ListCandidateNotesListedDefault() connectormock.Case[ashby.CandidateNotePage] {
+	value := connectormock.MustDecodeOutput[ashby.CandidateNotePage](`{"notes":[{"id":"5fa61e0b-3c4d-4e5f-9a0b-1c2d3e4f5a6b","createdAt":"2024-01-15T10:30:00.000Z","isPrivate":false}],"moreDataAvailable":false}`)
+	return connectormock.Branch(ashby.ListCandidateNotesBranchListed, value, nil)
+}
+
+// ListCandidateNotesDefault is the manifest default, listedDefault, which New installs.
+func ListCandidateNotesDefault() connectormock.Case[ashby.CandidateNotePage] {
+	return ListCandidateNotesListedDefault()
+}
+
+// CreateCandidateNoteCreated selects the created branch: Ashby returned the new note identity.
+func CreateCandidateNoteCreated(value ashby.CandidateNoteSummary, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateNoteSummary] {
+	return connectormock.Branch(ashby.CreateCandidateNoteBranchCreated, value, failure)
+}
+
+// CreateCandidateNoteProviderRejected selects the providerRejected branch: Ashby definitively rejected the note.
+func CreateCandidateNoteProviderRejected(value ashby.CandidateNoteSummary, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateNoteSummary] {
+	return connectormock.Branch(ashby.CreateCandidateNoteBranchProviderRejected, value, failure)
+}
+
+// CreateCandidateNoteUncertain returns an uncertain createCandidateNote outcome.
+func CreateCandidateNoteUncertain(value ashby.CandidateNoteSummary, failure sdkgo.Failure) connectormock.Case[ashby.CandidateNoteSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateCandidateNoteDefect selects the defect branch: Candidate ID, note content, or credentials are invalid.
+func CreateCandidateNoteDefect(value ashby.CandidateNoteSummary, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateNoteSummary] {
+	return connectormock.Branch(ashby.CreateCandidateNoteBranchDefect, value, failure)
+}
+
+// CreateCandidateNoteRetry asks Dex to retry the createCandidateNote Step, after the delay when it is positive.
+func CreateCandidateNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.CandidateNoteSummary] {
+	return connectormock.Retry[ashby.CandidateNoteSummary](failure, after)
+}
+
+// CreateCandidateNoteCreatedDefault is the manifest mock createdDefault: One sample note is created.
+func CreateCandidateNoteCreatedDefault() connectormock.Case[ashby.CandidateNoteSummary] {
+	value := connectormock.MustDecodeOutput[ashby.CandidateNoteSummary](`{"id":"5fa61e0b-3c4d-4e5f-9a0b-1c2d3e4f5a6b","createdAt":"2024-01-15T10:30:00.000Z","isPrivate":false}`)
+	return connectormock.Branch(ashby.CreateCandidateNoteBranchCreated, value, nil)
+}
+
+// CreateCandidateNoteDefault is the manifest default, createdDefault, which New installs.
+func CreateCandidateNoteDefault() connectormock.Case[ashby.CandidateNoteSummary] {
+	return CreateCandidateNoteCreatedDefault()
 }
 
 // ListCandidateProjectsListed selects the listed branch: Ashby returned the candidate's projects.

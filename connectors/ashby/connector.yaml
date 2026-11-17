@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: ashby
   displayName: Ashby
-  description: Create, search, and read candidates, replace names, tags, and project membership in Ashby.
+  description: Create, search, and read candidates; manage names, tags, projects, and notes in Ashby.
   company: Ashby
   categories: [hr-recruiting]
   version: v0.2.0
@@ -53,8 +53,48 @@ spec:
       startURL: https://app.ashbyhq.com
       steps:
         - In Ashby, open Admin > API Keys and create or select an API key with Candidates read/write permissions for these operations. Copy the complete opaque secret into Dex Web api_key; blank is invalid. Revoke or rotate it on the same page. Confidential candidates require the separate confidential jobs and projects permission.
-        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret candidate UUID in Ashby or from candidate.list and pass it as candidateId; blank is invalid. For tag operations, find the non-secret tag UUID in Ashby Admin > Organization Settings > Candidate Tags or candidateTag.list (which additionally needs Hiring Process read permission) and pass it as tagId; blank is invalid. For project association, open Sourcing > Projects or use candidate.listProjects and pass the non-secret project UUID as projectId; blank is invalid. Results omit email, phone, and resume data.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret candidate UUID in Ashby or from candidate.list and pass it as candidateId; blank is invalid. For tag operations, find the non-secret tag UUID in Ashby Admin > Organization Settings > Candidate Tags or candidateTag.list (which additionally needs Hiring Process read permission) and pass it as tagId; blank is invalid. For project association, open Sourcing > Projects or use candidate.listProjects and pass the non-secret project UUID as projectId; blank is invalid. Candidate notes accept plaintext up to 8192 bytes; omit secrets. Results omit email, phone, resume, and note content.
   operations:
+    - name: listCandidateNotes
+      goName: ListCandidateNotes
+      inputType: ListCandidateNotesInput
+      outputType: CandidateNotePage
+      kind: query
+      description: List note identities for a candidate without exposing content or author details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Ashby returned the candidate's note page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the note list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Candidate ID or pagination fields or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample candidate note is listed.
+          output: {notes: [{id: 5fa61e0b-3c4d-4e5f-9a0b-1c2d3e4f5a6b, createdAt: '2024-01-15T10:30:00.000Z', isPrivate: false}], moreDataAvailable: false}
+    - name: createCandidateNote
+      goName: CreateCandidateNote
+      inputType: CreateCandidateNoteInput
+      outputType: CandidateNoteSummary
+      kind: mutation
+      description: Create a plaintext note on a candidate, omitting its content from the result.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Ashby returned the new note identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby definitively rejected the note., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The note may have been created but the bounded send cap was reached., optional: true}
+        - {id: defect, goName: Defect, description: "Candidate ID, note content, or credentials are invalid.", optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample note is created.
+          output: {id: 5fa61e0b-3c4d-4e5f-9a0b-1c2d3e4f5a6b, createdAt: '2024-01-15T10:30:00.000Z', isPrivate: false}
     - name: listCandidateProjects
       goName: ListCandidateProjects
       inputType: ListCandidateProjectsInput
