@@ -9,6 +9,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const signFlowEndpoint = "https://openapi.esign.cn"
@@ -29,6 +30,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	clock            func() time.Time
 }
 
 // New validates local settings without making a provider request.
@@ -43,7 +45,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.Timeout <= 0 || config.MaxResponseBytes <= 0 || config.MaxResponseBytes > 16<<20 {
 		return nil, errors.New("eSign timeout or response limit is invalid")
 	}
-	client := &Client{maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{maxResponseBytes: config.MaxResponseBytes, credentials: credentials, clock: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("eSign client option is required")

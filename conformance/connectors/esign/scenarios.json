@@ -1,0 +1,740 @@
+{
+  "connector": "esign",
+  "scenarios": [
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"signFlowStatus\":1,\"signers\":[{\"accountMobile\":\"private-phone\"}],\"docs\":[{\"fileName\":\"private-contract\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/sign-flow/flow123/detail",
+          "requestHeaders": {
+            "Accept": [
+              "*/*"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ],
+            "X-Tsign-Open-App-Id": [
+              "app-123"
+            ],
+            "X-Tsign-Open-Auth-Mode": [
+              "Signature"
+            ],
+            "X-Tsign-Open-Ca-Signature": [
+              "C9P4BkL3d1BJ0EE390AVvnpUMYhDTix72iBm4yWPiZs="
+            ],
+            "X-Tsign-Open-Ca-Timestamp": [
+              "1794830400000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "signFlowId": "flow123",
+          "signFlowStatus": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-found",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"signFlowStatus\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/sign-flow/flow123/detail",
+          "requestHeaders": {
+            "Accept": [
+              "*/*"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ],
+            "X-Tsign-Open-App-Id": [
+              "app-123"
+            ],
+            "X-Tsign-Open-Auth-Mode": [
+              "Signature"
+            ],
+            "X-Tsign-Open-Ca-Signature": [
+              "C9P4BkL3d1BJ0EE390AVvnpUMYhDTix72iBm4yWPiZs="
+            ],
+            "X-Tsign-Open-Ca-Timestamp": [
+              "1794830400000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "signFlowId": "flow123",
+          "signFlowStatus": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-zero-status",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"code\":403,\"message\":\"test-secret\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/sign-flow/flow123/detail",
+          "requestHeaders": {
+            "Accept": [
+              "*/*"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ],
+            "X-Tsign-Open-App-Id": [
+              "app-123"
+            ],
+            "X-Tsign-Open-Auth-Mode": [
+              "Signature"
+            ],
+            "X-Tsign-Open-Ca-Signature": [
+              "C9P4BkL3d1BJ0EE390AVvnpUMYhDTix72iBm4yWPiZs="
+            ],
+            "X-Tsign-Open-Ca-Timestamp": [
+              "1794830400000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "signFlowId": "",
+          "signFlowStatus": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-business-rejected",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test-secret\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/sign-flow/flow123/detail",
+          "requestHeaders": {
+            "Accept": [
+              "*/*"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ],
+            "X-Tsign-Open-App-Id": [
+              "app-123"
+            ],
+            "X-Tsign-Open-Auth-Mode": [
+              "Signature"
+            ],
+            "X-Tsign-Open-Ca-Signature": [
+              "C9P4BkL3d1BJ0EE390AVvnpUMYhDTix72iBm4yWPiZs="
+            ],
+            "X-Tsign-Open-Ca-Timestamp": [
+              "1794830400000"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "signFlowId": "",
+          "signFlowStatus": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-unauthorized",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test-secret\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/sign-flow/flow123/detail",
+          "requestHeaders": {
+            "Accept": [
+              "*/*"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ],
+            "X-Tsign-Open-App-Id": [
+              "app-123"
+            ],
+            "X-Tsign-Open-Auth-Mode": [
+              "Signature"
+            ],
+            "X-Tsign-Open-Ca-Signature": [
+              "C9P4BkL3d1BJ0EE390AVvnpUMYhDTix72iBm4yWPiZs="
+            ],
+            "X-Tsign-Open-Ca-Timestamp": [
+              "1794830400000"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "signFlowId": "",
+          "signFlowStatus": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-forbidden",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/sign-flow/flow123/detail",
+          "requestHeaders": {
+            "Accept": [
+              "*/*"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ],
+            "X-Tsign-Open-App-Id": [
+              "app-123"
+            ],
+            "X-Tsign-Open-Auth-Mode": [
+              "Signature"
+            ],
+            "X-Tsign-Open-Ca-Signature": [
+              "C9P4BkL3d1BJ0EE390AVvnpUMYhDTix72iBm4yWPiZs="
+            ],
+            "X-Tsign-Open-Ca-Timestamp": [
+              "1794830400000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "signFlowId": "",
+          "signFlowStatus": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-malformed",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"signFlowStatus\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/sign-flow/flow123/detail",
+          "requestHeaders": {
+            "Accept": [
+              "*/*"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ],
+            "X-Tsign-Open-App-Id": [
+              "app-123"
+            ],
+            "X-Tsign-Open-Auth-Mode": [
+              "Signature"
+            ],
+            "X-Tsign-Open-Ca-Signature": [
+              "C9P4BkL3d1BJ0EE390AVvnpUMYhDTix72iBm4yWPiZs="
+            ],
+            "X-Tsign-Open-Ca-Timestamp": [
+              "1794830400000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "signFlowId": "",
+          "signFlowStatus": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-missing-code",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"code\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/sign-flow/flow123/detail",
+          "requestHeaders": {
+            "Accept": [
+              "*/*"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ],
+            "X-Tsign-Open-App-Id": [
+              "app-123"
+            ],
+            "X-Tsign-Open-Auth-Mode": [
+              "Signature"
+            ],
+            "X-Tsign-Open-Ca-Signature": [
+              "C9P4BkL3d1BJ0EE390AVvnpUMYhDTix72iBm4yWPiZs="
+            ],
+            "X-Tsign-Open-Ca-Timestamp": [
+              "1794830400000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "signFlowId": "",
+          "signFlowStatus": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-missing-data",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"signFlowStatus\":-1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/sign-flow/flow123/detail",
+          "requestHeaders": {
+            "Accept": [
+              "*/*"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ],
+            "X-Tsign-Open-App-Id": [
+              "app-123"
+            ],
+            "X-Tsign-Open-Auth-Mode": [
+              "Signature"
+            ],
+            "X-Tsign-Open-Ca-Signature": [
+              "C9P4BkL3d1BJ0EE390AVvnpUMYhDTix72iBm4yWPiZs="
+            ],
+            "X-Tsign-Open-Ca-Timestamp": [
+              "1794830400000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "signFlowId": "",
+          "signFlowStatus": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-negative-status",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"signFlowStatus\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/sign-flow/flow123/detail",
+          "requestHeaders": {
+            "Accept": [
+              "*/*"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ],
+            "X-Tsign-Open-App-Id": [
+              "app-123"
+            ],
+            "X-Tsign-Open-Auth-Mode": [
+              "Signature"
+            ],
+            "X-Tsign-Open-Ca-Signature": [
+              "C9P4BkL3d1BJ0EE390AVvnpUMYhDTix72iBm4yWPiZs="
+            ],
+            "X-Tsign-Open-Ca-Timestamp": [
+              "1794830400000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "signFlowId": "",
+          "signFlowStatus": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-oversize",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Location": "https://other.example/steal"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/sign-flow/flow123/detail",
+          "requestHeaders": {
+            "Accept": [
+              "*/*"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ],
+            "X-Tsign-Open-App-Id": [
+              "app-123"
+            ],
+            "X-Tsign-Open-Auth-Mode": [
+              "Signature"
+            ],
+            "X-Tsign-Open-Ca-Signature": [
+              "C9P4BkL3d1BJ0EE390AVvnpUMYhDTix72iBm4yWPiZs="
+            ],
+            "X-Tsign-Open-Ca-Timestamp": [
+              "1794830400000"
+            ]
+          },
+          "status": 302
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "signFlowId": "",
+          "signFlowStatus": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-redirect",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/sign-flow/flow123/detail",
+          "requestHeaders": {
+            "Accept": [
+              "*/*"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ],
+            "X-Tsign-Open-App-Id": [
+              "app-123"
+            ],
+            "X-Tsign-Open-Auth-Mode": [
+              "Signature"
+            ],
+            "X-Tsign-Open-Ca-Signature": [
+              "C9P4BkL3d1BJ0EE390AVvnpUMYhDTix72iBm4yWPiZs="
+            ],
+            "X-Tsign-Open-Ca-Timestamp": [
+              "1794830400000"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-rate-limit",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/sign-flow/flow123/detail",
+          "requestHeaders": {
+            "Accept": [
+              "*/*"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ],
+            "X-Tsign-Open-App-Id": [
+              "app-123"
+            ],
+            "X-Tsign-Open-Auth-Mode": [
+              "Signature"
+            ],
+            "X-Tsign-Open-Ca-Signature": [
+              "C9P4BkL3d1BJ0EE390AVvnpUMYhDTix72iBm4yWPiZs="
+            ],
+            "X-Tsign-Open-Ca-Timestamp": [
+              "1794830400000"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-server-error",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/sign-flow/flow123/detail",
+          "requestHeaders": {
+            "Accept": [
+              "*/*"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ],
+            "X-Tsign-Open-App-Id": [
+              "app-123"
+            ],
+            "X-Tsign-Open-Auth-Mode": [
+              "Signature"
+            ],
+            "X-Tsign-Open-Ca-Signature": [
+              "C9P4BkL3d1BJ0EE390AVvnpUMYhDTix72iBm4yWPiZs="
+            ],
+            "X-Tsign-Open-Ca-Timestamp": [
+              "1794830400000"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-transport-before-send",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "signFlowId": "",
+          "signFlowStatus": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "../private"
+      },
+      "name": "getSignFlowStatus-invalid-id",
+      "operation": "getSignFlowStatus"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "signFlowId": "",
+          "signFlowStatus": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signFlowId": "flow123"
+      },
+      "name": "getSignFlowStatus-missing-secret",
+      "operation": "getSignFlowStatus"
+    }
+  ],
+  "schemaVersion": 1
+}
