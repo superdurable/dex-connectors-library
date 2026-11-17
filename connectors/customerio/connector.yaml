@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: customerio
   displayName: Customer.io
-  description: Look up customers and campaigns through the App API and manage customers through the Track API.
+  description: Look up customers and campaigns through the App API, and manage customers and events through the Track API.
   company: Customer.io
   categories: [marketing]
   version: v0.2.0
@@ -66,9 +66,49 @@ spec:
       startURL: https://fly.customer.io
       steps:
         - In Customer.io open Settings > API Credentials > App API and create or select a private key with profile and campaign read access. Copy the complete sk_ value into secret privateKey; an existing App API key also works. Blank prevents calls. Do not put the key in Flow input.
-        - For customer writes, open Settings > API Credentials > Track API Keys. Copy the non-secret Site ID and create or select a secret Track API key for this workspace; enter both in trackingSiteId and trackingApiKey. Blank either field disables Track writes. Track API credentials are distinct from the App API privateKey and must match this workspace.
+        - For customer and event writes, open Settings > API Credentials > Track API Keys. Copy the non-secret Site ID and create or select a secret Track API key for this workspace; enter both in trackingSiteId and trackingApiKey. Blank either field disables Track writes. Track API credentials are distinct from the App API privateKey and must match this workspace.
         - Leave baseUrl and trackingBaseUrl blank for US-region defaults, or use https://api-eu.customer.io and https://track-eu.customer.io for an EU workspace. Leave timeout and maxResponseBytes blank for their displayed defaults. Find a non-secret customer email on the workspace People page, then pass its full email address as email; blank is invalid.
   operations:
+    - name: trackCustomerEvent
+      goName: TrackCustomerEvent
+      inputType: TrackCustomerEventInput
+      outputType: TrackEventOutput
+      kind: mutation
+      description: Record a named event for one identified customer through the Track API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: tracked, goName: Tracked, description: Customer.io accepted the customer event.}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the event., optional: true}
+        - {id: defect, goName: Defect, description: Input or Track credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send limit was reached without a confirmed outcome., optional: true}
+      mocks:
+        - name: trackedDefault
+          branch: tracked
+          default: true
+          description: A sample customer event is accepted.
+          output: {name: purchased, subjectID: customer-123}
+    - name: trackAnonymousEvent
+      goName: TrackAnonymousEvent
+      inputType: TrackAnonymousEventInput
+      outputType: TrackEventOutput
+      kind: mutation
+      description: Record a named event for an anonymous visitor through the Track API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: tracked, goName: Tracked, description: Customer.io accepted the anonymous event.}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the event., optional: true}
+        - {id: defect, goName: Defect, description: Input or Track credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send limit was reached without a confirmed outcome., optional: true}
+      mocks:
+        - name: trackedDefault
+          branch: tracked
+          default: true
+          description: A sample anonymous event is accepted.
+          output: {name: watched_video, subjectID: visitor-123}
     - name: upsertCustomer
       goName: UpsertCustomer
       inputType: UpsertCustomerInput

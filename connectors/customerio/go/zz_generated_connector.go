@@ -43,6 +43,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	TrackCustomerEvent() sdkgo.Mutation[TrackCustomerEventInput, TrackEventOutput]
+	TrackAnonymousEvent() sdkgo.Mutation[TrackAnonymousEventInput, TrackEventOutput]
 	UpsertCustomer() sdkgo.Mutation[UpsertCustomerInput, CustomerWriteOutput]
 	DeleteCustomer() sdkgo.Mutation[DeleteCustomerInput, CustomerWriteOutput]
 	GetCampaign() sdkgo.Query[GetCampaignInput, CampaignSummary]
@@ -53,6 +55,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) TrackCustomerEvent() sdkgo.Mutation[TrackCustomerEventInput, TrackEventOutput] {
+	return operations.client.TrackCustomerEvent()
+}
+func (operations clientOperations) TrackAnonymousEvent() sdkgo.Mutation[TrackAnonymousEventInput, TrackEventOutput] {
+	return operations.client.TrackAnonymousEvent()
+}
 func (operations clientOperations) UpsertCustomer() sdkgo.Mutation[UpsertCustomerInput, CustomerWriteOutput] {
 	return operations.client.UpsertCustomer()
 }
@@ -223,6 +231,158 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+const TrackCustomerEventBranchTracked sdkgo.BranchID = "tracked"
+const TrackCustomerEventBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const TrackCustomerEventBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const TrackCustomerEventBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var TrackCustomerEventDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "trackCustomerEvent"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: TrackCustomerEventBranchTracked, Description: "Customer.io accepted the customer event."},
+		{ID: TrackCustomerEventBranchProviderRejected, Description: "Customer.io rejected the event.", Optional: true},
+		{ID: TrackCustomerEventBranchDefect, Description: "Input or Track credentials are invalid.", Optional: true},
+		{ID: TrackCustomerEventBranchUncertain, Description: "The send limit was reached without a confirmed outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type TrackCustomerEventResult = sdkgo.MutationResult[TrackEventOutput]
+
+type TrackCustomerEventStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=customerio"`
+	operationID                       struct{}                                               `connector:"operationId=trackCustomerEvent"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) TrackCustomerEventInput                       `connector:"mapToOperationInput"`
+	Tracked                           sdkgo.Target[TrackCustomerEventResult]                 `connector:"branch=tracked"`
+	ProviderRejected                  sdkgo.Target[TrackCustomerEventResult]                 `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[TrackCustomerEventResult]                 `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[TrackCustomerEventResult]                 `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TrackEventOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewTrackCustomerEventStep[IN any](config TrackCustomerEventStepConfig[IN]) sdkgo.MutationStep[IN, TrackCustomerEventInput, TrackEventOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("customerio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TrackCustomerEventInput, TrackEventOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.TrackCustomerEvent(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[TrackCustomerEventResult] {
+			branches := make([]sdkgo.BranchTarget[TrackCustomerEventResult], 0, 4)
+			if config.Tracked.HasStep() {
+				branches = append(branches, config.Tracked.BranchTarget(TrackCustomerEventBranchTracked))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(TrackCustomerEventBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(TrackCustomerEventBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(TrackCustomerEventBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const TrackAnonymousEventBranchTracked sdkgo.BranchID = "tracked"
+const TrackAnonymousEventBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const TrackAnonymousEventBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const TrackAnonymousEventBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var TrackAnonymousEventDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "trackAnonymousEvent"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: TrackAnonymousEventBranchTracked, Description: "Customer.io accepted the anonymous event."},
+		{ID: TrackAnonymousEventBranchProviderRejected, Description: "Customer.io rejected the event.", Optional: true},
+		{ID: TrackAnonymousEventBranchDefect, Description: "Input or Track credentials are invalid.", Optional: true},
+		{ID: TrackAnonymousEventBranchUncertain, Description: "The send limit was reached without a confirmed outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type TrackAnonymousEventResult = sdkgo.MutationResult[TrackEventOutput]
+
+type TrackAnonymousEventStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=customerio"`
+	operationID                       struct{}                                               `connector:"operationId=trackAnonymousEvent"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) TrackAnonymousEventInput                      `connector:"mapToOperationInput"`
+	Tracked                           sdkgo.Target[TrackAnonymousEventResult]                `connector:"branch=tracked"`
+	ProviderRejected                  sdkgo.Target[TrackAnonymousEventResult]                `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[TrackAnonymousEventResult]                `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[TrackAnonymousEventResult]                `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TrackEventOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewTrackAnonymousEventStep[IN any](config TrackAnonymousEventStepConfig[IN]) sdkgo.MutationStep[IN, TrackAnonymousEventInput, TrackEventOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("customerio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TrackAnonymousEventInput, TrackEventOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.TrackAnonymousEvent(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[TrackAnonymousEventResult] {
+			branches := make([]sdkgo.BranchTarget[TrackAnonymousEventResult], 0, 4)
+			if config.Tracked.HasStep() {
+				branches = append(branches, config.Tracked.BranchTarget(TrackAnonymousEventBranchTracked))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(TrackAnonymousEventBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(TrackAnonymousEventBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(TrackAnonymousEventBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
 const UpsertCustomerBranchUpserted sdkgo.BranchID = "upserted"
 const UpsertCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const UpsertCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
@@ -239,6 +399,7 @@ var UpsertCustomerDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpsertCustomerResult = sdkgo.MutationResult[CustomerWriteOutput]
@@ -306,6 +467,7 @@ var DeleteCustomerDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteCustomerResult = sdkgo.MutationResult[CustomerWriteOutput]

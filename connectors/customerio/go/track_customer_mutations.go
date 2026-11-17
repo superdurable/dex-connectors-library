@@ -5,6 +5,7 @@ package customerio
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -93,19 +94,31 @@ func (operation DeleteCustomerOperation) Invoke(call sdkgo.Call, input DeleteCus
 }
 
 func (client *Client) doTrackRequest(call sdkgo.Call, method string, path string, body []byte) providerResponse {
+	credentials, err := client.resolveTrackCredentials(call)
+	if err != nil {
+		return providerResponse{err: errCredential}
+	}
+	return client.sendTrackRequest(call.Context, credentials, method, path, body)
+}
+
+func (client *Client) resolveTrackCredentials(call sdkgo.Call) (Credentials, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
-		return providerResponse{err: errCredential}
+		return Credentials{}, errCredential
 	}
 	siteID, apiKey := credentials.TrackingSiteID, credentials.TrackingAPIKey.Reveal()
 	if siteID == "" || apiKey == "" || !providerhttp.IsHeaderSafeCredential(siteID) || !providerhttp.IsHeaderSafeCredential(apiKey) {
-		return providerResponse{err: errCredential}
+		return Credentials{}, errCredential
 	}
-	request, err := http.NewRequestWithContext(call.Context, method, client.trackingBaseURL+path, bytes.NewReader(body))
+	return credentials, nil
+}
+
+func (client *Client) sendTrackRequest(requestContext context.Context, credentials Credentials, method string, path string, body []byte) providerResponse {
+	request, err := http.NewRequestWithContext(requestContext, method, client.trackingBaseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
-	request.SetBasicAuth(siteID, apiKey)
+	request.SetBasicAuth(credentials.TrackingSiteID, credentials.TrackingAPIKey.Reveal())
 	request.Header.Set("Accept", "application/json")
 	if body != nil {
 		request.Header.Set("Content-Type", "application/json")

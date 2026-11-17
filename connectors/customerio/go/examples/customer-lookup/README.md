@@ -1,6 +1,6 @@
 # Customer.io customer lookup Flow
 
-These runnable Flows call `getCustomersByEmail`, `getCampaign`, `listCampaigns`, `getCampaignMetrics`, `upsertCustomer`, and `deleteCustomer` through the static `customerio` connection. They persist typed results in Attributes and expose them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+These runnable Flows call `getCustomersByEmail`, `getCampaign`, `listCampaigns`, `getCampaignMetrics`, `upsertCustomer`, `deleteCustomer`, `trackCustomerEvent`, and `trackAnonymousEvent` through the static `customerio` connection. They persist typed results in Attributes and expose them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -13,6 +13,8 @@ dexcli visualize ./examples/customer-lookup/flow/list_campaigns.go --schema-vers
 dexcli visualize ./examples/customer-lookup/flow/get_campaign_metrics.go --schema-version 2.0 --lint app --json --out /tmp/customerio-campaign-metrics-fdg
 dexcli visualize ./examples/customer-lookup/flow/upsert_customer.go --schema-version 2.0 --lint app --open=false --json --out /tmp/customerio-upsert-customer-fdg
 dexcli visualize ./examples/customer-lookup/flow/delete_customer.go --schema-version 2.0 --lint app --open=false --json --out /tmp/customerio-delete-customer-fdg
+dexcli visualize ./examples/customer-lookup/flow/track_customer_event.go --schema-version 2.0 --lint app --open=false --json --out /tmp/customerio-track-customer-event-fdg
+dexcli visualize ./examples/customer-lookup/flow/track_anonymous_event.go --schema-version 2.0 --lint app --open=false --json --out /tmp/customerio-track-anonymous-event-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.
@@ -32,5 +34,7 @@ Start `CustomerioCustomerLookup` with a unique Flow ID and input `{"email":"pers
 Start `CustomerioCampaignInspection` with `{"campaignId":5}`, `CustomerioCampaignSearch` with `{}`, and `CustomerioCampaignMetrics` with `{"campaignId":5,"startUnix":1735718400,"endUnix":1735804800,"resolution":"days"}`. Find the non-secret integer campaign ID in the Customer.io Automations page URL or list response. The metrics timestamps are UTC Unix seconds; blank IDs, timestamps, and resolution are invalid. These operations use the same secret App API key stored in Dex Web Connections.
 
 Start `CustomerioCustomerUpsert` with `{"identifier":"person@example.com","attributes":{"first_name":"Ava"}}` or `CustomerioCustomerDeletion` with `{"identifier":"person@example.com"}`. Replace the sample with a real workspace customer ID or email. Customer deletion is permanent; test on a disposable profile. These operations use the Track credentials stored in Dex Web Connections.
+
+Start `CustomerioCustomerEvent` with `{"identifier":"person@example.com","name":"purchased","data":{"price":23.45}}` or `CustomerioAnonymousEvent` with `{"anonymousID":"visitor-123","name":"watched_video","data":{"video":"intro"}}`. Optional `timestampUnix` is a positive UTC Unix-second event time; blank or zero uses provider receipt time. Use a unique anonymous ID for each visitor. A selected `uncertain` branch means the event might have been accepted, so inspect Customer.io before intentionally sending a new call.
 
 CI runs the fixture-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real Customer.io authorization and calls remain unverified.

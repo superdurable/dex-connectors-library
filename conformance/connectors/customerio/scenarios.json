@@ -1786,6 +1786,804 @@
       },
       "name": "deleteCustomer-transportFailure",
       "operation": "deleteCustomer"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/customers/customer-123/events",
+          "requestBody": {
+            "data": {
+              "price": 23.45
+            },
+            "name": "purchased",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "tracked",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17660265-3c09-5522-b287-8be465d56b81",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "name": "purchased",
+          "subjectID": "customer-123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "purchased",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-success",
+      "operation": "trackCustomerEvent"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/customers/customer-123/events",
+          "requestBody": {
+            "data": {
+              "price": 23.45
+            },
+            "name": "purchased",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17660265-3c09-5522-b287-8be465d56b81",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "purchased",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-providerRejected",
+      "operation": "trackCustomerEvent"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-defect",
+      "operation": "trackCustomerEvent"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/customers/customer-123/events",
+          "requestBody": {
+            "data": {
+              "price": 23.45
+            },
+            "name": "purchased",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17660265-3c09-5522-b287-8be465d56b81",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "purchased",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-rateLimit",
+      "operation": "trackCustomerEvent"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/customers/customer-123/events",
+          "requestBody": {
+            "data": {
+              "price": 23.45
+            },
+            "name": "purchased",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17660265-3c09-5522-b287-8be465d56b81",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "purchased",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-serverUnavailable",
+      "operation": "trackCustomerEvent"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/customers/customer-123/events",
+          "requestBody": {
+            "data": {
+              "price": 23.45
+            },
+            "name": "purchased",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17660265-3c09-5522-b287-8be465d56b81",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "purchased",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-unknownServer",
+      "operation": "trackCustomerEvent"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/customers/customer-123/events",
+          "requestBody": {
+            "data": {
+              "price": 23.45
+            },
+            "name": "purchased",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17660265-3c09-5522-b287-8be465d56b81",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "purchased",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-transportFailure",
+      "operation": "trackCustomerEvent"
+    },
+    {
+      "callId": "17660265-3c09-5522-b287-8be465d56b81",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "17660265-3c09-5522-b287-8be465d56b81",
+      "input": {
+        "data": {
+          "price": 23.45
+        },
+        "identifier": "customer-123",
+        "name": "purchased",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackCustomerEvent-sendCapUncertain",
+      "operation": "trackCustomerEvent",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "17660265-3c09-5522-b287-8be465d56b81",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/events",
+          "requestBody": {
+            "anonymous_id": "visitor-123",
+            "data": {
+              "video": "intro"
+            },
+            "name": "watched_video",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "tracked",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "name": "watched_video",
+          "subjectID": "visitor-123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "watched_video",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-success",
+      "operation": "trackAnonymousEvent"
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/events",
+          "requestBody": {
+            "anonymous_id": "visitor-123",
+            "data": {
+              "video": "intro"
+            },
+            "name": "watched_video",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "watched_video",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-providerRejected",
+      "operation": "trackAnonymousEvent"
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-defect",
+      "operation": "trackAnonymousEvent"
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/events",
+          "requestBody": {
+            "anonymous_id": "visitor-123",
+            "data": {
+              "video": "intro"
+            },
+            "name": "watched_video",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "watched_video",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-rateLimit",
+      "operation": "trackAnonymousEvent"
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/events",
+          "requestBody": {
+            "anonymous_id": "visitor-123",
+            "data": {
+              "video": "intro"
+            },
+            "name": "watched_video",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "watched_video",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-serverUnavailable",
+      "operation": "trackAnonymousEvent"
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/events",
+          "requestBody": {
+            "anonymous_id": "visitor-123",
+            "data": {
+              "video": "intro"
+            },
+            "name": "watched_video",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "watched_video",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-unknownServer",
+      "operation": "trackAnonymousEvent"
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/events",
+          "requestBody": {
+            "anonymous_id": "visitor-123",
+            "data": {
+              "video": "intro"
+            },
+            "name": "watched_video",
+            "timestamp": 1735718400
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRyYWNraW5nLXNpdGUtaWQ6c2FtcGxlLXRyYWNraW5nLWFwaS1rZXk="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "watched_video",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-transportFailure",
+      "operation": "trackAnonymousEvent"
+    },
+    {
+      "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b954e791-e60a-55df-a82f-71f138d40ac6",
+      "input": {
+        "anonymousID": "visitor-123",
+        "data": {
+          "video": "intro"
+        },
+        "name": "watched_video",
+        "timestampUnix": 1735718400
+      },
+      "name": "trackAnonymousEvent-sendCapUncertain",
+      "operation": "trackAnonymousEvent",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "b954e791-e60a-55df-a82f-71f138d40ac6",
+        "state": "claimed"
+      }
     }
   ],
   "schemaVersion": 1

@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "trackCustomerEvent/trackedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.TrackEventOutput](`{"name":"purchased","subjectID":"customer-123"}`)
+			return err
+		}},
+		{name: "trackAnonymousEvent/trackedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.TrackEventOutput](`{"name":"watched_video","subjectID":"visitor-123"}`)
+			return err
+		}},
 		{name: "upsertCustomer/upsertedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[customerio.CustomerWriteOutput](`{"identifier":"customer-123"}`)
 			return err
@@ -50,6 +58,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.TrackCustomerEvent().Definition().Operation.OperationID != "trackCustomerEvent" {
+		t.Errorf("trackCustomerEvent mock has another definition")
+	}
+	if mock.TrackAnonymousEvent().Definition().Operation.OperationID != "trackAnonymousEvent" {
+		t.Errorf("trackAnonymousEvent mock has another definition")
+	}
 	if mock.UpsertCustomer().Definition().Operation.OperationID != "upsertCustomer" {
 		t.Errorf("upsertCustomer mock has another definition")
 	}
