@@ -424,3 +424,86 @@ spec:
         - {id: defect, goName: Defect, description: Folder defect outcome., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: Sample folder deleted outcome., output: {folderId: 5001} }
+    - name: listWorkspaces
+      goName: ListWorkspaces
+      inputType: ListWorkspacesInput
+      outputType: WorkspacePage
+      kind: query
+      description: List accessible workspaces with token pagination.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Smartsheet listed the workspace.}
+        - {id: providerRejected, goName: ProviderRejected, description: Workspace providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Workspace invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: Workspace defect outcome., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Sample workspace listed outcome., output: {workspaces: [{id: 4001, name: Meridian Workspace}], lastKey: ''} }
+    - name: getWorkspace
+      goName: GetWorkspace
+      inputType: GetWorkspaceInput
+      outputType: WorkspaceSummary
+      kind: query
+      description: Get one workspace's metadata.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Smartsheet found the workspace.}
+        - {id: notFound, goName: NotFound, description: Workspace notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Workspace providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Workspace invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: Workspace defect outcome., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Sample workspace found outcome., output: {id: 4001, name: Meridian Workspace} }
+    - name: createWorkspace
+      goName: CreateWorkspace
+      inputType: CreateWorkspaceInput
+      outputType: WorkspaceSummary
+      kind: mutation
+      description: Create one workspace.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Smartsheet created the workspace.}
+        - {id: providerRejected, goName: ProviderRejected, description: Workspace providerRejected outcome., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Workspace uncertain outcome., optional: true}
+        - {id: defect, goName: Defect, description: Workspace defect outcome., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Sample workspace created outcome., output: {id: 4001, name: Meridian Workspace} }
+    - name: updateWorkspace
+      goName: UpdateWorkspace
+      inputType: UpdateWorkspaceInput
+      outputType: WorkspaceSummary
+      kind: mutation
+      description: Rename one workspace.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Smartsheet updated the workspace.}
+        - {id: notFound, goName: NotFound, description: Workspace notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Workspace providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Workspace invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: Workspace defect outcome., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Sample workspace updated outcome., output: {id: 4001, name: Meridian Workspace} }
+    - name: deleteWorkspace
+      goName: DeleteWorkspace
+      inputType: DeleteWorkspaceInput
+      outputType: DeleteWorkspaceOutput
+      kind: mutation
+      description: Delete one workspace.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Smartsheet deleted the workspace.}
+        - {id: notFound, goName: NotFound, description: Workspace notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Workspace providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Workspace invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: Workspace defect outcome., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Sample workspace deleted outcome., output: {workspaceId: 4001} }

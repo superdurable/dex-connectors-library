@@ -60,6 +60,11 @@ type Operations interface {
 	CreateFolderInFolder() sdkgo.Mutation[CreateFolderInFolderInput, FolderSummary]
 	UpdateFolder() sdkgo.Mutation[UpdateFolderInput, FolderSummary]
 	DeleteFolder() sdkgo.Mutation[DeleteFolderInput, DeleteFolderOutput]
+	ListWorkspaces() sdkgo.Query[ListWorkspacesInput, WorkspacePage]
+	GetWorkspace() sdkgo.Query[GetWorkspaceInput, WorkspaceSummary]
+	CreateWorkspace() sdkgo.Mutation[CreateWorkspaceInput, WorkspaceSummary]
+	UpdateWorkspace() sdkgo.Mutation[UpdateWorkspaceInput, WorkspaceSummary]
+	DeleteWorkspace() sdkgo.Mutation[DeleteWorkspaceInput, DeleteWorkspaceOutput]
 }
 
 type clientOperations struct{ client *Client }
@@ -123,6 +128,21 @@ func (operations clientOperations) UpdateFolder() sdkgo.Mutation[UpdateFolderInp
 }
 func (operations clientOperations) DeleteFolder() sdkgo.Mutation[DeleteFolderInput, DeleteFolderOutput] {
 	return operations.client.DeleteFolder()
+}
+func (operations clientOperations) ListWorkspaces() sdkgo.Query[ListWorkspacesInput, WorkspacePage] {
+	return operations.client.ListWorkspaces()
+}
+func (operations clientOperations) GetWorkspace() sdkgo.Query[GetWorkspaceInput, WorkspaceSummary] {
+	return operations.client.GetWorkspace()
+}
+func (operations clientOperations) CreateWorkspace() sdkgo.Mutation[CreateWorkspaceInput, WorkspaceSummary] {
+	return operations.client.CreateWorkspace()
+}
+func (operations clientOperations) UpdateWorkspace() sdkgo.Mutation[UpdateWorkspaceInput, WorkspaceSummary] {
+	return operations.client.UpdateWorkspace()
+}
+func (operations clientOperations) DeleteWorkspace() sdkgo.Mutation[DeleteWorkspaceInput, DeleteWorkspaceOutput] {
+	return operations.client.DeleteWorkspace()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1784,6 +1804,386 @@ func NewDeleteFolderStep[IN any](config DeleteFolderStepConfig[IN]) sdkgo.Mutati
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteFolderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListWorkspacesBranchListed sdkgo.BranchID = "listed"
+const ListWorkspacesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListWorkspacesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListWorkspacesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListWorkspacesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listWorkspaces"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListWorkspacesBranchListed, Description: "Smartsheet listed the workspace."},
+		{ID: ListWorkspacesBranchProviderRejected, Description: "Workspace providerRejected outcome.", Optional: true},
+		{ID: ListWorkspacesBranchInvalidResponse, Description: "Workspace invalidResponse outcome.", Optional: true},
+		{ID: ListWorkspacesBranchDefect, Description: "Workspace defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListWorkspacesResult = sdkgo.QueryResult[WorkspacePage]
+
+type ListWorkspacesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=smartsheet"`
+	operationID                    struct{}                                         `connector:"operationId=listWorkspaces"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListWorkspacesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListWorkspacesResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListWorkspacesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListWorkspacesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListWorkspacesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[WorkspacePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListWorkspacesStep[IN any](config ListWorkspacesStepConfig[IN]) sdkgo.QueryStep[IN, ListWorkspacesInput, WorkspacePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListWorkspacesInput, WorkspacePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListWorkspaces(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListWorkspacesResult] {
+			branches := make([]sdkgo.BranchTarget[ListWorkspacesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListWorkspacesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListWorkspacesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListWorkspacesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListWorkspacesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetWorkspaceBranchFound sdkgo.BranchID = "found"
+const GetWorkspaceBranchNotFound sdkgo.BranchID = "notFound"
+const GetWorkspaceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetWorkspaceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetWorkspaceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetWorkspaceDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getWorkspace"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetWorkspaceBranchFound, Description: "Smartsheet found the workspace."},
+		{ID: GetWorkspaceBranchNotFound, Description: "Workspace notFound outcome.", Optional: true},
+		{ID: GetWorkspaceBranchProviderRejected, Description: "Workspace providerRejected outcome.", Optional: true},
+		{ID: GetWorkspaceBranchInvalidResponse, Description: "Workspace invalidResponse outcome.", Optional: true},
+		{ID: GetWorkspaceBranchDefect, Description: "Workspace defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetWorkspaceResult = sdkgo.QueryResult[WorkspaceSummary]
+
+type GetWorkspaceStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=smartsheet"`
+	operationID                    struct{}                                            `connector:"operationId=getWorkspace"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetWorkspaceInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetWorkspaceResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetWorkspaceResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetWorkspaceResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetWorkspaceResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetWorkspaceResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[WorkspaceSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewGetWorkspaceStep[IN any](config GetWorkspaceStepConfig[IN]) sdkgo.QueryStep[IN, GetWorkspaceInput, WorkspaceSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetWorkspaceInput, WorkspaceSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetWorkspace(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetWorkspaceResult] {
+			branches := make([]sdkgo.BranchTarget[GetWorkspaceResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetWorkspaceBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetWorkspaceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetWorkspaceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetWorkspaceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetWorkspaceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateWorkspaceBranchCreated sdkgo.BranchID = "created"
+const CreateWorkspaceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateWorkspaceBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateWorkspaceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateWorkspaceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createWorkspace"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateWorkspaceBranchCreated, Description: "Smartsheet created the workspace."},
+		{ID: CreateWorkspaceBranchProviderRejected, Description: "Workspace providerRejected outcome.", Optional: true},
+		{ID: CreateWorkspaceBranchUncertain, Description: "Workspace uncertain outcome.", Optional: true},
+		{ID: CreateWorkspaceBranchDefect, Description: "Workspace defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateWorkspaceResult = sdkgo.MutationResult[WorkspaceSummary]
+
+type CreateWorkspaceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=smartsheet"`
+	operationID                       struct{}                                               `connector:"operationId=createWorkspace"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateWorkspaceInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateWorkspaceResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateWorkspaceResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateWorkspaceResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateWorkspaceResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[WorkspaceSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateWorkspaceStep[IN any](config CreateWorkspaceStepConfig[IN]) sdkgo.MutationStep[IN, CreateWorkspaceInput, WorkspaceSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateWorkspaceInput, WorkspaceSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateWorkspace(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateWorkspaceResult] {
+			branches := make([]sdkgo.BranchTarget[CreateWorkspaceResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateWorkspaceBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateWorkspaceBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateWorkspaceBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateWorkspaceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateWorkspaceBranchUpdated sdkgo.BranchID = "updated"
+const UpdateWorkspaceBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateWorkspaceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateWorkspaceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateWorkspaceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateWorkspaceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateWorkspace"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateWorkspaceBranchUpdated, Description: "Smartsheet updated the workspace."},
+		{ID: UpdateWorkspaceBranchNotFound, Description: "Workspace notFound outcome.", Optional: true},
+		{ID: UpdateWorkspaceBranchProviderRejected, Description: "Workspace providerRejected outcome.", Optional: true},
+		{ID: UpdateWorkspaceBranchInvalidResponse, Description: "Workspace invalidResponse outcome.", Optional: true},
+		{ID: UpdateWorkspaceBranchDefect, Description: "Workspace defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateWorkspaceResult = sdkgo.MutationResult[WorkspaceSummary]
+
+type UpdateWorkspaceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=smartsheet"`
+	operationID                       struct{}                                               `connector:"operationId=updateWorkspace"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateWorkspaceInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateWorkspaceResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateWorkspaceResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateWorkspaceResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateWorkspaceResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateWorkspaceResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[WorkspaceSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateWorkspaceStep[IN any](config UpdateWorkspaceStepConfig[IN]) sdkgo.MutationStep[IN, UpdateWorkspaceInput, WorkspaceSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateWorkspaceInput, WorkspaceSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateWorkspace(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateWorkspaceResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateWorkspaceResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateWorkspaceBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateWorkspaceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateWorkspaceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateWorkspaceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateWorkspaceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteWorkspaceBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteWorkspaceBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteWorkspaceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteWorkspaceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteWorkspaceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteWorkspaceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteWorkspace"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteWorkspaceBranchDeleted, Description: "Smartsheet deleted the workspace."},
+		{ID: DeleteWorkspaceBranchNotFound, Description: "Workspace notFound outcome.", Optional: true},
+		{ID: DeleteWorkspaceBranchProviderRejected, Description: "Workspace providerRejected outcome.", Optional: true},
+		{ID: DeleteWorkspaceBranchInvalidResponse, Description: "Workspace invalidResponse outcome.", Optional: true},
+		{ID: DeleteWorkspaceBranchDefect, Description: "Workspace defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteWorkspaceResult = sdkgo.MutationResult[DeleteWorkspaceOutput]
+
+type DeleteWorkspaceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=smartsheet"`
+	operationID                       struct{}                                                    `connector:"operationId=deleteWorkspace"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteWorkspaceInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteWorkspaceResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteWorkspaceResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteWorkspaceResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteWorkspaceResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteWorkspaceResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteWorkspaceOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteWorkspaceStep[IN any](config DeleteWorkspaceStepConfig[IN]) sdkgo.MutationStep[IN, DeleteWorkspaceInput, DeleteWorkspaceOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteWorkspaceInput, DeleteWorkspaceOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteWorkspace(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteWorkspaceResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteWorkspaceResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteWorkspaceBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteWorkspaceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteWorkspaceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteWorkspaceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteWorkspaceBranchDefect))
 			}
 			return branches
 		}(),

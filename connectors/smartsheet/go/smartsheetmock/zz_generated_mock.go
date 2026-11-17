@@ -38,6 +38,11 @@ type Mock struct {
 	createFolderInFolder    *connectormock.Mutation[smartsheet.CreateFolderInFolderInput, smartsheet.FolderSummary]
 	updateFolder            *connectormock.Mutation[smartsheet.UpdateFolderInput, smartsheet.FolderSummary]
 	deleteFolder            *connectormock.Mutation[smartsheet.DeleteFolderInput, smartsheet.DeleteFolderOutput]
+	listWorkspaces          *connectormock.Query[smartsheet.ListWorkspacesInput, smartsheet.WorkspacePage]
+	getWorkspace            *connectormock.Query[smartsheet.GetWorkspaceInput, smartsheet.WorkspaceSummary]
+	createWorkspace         *connectormock.Mutation[smartsheet.CreateWorkspaceInput, smartsheet.WorkspaceSummary]
+	updateWorkspace         *connectormock.Mutation[smartsheet.UpdateWorkspaceInput, smartsheet.WorkspaceSummary]
+	deleteWorkspace         *connectormock.Mutation[smartsheet.DeleteWorkspaceInput, smartsheet.DeleteWorkspaceOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -65,6 +70,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		createFolderInFolder:    connectormock.NewMutation[smartsheet.CreateFolderInFolderInput, smartsheet.FolderSummary](t, smartsheet.CreateFolderInFolderDefinition),
 		updateFolder:            connectormock.NewMutation[smartsheet.UpdateFolderInput, smartsheet.FolderSummary](t, smartsheet.UpdateFolderDefinition),
 		deleteFolder:            connectormock.NewMutation[smartsheet.DeleteFolderInput, smartsheet.DeleteFolderOutput](t, smartsheet.DeleteFolderDefinition),
+		listWorkspaces:          connectormock.NewQuery[smartsheet.ListWorkspacesInput, smartsheet.WorkspacePage](t, smartsheet.ListWorkspacesDefinition),
+		getWorkspace:            connectormock.NewQuery[smartsheet.GetWorkspaceInput, smartsheet.WorkspaceSummary](t, smartsheet.GetWorkspaceDefinition),
+		createWorkspace:         connectormock.NewMutation[smartsheet.CreateWorkspaceInput, smartsheet.WorkspaceSummary](t, smartsheet.CreateWorkspaceDefinition),
+		updateWorkspace:         connectormock.NewMutation[smartsheet.UpdateWorkspaceInput, smartsheet.WorkspaceSummary](t, smartsheet.UpdateWorkspaceDefinition),
+		deleteWorkspace:         connectormock.NewMutation[smartsheet.DeleteWorkspaceInput, smartsheet.DeleteWorkspaceOutput](t, smartsheet.DeleteWorkspaceDefinition),
 	}
 	mock.listSheets.Default(ListSheetsDefault())
 	mock.getSheet.Default(GetSheetDefault())
@@ -86,6 +96,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createFolderInFolder.Default(CreateFolderInFolderDefault())
 	mock.updateFolder.Default(UpdateFolderDefault())
 	mock.deleteFolder.Default(DeleteFolderDefault())
+	mock.listWorkspaces.Default(ListWorkspacesDefault())
+	mock.getWorkspace.Default(GetWorkspaceDefault())
+	mock.createWorkspace.Default(CreateWorkspaceDefault())
+	mock.updateWorkspace.Default(UpdateWorkspaceDefault())
+	mock.deleteWorkspace.Default(DeleteWorkspaceDefault())
 	connection, err := smartsheet.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "smartsheet", Name: connectionName})
 	if err != nil {
 		t.Fatalf("smartsheet mock connection: %v", err)
@@ -197,6 +212,31 @@ func (mock *Mock) DeleteFolder() *connectormock.Mutation[smartsheet.DeleteFolder
 	return mock.deleteFolder
 }
 
+// ListWorkspaces returns the listWorkspaces script.
+func (mock *Mock) ListWorkspaces() *connectormock.Query[smartsheet.ListWorkspacesInput, smartsheet.WorkspacePage] {
+	return mock.listWorkspaces
+}
+
+// GetWorkspace returns the getWorkspace script.
+func (mock *Mock) GetWorkspace() *connectormock.Query[smartsheet.GetWorkspaceInput, smartsheet.WorkspaceSummary] {
+	return mock.getWorkspace
+}
+
+// CreateWorkspace returns the createWorkspace script.
+func (mock *Mock) CreateWorkspace() *connectormock.Mutation[smartsheet.CreateWorkspaceInput, smartsheet.WorkspaceSummary] {
+	return mock.createWorkspace
+}
+
+// UpdateWorkspace returns the updateWorkspace script.
+func (mock *Mock) UpdateWorkspace() *connectormock.Mutation[smartsheet.UpdateWorkspaceInput, smartsheet.WorkspaceSummary] {
+	return mock.updateWorkspace
+}
+
+// DeleteWorkspace returns the deleteWorkspace script.
+func (mock *Mock) DeleteWorkspace() *connectormock.Mutation[smartsheet.DeleteWorkspaceInput, smartsheet.DeleteWorkspaceOutput] {
+	return mock.deleteWorkspace
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListSheets() sdkgo.Query[smartsheet.ListSheetsInput, smartsheet.SheetPage] {
@@ -258,6 +298,21 @@ func (operations mockOperations) UpdateFolder() sdkgo.Mutation[smartsheet.Update
 }
 func (operations mockOperations) DeleteFolder() sdkgo.Mutation[smartsheet.DeleteFolderInput, smartsheet.DeleteFolderOutput] {
 	return operations.mock.deleteFolder
+}
+func (operations mockOperations) ListWorkspaces() sdkgo.Query[smartsheet.ListWorkspacesInput, smartsheet.WorkspacePage] {
+	return operations.mock.listWorkspaces
+}
+func (operations mockOperations) GetWorkspace() sdkgo.Query[smartsheet.GetWorkspaceInput, smartsheet.WorkspaceSummary] {
+	return operations.mock.getWorkspace
+}
+func (operations mockOperations) CreateWorkspace() sdkgo.Mutation[smartsheet.CreateWorkspaceInput, smartsheet.WorkspaceSummary] {
+	return operations.mock.createWorkspace
+}
+func (operations mockOperations) UpdateWorkspace() sdkgo.Mutation[smartsheet.UpdateWorkspaceInput, smartsheet.WorkspaceSummary] {
+	return operations.mock.updateWorkspace
+}
+func (operations mockOperations) DeleteWorkspace() sdkgo.Mutation[smartsheet.DeleteWorkspaceInput, smartsheet.DeleteWorkspaceOutput] {
+	return operations.mock.deleteWorkspace
 }
 
 // ListSheetsListed selects the listed branch: Smartsheet returned the requested data.
@@ -1034,4 +1089,199 @@ func DeleteFolderDeletedDefault() connectormock.Case[smartsheet.DeleteFolderOutp
 // DeleteFolderDefault is the manifest default, deletedDefault, which New installs.
 func DeleteFolderDefault() connectormock.Case[smartsheet.DeleteFolderOutput] {
 	return DeleteFolderDeletedDefault()
+}
+
+// ListWorkspacesListed selects the listed branch: Smartsheet listed the workspace.
+func ListWorkspacesListed(value smartsheet.WorkspacePage, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspacePage] {
+	return connectormock.Branch(smartsheet.ListWorkspacesBranchListed, value, failure)
+}
+
+// ListWorkspacesProviderRejected selects the providerRejected branch: Workspace providerRejected outcome.
+func ListWorkspacesProviderRejected(value smartsheet.WorkspacePage, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspacePage] {
+	return connectormock.Branch(smartsheet.ListWorkspacesBranchProviderRejected, value, failure)
+}
+
+// ListWorkspacesInvalidResponse selects the invalidResponse branch: Workspace invalidResponse outcome.
+func ListWorkspacesInvalidResponse(value smartsheet.WorkspacePage, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspacePage] {
+	return connectormock.Branch(smartsheet.ListWorkspacesBranchInvalidResponse, value, failure)
+}
+
+// ListWorkspacesDefect selects the defect branch: Workspace defect outcome.
+func ListWorkspacesDefect(value smartsheet.WorkspacePage, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspacePage] {
+	return connectormock.Branch(smartsheet.ListWorkspacesBranchDefect, value, failure)
+}
+
+// ListWorkspacesRetry asks Dex to retry the listWorkspaces Step, after the delay when it is positive.
+func ListWorkspacesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[smartsheet.WorkspacePage] {
+	return connectormock.Retry[smartsheet.WorkspacePage](failure, after)
+}
+
+// ListWorkspacesListedDefault is the manifest mock listedDefault: Sample workspace listed outcome.
+func ListWorkspacesListedDefault() connectormock.Case[smartsheet.WorkspacePage] {
+	value := connectormock.MustDecodeOutput[smartsheet.WorkspacePage](`{"workspaces":[{"id":4001,"name":"Meridian Workspace"}],"lastKey":""}`)
+	return connectormock.Branch(smartsheet.ListWorkspacesBranchListed, value, nil)
+}
+
+// ListWorkspacesDefault is the manifest default, listedDefault, which New installs.
+func ListWorkspacesDefault() connectormock.Case[smartsheet.WorkspacePage] {
+	return ListWorkspacesListedDefault()
+}
+
+// GetWorkspaceFound selects the found branch: Smartsheet found the workspace.
+func GetWorkspaceFound(value smartsheet.WorkspaceSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Branch(smartsheet.GetWorkspaceBranchFound, value, failure)
+}
+
+// GetWorkspaceNotFound selects the notFound branch: Workspace notFound outcome.
+func GetWorkspaceNotFound(value smartsheet.WorkspaceSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Branch(smartsheet.GetWorkspaceBranchNotFound, value, failure)
+}
+
+// GetWorkspaceProviderRejected selects the providerRejected branch: Workspace providerRejected outcome.
+func GetWorkspaceProviderRejected(value smartsheet.WorkspaceSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Branch(smartsheet.GetWorkspaceBranchProviderRejected, value, failure)
+}
+
+// GetWorkspaceInvalidResponse selects the invalidResponse branch: Workspace invalidResponse outcome.
+func GetWorkspaceInvalidResponse(value smartsheet.WorkspaceSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Branch(smartsheet.GetWorkspaceBranchInvalidResponse, value, failure)
+}
+
+// GetWorkspaceDefect selects the defect branch: Workspace defect outcome.
+func GetWorkspaceDefect(value smartsheet.WorkspaceSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Branch(smartsheet.GetWorkspaceBranchDefect, value, failure)
+}
+
+// GetWorkspaceRetry asks Dex to retry the getWorkspace Step, after the delay when it is positive.
+func GetWorkspaceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Retry[smartsheet.WorkspaceSummary](failure, after)
+}
+
+// GetWorkspaceFoundDefault is the manifest mock foundDefault: Sample workspace found outcome.
+func GetWorkspaceFoundDefault() connectormock.Case[smartsheet.WorkspaceSummary] {
+	value := connectormock.MustDecodeOutput[smartsheet.WorkspaceSummary](`{"id":4001,"name":"Meridian Workspace"}`)
+	return connectormock.Branch(smartsheet.GetWorkspaceBranchFound, value, nil)
+}
+
+// GetWorkspaceDefault is the manifest default, foundDefault, which New installs.
+func GetWorkspaceDefault() connectormock.Case[smartsheet.WorkspaceSummary] {
+	return GetWorkspaceFoundDefault()
+}
+
+// CreateWorkspaceCreated selects the created branch: Smartsheet created the workspace.
+func CreateWorkspaceCreated(value smartsheet.WorkspaceSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Branch(smartsheet.CreateWorkspaceBranchCreated, value, failure)
+}
+
+// CreateWorkspaceProviderRejected selects the providerRejected branch: Workspace providerRejected outcome.
+func CreateWorkspaceProviderRejected(value smartsheet.WorkspaceSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Branch(smartsheet.CreateWorkspaceBranchProviderRejected, value, failure)
+}
+
+// CreateWorkspaceUncertain returns an uncertain createWorkspace outcome.
+func CreateWorkspaceUncertain(value smartsheet.WorkspaceSummary, failure sdkgo.Failure) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateWorkspaceDefect selects the defect branch: Workspace defect outcome.
+func CreateWorkspaceDefect(value smartsheet.WorkspaceSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Branch(smartsheet.CreateWorkspaceBranchDefect, value, failure)
+}
+
+// CreateWorkspaceRetry asks Dex to retry the createWorkspace Step, after the delay when it is positive.
+func CreateWorkspaceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Retry[smartsheet.WorkspaceSummary](failure, after)
+}
+
+// CreateWorkspaceCreatedDefault is the manifest mock createdDefault: Sample workspace created outcome.
+func CreateWorkspaceCreatedDefault() connectormock.Case[smartsheet.WorkspaceSummary] {
+	value := connectormock.MustDecodeOutput[smartsheet.WorkspaceSummary](`{"id":4001,"name":"Meridian Workspace"}`)
+	return connectormock.Branch(smartsheet.CreateWorkspaceBranchCreated, value, nil)
+}
+
+// CreateWorkspaceDefault is the manifest default, createdDefault, which New installs.
+func CreateWorkspaceDefault() connectormock.Case[smartsheet.WorkspaceSummary] {
+	return CreateWorkspaceCreatedDefault()
+}
+
+// UpdateWorkspaceUpdated selects the updated branch: Smartsheet updated the workspace.
+func UpdateWorkspaceUpdated(value smartsheet.WorkspaceSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Branch(smartsheet.UpdateWorkspaceBranchUpdated, value, failure)
+}
+
+// UpdateWorkspaceNotFound selects the notFound branch: Workspace notFound outcome.
+func UpdateWorkspaceNotFound(value smartsheet.WorkspaceSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Branch(smartsheet.UpdateWorkspaceBranchNotFound, value, failure)
+}
+
+// UpdateWorkspaceProviderRejected selects the providerRejected branch: Workspace providerRejected outcome.
+func UpdateWorkspaceProviderRejected(value smartsheet.WorkspaceSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Branch(smartsheet.UpdateWorkspaceBranchProviderRejected, value, failure)
+}
+
+// UpdateWorkspaceInvalidResponse selects the invalidResponse branch: Workspace invalidResponse outcome.
+func UpdateWorkspaceInvalidResponse(value smartsheet.WorkspaceSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Branch(smartsheet.UpdateWorkspaceBranchInvalidResponse, value, failure)
+}
+
+// UpdateWorkspaceDefect selects the defect branch: Workspace defect outcome.
+func UpdateWorkspaceDefect(value smartsheet.WorkspaceSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Branch(smartsheet.UpdateWorkspaceBranchDefect, value, failure)
+}
+
+// UpdateWorkspaceRetry asks Dex to retry the updateWorkspace Step, after the delay when it is positive.
+func UpdateWorkspaceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[smartsheet.WorkspaceSummary] {
+	return connectormock.Retry[smartsheet.WorkspaceSummary](failure, after)
+}
+
+// UpdateWorkspaceUpdatedDefault is the manifest mock updatedDefault: Sample workspace updated outcome.
+func UpdateWorkspaceUpdatedDefault() connectormock.Case[smartsheet.WorkspaceSummary] {
+	value := connectormock.MustDecodeOutput[smartsheet.WorkspaceSummary](`{"id":4001,"name":"Meridian Workspace"}`)
+	return connectormock.Branch(smartsheet.UpdateWorkspaceBranchUpdated, value, nil)
+}
+
+// UpdateWorkspaceDefault is the manifest default, updatedDefault, which New installs.
+func UpdateWorkspaceDefault() connectormock.Case[smartsheet.WorkspaceSummary] {
+	return UpdateWorkspaceUpdatedDefault()
+}
+
+// DeleteWorkspaceDeleted selects the deleted branch: Smartsheet deleted the workspace.
+func DeleteWorkspaceDeleted(value smartsheet.DeleteWorkspaceOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteWorkspaceOutput] {
+	return connectormock.Branch(smartsheet.DeleteWorkspaceBranchDeleted, value, failure)
+}
+
+// DeleteWorkspaceNotFound selects the notFound branch: Workspace notFound outcome.
+func DeleteWorkspaceNotFound(value smartsheet.DeleteWorkspaceOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteWorkspaceOutput] {
+	return connectormock.Branch(smartsheet.DeleteWorkspaceBranchNotFound, value, failure)
+}
+
+// DeleteWorkspaceProviderRejected selects the providerRejected branch: Workspace providerRejected outcome.
+func DeleteWorkspaceProviderRejected(value smartsheet.DeleteWorkspaceOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteWorkspaceOutput] {
+	return connectormock.Branch(smartsheet.DeleteWorkspaceBranchProviderRejected, value, failure)
+}
+
+// DeleteWorkspaceInvalidResponse selects the invalidResponse branch: Workspace invalidResponse outcome.
+func DeleteWorkspaceInvalidResponse(value smartsheet.DeleteWorkspaceOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteWorkspaceOutput] {
+	return connectormock.Branch(smartsheet.DeleteWorkspaceBranchInvalidResponse, value, failure)
+}
+
+// DeleteWorkspaceDefect selects the defect branch: Workspace defect outcome.
+func DeleteWorkspaceDefect(value smartsheet.DeleteWorkspaceOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteWorkspaceOutput] {
+	return connectormock.Branch(smartsheet.DeleteWorkspaceBranchDefect, value, failure)
+}
+
+// DeleteWorkspaceRetry asks Dex to retry the deleteWorkspace Step, after the delay when it is positive.
+func DeleteWorkspaceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[smartsheet.DeleteWorkspaceOutput] {
+	return connectormock.Retry[smartsheet.DeleteWorkspaceOutput](failure, after)
+}
+
+// DeleteWorkspaceDeletedDefault is the manifest mock deletedDefault: Sample workspace deleted outcome.
+func DeleteWorkspaceDeletedDefault() connectormock.Case[smartsheet.DeleteWorkspaceOutput] {
+	value := connectormock.MustDecodeOutput[smartsheet.DeleteWorkspaceOutput](`{"workspaceId":4001}`)
+	return connectormock.Branch(smartsheet.DeleteWorkspaceBranchDeleted, value, nil)
+}
+
+// DeleteWorkspaceDefault is the manifest default, deletedDefault, which New installs.
+func DeleteWorkspaceDefault() connectormock.Case[smartsheet.DeleteWorkspaceOutput] {
+	return DeleteWorkspaceDeletedDefault()
 }

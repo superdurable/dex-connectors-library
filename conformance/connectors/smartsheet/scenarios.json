@@ -6101,6 +6101,1488 @@
       },
       "name": "deleteFolder-transport",
       "operation": "deleteFolder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":4001,\"name\":\"Meridian Workspace\"}],\"lastKey\":\"after-token\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/workspaces",
+          "query": {
+            "lastKey": [
+              "next-token"
+            ],
+            "maxItems": [
+              "100"
+            ],
+            "paginationType": [
+              "token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "lastKey": "after-token",
+          "workspaces": [
+            {
+              "id": 4001,
+              "name": "Meridian Workspace"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "lastKey": "next-token",
+        "maxItems": 100
+      },
+      "name": "listWorkspaces-listed",
+      "operation": "listWorkspaces"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/workspaces",
+          "query": {
+            "lastKey": [
+              "next-token"
+            ],
+            "maxItems": [
+              "100"
+            ],
+            "paginationType": [
+              "token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "lastKey": "",
+          "workspaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "lastKey": "next-token",
+        "maxItems": 100
+      },
+      "name": "listWorkspaces-providerRejected",
+      "operation": "listWorkspaces"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/workspaces",
+          "query": {
+            "lastKey": [
+              "next-token"
+            ],
+            "maxItems": [
+              "100"
+            ],
+            "paginationType": [
+              "token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "lastKey": "",
+          "workspaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "lastKey": "next-token",
+        "maxItems": 100
+      },
+      "name": "listWorkspaces-invalidResponse",
+      "operation": "listWorkspaces"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "lastKey": "",
+          "workspaces": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "lastKey": "next-token",
+        "maxItems": 1
+      },
+      "name": "listWorkspaces-defect",
+      "operation": "listWorkspaces"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/workspaces",
+          "query": {
+            "lastKey": [
+              "next-token"
+            ],
+            "maxItems": [
+              "100"
+            ],
+            "paginationType": [
+              "token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "lastKey": "next-token",
+        "maxItems": 100
+      },
+      "name": "listWorkspaces-rateLimited",
+      "operation": "listWorkspaces"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/workspaces",
+          "query": {
+            "lastKey": [
+              "next-token"
+            ],
+            "maxItems": [
+              "100"
+            ],
+            "paginationType": [
+              "token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "lastKey": "next-token",
+        "maxItems": 100
+      },
+      "name": "listWorkspaces-serverUnavailable",
+      "operation": "listWorkspaces"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/workspaces",
+          "query": {
+            "lastKey": [
+              "next-token"
+            ],
+            "maxItems": [
+              "100"
+            ],
+            "paginationType": [
+              "token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "lastKey": "next-token",
+        "maxItems": 100
+      },
+      "name": "listWorkspaces-transport",
+      "operation": "listWorkspaces"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":4001,\"name\":\"Meridian Workspace\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/workspaces/4001/metadata",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": 4001,
+          "name": "Meridian Workspace"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "getWorkspace-found",
+      "operation": "getWorkspace"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/workspaces/4001/metadata",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "getWorkspace-notFound",
+      "operation": "getWorkspace"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/workspaces/4001/metadata",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "getWorkspace-providerRejected",
+      "operation": "getWorkspace"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/workspaces/4001/metadata",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "getWorkspace-invalidResponse",
+      "operation": "getWorkspace"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workspaceId": 0
+      },
+      "name": "getWorkspace-defect",
+      "operation": "getWorkspace"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/workspaces/4001/metadata",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "getWorkspace-rateLimited",
+      "operation": "getWorkspace"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/workspaces/4001/metadata",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "getWorkspace-serverUnavailable",
+      "operation": "getWorkspace"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/workspaces/4001/metadata",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "getWorkspace-transport",
+      "operation": "getWorkspace"
+    },
+    {
+      "callId": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SUCCESS\",\"resultCode\":0,\"result\":{\"id\":4001,\"name\":\"Meridian Workspace\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+          "providerId": "4001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 4001,
+          "name": "Meridian Workspace"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+      "input": {
+        "name": "Meridian Workspace"
+      },
+      "name": "createWorkspace-created",
+      "operation": "createWorkspace"
+    },
+    {
+      "callId": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+      "input": {
+        "name": "Meridian Workspace"
+      },
+      "name": "createWorkspace-providerRejected",
+      "operation": "createWorkspace"
+    },
+    {
+      "callId": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+      "input": {
+        "name": ""
+      },
+      "name": "createWorkspace-defect",
+      "operation": "createWorkspace"
+    },
+    {
+      "callId": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+      "input": {
+        "name": "Meridian Workspace"
+      },
+      "name": "createWorkspace-rateLimited",
+      "operation": "createWorkspace"
+    },
+    {
+      "callId": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+      "input": {
+        "name": "Meridian Workspace"
+      },
+      "name": "createWorkspace-serverUnavailable",
+      "operation": "createWorkspace"
+    },
+    {
+      "callId": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+      "input": {
+        "name": "Meridian Workspace"
+      },
+      "name": "createWorkspace-transport",
+      "operation": "createWorkspace"
+    },
+    {
+      "callId": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+      "input": {
+        "name": "Meridian Workspace"
+      },
+      "name": "createWorkspace-uncertain",
+      "operation": "createWorkspace",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "d0b43270-9102-57d4-9a01-2ad4acf88ed7",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SUCCESS\",\"resultCode\":0,\"result\":{\"id\":4001,\"name\":\"Meridian Workspace\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/workspaces/4001",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 4001,
+          "name": "Meridian Workspace"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 4001
+      },
+      "name": "updateWorkspace-updated",
+      "operation": "updateWorkspace"
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/workspaces/4001",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 4001
+      },
+      "name": "updateWorkspace-notFound",
+      "operation": "updateWorkspace"
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/workspaces/4001",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 4001
+      },
+      "name": "updateWorkspace-providerRejected",
+      "operation": "updateWorkspace"
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/workspaces/4001",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 4001
+      },
+      "name": "updateWorkspace-invalidResponse",
+      "operation": "updateWorkspace"
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 0
+      },
+      "name": "updateWorkspace-defect",
+      "operation": "updateWorkspace"
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/workspaces/4001",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 4001
+      },
+      "name": "updateWorkspace-rateLimited",
+      "operation": "updateWorkspace"
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/workspaces/4001",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 4001
+      },
+      "name": "updateWorkspace-serverUnavailable",
+      "operation": "updateWorkspace"
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/workspaces/4001",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 4001
+      },
+      "name": "updateWorkspace-transport",
+      "operation": "updateWorkspace"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SUCCESS\",\"resultCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/workspaces/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "workspaceId": 4001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "deleteWorkspace-deleted",
+      "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/workspaces/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "workspaceId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "deleteWorkspace-notFound",
+      "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/workspaces/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "workspaceId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "deleteWorkspace-providerRejected",
+      "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/workspaces/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "workspaceId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "deleteWorkspace-invalidResponse",
+      "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "workspaceId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 0
+      },
+      "name": "deleteWorkspace-defect",
+      "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/workspaces/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "deleteWorkspace-rateLimited",
+      "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/workspaces/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "deleteWorkspace-serverUnavailable",
+      "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/workspaces/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "deleteWorkspace-transport",
+      "operation": "deleteWorkspace"
     }
   ],
   "schemaVersion": 1

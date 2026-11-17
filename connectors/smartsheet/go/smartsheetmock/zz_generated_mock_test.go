@@ -96,6 +96,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[smartsheet.DeleteFolderOutput](`{"folderId":5001}`)
 			return err
 		}},
+		{name: "listWorkspaces/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.WorkspacePage](`{"workspaces":[{"id":4001,"name":"Meridian Workspace"}],"lastKey":""}`)
+			return err
+		}},
+		{name: "getWorkspace/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.WorkspaceSummary](`{"id":4001,"name":"Meridian Workspace"}`)
+			return err
+		}},
+		{name: "createWorkspace/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.WorkspaceSummary](`{"id":4001,"name":"Meridian Workspace"}`)
+			return err
+		}},
+		{name: "updateWorkspace/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.WorkspaceSummary](`{"id":4001,"name":"Meridian Workspace"}`)
+			return err
+		}},
+		{name: "deleteWorkspace/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.DeleteWorkspaceOutput](`{"workspaceId":4001}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -165,5 +185,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteFolder().Definition().Operation.OperationID != "deleteFolder" {
 		t.Errorf("deleteFolder mock has another definition")
+	}
+	if mock.ListWorkspaces().Definition().Operation.OperationID != "listWorkspaces" {
+		t.Errorf("listWorkspaces mock has another definition")
+	}
+	if mock.GetWorkspace().Definition().Operation.OperationID != "getWorkspace" {
+		t.Errorf("getWorkspace mock has another definition")
+	}
+	if mock.CreateWorkspace().Definition().Operation.OperationID != "createWorkspace" {
+		t.Errorf("createWorkspace mock has another definition")
+	}
+	if mock.UpdateWorkspace().Definition().Operation.OperationID != "updateWorkspace" {
+		t.Errorf("updateWorkspace mock has another definition")
+	}
+	if mock.DeleteWorkspace().Definition().Operation.OperationID != "deleteWorkspace" {
+		t.Errorf("deleteWorkspace mock has another definition")
 	}
 }

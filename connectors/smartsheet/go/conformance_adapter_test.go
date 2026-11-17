@@ -77,5 +77,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createFolderInFolder":    newConformanceMutationInvocation(t, scenario.Input, context, client.CreateFolderInFolder(), conformanceConnection, scenario.CallID),
 		"updateFolder":            newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateFolder(), conformanceConnection, scenario.CallID),
 		"deleteFolder":            newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteFolder(), conformanceConnection, scenario.CallID),
+		"listWorkspaces":          newConformanceQueryInvocation(t, scenario.Input, context, client.ListWorkspaces(), conformanceConnection),
+		"getWorkspace":            newConformanceQueryInvocation(t, scenario.Input, context, client.GetWorkspace(), conformanceConnection),
+		"createWorkspace":         newConformanceMutationInvocation(t, scenario.Input, context, client.CreateWorkspace(), conformanceConnection, scenario.CallID),
+		"updateWorkspace":         newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateWorkspace(), conformanceConnection, scenario.CallID),
+		"deleteWorkspace":         newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteWorkspace(), conformanceConnection, scenario.CallID),
 	}}
 }

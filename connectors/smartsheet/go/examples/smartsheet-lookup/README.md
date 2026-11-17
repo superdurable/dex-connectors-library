@@ -1,6 +1,6 @@
 # Smartsheet lookup example
 
-This Worker registers sheet, row, column, and folder lookup Flows plus `SmartsheetSheetCreate`, all using static connection name `smartsheet`. The row Flow calls `getRow` with `{"sheetId":1001,"rowId":3001}`, the sheet Flow creates a sheet with `{"workspaceId":4001,"name":"Meridian Planning","primaryColumnTitle":"Task"}`, the column Flow calls `getColumn` with `{"sheetId":1001,"columnId":2001}`, and the folder Flow calls `getFolder` with `{"folderId":5001}`. Choose IDs and a token with permission for the intended operation.
+This Worker registers sheet, row, column, folder, and workspace lookup Flows plus `SmartsheetSheetCreate`, all using static connection name `smartsheet`. The row Flow calls `getRow` with `{"sheetId":1001,"rowId":3001}`, the sheet Flow creates a sheet with `{"workspaceId":4001,"name":"Meridian Planning","primaryColumnTitle":"Task"}`, the column Flow calls `getColumn` with `{"sheetId":1001,"columnId":2001}`, the folder Flow calls `getFolder` with `{"folderId":5001}`, and the workspace Flow calls `getWorkspace` with `{"workspaceId":4001}`. Choose IDs and a token with permission for the intended operation.
 
 ## Generate and run
 

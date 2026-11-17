@@ -37,12 +37,18 @@ The Python package is [`dex-connector-smartsheet`](python/README.md), imported a
 | `createFolderInFolder` | [Create nested folder](https://developers.smartsheet.com/api/smartsheet/openapi/folders/create-folder-folder) |
 | `updateFolder` | [Update folder](https://developers.smartsheet.com/api/smartsheet/openapi/folders/update-folder) |
 | `deleteFolder` | [Delete folder](https://developers.smartsheet.com/api/smartsheet/openapi/folders/delete-folder) |
+| `listWorkspaces` | [List workspaces](https://developers.smartsheet.com/api/smartsheet/openapi/workspaces/list-workspaces) |
+| `getWorkspace` | [Get workspace metadata](https://developers.smartsheet.com/api/smartsheet/openapi/workspaces/get-workspace-metadata) |
+| `createWorkspace` | [Create workspace](https://developers.smartsheet.com/api/smartsheet/openapi/workspaces/create-workspace) |
+| `updateWorkspace` | [Update workspace](https://developers.smartsheet.com/api/smartsheet/openapi/workspaces/update-workspace) |
+| `deleteWorkspace` | [Delete workspace](https://developers.smartsheet.com/api/smartsheet/openapi/workspaces/delete-workspace) |
 
 Each operation returns a bounded, typed response. `addRow` accepts text cells and limits possibly effective sends to three; a fully exhausted cap selects `uncertain`. Absolute `updateRow` and `deleteRow` can safely retry. A 404 on a single-resource read selects `notFound`; other definitive 4xx select `providerRejected`; 408, 409, 429, 5xx, and interrupted reads Retry under the default one-hour budget. Malformed and oversized JSON selects `invalidResponse` for reads and safe writes. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
 
 Sheet creation requires a parent workspace or folder and a primary text column. Both create operations allow at most three possibly effective sends; an unconfirmed result after the cap selects `uncertain`. Renaming and deletion are safe to retry. The connection token must have the provider's required permissions.
 Column creation adds one `TEXT_NUMBER` column at a zero-based index and uses the same three-send cap; read, absolute rename, and delete are safe to retry. More specialized column types and conversions remain outside this typed operation.
 Folder creation can target a workspace or parent folder; both creates limit possibly effective sends to three. Folder metadata reads, absolute rename, and deletion are safe to retry. Folder names may contain at most 50 characters.
+Workspace listing uses provider token pagination with `maxItems` from 100 to 1000 and returns `lastKey` for the next page. Workspace creation limits possibly effective sends to three; metadata reads, absolute rename, and deletion are safe to retry.
 
 ## Mocks
 
