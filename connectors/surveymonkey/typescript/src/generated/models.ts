@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret Access Token from https://developer.surveymonkey.com > My Apps > your private app > Settings. Copy the complete token into this secret field; blank makes calls select defect. Dex sends it only as a Bearer authorization header. Public apps need View Surveys and View Responses scopes. */
+  /** Secret Access Token from https://developer.surveymonkey.com > My Apps > your private app > Settings. Copy the complete token into this secret field; blank makes calls select defect. Dex sends it only as a Bearer authorization header. Writes require the matching Create/Modify Surveys or Collectors permission on the token. */
   accessToken: SecretString;
 }
 

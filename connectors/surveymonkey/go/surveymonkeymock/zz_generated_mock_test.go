@@ -24,6 +24,42 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[surveymonkey.ResponseMetadata](`{"id":"987654321","surveyId":"123456789","status":"completed","createdAt":"2026-11-07T10:00:00+00:00","modifiedAt":"2026-11-07T10:01:00+00:00"}`)
 			return err
 		}},
+		{name: "getSurvey/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[surveymonkey.SurveyMetadata](`{"id":"123456789","title":"Customer feedback"}`)
+			return err
+		}},
+		{name: "createSurvey/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[surveymonkey.SurveyMetadata](`{"id":"123456789","title":"Customer feedback"}`)
+			return err
+		}},
+		{name: "updateSurvey/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[surveymonkey.SurveyMetadata](`{"id":"123456789","title":"Customer feedback"}`)
+			return err
+		}},
+		{name: "deleteSurvey/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[surveymonkey.DeleteSurveyOutput](`{"id":"123456789"}`)
+			return err
+		}},
+		{name: "listCollectors/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[surveymonkey.CollectorsPage](`{"collectors":[{"id":"2345","name":"Customer link"}],"page":1,"perPage":50,"total":1}`)
+			return err
+		}},
+		{name: "getCollector/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[surveymonkey.CollectorMetadata](`{"id":"2345","surveyId":"123456789","type":"weblink","name":"Customer link","url":"https://www.surveymonkey.com/r/example"}`)
+			return err
+		}},
+		{name: "createCollector/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[surveymonkey.CollectorMetadata](`{"id":"2345","surveyId":"123456789","type":"weblink","name":"Customer link","url":"https://www.surveymonkey.com/r/example"}`)
+			return err
+		}},
+		{name: "updateCollector/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[surveymonkey.CollectorMetadata](`{"id":"2345","surveyId":"123456789","type":"weblink","name":"Customer link","url":"https://www.surveymonkey.com/r/example"}`)
+			return err
+		}},
+		{name: "deleteCollector/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[surveymonkey.DeleteCollectorOutput](`{"id":"2345"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +75,32 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetResponse().Definition().Operation.OperationID != "getResponse" {
 		t.Errorf("getResponse mock has another definition")
+	}
+	if mock.GetSurvey().Definition().Operation.OperationID != "getSurvey" {
+		t.Errorf("getSurvey mock has another definition")
+	}
+	if mock.CreateSurvey().Definition().Operation.OperationID != "createSurvey" {
+		t.Errorf("createSurvey mock has another definition")
+	}
+	if mock.UpdateSurvey().Definition().Operation.OperationID != "updateSurvey" {
+		t.Errorf("updateSurvey mock has another definition")
+	}
+	if mock.DeleteSurvey().Definition().Operation.OperationID != "deleteSurvey" {
+		t.Errorf("deleteSurvey mock has another definition")
+	}
+	if mock.ListCollectors().Definition().Operation.OperationID != "listCollectors" {
+		t.Errorf("listCollectors mock has another definition")
+	}
+	if mock.GetCollector().Definition().Operation.OperationID != "getCollector" {
+		t.Errorf("getCollector mock has another definition")
+	}
+	if mock.CreateCollector().Definition().Operation.OperationID != "createCollector" {
+		t.Errorf("createCollector mock has another definition")
+	}
+	if mock.UpdateCollector().Definition().Operation.OperationID != "updateCollector" {
+		t.Errorf("updateCollector mock has another definition")
+	}
+	if mock.DeleteCollector().Definition().Operation.OperationID != "deleteCollector" {
+		t.Errorf("deleteCollector mock has another definition")
 	}
 }

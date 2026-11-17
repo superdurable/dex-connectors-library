@@ -17,9 +17,18 @@ import (
 
 // Mock is a scripted surveymonkey connection. Script each operation through its accessor.
 type Mock struct {
-	connection  surveymonkey.Connection
-	listSurveys *connectormock.Query[surveymonkey.ListSurveysInput, surveymonkey.SurveysPage]
-	getResponse *connectormock.Query[surveymonkey.GetResponseInput, surveymonkey.ResponseMetadata]
+	connection      surveymonkey.Connection
+	listSurveys     *connectormock.Query[surveymonkey.ListSurveysInput, surveymonkey.SurveysPage]
+	getResponse     *connectormock.Query[surveymonkey.GetResponseInput, surveymonkey.ResponseMetadata]
+	getSurvey       *connectormock.Query[surveymonkey.GetSurveyInput, surveymonkey.SurveyMetadata]
+	createSurvey    *connectormock.Mutation[surveymonkey.CreateSurveyInput, surveymonkey.SurveyMetadata]
+	updateSurvey    *connectormock.Mutation[surveymonkey.UpdateSurveyInput, surveymonkey.SurveyMetadata]
+	deleteSurvey    *connectormock.Mutation[surveymonkey.DeleteSurveyInput, surveymonkey.DeleteSurveyOutput]
+	listCollectors  *connectormock.Query[surveymonkey.ListCollectorsInput, surveymonkey.CollectorsPage]
+	getCollector    *connectormock.Query[surveymonkey.GetCollectorInput, surveymonkey.CollectorMetadata]
+	createCollector *connectormock.Mutation[surveymonkey.CreateCollectorInput, surveymonkey.CollectorMetadata]
+	updateCollector *connectormock.Mutation[surveymonkey.UpdateCollectorInput, surveymonkey.CollectorMetadata]
+	deleteCollector *connectormock.Mutation[surveymonkey.DeleteCollectorInput, surveymonkey.DeleteCollectorOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +36,29 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listSurveys: connectormock.NewQuery[surveymonkey.ListSurveysInput, surveymonkey.SurveysPage](t, surveymonkey.ListSurveysDefinition),
-		getResponse: connectormock.NewQuery[surveymonkey.GetResponseInput, surveymonkey.ResponseMetadata](t, surveymonkey.GetResponseDefinition),
+		listSurveys:     connectormock.NewQuery[surveymonkey.ListSurveysInput, surveymonkey.SurveysPage](t, surveymonkey.ListSurveysDefinition),
+		getResponse:     connectormock.NewQuery[surveymonkey.GetResponseInput, surveymonkey.ResponseMetadata](t, surveymonkey.GetResponseDefinition),
+		getSurvey:       connectormock.NewQuery[surveymonkey.GetSurveyInput, surveymonkey.SurveyMetadata](t, surveymonkey.GetSurveyDefinition),
+		createSurvey:    connectormock.NewMutation[surveymonkey.CreateSurveyInput, surveymonkey.SurveyMetadata](t, surveymonkey.CreateSurveyDefinition),
+		updateSurvey:    connectormock.NewMutation[surveymonkey.UpdateSurveyInput, surveymonkey.SurveyMetadata](t, surveymonkey.UpdateSurveyDefinition),
+		deleteSurvey:    connectormock.NewMutation[surveymonkey.DeleteSurveyInput, surveymonkey.DeleteSurveyOutput](t, surveymonkey.DeleteSurveyDefinition),
+		listCollectors:  connectormock.NewQuery[surveymonkey.ListCollectorsInput, surveymonkey.CollectorsPage](t, surveymonkey.ListCollectorsDefinition),
+		getCollector:    connectormock.NewQuery[surveymonkey.GetCollectorInput, surveymonkey.CollectorMetadata](t, surveymonkey.GetCollectorDefinition),
+		createCollector: connectormock.NewMutation[surveymonkey.CreateCollectorInput, surveymonkey.CollectorMetadata](t, surveymonkey.CreateCollectorDefinition),
+		updateCollector: connectormock.NewMutation[surveymonkey.UpdateCollectorInput, surveymonkey.CollectorMetadata](t, surveymonkey.UpdateCollectorDefinition),
+		deleteCollector: connectormock.NewMutation[surveymonkey.DeleteCollectorInput, surveymonkey.DeleteCollectorOutput](t, surveymonkey.DeleteCollectorDefinition),
 	}
 	mock.listSurveys.Default(ListSurveysDefault())
 	mock.getResponse.Default(GetResponseDefault())
+	mock.getSurvey.Default(GetSurveyDefault())
+	mock.createSurvey.Default(CreateSurveyDefault())
+	mock.updateSurvey.Default(UpdateSurveyDefault())
+	mock.deleteSurvey.Default(DeleteSurveyDefault())
+	mock.listCollectors.Default(ListCollectorsDefault())
+	mock.getCollector.Default(GetCollectorDefault())
+	mock.createCollector.Default(CreateCollectorDefault())
+	mock.updateCollector.Default(UpdateCollectorDefault())
+	mock.deleteCollector.Default(DeleteCollectorDefault())
 	connection, err := surveymonkey.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "surveymonkey", Name: connectionName})
 	if err != nil {
 		t.Fatalf("surveymonkey mock connection: %v", err)
@@ -53,6 +80,51 @@ func (mock *Mock) GetResponse() *connectormock.Query[surveymonkey.GetResponseInp
 	return mock.getResponse
 }
 
+// GetSurvey returns the getSurvey script.
+func (mock *Mock) GetSurvey() *connectormock.Query[surveymonkey.GetSurveyInput, surveymonkey.SurveyMetadata] {
+	return mock.getSurvey
+}
+
+// CreateSurvey returns the createSurvey script.
+func (mock *Mock) CreateSurvey() *connectormock.Mutation[surveymonkey.CreateSurveyInput, surveymonkey.SurveyMetadata] {
+	return mock.createSurvey
+}
+
+// UpdateSurvey returns the updateSurvey script.
+func (mock *Mock) UpdateSurvey() *connectormock.Mutation[surveymonkey.UpdateSurveyInput, surveymonkey.SurveyMetadata] {
+	return mock.updateSurvey
+}
+
+// DeleteSurvey returns the deleteSurvey script.
+func (mock *Mock) DeleteSurvey() *connectormock.Mutation[surveymonkey.DeleteSurveyInput, surveymonkey.DeleteSurveyOutput] {
+	return mock.deleteSurvey
+}
+
+// ListCollectors returns the listCollectors script.
+func (mock *Mock) ListCollectors() *connectormock.Query[surveymonkey.ListCollectorsInput, surveymonkey.CollectorsPage] {
+	return mock.listCollectors
+}
+
+// GetCollector returns the getCollector script.
+func (mock *Mock) GetCollector() *connectormock.Query[surveymonkey.GetCollectorInput, surveymonkey.CollectorMetadata] {
+	return mock.getCollector
+}
+
+// CreateCollector returns the createCollector script.
+func (mock *Mock) CreateCollector() *connectormock.Mutation[surveymonkey.CreateCollectorInput, surveymonkey.CollectorMetadata] {
+	return mock.createCollector
+}
+
+// UpdateCollector returns the updateCollector script.
+func (mock *Mock) UpdateCollector() *connectormock.Mutation[surveymonkey.UpdateCollectorInput, surveymonkey.CollectorMetadata] {
+	return mock.updateCollector
+}
+
+// DeleteCollector returns the deleteCollector script.
+func (mock *Mock) DeleteCollector() *connectormock.Mutation[surveymonkey.DeleteCollectorInput, surveymonkey.DeleteCollectorOutput] {
+	return mock.deleteCollector
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListSurveys() sdkgo.Query[surveymonkey.ListSurveysInput, surveymonkey.SurveysPage] {
@@ -60,6 +132,33 @@ func (operations mockOperations) ListSurveys() sdkgo.Query[surveymonkey.ListSurv
 }
 func (operations mockOperations) GetResponse() sdkgo.Query[surveymonkey.GetResponseInput, surveymonkey.ResponseMetadata] {
 	return operations.mock.getResponse
+}
+func (operations mockOperations) GetSurvey() sdkgo.Query[surveymonkey.GetSurveyInput, surveymonkey.SurveyMetadata] {
+	return operations.mock.getSurvey
+}
+func (operations mockOperations) CreateSurvey() sdkgo.Mutation[surveymonkey.CreateSurveyInput, surveymonkey.SurveyMetadata] {
+	return operations.mock.createSurvey
+}
+func (operations mockOperations) UpdateSurvey() sdkgo.Mutation[surveymonkey.UpdateSurveyInput, surveymonkey.SurveyMetadata] {
+	return operations.mock.updateSurvey
+}
+func (operations mockOperations) DeleteSurvey() sdkgo.Mutation[surveymonkey.DeleteSurveyInput, surveymonkey.DeleteSurveyOutput] {
+	return operations.mock.deleteSurvey
+}
+func (operations mockOperations) ListCollectors() sdkgo.Query[surveymonkey.ListCollectorsInput, surveymonkey.CollectorsPage] {
+	return operations.mock.listCollectors
+}
+func (operations mockOperations) GetCollector() sdkgo.Query[surveymonkey.GetCollectorInput, surveymonkey.CollectorMetadata] {
+	return operations.mock.getCollector
+}
+func (operations mockOperations) CreateCollector() sdkgo.Mutation[surveymonkey.CreateCollectorInput, surveymonkey.CollectorMetadata] {
+	return operations.mock.createCollector
+}
+func (operations mockOperations) UpdateCollector() sdkgo.Mutation[surveymonkey.UpdateCollectorInput, surveymonkey.CollectorMetadata] {
+	return operations.mock.updateCollector
+}
+func (operations mockOperations) DeleteCollector() sdkgo.Mutation[surveymonkey.DeleteCollectorInput, surveymonkey.DeleteCollectorOutput] {
+	return operations.mock.deleteCollector
 }
 
 // ListSurveysListed selects the listed branch: SurveyMonkey returned the selected survey page.
@@ -137,4 +236,343 @@ func GetResponseFoundDefault() connectormock.Case[surveymonkey.ResponseMetadata]
 // GetResponseDefault is the manifest default, foundDefault, which New installs.
 func GetResponseDefault() connectormock.Case[surveymonkey.ResponseMetadata] {
 	return GetResponseFoundDefault()
+}
+
+// GetSurveyFound selects the found branch: SurveyMonkey returned the survey.
+func GetSurveyFound(value surveymonkey.SurveyMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Branch(surveymonkey.GetSurveyBranchFound, value, failure)
+}
+
+// GetSurveyNotFound selects the notFound branch: The survey does not exist or is inaccessible.
+func GetSurveyNotFound(value surveymonkey.SurveyMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Branch(surveymonkey.GetSurveyBranchNotFound, value, failure)
+}
+
+// GetSurveyProviderRejected selects the providerRejected branch: SurveyMonkey conclusively rejected the request.
+func GetSurveyProviderRejected(value surveymonkey.SurveyMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Branch(surveymonkey.GetSurveyBranchProviderRejected, value, failure)
+}
+
+// GetSurveyInvalidResponse selects the invalidResponse branch: SurveyMonkey returned invalid JSON.
+func GetSurveyInvalidResponse(value surveymonkey.SurveyMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Branch(surveymonkey.GetSurveyBranchInvalidResponse, value, failure)
+}
+
+// GetSurveyDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetSurveyDefect(value surveymonkey.SurveyMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Branch(surveymonkey.GetSurveyBranchDefect, value, failure)
+}
+
+// GetSurveyRetry asks Dex to retry the getSurvey Step, after the delay when it is positive.
+func GetSurveyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Retry[surveymonkey.SurveyMetadata](failure, after)
+}
+
+// GetSurveyFoundDefault is the manifest mock foundDefault: One survey.
+func GetSurveyFoundDefault() connectormock.Case[surveymonkey.SurveyMetadata] {
+	value := connectormock.MustDecodeOutput[surveymonkey.SurveyMetadata](`{"id":"123456789","title":"Customer feedback"}`)
+	return connectormock.Branch(surveymonkey.GetSurveyBranchFound, value, nil)
+}
+
+// GetSurveyDefault is the manifest default, foundDefault, which New installs.
+func GetSurveyDefault() connectormock.Case[surveymonkey.SurveyMetadata] {
+	return GetSurveyFoundDefault()
+}
+
+// CreateSurveyCreated selects the created branch: SurveyMonkey created the survey.
+func CreateSurveyCreated(value surveymonkey.SurveyMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Branch(surveymonkey.CreateSurveyBranchCreated, value, failure)
+}
+
+// CreateSurveyProviderRejected selects the providerRejected branch: SurveyMonkey conclusively rejected the request.
+func CreateSurveyProviderRejected(value surveymonkey.SurveyMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Branch(surveymonkey.CreateSurveyBranchProviderRejected, value, failure)
+}
+
+// CreateSurveyDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateSurveyDefect(value surveymonkey.SurveyMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Branch(surveymonkey.CreateSurveyBranchDefect, value, failure)
+}
+
+// CreateSurveyUncertain returns an uncertain createSurvey outcome.
+func CreateSurveyUncertain(value surveymonkey.SurveyMetadata, failure sdkgo.Failure) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateSurveyRetry asks Dex to retry the createSurvey Step, after the delay when it is positive.
+func CreateSurveyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Retry[surveymonkey.SurveyMetadata](failure, after)
+}
+
+// CreateSurveyCreatedDefault is the manifest mock createdDefault: One created survey.
+func CreateSurveyCreatedDefault() connectormock.Case[surveymonkey.SurveyMetadata] {
+	value := connectormock.MustDecodeOutput[surveymonkey.SurveyMetadata](`{"id":"123456789","title":"Customer feedback"}`)
+	return connectormock.Branch(surveymonkey.CreateSurveyBranchCreated, value, nil)
+}
+
+// CreateSurveyDefault is the manifest default, createdDefault, which New installs.
+func CreateSurveyDefault() connectormock.Case[surveymonkey.SurveyMetadata] {
+	return CreateSurveyCreatedDefault()
+}
+
+// UpdateSurveyUpdated selects the updated branch: SurveyMonkey updated the survey.
+func UpdateSurveyUpdated(value surveymonkey.SurveyMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Branch(surveymonkey.UpdateSurveyBranchUpdated, value, failure)
+}
+
+// UpdateSurveyNotFound selects the notFound branch: The survey does not exist or is inaccessible.
+func UpdateSurveyNotFound(value surveymonkey.SurveyMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Branch(surveymonkey.UpdateSurveyBranchNotFound, value, failure)
+}
+
+// UpdateSurveyProviderRejected selects the providerRejected branch: SurveyMonkey conclusively rejected the request.
+func UpdateSurveyProviderRejected(value surveymonkey.SurveyMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Branch(surveymonkey.UpdateSurveyBranchProviderRejected, value, failure)
+}
+
+// UpdateSurveyInvalidResponse selects the invalidResponse branch: SurveyMonkey returned invalid JSON.
+func UpdateSurveyInvalidResponse(value surveymonkey.SurveyMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Branch(surveymonkey.UpdateSurveyBranchInvalidResponse, value, failure)
+}
+
+// UpdateSurveyDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateSurveyDefect(value surveymonkey.SurveyMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Branch(surveymonkey.UpdateSurveyBranchDefect, value, failure)
+}
+
+// UpdateSurveyRetry asks Dex to retry the updateSurvey Step, after the delay when it is positive.
+func UpdateSurveyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[surveymonkey.SurveyMetadata] {
+	return connectormock.Retry[surveymonkey.SurveyMetadata](failure, after)
+}
+
+// UpdateSurveyUpdatedDefault is the manifest mock updatedDefault: One updated survey.
+func UpdateSurveyUpdatedDefault() connectormock.Case[surveymonkey.SurveyMetadata] {
+	value := connectormock.MustDecodeOutput[surveymonkey.SurveyMetadata](`{"id":"123456789","title":"Customer feedback"}`)
+	return connectormock.Branch(surveymonkey.UpdateSurveyBranchUpdated, value, nil)
+}
+
+// UpdateSurveyDefault is the manifest default, updatedDefault, which New installs.
+func UpdateSurveyDefault() connectormock.Case[surveymonkey.SurveyMetadata] {
+	return UpdateSurveyUpdatedDefault()
+}
+
+// DeleteSurveyDeleted selects the deleted branch: SurveyMonkey deleted the survey or it was already absent.
+func DeleteSurveyDeleted(value surveymonkey.DeleteSurveyOutput, failure *sdkgo.Failure) connectormock.Case[surveymonkey.DeleteSurveyOutput] {
+	return connectormock.Branch(surveymonkey.DeleteSurveyBranchDeleted, value, failure)
+}
+
+// DeleteSurveyProviderRejected selects the providerRejected branch: SurveyMonkey conclusively rejected the request.
+func DeleteSurveyProviderRejected(value surveymonkey.DeleteSurveyOutput, failure *sdkgo.Failure) connectormock.Case[surveymonkey.DeleteSurveyOutput] {
+	return connectormock.Branch(surveymonkey.DeleteSurveyBranchProviderRejected, value, failure)
+}
+
+// DeleteSurveyDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteSurveyDefect(value surveymonkey.DeleteSurveyOutput, failure *sdkgo.Failure) connectormock.Case[surveymonkey.DeleteSurveyOutput] {
+	return connectormock.Branch(surveymonkey.DeleteSurveyBranchDefect, value, failure)
+}
+
+// DeleteSurveyRetry asks Dex to retry the deleteSurvey Step, after the delay when it is positive.
+func DeleteSurveyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[surveymonkey.DeleteSurveyOutput] {
+	return connectormock.Retry[surveymonkey.DeleteSurveyOutput](failure, after)
+}
+
+// DeleteSurveyDeletedDefault is the manifest mock deletedDefault: One deleted survey ID.
+func DeleteSurveyDeletedDefault() connectormock.Case[surveymonkey.DeleteSurveyOutput] {
+	value := connectormock.MustDecodeOutput[surveymonkey.DeleteSurveyOutput](`{"id":"123456789"}`)
+	return connectormock.Branch(surveymonkey.DeleteSurveyBranchDeleted, value, nil)
+}
+
+// DeleteSurveyDefault is the manifest default, deletedDefault, which New installs.
+func DeleteSurveyDefault() connectormock.Case[surveymonkey.DeleteSurveyOutput] {
+	return DeleteSurveyDeletedDefault()
+}
+
+// ListCollectorsListed selects the listed branch: SurveyMonkey returned a collector page.
+func ListCollectorsListed(value surveymonkey.CollectorsPage, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorsPage] {
+	return connectormock.Branch(surveymonkey.ListCollectorsBranchListed, value, failure)
+}
+
+// ListCollectorsNotFound selects the notFound branch: The survey does not exist or is inaccessible.
+func ListCollectorsNotFound(value surveymonkey.CollectorsPage, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorsPage] {
+	return connectormock.Branch(surveymonkey.ListCollectorsBranchNotFound, value, failure)
+}
+
+// ListCollectorsProviderRejected selects the providerRejected branch: SurveyMonkey conclusively rejected the request.
+func ListCollectorsProviderRejected(value surveymonkey.CollectorsPage, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorsPage] {
+	return connectormock.Branch(surveymonkey.ListCollectorsBranchProviderRejected, value, failure)
+}
+
+// ListCollectorsInvalidResponse selects the invalidResponse branch: SurveyMonkey returned invalid JSON.
+func ListCollectorsInvalidResponse(value surveymonkey.CollectorsPage, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorsPage] {
+	return connectormock.Branch(surveymonkey.ListCollectorsBranchInvalidResponse, value, failure)
+}
+
+// ListCollectorsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListCollectorsDefect(value surveymonkey.CollectorsPage, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorsPage] {
+	return connectormock.Branch(surveymonkey.ListCollectorsBranchDefect, value, failure)
+}
+
+// ListCollectorsRetry asks Dex to retry the listCollectors Step, after the delay when it is positive.
+func ListCollectorsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[surveymonkey.CollectorsPage] {
+	return connectormock.Retry[surveymonkey.CollectorsPage](failure, after)
+}
+
+// ListCollectorsListedDefault is the manifest mock listedDefault: One collector page.
+func ListCollectorsListedDefault() connectormock.Case[surveymonkey.CollectorsPage] {
+	value := connectormock.MustDecodeOutput[surveymonkey.CollectorsPage](`{"collectors":[{"id":"2345","name":"Customer link"}],"page":1,"perPage":50,"total":1}`)
+	return connectormock.Branch(surveymonkey.ListCollectorsBranchListed, value, nil)
+}
+
+// ListCollectorsDefault is the manifest default, listedDefault, which New installs.
+func ListCollectorsDefault() connectormock.Case[surveymonkey.CollectorsPage] {
+	return ListCollectorsListedDefault()
+}
+
+// GetCollectorFound selects the found branch: SurveyMonkey returned the collector.
+func GetCollectorFound(value surveymonkey.CollectorMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Branch(surveymonkey.GetCollectorBranchFound, value, failure)
+}
+
+// GetCollectorNotFound selects the notFound branch: The collector does not exist or is inaccessible.
+func GetCollectorNotFound(value surveymonkey.CollectorMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Branch(surveymonkey.GetCollectorBranchNotFound, value, failure)
+}
+
+// GetCollectorProviderRejected selects the providerRejected branch: SurveyMonkey conclusively rejected the request.
+func GetCollectorProviderRejected(value surveymonkey.CollectorMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Branch(surveymonkey.GetCollectorBranchProviderRejected, value, failure)
+}
+
+// GetCollectorInvalidResponse selects the invalidResponse branch: SurveyMonkey returned invalid JSON.
+func GetCollectorInvalidResponse(value surveymonkey.CollectorMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Branch(surveymonkey.GetCollectorBranchInvalidResponse, value, failure)
+}
+
+// GetCollectorDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetCollectorDefect(value surveymonkey.CollectorMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Branch(surveymonkey.GetCollectorBranchDefect, value, failure)
+}
+
+// GetCollectorRetry asks Dex to retry the getCollector Step, after the delay when it is positive.
+func GetCollectorRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Retry[surveymonkey.CollectorMetadata](failure, after)
+}
+
+// GetCollectorFoundDefault is the manifest mock foundDefault: One weblink collector.
+func GetCollectorFoundDefault() connectormock.Case[surveymonkey.CollectorMetadata] {
+	value := connectormock.MustDecodeOutput[surveymonkey.CollectorMetadata](`{"id":"2345","surveyId":"123456789","type":"weblink","name":"Customer link","url":"https://www.surveymonkey.com/r/example"}`)
+	return connectormock.Branch(surveymonkey.GetCollectorBranchFound, value, nil)
+}
+
+// GetCollectorDefault is the manifest default, foundDefault, which New installs.
+func GetCollectorDefault() connectormock.Case[surveymonkey.CollectorMetadata] {
+	return GetCollectorFoundDefault()
+}
+
+// CreateCollectorCreated selects the created branch: SurveyMonkey created the collector.
+func CreateCollectorCreated(value surveymonkey.CollectorMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Branch(surveymonkey.CreateCollectorBranchCreated, value, failure)
+}
+
+// CreateCollectorProviderRejected selects the providerRejected branch: SurveyMonkey conclusively rejected the request.
+func CreateCollectorProviderRejected(value surveymonkey.CollectorMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Branch(surveymonkey.CreateCollectorBranchProviderRejected, value, failure)
+}
+
+// CreateCollectorDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateCollectorDefect(value surveymonkey.CollectorMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Branch(surveymonkey.CreateCollectorBranchDefect, value, failure)
+}
+
+// CreateCollectorUncertain returns an uncertain createCollector outcome.
+func CreateCollectorUncertain(value surveymonkey.CollectorMetadata, failure sdkgo.Failure) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateCollectorRetry asks Dex to retry the createCollector Step, after the delay when it is positive.
+func CreateCollectorRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Retry[surveymonkey.CollectorMetadata](failure, after)
+}
+
+// CreateCollectorCreatedDefault is the manifest mock createdDefault: One created collector.
+func CreateCollectorCreatedDefault() connectormock.Case[surveymonkey.CollectorMetadata] {
+	value := connectormock.MustDecodeOutput[surveymonkey.CollectorMetadata](`{"id":"2345","surveyId":"123456789","type":"weblink","name":"Customer link","url":"https://www.surveymonkey.com/r/example"}`)
+	return connectormock.Branch(surveymonkey.CreateCollectorBranchCreated, value, nil)
+}
+
+// CreateCollectorDefault is the manifest default, createdDefault, which New installs.
+func CreateCollectorDefault() connectormock.Case[surveymonkey.CollectorMetadata] {
+	return CreateCollectorCreatedDefault()
+}
+
+// UpdateCollectorUpdated selects the updated branch: SurveyMonkey updated the collector.
+func UpdateCollectorUpdated(value surveymonkey.CollectorMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Branch(surveymonkey.UpdateCollectorBranchUpdated, value, failure)
+}
+
+// UpdateCollectorNotFound selects the notFound branch: The collector does not exist or is inaccessible.
+func UpdateCollectorNotFound(value surveymonkey.CollectorMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Branch(surveymonkey.UpdateCollectorBranchNotFound, value, failure)
+}
+
+// UpdateCollectorProviderRejected selects the providerRejected branch: SurveyMonkey conclusively rejected the request.
+func UpdateCollectorProviderRejected(value surveymonkey.CollectorMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Branch(surveymonkey.UpdateCollectorBranchProviderRejected, value, failure)
+}
+
+// UpdateCollectorInvalidResponse selects the invalidResponse branch: SurveyMonkey returned invalid JSON.
+func UpdateCollectorInvalidResponse(value surveymonkey.CollectorMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Branch(surveymonkey.UpdateCollectorBranchInvalidResponse, value, failure)
+}
+
+// UpdateCollectorDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateCollectorDefect(value surveymonkey.CollectorMetadata, failure *sdkgo.Failure) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Branch(surveymonkey.UpdateCollectorBranchDefect, value, failure)
+}
+
+// UpdateCollectorRetry asks Dex to retry the updateCollector Step, after the delay when it is positive.
+func UpdateCollectorRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[surveymonkey.CollectorMetadata] {
+	return connectormock.Retry[surveymonkey.CollectorMetadata](failure, after)
+}
+
+// UpdateCollectorUpdatedDefault is the manifest mock updatedDefault: One updated collector.
+func UpdateCollectorUpdatedDefault() connectormock.Case[surveymonkey.CollectorMetadata] {
+	value := connectormock.MustDecodeOutput[surveymonkey.CollectorMetadata](`{"id":"2345","surveyId":"123456789","type":"weblink","name":"Customer link","url":"https://www.surveymonkey.com/r/example"}`)
+	return connectormock.Branch(surveymonkey.UpdateCollectorBranchUpdated, value, nil)
+}
+
+// UpdateCollectorDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCollectorDefault() connectormock.Case[surveymonkey.CollectorMetadata] {
+	return UpdateCollectorUpdatedDefault()
+}
+
+// DeleteCollectorDeleted selects the deleted branch: SurveyMonkey deleted the collector or it was already absent.
+func DeleteCollectorDeleted(value surveymonkey.DeleteCollectorOutput, failure *sdkgo.Failure) connectormock.Case[surveymonkey.DeleteCollectorOutput] {
+	return connectormock.Branch(surveymonkey.DeleteCollectorBranchDeleted, value, failure)
+}
+
+// DeleteCollectorProviderRejected selects the providerRejected branch: SurveyMonkey conclusively rejected the request.
+func DeleteCollectorProviderRejected(value surveymonkey.DeleteCollectorOutput, failure *sdkgo.Failure) connectormock.Case[surveymonkey.DeleteCollectorOutput] {
+	return connectormock.Branch(surveymonkey.DeleteCollectorBranchProviderRejected, value, failure)
+}
+
+// DeleteCollectorDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteCollectorDefect(value surveymonkey.DeleteCollectorOutput, failure *sdkgo.Failure) connectormock.Case[surveymonkey.DeleteCollectorOutput] {
+	return connectormock.Branch(surveymonkey.DeleteCollectorBranchDefect, value, failure)
+}
+
+// DeleteCollectorRetry asks Dex to retry the deleteCollector Step, after the delay when it is positive.
+func DeleteCollectorRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[surveymonkey.DeleteCollectorOutput] {
+	return connectormock.Retry[surveymonkey.DeleteCollectorOutput](failure, after)
+}
+
+// DeleteCollectorDeletedDefault is the manifest mock deletedDefault: One deleted collector ID.
+func DeleteCollectorDeletedDefault() connectormock.Case[surveymonkey.DeleteCollectorOutput] {
+	value := connectormock.MustDecodeOutput[surveymonkey.DeleteCollectorOutput](`{"id":"2345"}`)
+	return connectormock.Branch(surveymonkey.DeleteCollectorBranchDeleted, value, nil)
+}
+
+// DeleteCollectorDefault is the manifest default, deletedDefault, which New installs.
+func DeleteCollectorDefault() connectormock.Case[surveymonkey.DeleteCollectorOutput] {
+	return DeleteCollectorDeletedDefault()
 }
